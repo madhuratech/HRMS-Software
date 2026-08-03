@@ -95,7 +95,7 @@ export function Sidebar({ userRole, onLogout }) {
       roles: ['ALL'],
       children: [
         { id: 'daily-attendance', label: 'Daily Attendance', path: '/attendance/daily' },
-        { id: 'biometric-attendance', label: 'Biometric Attendance', path: '/attendance/biometric' },
+        { id: 'gps-attendance', label: 'GPS Attendance', path: '/attendance/gps' },
         { id: 'regularization', label: 'Regularization', path: '/attendance/regularization' },
         { id: 'shift-roster', label: 'Shift Roster', path: '/attendance/shift-roster' },
         { id: 'overtime', label: 'Overtime', path: '/attendance/overtime' },
@@ -178,19 +178,19 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'promotions-performance', label: 'Promotions', path: '/performance/promotions' }
       ]
     },
-    {
-      id: 'training',
-      label: 'Training',
-      icon: GraduationCap,
-      roles: ['ALL'],
-      children: [
-        { id: 'training-programs', label: 'Training Programs' },
-        { id: 'learning-portal', label: 'Learning Portal' },
-        { id: 'trainers', label: 'Trainers' },
-        { id: 'assessments', label: 'Assessments' },
-        { id: 'certificates', label: 'Certificates' }
-      ]
-    },
+    // {
+    //   id: 'training',
+    //   label: 'Training',
+    //   icon: GraduationCap,
+    //   roles: ['ALL'],
+    //   children: [
+    //     { id: 'training-programs', label: 'Training Programs' },
+    //     { id: 'learning-portal', label: 'Learning Portal' },
+    //     { id: 'trainers', label: 'Trainers' },
+    //     { id: 'assessments', label: 'Assessments' },
+    //     { id: 'certificates', label: 'Certificates' }
+    //   ]
+    // },
     {
       id: 'projects',
       label: 'Projects',
@@ -221,20 +221,20 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'project-reports', label: 'Project Reports', path: '/reports/project' }
       ]
     },
-    {
-      id: 'assets',
-      label: 'Assets',
-      icon: Package,
-      roles: ['ALL'],
-      children: [
-        { id: 'asset-categories', label: 'Asset Categories' },
-        { id: 'asset-inventory', label: 'Asset Inventory' },
-        { id: 'asset-allocation-module', label: 'Asset Allocation' },
-        { id: 'asset-return', label: 'Asset Return' },
-        { id: 'maintenance', label: 'Maintenance' },
-        { id: 'asset-reports', label: 'Asset Reports' }
-      ]
-    },
+    // {
+    //   id: 'assets',
+    //   label: 'Assets',
+    //   icon: Package,
+    //   roles: ['ALL'],
+    //   children: [
+    //     { id: 'asset-categories', label: 'Asset Categories' },
+    //     { id: 'asset-inventory', label: 'Asset Inventory' },
+    //     { id: 'asset-allocation-module', label: 'Asset Allocation' },
+    //     { id: 'asset-return', label: 'Asset Return' },
+    //     { id: 'maintenance', label: 'Maintenance' },
+    //     { id: 'asset-reports', label: 'Asset Reports' }
+    //   ]
+    // },
     {
       id: 'expenses',
       label: 'Expenses',
@@ -301,7 +301,7 @@ export function Sidebar({ userRole, onLogout }) {
   const renderMenuItem = (item) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedGroups.includes(item.id);
-    
+
     // Check if any child's path matches the current location exactly, or if the item's path matches
     const isActive = item.path === location.pathname || (hasChildren && item.children.some(child => child.path === location.pathname));
 
