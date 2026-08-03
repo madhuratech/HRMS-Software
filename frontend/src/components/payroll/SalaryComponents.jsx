@@ -1,16 +1,8 @@
-import React from 'react';
-import { Search, Filter, Download, Plus, MoreVertical, Layers, TrendingUp, TrendingDown, Landmark } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Filter, Download, Plus, MoreVertical, Layers, TrendingUp, TrendingDown, Landmark, X, CheckCircle2 } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
-// Mock Data
-const kpiData = [
-  { title: 'Total Components', value: '24', icon: <Layers size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
-  { title: 'Earnings', value: '14', icon: <TrendingUp size={20} color="#10B981" />, bgColor: '#ECFDF5' },
-  { title: 'Deductions', value: '7', icon: <TrendingDown size={20} color="#EF4444" />, bgColor: '#FEF2F2' },
-  { title: 'Employer Contributions', value: '3', icon: <Landmark size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
-];
-
-const tableData = [
+const tableDataInit = [
   { id: 1, name: 'Basic Salary', type: 'Earning', taxable: 'Yes', formula: '40% of CTC', freq: 'Monthly', status: 'Active' },
   { id: 2, name: 'House Rent Allowance (HRA)', type: 'Earning', taxable: 'Partial', formula: '50% of Basic', freq: 'Monthly', status: 'Active' },
   { id: 3, name: 'Special Allowance', type: 'Earning', taxable: 'Yes', formula: 'Fixed Amount', freq: 'Monthly', status: 'Active' },
@@ -20,13 +12,83 @@ const tableData = [
   { id: 7, name: 'Annual Bonus', type: 'Earning', taxable: 'Yes', formula: 'Performance Based', freq: 'Yearly', status: 'Active' },
 ];
 
-const pieData = [
-  { name: 'Earnings', value: 14, color: '#10B981' },
-  { name: 'Deductions', value: 7, color: '#EF4444' },
-  { name: 'Contributions', value: 3, color: '#F59E0B' },
-];
-
 export default function SalaryComponents() {
+  const [components, setComponents] = useState(tableDataInit);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState('All');
+
+  // Form State
+  const [name, setName] = useState('');
+  const [type, setType] = useState('Earning');
+  const [taxable, setTaxable] = useState('Yes');
+  const [formula, setFormula] = useState('');
+  const [freq, setFreq] = useState('Monthly');
+  const [status, setStatus] = useState('Active');
+
+  const handleOpenModal = () => {
+    setName('');
+    setType('Earning');
+    setTaxable('Yes');
+    setFormula('');
+    setFreq('Monthly');
+    setStatus('Active');
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!name || !formula) {
+      alert("Please fill in component name and formula.");
+      return;
+    }
+
+    const newComponent = {
+      id: components.length + 1,
+      name,
+      type,
+      taxable,
+      formula,
+      freq,
+      status
+    };
+
+    setComponents([newComponent, ...components]);
+    setIsModalOpen(false);
+
+    // Show toast
+    setToastMessage(`Salary component "${name}" added successfully!`);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
+
+  // Recalculate KPI numbers
+  const totalCount = components.length;
+  const earningsCount = components.filter(c => c.type === 'Earning').length;
+  const deductionsCount = components.filter(c => c.type === 'Deduction').length;
+  const contributionsCount = components.filter(c => c.type === 'Contribution').length;
+
+  const kpis = [
+    { title: 'Total Components', value: totalCount, icon: <Layers size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
+    { title: 'Earnings', value: earningsCount, icon: <TrendingUp size={20} color="#10B981" />, bgColor: '#ECFDF5' },
+    { title: 'Deductions', value: deductionsCount, icon: <TrendingDown size={20} color="#EF4444" />, bgColor: '#FEF2F2' },
+    { title: 'Employer Contributions', value: contributionsCount, icon: <Landmark size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
+  ];
+
+  // Recalculate Pie Chart distribution data
+  const pieData = [
+    { name: 'Earnings', value: earningsCount || 1, color: '#10B981' },
+    { name: 'Deductions', value: deductionsCount || 0, color: '#EF4444' },
+    { name: 'Contributions', value: contributionsCount || 0, color: '#F59E0B' },
+  ];
+
+  // Filter & Search Logic
+  const filteredComponents = components.filter(c => {
+    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesFilter = filterType === 'All' || c.type === filterType;
+    return matchesSearch && matchesFilter;
+  });
+
   const cardStyle = {
     background: '#FFFFFF',
     borderRadius: '16px',
@@ -35,7 +97,15 @@ export default function SalaryComponents() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', position: 'relative' }}>
+      
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div style={{ position: 'fixed', top: '24px', right: '24px', zIndex: 1000, background: '#10B981', color: '#FFF', padding: '16px 24px', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <CheckCircle2 size={20} />
+          <span style={{ fontWeight: '600', fontSize: '14px' }}>{toastMessage}</span>
+        </div>
+      )}
 
       {/* Top Toolbar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -45,18 +115,30 @@ export default function SalaryComponents() {
             <input
               type="text"
               placeholder="Search Components..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
               style={{ width: '100%', padding: '10px 10px 10px 40px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px' }}
             />
           </div>
-          <button style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500', color: '#334155' }}>
-            <Filter size={16} /> Component Type
-          </button>
+          <div style={{ position: 'relative' }}>
+            <select
+              value={filterType}
+              onChange={e => setFilterType(e.target.value)}
+              style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '14px', fontWeight: '500', color: '#334155', cursor: 'pointer', outline: 'none' }}>
+              <option value="All">All Types</option>
+              <option value="Earning">Earnings</option>
+              <option value="Deduction">Deductions</option>
+              <option value="Contribution">Contributions</option>
+            </select>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '16px' }}>
           <button style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500', color: '#334155' }}>
             <Download size={16} /> Export
           </button>
-          <button style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+          <button 
+            onClick={handleOpenModal}
+            style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
             <Plus size={16} /> Add Component
           </button>
         </div>
@@ -64,7 +146,7 @@ export default function SalaryComponents() {
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
-        {kpiData.map((kpi, idx) => (
+        {kpis.map((kpi, idx) => (
           <div key={idx} style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: '16px', padding: '20px' }}>
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: kpi.bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               {kpi.icon}
@@ -98,7 +180,7 @@ export default function SalaryComponents() {
                 </tr>
               </thead>
               <tbody>
-                {tableData.map((row) => (
+                {filteredComponents.map((row) => (
                   <tr key={row.id} style={{ borderBottom: '1px solid #F8FAFC' }}>
                     <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: '600', color: '#334155' }}>{row.name}</td>
                     <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569' }}>
@@ -107,8 +189,8 @@ export default function SalaryComponents() {
                         borderRadius: '4px',
                         fontSize: '12px',
                         fontWeight: '600',
-                        background: row.type === 'Earning' ? '#ECFDF5' : '#FEF2F2',
-                        color: row.type === 'Earning' ? '#10B981' : '#EF4444'
+                        background: row.type === 'Earning' ? '#ECFDF5' : row.type === 'Deduction' ? '#FEF2F2' : '#FFFBEB',
+                        color: row.type === 'Earning' ? '#10B981' : row.type === 'Deduction' ? '#EF4444' : '#D97706'
                       }}>
                         {row.type}
                       </span>
@@ -166,6 +248,126 @@ export default function SalaryComponents() {
         </div>
 
       </div>
+
+      {/* Modal Backdrop & Add Component Form */}
+      {isModalOpen && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
+          <div style={{ background: '#FFF', borderRadius: '16px', width: '100%', maxWidth: '550px', maxHeight: '90vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '24px 32px', borderBottom: '1px solid #F1F5F9' }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#1E293B' }}>Add Salary Component</h3>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748B' }}>Add a new earning, deduction, or contribution component</p>
+              </div>
+              <button onClick={() => setIsModalOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '32px' }}>
+              
+              {/* Component Name */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Component Name *</label>
+                <input 
+                  type="text" 
+                  placeholder="e.g. Travel Allowance, LTA, Gratuity" 
+                  value={name} 
+                  onChange={e => setName(e.target.value)}
+                  required
+                  style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px', outline: 'none' }}
+                />
+              </div>
+
+              {/* Component Type & Taxable */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Component Type</label>
+                  <select 
+                    value={type} 
+                    onChange={e => setType(e.target.value)}
+                    style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', fontSize: '14px' }}>
+                    <option value="Earning">Earning</option>
+                    <option value="Deduction">Deduction</option>
+                    <option value="Contribution">Employer Contribution</option>
+                  </select>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Taxable Status</label>
+                  <select 
+                    value={taxable} 
+                    onChange={e => setTaxable(e.target.value)}
+                    style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', fontSize: '14px' }}>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                    <option value="Partial">Partial</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Formula & Frequency */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Formula / Flat Amount *</label>
+                  <input 
+                    type="text" 
+                    placeholder="e.g. 10% of Basic, Fixed, slab-based" 
+                    value={formula} 
+                    onChange={e => setFormula(e.target.value)}
+                    required
+                    style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px', outline: 'none' }}
+                  />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Pay Frequency</label>
+                  <select 
+                    value={freq} 
+                    onChange={e => setFreq(e.target.value)}
+                    style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', fontSize: '14px' }}>
+                    <option value="Monthly">Monthly</option>
+                    <option value="Quarterly">Quarterly</option>
+                    <option value="Half-Yearly">Half-Yearly</option>
+                    <option value="Yearly">Yearly</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Status</label>
+                <div style={{ display: 'flex', gap: '16px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', color: '#334155', cursor: 'pointer' }}>
+                    <input type="radio" checked={status === 'Active'} onChange={() => setStatus('Active')} style={{ accentColor: '#2952E3' }} /> Active
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px', color: '#334155', cursor: 'pointer' }}>
+                    <input type="radio" checked={status === 'Inactive'} onChange={() => setStatus('Inactive')} style={{ accentColor: '#2952E3' }} /> Inactive
+                  </label>
+                </div>
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px', borderTop: '1px solid #F1F5F9', paddingTop: '24px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setIsModalOpen(false)}
+                  style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', color: '#64748B', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  style={{ padding: '10px 24px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
+                  Save Component
+                </button>
+              </div>
+
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
+

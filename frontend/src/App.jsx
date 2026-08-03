@@ -54,7 +54,7 @@ import { AppLayout } from './components/layout/AppLayout';
 
 // Attendance Module Imports
 import DailyAttendance from './components/attendance/DailyAttendance';
-import BiometricAttendance from './components/attendance/BiometricAttendance';
+import GPSAttendance from './components/attendance/GPSAttendance';
 import Regularization from './components/attendance/Regularization';
 import ShiftRoster from './components/attendance/ShiftRoster';
 import Overtime from './components/attendance/Overtime';
@@ -235,7 +235,7 @@ function App() {
             
             {/* Attendance Routes */}
             <Route path="/attendance/daily" element={<DailyAttendance />} />
-            <Route path="/attendance/biometric" element={<BiometricAttendance />} />
+            <Route path="/attendance/gps" element={<GPSAttendance />} />
             <Route path="/attendance/regularization" element={<Regularization />} />
             <Route path="/attendance/shift-roster" element={<ShiftRoster />} />
             <Route path="/attendance/overtime" element={<Overtime />} />
