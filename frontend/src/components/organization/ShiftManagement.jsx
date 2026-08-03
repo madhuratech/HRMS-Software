@@ -1,0 +1,374 @@
+import React, { useState, useMemo } from 'react';
+import {
+  Clock,
+  Users,
+  Download,
+  CheckCircle2,
+  Calendar,
+  Search,
+  Filter,
+  Grid,
+  RotateCw,
+  Eye,
+  Edit2,
+  Trash2,
+  Plus,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Sun,
+  Moon,
+  Sunset,
+  Sunrise,
+  Coffee,
+  Briefcase
+} from 'lucide-react';
+
+const INITIAL_SHIFTS = [
+  { id: 1, name: 'General Shift', code: 'SHT-GEN', startTime: '09:00 AM', endTime: '06:00 PM', breakTime: '60 mins', graceTime: '15 mins', workingHours: '9 hours', employees: 420, createdDate: '01 Jan 2026', status: 'Active', description: 'Standard day shift for most corporate employees.' },
+  { id: 2, name: 'Morning Shift', code: 'SHT-MRN', startTime: '06:00 AM', endTime: '02:00 PM', breakTime: '30 mins', graceTime: '10 mins', workingHours: '8 hours', employees: 85, createdDate: '02 Jan 2026', status: 'Active', description: 'Early morning shift for support and operations.' },
+  { id: 3, name: 'Evening Shift', code: 'SHT-EVE', startTime: '02:00 PM', endTime: '10:00 PM', breakTime: '30 mins', graceTime: '10 mins', workingHours: '8 hours', employees: 90, createdDate: '03 Jan 2026', status: 'Active', description: 'Afternoon to evening shift for global support.' },
+  { id: 4, name: 'Night Shift', code: 'SHT-NGT', startTime: '10:00 PM', endTime: '06:00 AM', breakTime: '45 mins', graceTime: '10 mins', workingHours: '8 hours', employees: 120, createdDate: '04 Jan 2026', status: 'Active', description: 'Overnight shift for 24/7 operations and US client support.' },
+  { id: 5, name: 'UK Shift', code: 'SHT-UK', startTime: '01:30 PM', endTime: '10:30 PM', breakTime: '60 mins', graceTime: '15 mins', workingHours: '9 hours', employees: 65, createdDate: '05 Jan 2026', status: 'Active', description: 'Aligned with UK business hours.' },
+  { id: 6, name: 'US East Coast', code: 'SHT-USE', startTime: '06:30 PM', endTime: '03:30 AM', breakTime: '60 mins', graceTime: '15 mins', workingHours: '9 hours', employees: 110, createdDate: '06 Jan 2026', status: 'Active', description: 'Aligned with US EST business hours.' },
+  { id: 7, name: 'Part-Time Morning', code: 'SHT-PTM', startTime: '09:00 AM', endTime: '01:00 PM', breakTime: '15 mins', graceTime: '5 mins', workingHours: '4 hours', employees: 15, createdDate: '07 Jan 2026', status: 'Inactive', description: 'Half-day morning shift.' },
+  { id: 8, name: 'Flexible Shift', code: 'SHT-FLEX', startTime: 'Flexible', endTime: 'Flexible', breakTime: '60 mins', graceTime: '—', workingHours: '8 hours', employees: 45, createdDate: '08 Jan 2026', status: 'Active', description: 'Flexible timing with mandatory 8 working hours.' }
+];
+
+const emptyForm = { name: '', code: '', startTime: '', endTime: '', breakTime: '', graceTime: '', workingHours: '', status: 'Active' };
+
+const getShiftStyles = (name) => {
+  const nameLower = name.toLowerCase();
+  if (nameLower.includes('morning') || nameLower.includes('sunrise')) return { IconComp: Sunrise, bg: '#FEF3C7', color: '#D97706' };
+  if (nameLower.includes('night')) return { IconComp: Moon, bg: '#EEF2FF', color: '#4F46E5' };
+  if (nameLower.includes('evening') || nameLower.includes('sunset')) return { IconComp: Sunset, bg: '#FDF2F8', color: '#DB2777' };
+  if (nameLower.includes('flex')) return { IconComp: Briefcase, bg: '#F5F3FF', color: '#7C3AED' };
+  return { IconComp: Sun, bg: '#F0FDF4', color: '#16A34A' };
+};
+
+export const ShiftManagement = () => {
+  const [shifts, setShifts] = useState(INITIAL_SHIFTS);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [formData, setFormData] = useState(emptyForm);
+  const itemsPerPage = 8;
+
+  const statistics = useMemo(() => {
+    const activeShifts = shifts.filter(s => s.status === 'Active');
+    let totalHrs = 0;
+    let count = 0;
+    activeShifts.forEach(s => {
+      const hrs = parseFloat(s.workingHours);
+      if (!isNaN(hrs)) { totalHrs += hrs; count++; }
+    });
+    return {
+      total: shifts.length,
+      active: activeShifts.length,
+      employees: shifts.reduce((sum, s) => sum + (parseInt(s.employees) || 0), 0),
+      avgHours: count > 0 ? (totalHrs / count).toFixed(1) + ' hrs' : '0 hrs'
+    };
+  }, [shifts]);
+
+  const filteredData = useMemo(() => {
+    return shifts.filter(s => {
+      const matchSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.code.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchStatus = statusFilter === 'All' || s.status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+  }, [shifts, searchTerm, statusFilter]);
+
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
+  const handleAdd = () => { setFormData(emptyForm); setShowAddModal(true); };
+  const handleSaveAdd = () => {
+    if (!formData.name || !formData.code || !formData.startTime || !formData.endTime) return;
+    setShifts(prev => [...prev, { ...formData, id: Date.now(), employees: 0, createdDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) }]);
+    setShowAddModal(false);
+  };
+  const handleOpenEdit = (item) => { setSelectedItem(item); setFormData({ name: item.name, code: item.code, startTime: item.startTime, endTime: item.endTime, breakTime: item.breakTime, graceTime: item.graceTime, workingHours: item.workingHours, status: item.status, description: item.description }); setShowEditModal(true); };
+  const handleSaveEdit = () => {
+    if (!formData.name || !formData.code || !formData.startTime || !formData.endTime) return;
+    setShifts(prev => prev.map(s => s.id === selectedItem.id ? { ...s, ...formData } : s));
+    setShowEditModal(false);
+  };
+  const handleOpenView = (item) => { setSelectedItem(item); setShowViewModal(true); };
+  const handleOpenDelete = (item) => { setSelectedItem(item); setShowDeleteModal(true); };
+  const handleConfirmDelete = () => { setShifts(prev => prev.filter(s => s.id !== selectedItem.id)); setShowDeleteModal(false); };
+
+  const renderFormModal = (title, subtitle, show, onClose, onSave, saveLabel) => {
+    if (!show) return null;
+    return (
+      <>
+        <div className="modal-backdrop-blur" onClick={onClose} />
+        <div className="modal-centered-content">
+          <div className="p-8 border-b border-slate-200 flex items-center justify-between shrink-0">
+            <div>
+              <h2 className="text-xl font-bold text-[#0A1629]">{title}</h2>
+              <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
+            </div>
+            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition-colors"><X size={20} className="text-slate-400" /></button>
+          </div>
+          <div className="p-8 overflow-y-auto flex-1 space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Shift Name <span className="text-red-500">*</span></label>
+                <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Enter shift name" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Shift Code <span className="text-red-500">*</span></label>
+                <input type="text" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} placeholder="Enter shift code" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Start Time <span className="text-red-500">*</span></label>
+                <input type="text" value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} placeholder="e.g. 09:00 AM" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">End Time <span className="text-red-500">*</span></label>
+                <input type="text" value={formData.endTime} onChange={e => setFormData({ ...formData, endTime: e.target.value })} placeholder="e.g. 06:00 PM" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Break Time</label>
+                <input type="text" value={formData.breakTime} onChange={e => setFormData({ ...formData, breakTime: e.target.value })} placeholder="e.g. 60 mins" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Grace Time</label>
+                <input type="text" value={formData.graceTime} onChange={e => setFormData({ ...formData, graceTime: e.target.value })} placeholder="e.g. 15 mins" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Working Hours</label>
+                <input type="text" value={formData.workingHours} onChange={e => setFormData({ ...formData, workingHours: e.target.value })} placeholder="e.g. 9 hours" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+              </div>
+              <div className="pt-0">
+                <label className="block text-sm font-semibold text-slate-700 mb-3">Status <span className="text-red-500">*</span></label>
+                <div className="flex items-center gap-3 pt-1">
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio" name="shiftStatus" checked={formData.status === 'Active'} onChange={() => setFormData({ ...formData, status: 'Active' })} className="w-4 h-4 text-blue-600 cursor-pointer" />
+                    <span className="text-sm font-semibold text-slate-700">Active</span>
+                  </label>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="radio" name="shiftStatus" checked={formData.status === 'Inactive'} onChange={() => setFormData({ ...formData, status: 'Inactive' })} className="w-4 h-4 text-blue-600 cursor-pointer" />
+                    <span className="text-sm font-semibold text-slate-700">Inactive</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-end gap-4 p-8 border-t border-slate-200 shrink-0">
+            <button onClick={onClose} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+            <button onClick={onSave} className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">{saveLabel}</button>
+          </div>
+        </div>
+      </>
+    );
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div><h1 className="text-2xl font-bold text-[#0A1629]">Shift Management</h1><p className="text-sm text-slate-500 mt-1">Manage all company work shifts and timings.</p></div>
+        <div className="flex items-center gap-3">
+          <button className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"><Download size={16} /> Export</button>
+          <button onClick={handleAdd} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"><Plus size={16} /> Add Shift</button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {[
+          { label: 'Total Shifts', value: statistics.total, icon: Clock, bg: '#EEF2FF', color: '#2563EB' },
+          { label: 'Active Shifts', value: statistics.active, icon: CheckCircle2, bg: '#ECFDF5', color: '#10B981' },
+          { label: 'Employees Assigned', value: statistics.employees, icon: Users, bg: '#F5F3FF', color: '#8B5CF6' },
+          { label: 'Weekly Hours', value: statistics.avgHours, icon: Coffee, bg: '#FFF7ED', color: '#F97316' }
+        ].map((card) => (
+          <div key={card.label} className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex items-center gap-4">
+            <div className="w-16 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: card.bg, color: card.color }}><card.icon size={22} /></div>
+            <div><p className="text-[13px] font-semibold text-slate-500 leading-tight">{card.label}</p><p className="text-[28px] font-bold text-[#0a1629] mt-1 leading-none">{card.value}</p></div>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <input
+              type="text"
+              placeholder="Search Shift..."
+              value={searchTerm}
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-slate-50/50"
+            />
+          </div>
+
+          <div className="flex items-center gap-3">
+            <select
+              value={statusFilter}
+              onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
+              className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="All">Status: All</option>
+              <option value="Active">Active</option>
+              <option value="Inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm font-medium">
+            <Filter size={16} /> Filters
+          </button>
+          <button className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors">
+            <Grid size={16} />
+          </button>
+          <button
+            onClick={() => {
+              setSearchTerm('');
+              setStatusFilter('All');
+              setCurrentPage(1);
+            }}
+            className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors"
+          >
+            <RotateCw size={16} />
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-x-auto">
+        {paginatedData.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4"><Clock size={24} className="text-slate-400" /></div>
+            <h3 className="text-lg font-semibold text-slate-700">No Shifts Found</h3>
+            <p className="text-sm text-slate-500 mt-1">Create your first shift.</p>
+            <button onClick={handleAdd} className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"><Plus size={16} /> Add Shift</button>
+          </div>
+        ) : (
+          <table className="w-full">
+            <thead>
+              <tr className="bg-[#F8FAFC]">
+                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Shift</th>
+                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Code</th>
+                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Start Time</th>
+                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">End Time</th>
+                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Working Hours</th>
+                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Employees</th>
+                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Status</th>
+                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedData.map((item) => {
+                const styles = getShiftStyles(item.name);
+                const IconComp = styles.IconComp;
+                return (
+                  <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50/30 transition-colors">
+                    <td className="py-4 px-4"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: styles.bg, color: styles.color }}><IconComp size={18} /></div><span className="font-semibold text-[#101828] text-sm whitespace-nowrap">{item.name}</span></div></td>
+                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">{item.code}</td>
+                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">{item.startTime}</td>
+                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">{item.endTime}</td>
+                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">{item.workingHours}</td>
+                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap"><div className="flex items-center gap-1.5"><Users size={16} className="text-slate-400" /><span>{item.employees}</span></div></td>
+                    <td className="py-4 px-4 whitespace-nowrap"><span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" style={item.status === 'Active' ? { backgroundColor: '#ECFDF5', color: '#047857' } : { backgroundColor: '#F3F4F6', color: '#4B5563' }}>{item.status}</span></td>
+                    <td className="py-4 px-4 whitespace-nowrap text-left">
+                      <div className="flex items-center justify-start gap-2">
+                        <button onClick={() => handleOpenView(item)} className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"><Eye size={16} /></button>
+                        <button onClick={() => handleOpenEdit(item)} className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"><Edit2 size={16} /></button>
+                        <button onClick={() => handleOpenDelete(item)} className="p-1.5 border border-red-100 rounded-lg text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={16} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-sm text-slate-500">Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredData.length)} of {filteredData.length} shifts</p>
+          <div className="flex items-center gap-1">
+            <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-40 transition-colors"><ChevronLeft size={18} /></button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (<button key={page} onClick={() => setCurrentPage(page)} className={`w-9 h-9 rounded-lg text-sm font-medium transition-colors ${currentPage === page ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-slate-600'}`}>{page}</button>))}
+            <button onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} className="p-2 rounded-lg hover:bg-slate-100 disabled:opacity-40 transition-colors"><ChevronRight size={18} /></button>
+          </div>
+        </div>
+      )}
+
+      {renderFormModal('Add Shift', 'Create a new work shift.', showAddModal, () => setShowAddModal(false), handleSaveAdd, 'Save Shift')}
+      {renderFormModal('Edit Shift', 'Update shift information.', showEditModal, () => setShowEditModal(false), handleSaveEdit, 'Update Shift')}
+      {showViewModal && selectedItem && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setShowViewModal(false)} />
+          <div className="modal-centered-content modal-centered-content-view">
+            <div className="flex items-center justify-between p-6 border-b border-slate-200">
+              <div>
+                <h2 className="text-xl font-bold text-[#0A1629]">Shift Details</h2>
+                <p className="text-sm text-slate-500 mt-0.5">View shift information.</p>
+              </div>
+              <button onClick={() => setShowViewModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-6">
+                {[
+                  ['Shift Name', selectedItem.name],
+                  ['Shift Code', selectedItem.code],
+                  ['Start Time', selectedItem.startTime],
+                  ['End Time', selectedItem.endTime],
+                  ['Break Time', selectedItem.breakTime || '—'],
+                  ['Grace Time', selectedItem.graceTime || '—'],
+                  ['Working Hours', selectedItem.workingHours],
+                  ['Status', selectedItem.status]
+                ].map(([label, value]) => (
+                  <div key={label} className="bg-slate-50 rounded-xl p-4">
+                    <p className="text-xs font-medium text-slate-400 mb-1">{label}</p>
+                    {label === 'Status' ? (
+                      <span
+                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold"
+                        style={value === 'Active' ? { backgroundColor: '#ECFDF5', color: '#047857' } : { backgroundColor: '#F3F4F6', color: '#4B5563' }}
+                      >
+                        {value}
+                      </span>
+                    ) : (
+                      <p className="text-sm font-semibold text-[#0A1629]">{value}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {showDeleteModal && selectedItem && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setShowDeleteModal(false)} />
+          <div className="modal-centered-content modal-centered-content-delete">
+            <div className="w-14 h-14 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={24} className="text-red-600" />
+            </div>
+            <h3 className="text-lg font-bold text-[#0A1629]">Delete Shift?</h3>
+            <p className="text-sm text-slate-500 mt-2">
+              Are you sure you want to delete "{selectedItem.name}"? This action cannot be undone.
+            </p>
+            <div className="flex items-center justify-center gap-3 mt-6">
+              <button onClick={() => setShowDeleteModal(false)} className="px-5 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+                Cancel
+              </button>
+              <button onClick={handleConfirmDelete} className="px-5 py-2.5 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700 transition-colors">
+                Delete
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
