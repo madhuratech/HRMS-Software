@@ -28,7 +28,7 @@ export default function SalaryStructure() {
   const [freq, setFreq] = useState('Monthly');
   const [date, setDate] = useState('');
   const [status, setStatus] = useState('Active');
-  
+
   // Salary breakdown inputs
   const [basic, setBasic] = useState('');
   const [hra, setHra] = useState('');
@@ -83,7 +83,7 @@ export default function SalaryStructure() {
   // Re-calculate KPIs
   const totalCount = structures.length;
   const activeCount = structures.filter(s => s.status === 'Active').length;
-  
+
   // Calculate average CTC of monthly structures
   const monthlyStructures = structures.filter(s => s.freq === 'Monthly');
   const avgMonthly = monthlyStructures.reduce((acc, curr) => acc + curr.amount, 0) / (monthlyStructures.length || 1);
@@ -105,7 +105,7 @@ export default function SalaryStructure() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '0', background: '#F8FAFC', minHeight: '100%', position: 'relative' }}>
-      
+
       {/* Toast Notification */}
       {toastMessage && (
         <div style={{ position: 'fixed', top: '24px', right: '24px', zIndex: 1000, background: '#10B981', color: '#FFF', padding: '16px 24px', borderRadius: '12px', boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)', display: 'flex', alignItems: 'center', gap: '12px', animation: 'slideIn 0.3s ease' }}>
@@ -120,7 +120,7 @@ export default function SalaryStructure() {
           <h1 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '700', color: '#1E293B' }}>Salary Structure</h1>
           <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Manage and configure salary structures</p>
         </div>
-        <button 
+        <button
           onClick={handleOpenModal}
           style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500', transition: 'background 0.2s' }}>
           <Plus size={16} /> Add Structure
@@ -172,13 +172,13 @@ export default function SalaryStructure() {
                   <td style={{ padding: '20px 24px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>{row.date}</td>
                   <td style={{ padding: '20px 24px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>{row.employees}</td>
                   <td style={{ padding: '20px 24px', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                    <span style={{ 
-                      padding: '6px 12px', 
-                      borderRadius: '4px', 
-                      fontSize: '12px', 
-                      fontWeight: '600', 
-                      backgroundColor: row.status === 'Active' ? '#ECFDF5' : '#FEF2F2', 
-                      color: row.status === 'Active' ? '#10B981' : '#EF4444' 
+                    <span style={{
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      backgroundColor: row.status === 'Active' ? '#ECFDF5' : '#FEF2F2',
+                      color: row.status === 'Active' ? '#10B981' : '#EF4444'
                     }}>
                       {row.status}
                     </span>
@@ -224,7 +224,7 @@ export default function SalaryStructure() {
                 <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#1E293B' }}>Add New Salary Structure</h3>
                 <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748B' }}>Create a custom pay structure with defined earnings and deductions</p>
               </div>
-              <button 
+              <button
                 onClick={() => setIsModalOpen(false)}
                 style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}>
                 <X size={20} />
@@ -233,15 +233,15 @@ export default function SalaryStructure() {
 
             {/* Modal Form */}
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px', padding: '32px' }}>
-              
+
               {/* Row 1: General Info */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Structure Name *</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. Executive, Designer, Intern" 
-                    value={name} 
+                  <input
+                    type="text"
+                    placeholder="e.g. Executive, Designer, Intern"
+                    value={name}
                     onChange={e => setName(e.target.value)}
                     required
                     style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px', outline: 'none', transition: 'border-color 0.2s' }}
@@ -249,10 +249,10 @@ export default function SalaryStructure() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Structure Code *</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. STR-007" 
-                    value={code} 
+                  <input
+                    type="text"
+                    placeholder="e.g. STR-007"
+                    value={code}
                     onChange={e => setCode(e.target.value)}
                     required
                     style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px', outline: 'none' }}
@@ -264,8 +264,8 @@ export default function SalaryStructure() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Pay Frequency</label>
-                  <select 
-                    value={freq} 
+                  <select
+                    value={freq}
                     onChange={e => setFreq(e.target.value)}
                     style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', fontSize: '14px', outline: 'none' }}>
                     <option value="Monthly">Monthly</option>
@@ -275,9 +275,9 @@ export default function SalaryStructure() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <label style={{ fontSize: '13px', fontWeight: '600', color: '#475569' }}>Effective From</label>
-                  <input 
-                    type="date" 
-                    value={date} 
+                  <input
+                    type="date"
+                    value={date}
                     onChange={e => setDate(e.target.value)}
                     style={{ padding: '10px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '14px', outline: 'none' }}
                   />
@@ -300,7 +300,7 @@ export default function SalaryStructure() {
               {/* Section: Salary Components */}
               <div style={{ marginTop: '10px', borderTop: '1px solid #F1F5F9', paddingTop: '20px' }}>
                 <h4 style={{ margin: '0 0 16px 0', fontSize: '14px', fontWeight: '700', color: '#334155' }}>Salary Break-down / Monthly Components</h4>
-                
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                   {/* Earnings column */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -350,14 +350,14 @@ export default function SalaryStructure() {
 
               {/* Modal Footer Actions */}
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px', borderTop: '1px solid #F1F5F9', paddingTop: '24px' }}>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setIsModalOpen(false)}
                   style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', color: '#64748B', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   style={{ padding: '10px 24px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
                   Save Structure
                 </button>
@@ -369,5 +369,15 @@ export default function SalaryStructure() {
       )}
 
     </div>
+  );
+}
+ </div >
+  );
+}
+          </div >
+        </div >
+      )}
+
+    </div >
   );
 }
