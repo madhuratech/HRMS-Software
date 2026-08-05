@@ -1,5 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Filter, Download, Upload, Monitor, Smartphone, Activity, Clock, CheckCircle2, AlertTriangle, MoreVertical, Calendar as CalendarIcon, MapPin, ChevronDown, Navigation, Map, ShieldAlert, RefreshCw } from 'lucide-react';
+
+const mockLogs = [
+  { id: '1', employee: 'Aarav Sharma', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026024d', location: 'Main Headquarters', checkIn: '09:05 AM', checkOut: '--', coordinates: '12.9718° N, 77.5945° E', status: 'On-Site' },
+  { id: '2', employee: 'Neha Patel', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', location: 'Branch Office - Downtown', checkIn: '08:55 AM', checkOut: '06:05 PM', coordinates: '12.9841° N, 77.6200° E', status: 'On-Site' },
+  { id: '3', employee: 'Rohan Mehta', avatar: 'https://i.pravatar.cc/150?u=a04258114e29026702d', location: 'Remote Office - Tech Hub', checkIn: '09:15 AM', checkOut: '06:30 PM', coordinates: '12.9302° N, 77.5315° E', status: 'On-Site' },
+  { id: '4', employee: 'Priya Nair', avatar: 'https://i.pravatar.cc/150?u=a048581f4e29026701d', location: 'Outside Geofence', checkIn: '09:45 AM', checkOut: '--', coordinates: '12.9550° N, 77.5810° E', status: 'Remote' },
+  { id: '5', employee: 'Karan Verma', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026703d', location: 'Client Site - Retail Center', checkIn: '09:10 AM', checkOut: '06:00 PM', coordinates: '13.0010° N, 77.5725° E', status: 'On-Site' },
+];
 
 export default function GPSAttendance() {
   const [activeGeofences, setActiveGeofences] = useState([
@@ -9,13 +17,36 @@ export default function GPSAttendance() {
     { id: '4', name: 'Client Site - Retail Center', lat: '13.0012° N', lng: '77.5724° E', radius: '250m', activeStaff: 10 },
   ]);
 
-  const gpsLogs = [
-    { id: '1', employee: 'Aarav Sharma', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026024d', location: 'Main Headquarters', checkIn: '09:05 AM', checkOut: '--', coordinates: '12.9718° N, 77.5945° E', status: 'On-Site' },
-    { id: '2', employee: 'Neha Patel', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', location: 'Branch Office - Downtown', checkIn: '08:55 AM', checkOut: '06:05 PM', coordinates: '12.9841° N, 77.6200° E', status: 'On-Site' },
-    { id: '3', employee: 'Rohan Mehta', avatar: 'https://i.pravatar.cc/150?u=a04258114e29026702d', location: 'Remote Office - Tech Hub', checkIn: '09:15 AM', checkOut: '06:30 PM', coordinates: '12.9302° N, 77.5315° E', status: 'On-Site' },
-    { id: '4', employee: 'Priya Nair', avatar: 'https://i.pravatar.cc/150?u=a048581f4e29026701d', location: 'Outside Geofence', checkIn: '09:45 AM', checkOut: '--', coordinates: '12.9550° N, 77.5810° E', status: 'Remote' },
-    { id: '5', employee: 'Karan Verma', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026703d', location: 'Client Site - Retail Center', checkIn: '09:10 AM', checkOut: '06:00 PM', coordinates: '13.0010° N, 77.5725° E', status: 'On-Site' },
-  ];
+  const [gpsLogs, setGpsLogs] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch('http://localhost:3000/app/dashboard/stats') // use activity as fallback
+      .then(res => res.json())
+      .then(data => {
+        if (data.recentActivity && data.recentActivity.length > 0) {
+          const mapped = data.recentActivity.map((d, index) => ({
+            id: String(index + 1),
+            employee: d.employee_name,
+            avatar: `https://i.pravatar.cc/150?u=EMP00${index + 1}`,
+            location: d.punch_type === 'IN' ? 'Main Headquarters' : 'Branch Office - Downtown',
+            checkIn: new Date(d.punch_time).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+            checkOut: '--',
+            coordinates: '12.9718° N, 77.5945° E',
+            status: 'On-Site'
+          }));
+          setGpsLogs(mapped);
+        } else {
+          setGpsLogs(mockLogs);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setGpsLogs(mockLogs);
+        setLoading(false);
+      });
+  }, []);
 
   return (
     <div className="hrms-content">

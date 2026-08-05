@@ -39,22 +39,22 @@ export default function HiringPipeline() {
         <div style={{ flex: 1, background: '#EEF2FF', borderRadius: '12px 0 0 12px', padding: '24px', position: 'relative' }}>
           <div style={{ fontSize: '14px', color: '#6366F1', fontWeight: '600' }}>Applied</div>
           <div style={{ fontSize: '28px', color: '#1E293B', fontWeight: '700', marginTop: '8px' }}>154</div>
-          <div style={{ position: 'absolute', right: '-12px', top: '50%', transform: 'translateY(-50%)', width: '24px', height: '24px', background: '#FFF', transform: 'translateY(-50%) rotate(45deg)', zIndex: 1 }}></div>
+          <div style={{ position: 'absolute', right: '-12px', top: '50%', width: '24px', height: '24px', background: '#FFF', transform: 'translateY(-50%) rotate(45deg)', zIndex: 1 }}></div>
         </div>
         <div style={{ flex: 1, background: '#F5F3FF', padding: '24px', position: 'relative' }}>
           <div style={{ fontSize: '14px', color: '#8B5CF6', fontWeight: '600' }}>Screening</div>
           <div style={{ fontSize: '28px', color: '#1E293B', fontWeight: '700', marginTop: '8px' }}>96</div>
-          <div style={{ position: 'absolute', right: '-12px', top: '50%', transform: 'translateY(-50%)', width: '24px', height: '24px', background: '#FFF', transform: 'translateY(-50%) rotate(45deg)', zIndex: 1 }}></div>
+          <div style={{ position: 'absolute', right: '-12px', top: '50%', width: '24px', height: '24px', background: '#FFF', transform: 'translateY(-50%) rotate(45deg)', zIndex: 1 }}></div>
         </div>
         <div style={{ flex: 1, background: '#FFFBEB', padding: '24px', position: 'relative' }}>
           <div style={{ fontSize: '14px', color: '#F59E0B', fontWeight: '600' }}>Interview</div>
           <div style={{ fontSize: '28px', color: '#1E293B', fontWeight: '700', marginTop: '8px' }}>32</div>
-          <div style={{ position: 'absolute', right: '-12px', top: '50%', transform: 'translateY(-50%)', width: '24px', height: '24px', background: '#FFF', transform: 'translateY(-50%) rotate(45deg)', zIndex: 1 }}></div>
+          <div style={{ position: 'absolute', right: '-12px', top: '50%', width: '24px', height: '24px', background: '#FFF', transform: 'translateY(-50%) rotate(45deg)', zIndex: 1 }}></div>
         </div>
         <div style={{ flex: 1, background: '#F0FDF4', padding: '24px', position: 'relative' }}>
           <div style={{ fontSize: '14px', color: '#10B981', fontWeight: '600' }}>Offered</div>
           <div style={{ fontSize: '28px', color: '#1E293B', fontWeight: '700', marginTop: '8px' }}>12</div>
-          <div style={{ position: 'absolute', right: '-12px', top: '50%', transform: 'translateY(-50%)', width: '24px', height: '24px', background: '#FFF', transform: 'translateY(-50%) rotate(45deg)', zIndex: 1 }}></div>
+          <div style={{ position: 'absolute', right: '-12px', top: '50%', width: '24px', height: '24px', background: '#FFF', transform: 'translateY(-50%) rotate(45deg)', zIndex: 1 }}></div>
         </div>
         <div style={{ flex: 1, background: '#ECFDF5', borderRadius: '0 12px 12px 0', padding: '24px' }}>
           <div style={{ fontSize: '14px', color: '#059669', fontWeight: '600' }}>Hired</div>

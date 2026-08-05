@@ -371,13 +371,3 @@ export default function SalaryStructure() {
     </div>
   );
 }
- </div >
-  );
-}
-          </div >
-        </div >
-      )}
-
-    </div >
-  );
-}
