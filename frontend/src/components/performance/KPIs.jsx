@@ -135,9 +135,8 @@ const KPIs = () => {
         {/* LEFT: Donut */}
         <div style={{
           background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
-          boxShadow: '0 2px_8px rgba(15,23,42,.05)', padding: 24, height: 320,
+          boxShadow: '0 2px 8px rgba(15,23,42,.05)', padding: 24, height: 320,
           display: 'flex', flexDirection: 'column',
-          boxShadow: '0 2px 8px rgba(15,23,42,.05)',
         }}>
           <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 600, color: '#111827' }}>KPI Performance</h3>
           <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DollarSign, Users, Briefcase, CheckCircle2, UserCheck, Calendar, UserPlus, LogOut, TrendingDown,
   Star, TrendingUp, FolderPlus, Building2, FileText, Settings, Upload, BarChart2, Mail
@@ -130,16 +130,35 @@ const KpiCard = ({ label, value, trend, trendLabel, iconBg, iconColor, iconSymbo
 );
 
 export function SuperAdminDashboard() {
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    fetch('http://localhost:3000/app/dashboard/stats')
+      .then(res => res.json())
+      .then(data => setStats(data))
+      .catch(err => console.error("Failed to fetch dashboard stats", err));
+  }, []);
+
+  const employeeCount = stats ? stats.totalEmployees : 0;
+  const projectCount = stats ? stats.totalProjects : 0;
+  const completedProjects = stats ? stats.completedProjects : 0;
+  const clientCount = stats ? stats.totalClients : 102;
+
+  // Adapt department summary to chart format
+  const chartData = stats && stats.departmentSummary.length > 0 
+    ? stats.departmentSummary.map(d => ({ team: d.dept, achievement: d.emp * 12 })) 
+    : TEAM_PERFORMANCE_DATA;
+
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box', background: '#F8FAFC', minHeight: '100vh', padding: 0 }}>
 
       {/* ── FIRST ROW: EXACTLY 5 KPI CARDS MATCHING REFERENCE IMAGE ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24, width: '100%' }}>
         <KpiCard label="Total Revenue" value="₹24.8L" trend="12.5%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="₹" />
-        <KpiCard label="Total Employees" value="156" trend="8.3%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="👥" />
-        <KpiCard label="Total Projects" value="78" trend="15.7%" trendLabel="vs last month" iconBg="#DCFCE7" iconColor="#16A34A" iconSymbol="💼" />
-        <KpiCard label="Completed Projects" value="52" trend="22.1%" trendLabel="vs last month" iconBg="#FEF3C7" iconColor="#D97706" iconSymbol="☑" />
-        <KpiCard label="Total Clients" value="102" trend="10.2%" trendLabel="vs last month" iconBg="#EFF6FF" iconColor="#2563EB" iconSymbol="👤" />
+        <KpiCard label="Total Employees" value={employeeCount} trend="8.3%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="👥" />
+        <KpiCard label="Total Projects" value={projectCount} trend="15.7%" trendLabel="vs last month" iconBg="#DCFCE7" iconColor="#16A34A" iconSymbol="💼" />
+        <KpiCard label="Completed Projects" value={completedProjects} trend="22.1%" trendLabel="vs last month" iconBg="#FEF3C7" iconColor="#D97706" iconSymbol="☑" />
+        <KpiCard label="Total Clients" value={clientCount} trend="10.2%" trendLabel="vs last month" iconBg="#EFF6FF" iconColor="#2563EB" iconSymbol="👤" />
       </div>
 
       {/* ── SECOND ROW: TEAM PERFORMANCE (70%) + ATTENDANCE STATUS (30%) ── */}
@@ -162,7 +181,7 @@ export function SuperAdminDashboard() {
 
           <div style={{ width: '100%', height: 260, flex: 1 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={TEAM_PERFORMANCE_DATA} margin={{ top: 20, right: 10, left: -10, bottom: 0 }}>
+              <BarChart data={chartData} margin={{ top: 20, right: 10, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                 <XAxis dataKey="team" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} tickFormatter={(v) => `${v}%`} domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} />
