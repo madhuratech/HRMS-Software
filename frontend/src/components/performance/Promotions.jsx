@@ -1,313 +1,443 @@
-import React, { useState } from 'react';
-import { ChevronDown, Plus, Edit2, Link2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ChevronDown, Plus, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { useToast } from '../ui/Toast';
 
-/* ─────────────────── DATA ─────────────────── */
-const BAR_DATA = [
-  { name: 'Finance',         count: 2  },
-  { name: 'Human Resources', count: 4  },
-  { name: 'Marketing',       count: 5  },
-  { name: 'Sales',           count: 9  },
-  { name: 'Engineering',     count: 12 },
-];
+export default function Promotions() {
+  const { addToast } = useToast();
+  const [promotionsList, setPromotionsList] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
-const LINE_DATA = [
-  { name: 'Jan', value: 2  },
-  { name: 'Feb', value: 4  },
-  { name: 'Mar', value: 3  },
-  { name: 'Apr', value: 5  },
-  { name: 'May', value: 8  },
-  { name: 'Jun', value: 6  },
-  { name: 'Jul', value: 9  },
-  { name: 'Aug', value: 7  },
-  { name: 'Sep', value: 11 },
-  { name: 'Oct', value: 9  },
-  { name: 'Nov', value: 13 },
-  { name: 'Dec', value: 12 },
-];
+  // Pagination & Filters
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const limit = 10;
+  const [search, setSearch] = useState('');
 
-const TABLE_DATA = [
-  { name: 'Rahul Sharma', initials: 'RS', from: 'Senior Developer',       to: 'Lead Developer',          date: '01 Jun 2024', status: 'Approved' },
-  { name: 'Priya Patel',  initials: 'PP', from: 'Marketing Executive',    to: 'Marketing Specialist',    date: '15 May 2024', status: 'Approved' },
-  { name: 'Vikram Singh', initials: 'VS', from: 'Sales Executive',        to: 'Senior Sales Executive',  date: '10 May 2024', status: 'Approved' },
-  { name: 'Sneha Reddy',  initials: 'SR', from: 'HR Executive',           to: 'HR Specialist',           date: '05 May 2024', status: 'Pending'  },
-  { name: 'Amit Kumar',   initials: 'AK', from: 'Junior Developer',       to: 'Developer',               date: '01 Apr 2024', status: 'Approved' },
-];
+  // Dashboard Stats
+  const [kpiData, setKpiData] = useState({
+    total: 0,
+    approved: 0,
+    pending: 0,
+    today: 0,
+    month: 0,
+    rate: '0%',
+    chartData: []
+  });
 
-const STATUS_STYLE = {
-  'Approved': { bg: '#DCFCE7', color: '#15803D' },
-  'Pending':  { bg: '#FEF3C7', color: '#D97706' },
-  'Rejected': { bg: '#FEE2E2', color: '#DC2626' },
-};
+  const [formData, setFormData] = useState({
+    employee: '',
+    department: '',
+    currentRole: '',
+    proposedRole: '',
+    effectiveDate: '',
+    approver: '',
+    status: 'Pending',
+    justification: ''
+  });
 
-const AVATAR_COLORS = [
-  { bg: '#DBEAFE', color: '#1D4ED8' },
-  { bg: '#FCE7F3', color: '#9D174D' },
-  { bg: '#D1FAE5', color: '#065F46' },
-  { bg: '#FEF3C7', color: '#92400E' },
-  { bg: '#EDE9FE', color: '#5B21B6' },
-];
+  const getAuthToken = () => {
+    const auth = localStorage.getItem('hrms_auth');
+    if (auth) {
+      try {
+        const parsed = JSON.parse(auth);
+        return parsed.token || 'mock_jwt_token';
+      } catch (e) {
+        return 'mock_jwt_token';
+      }
+    }
+    return 'mock_jwt_token';
+  };
 
-/* ─────────────────── COMPONENT ─────────────────── */
-const Promotions = () => {
+  const fetchMeta = async () => {
+    try {
+      const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
+      
+      // Fetch departments
+      const deptRes = await fetch('http://localhost:5000/app/requirements/meta/all', { headers });
+      const deptData = await deptRes.json();
+      if (deptData && deptData.departments) {
+        setDepartments(deptData.departments);
+      }
+
+      // Fetch employees
+      const empRes = await fetch('http://localhost:5000/app/employees', { headers });
+      const empData = await empRes.json();
+      if (Array.isArray(empData)) {
+        setEmployees(empData);
+      }
+    } catch (err) {
+      console.error('Failed to load promotions metadata:', err);
+    }
+  };
+
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      const res = await fetch('http://localhost:5000/app/promotions/dashboard', {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+      });
+      const resData = await res.json();
+      if (resData.success && resData.data) {
+        setKpiData(resData.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch dashboard stats:', err);
+    }
+  }, []);
+
+  const fetchPromotions = useCallback(async () => {
+    setLoading(true);
+    try {
+      let url = `http://localhost:5000/app/promotions?page=${page}&limit=${limit}`;
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
+      }
+
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+      });
+      const resData = await res.json();
+      if (resData.success && resData.data) {
+        setPromotionsList(resData.data.promotions || []);
+        setTotal(resData.data.total || 0);
+      } else {
+        addToast(resData.message || 'Failed to fetch promotions list', 'error');
+      }
+    } catch (err) {
+      addToast('Error connecting to backend server', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, addToast]);
+
+  useEffect(() => {
+    fetchMeta();
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  useEffect(() => {
+    fetchPromotions();
+    fetchDashboardStats();
+  }, [page, fetchPromotions, fetchDashboardStats]);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!formData.employee || !formData.proposedRole || !formData.effectiveDate) {
+      addToast('Please fill in all required fields.', 'error');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        employee_id: parseInt(formData.employee),
+        current_department: formData.department,
+        current_designation: formData.currentRole,
+        promoted_department: formData.department, // Assuming same department unless changed
+        promoted_designation: formData.proposedRole.trim(),
+        promotion_date: new Date().toISOString().split('T')[0],
+        effective_date: formData.effectiveDate,
+        promotion_reason: formData.justification.trim(),
+        status: formData.status
+      };
+
+      const res = await fetch('http://localhost:5000/app/promotions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const resData = await res.json();
+      if (resData.success) {
+        addToast('Promotion proposed successfully!', 'success');
+        setShowAddModal(false);
+        setFormData({ employee: '', department: '', currentRole: '', proposedRole: '', effectiveDate: '', approver: '', status: 'Pending', justification: '' });
+        fetchPromotions();
+        fetchDashboardStats();
+      } else {
+        addToast(resData.message || 'Failed to save promotion recommendation', 'error');
+      }
+    } catch (err) {
+      addToast('Connection error occurred', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleApprove = async (promotionId) => {
+    try {
+      const res = await fetch(`http://localhost:5000/app/promotions/${promotionId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify({ status: 'Approved' })
+      });
+      const resData = await res.json();
+      if (resData.success) {
+        addToast('Promotion approved and Employee Profile updated!', 'success');
+        fetchPromotions();
+        fetchDashboardStats();
+      } else {
+        addToast(resData.message || 'Failed to approve promotion', 'error');
+      }
+    } catch (err) {
+      addToast('Connection error occurred', 'error');
+    }
+  };
+
+  const selectedEmployee = employees.find(e => e.id === parseInt(formData.employee));
+  useEffect(() => {
+    if (selectedEmployee) {
+      setFormData(prev => ({
+        ...prev,
+        department: selectedEmployee.branch_name || 'Engineering',
+        currentRole: selectedEmployee.role_name || 'Associate'
+      }));
+    }
+  }, [selectedEmployee]);
+
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case 'Approved': return { bg: '#DCFCE7', color: '#15803D' };
+      case 'Pending': return { bg: '#FEF3C7', color: '#D97706' };
+      case 'Rejected': return { bg: '#FEE2E2', color: '#DC2626' };
+      default: return { bg: '#F3F4F6', color: '#6B7280' };
+    }
+  };
+
+  const cardStyle = {
+    background: '#FFFFFF',
+    borderRadius: '16px',
+    padding: '24px',
+    boxShadow: '0 8px 24px rgba(15,23,42,0.08)',
+  };
+
+  const totalPages = Math.ceil(total / limit) || 1;
+
   return (
-    <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: '"Inter", sans-serif', paddingBottom: '24px' }}>
+      
+      {/* Add Promotion Modal */}
+      {showAddModal && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
+          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-[#0A1629]">Add Promotion Recommendation</h2>
+                <p className="text-sm text-slate-500 mt-1">Submit career progression and role advancement proposals.</p>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+            <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Employee <span className="text-red-500">*</span></label>
+                  <select 
+                    required 
+                    value={formData.employee} 
+                    onChange={e => setFormData({ ...formData, employee: e.target.value })} 
+                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                  >
+                    <option value="">Select Employee</option>
+                    {employees.map(e => (
+                      <option key={e.id} value={e.id}>{e.name} (EMP{String(e.id).padStart(3, '0')})</option>
+                    ))}
+                  </select>
+                </div>
+                {selectedEmployee && (
+                  <div className="col-span-1 sm:col-span-2 grid grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600">
+                    <div><strong>Current Department:</strong> {formData.department}</div>
+                    <div><strong>Current Role:</strong> {formData.currentRole}</div>
+                  </div>
+                )}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Proposed Role / Designation <span className="text-red-500">*</span></label>
+                  <input type="text" required value={formData.proposedRole} onChange={e => setFormData({ ...formData, proposedRole: e.target.value })} placeholder="e.g. Lead Engineer" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Effective Date <span className="text-red-500">*</span></label>
+                  <input type="date" required value={formData.effectiveDate} onChange={e => setFormData({ ...formData, effectiveDate: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
+                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
+                    <option value="Pending">Pending</option>
+                    <option value="Approved">Approved</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
+                </div>
+                <div className="col-span-1 sm:col-span-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Justification Remarks</label>
+                  <textarea value={formData.justification} onChange={e => setFormData({ ...formData, justification: e.target.value })} placeholder="Key justification, reasons for role promotions..." style={{ height: '80px' }} className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
+                <button type="button" onClick={() => setShowAddModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+                <button type="submit" disabled={submitting} className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50">
+                  {submitting ? 'Saving...' : 'Save Promotion'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </>
+      )}
 
-      {/* ── HEADER ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Promotions</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280', fontWeight: 400 }}>Track and manage employee promotions</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Track and manage career promotion recommendations</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Year */}
-          <div style={{ position: 'relative' }}>
-            <select style={{
-              appearance: 'none', WebkitAppearance: 'none',
-              height: 40, paddingLeft: 14, paddingRight: 32,
-              background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8,
-              fontSize: 13, fontWeight: 500, color: '#111827',
-              boxShadow: '0 1px 3px rgba(0,0,0,.06)', cursor: 'pointer', outline: 'none',
-            }}>
-              <option>2024</option>
-              <option>2023</option>
-            </select>
-            <ChevronDown size={14} color="#6B7280" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-          </div>
-          {/* Period */}
-          <div style={{ position: 'relative' }}>
-            <select style={{
-              appearance: 'none', WebkitAppearance: 'none',
-              height: 40, paddingLeft: 14, paddingRight: 32,
-              background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8,
-              fontSize: 13, fontWeight: 500, color: '#111827',
-              boxShadow: '0 1px 3px rgba(0,0,0,.06)', cursor: 'pointer', outline: 'none',
-            }}>
-              <option>6M</option>
-              <option>3M</option>
-              <option>1Y</option>
-            </select>
-            <ChevronDown size={14} color="#6B7280" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-          </div>
-          <button style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            height: 40, paddingLeft: 16, paddingRight: 16,
-            background: '#2563EB', color: '#fff', border: 'none', borderRadius: 8,
-            fontSize: 13, fontWeight: 600, cursor: 'pointer',
-            boxShadow: '0 1px 3px rgba(37,99,235,.3)',
-          }}>
-            <Plus size={15} /> Add Promotion
+        <div>
+          <button onClick={() => setShowAddModal(true)} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+            <Plus size={16} /> Add Promotion
           </button>
         </div>
       </div>
 
-      {/* ── KPI CARDS ── */}
-      <div style={{ display: 'flex', gap: 20, marginBottom: 20, flexWrap: 'wrap' }}>
+      {/* KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
         {[
-          { label: 'Total Promotions',  value: 32, iconBg: '#DBEAFE', iconColor: '#2563EB', icon: '📋' },
-          { label: 'This Year',         value: 18, iconBg: '#DCFCE7', iconColor: '#16A34A', icon: '📅' },
-          { label: 'Pending Approval',  value: 6,  iconBg: '#FEF3C7', iconColor: '#D97706', icon: '⏳' },
-          { label: 'Approved',          value: 26, iconBg: '#DCFCE7', iconColor: '#16A34A', icon: '✅' },
-        ].map((card, idx) => (
-          <div key={idx} style={{
-            background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
-            boxShadow: '0 2px 8px rgba(15,23,42,.05)',
-            padding: '18px 22px', flex: '1 1 0', minWidth: 130,
-            display: 'flex', alignItems: 'flex-start', gap: 14,
-          }}>
-            <span style={{
-              width: 34, height: 34, borderRadius: 10,
-              background: card.iconBg, color: card.iconColor,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 15, flexShrink: 0,
-            }}>
-              {card.icon}
-            </span>
+          { title: 'Total Promotions', value: kpiData.total, icon: <ChevronDown size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
+          { title: 'Approved', value: kpiData.approved, icon: <ChevronDown size={20} color="#10B981" />, bgColor: '#ECFDF5' },
+          { title: 'Today Promotions', value: kpiData.today, icon: <ChevronDown size={20} color="#8B5CF6" />, bgColor: '#F5F3FF' },
+          { title: 'This Month', value: kpiData.month, icon: <ChevronDown size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
+        ].map((kpi, idx) => (
+          <div key={idx} style={{ ...cardStyle, display: 'flex', gap: '16px', padding: '20px', alignItems: 'center' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: kpi.bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {kpi.icon}
+            </div>
             <div>
-              <div style={{ fontSize: 12, fontWeight: 500, color: '#6B7280', marginBottom: 4 }}>{card.label}</div>
-              <div style={{ fontSize: 26, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{card.value}</div>
+              <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '500', marginBottom: '4px' }}>{kpi.title}</div>
+              <div style={{ fontSize: '24px', color: '#1E293B', fontWeight: '700' }}>{kpi.value}</div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* ── MAIN LAYOUT ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 20 }}>
-
-        {/* LEFT: Recent Promotions Table */}
-        <div style={{
-          background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
-          boxShadow: '0 2px 8px rgba(15,23,42,.05)', overflow: 'hidden',
-        }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #E5E7EB' }}>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#111827' }}>Recent Promotions</h3>
+      {/* Main Content Layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: '24px' }}>
+        
+        {/* Table */}
+        <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Promotion Proposals</h3>
+            <input 
+              type="text" 
+              placeholder="Search..." 
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '13px' }}
+            />
           </div>
 
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
-                  {['Employee', 'From Position', 'To Position', 'Effective Date', 'Status', 'Actions'].map(h => (
-                    <th key={h} style={{
-                      padding: '11px 14px', textAlign: 'left',
-                      fontSize: 12, fontWeight: 500, color: '#6B7280',
-                      whiteSpace: 'nowrap', background: '#fff',
-                    }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {TABLE_DATA.map((row, idx) => {
-                  const s = STATUS_STYLE[row.status];
-                  const av = AVATAR_COLORS[idx % AVATAR_COLORS.length];
-                  return (
-                    <tr key={idx} style={{ height: 54, borderBottom: '1px solid #F3F4F6' }}>
-                      {/* Employee */}
-                      <td style={{ padding: '0 14px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{
-                            width: 30, height: 30, borderRadius: '50%',
-                            background: av.bg, color: av.color,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 10, fontWeight: 700, flexShrink: 0,
-                          }}>
-                            {row.initials}
-                          </div>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>{row.name}</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '0 14px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{row.from}</td>
-                      <td style={{ padding: '0 14px', fontSize: 13, fontWeight: 500, color: '#111827', whiteSpace: 'nowrap' }}>{row.to}</td>
-                      <td style={{ padding: '0 14px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{row.date}</td>
-                      <td style={{ padding: '0 14px' }}>
-                        <span style={{
-                          display: 'inline-block', padding: '3px 10px', borderRadius: 999,
-                          background: s.bg, color: s.color,
-                          fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
-                        }}>
-                          {row.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '0 14px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                          <button style={{
-                            width: 28, height: 28, borderRadius: 6, border: 'none',
-                            background: 'transparent', color: '#2563EB', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}
-                            onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                          ><Edit2 size={13} /></button>
-                          <button style={{
-                            width: 28, height: 28, borderRadius: 6, border: 'none',
-                            background: 'transparent', color: '#2563EB', cursor: 'pointer',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          }}
-                            onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                          ><Link2 size={13} /></button>
-                        </div>
-                      </td>
+            {loading ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>Loading promotions...</div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#F8FAFC' }}>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Employee</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Current Designation</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Promoted Role</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Effective Date</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Status</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {promotionsList.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No promotion proposals found</td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ) : (
+                    promotionsList.map((row, idx) => {
+                      const effDateStr = row.effective_date ? new Date(row.effective_date).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+                      return (
+                        <tr key={row.id} style={{ borderBottom: idx === promotionsList.length - 1 ? 'none' : '1px solid #F8FAFC' }}>
+                          <td style={{ padding: '16px 24px', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600', color: '#475569' }}>
+                                {row.employee_name ? row.employee_name.split(' ').map(n => n[0]).join('') : 'PR'}
+                              </div>
+                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#1E293B' }}>{row.employee_name}</div>
+                            </div>
+                          </td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.current_designation}</td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#1E293B', fontWeight: '500' }}>{row.promoted_designation}</td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{effDateStr}</td>
+                          <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                            <span style={{ 
+                              padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600',
+                              backgroundColor: getStatusStyle(row.status).bg, color: getStatusStyle(row.status).color
+                            }}>
+                              {row.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                            {row.status === 'Pending' && (
+                              <button 
+                                onClick={() => handleApprove(row.id)}
+                                style={{ background: '#ECFDF5', border: '1px solid #10B981', color: '#10B981', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}
+                              >
+                                Approve
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
 
-          {/* Pagination */}
-          <div style={{
-            padding: '14px 20px', borderTop: '1px solid #E5E7EB',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
-          }}>
-            <span style={{ fontSize: 13, color: '#6B7280' }}>Showing 1 to 5 of 33 entries</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              {[null, 1, 2, 3, '...', 7, null].map((pg, i) => {
-                if (pg === null) {
-                  const isLeft = i === 0;
-                  return (
-                    <button key={i} style={{
-                      width: 30, height: 30, borderRadius: 6,
-                      border: '1px solid #E5E7EB', background: '#fff',
-                      color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      {isLeft ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}
-                    </button>
-                  );
-                }
-                if (pg === '...') return <span key={i} style={{ width: 30, textAlign: 'center', color: '#6B7280', fontSize: 13 }}>...</span>;
-                const isActive = pg === 1;
-                return (
-                  <button key={i} style={{
-                    width: 30, height: 30, borderRadius: 6,
-                    border: isActive ? 'none' : '1px solid #E5E7EB',
-                    background: isActive ? '#2563EB' : '#fff',
-                    color: isActive ? '#fff' : '#374151',
-                    fontWeight: isActive ? 600 : 500,
-                    fontSize: 13, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {pg}
-                  </button>
-                );
-              })}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderTop: '1px solid #F1F5F9' }}>
+            <div style={{ fontSize: '13px', color: '#64748B' }}>
+              Showing {total === 0 ? 0 : (page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} entries
+            </div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button disabled={page === 1} onClick={() => setPage(prev => prev - 1)} style={{ padding: '4px 8px', border: '1px solid #E2E8F0', borderRadius: '6px', background: '#FFF', cursor: page === 1 ? 'not-allowed' : 'pointer' }}><ChevronLeft size={16} /></button>
+              <button disabled={page === totalPages} onClick={() => setPage(prev => prev + 1)} style={{ padding: '4px 8px', border: '1px solid #E2E8F0', borderRadius: '6px', background: '#FFF', cursor: page === totalPages ? 'not-allowed' : 'pointer' }}><ChevronRight size={16} /></button>
             </div>
           </div>
         </div>
 
-        {/* RIGHT SIDEBAR */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-
-          {/* Promotions by Department */}
-          <div style={{
-            background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
-            boxShadow: '0 2px 8px rgba(15,23,42,.05)', padding: 20,
-          }}>
-            <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 600, color: '#111827' }}>Promotions by Department</h3>
-            <div style={{ height: 170 }}>
+        {/* Right Side: Charts */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={cardStyle}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Department Wise Promotions</h3>
+            <div style={{ height: '180px' }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={BAR_DATA} layout="vertical" margin={{ top: 0, right: 16, left: 10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#F1F5F9" />
-                  <XAxis type="number" axisLine={{ stroke: '#E5E7EB' }} tickLine={false}
-                    tick={{ fill: '#9CA3AF', fontSize: 11 }} domain={[0, 15]} ticks={[0, 5, 10, 15]} />
-                  <YAxis dataKey="name" type="category" axisLine={false} tickLine={false}
-                    tick={{ fill: '#111827', fontSize: 11, fontWeight: 500 }} width={100} />
-                  <Tooltip cursor={{ fill: '#F8FAFC' }} contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,.1)' }} />
-                  <Bar dataKey="count" fill="#2563EB" barSize={12} radius={[0, 5, 5, 0]} animationDuration={900} />
+                <BarChart data={kpiData.chartData}>
+                  <XAxis dataKey="name" fontSize="11px" stroke="#94A3B8" />
+                  <YAxis fontSize="11px" stroke="#94A3B8" />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#2952E3" radius={[4, 4, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
-
-          {/* Promotion Trend */}
-          <div style={{
-            background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
-            boxShadow: '0 2px 8px rgba(15,23,42,.05)', padding: 20, flex: 1,
-          }}>
-            <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 600, color: '#111827' }}>Promotion Trend</h3>
-            <div style={{ height: 170 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={LINE_DATA} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                  <XAxis dataKey="name" axisLine={{ stroke: '#E5E7EB' }} tickLine={false}
-                    tick={{ fill: '#9CA3AF', fontSize: 10 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9CA3AF', fontSize: 10 }} />
-                  <Tooltip contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,.1)' }} />
-                  <Line
-                    type="monotone" dataKey="value" stroke="#2563EB" strokeWidth={2.5}
-                    dot={{ r: 3.5, fill: '#2563EB', strokeWidth: 2, stroke: '#fff' }}
-                    activeDot={{ r: 5 }} animationDuration={900}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </div>
-
         </div>
+
       </div>
 
     </div>
   );
-};
-
-export default Promotions;
+}

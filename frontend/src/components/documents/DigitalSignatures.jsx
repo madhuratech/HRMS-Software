@@ -1,70 +1,133 @@
-import React, { useState } from 'react';
-import { Download, Plus, Eye, FileText, CheckCircle, Clock, XCircle, AlertTriangle } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Download, Plus, Eye, FileText, CheckCircle, Clock, XCircle, AlertTriangle, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
-
-const SIG_PIE = [
-  { name: 'Completed', value: 68, percent: '79.1%', color: '#10B981' },
-  { name: 'Pending',   value: 14, percent: '16.3%', color: '#F59E0B' },
-  { name: 'Declined',  value: 4,  percent: '4.6%',  color: '#EF4444' },
-  { name: 'Expired',   value: 2,  percent: '2.3%',  color: '#9CA3AF' },
-];
-
-const SIG_REQUESTS = [
-  { docName: 'Employment Contract - Rohit Sharma', requestedBy: 'HR Manager', requestedTo: 'Rohit Sharma', date: '21 May 2024', expiry: '28 May 2024', status: 'Completed' },
-  { docName: 'Offer Letter - Priya Patel',          requestedBy: 'HR Manager', requestedTo: 'Priya Patel',   date: '20 May 2024', expiry: '27 May 2024', status: 'Pending'   },
-  { docName: 'NDA - Amit Kumar',                   requestedBy: 'HR Manager', requestedTo: 'Amit Kumar',    date: '18 May 2024', expiry: '25 May 2024', status: 'Completed' },
-  { docName: 'Policy Acknowledgement - Sneha Reddy',requestedBy: 'HR Manager', requestedTo: 'Sneha Reddy',   date: '15 May 2024', expiry: '22 May 2024', status: 'Declined'  },
-  { docName: 'Offer Letter - Vikram Singh',         requestedBy: 'HR Manager', requestedTo: 'Vikram Singh',  date: '12 May 2024', expiry: '19 May 2024', status: 'Expired'   },
-];
-
-const RECENT_ACTIVITIES = [
-  { text: 'Rohit Sharma signed Employment Contract', time: '2 mins ago', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80' },
-  { text: 'Priya Patel signature is pending',        time: '15 mins ago', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80' },
-  { text: 'Amit Kumar signed NDA',                  time: '1 hour ago', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&auto=format&fit=crop&q=80' },
-  { text: 'Sneha Reddy declined Policy Acknowledgement', time: '2 hours ago', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80' },
-  { text: 'Vikram Singh signature request expired', time: '1 day ago', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80' },
-];
-
-const KpiCard = ({ label, value, pct, isPositive, iconBg, iconColor, icon: Icon }) => (
-  <div style={{
-    background: '#FFF',
-    borderRadius: 14,
-    border: '1px solid #E5E7EB',
-    boxShadow: '0 2px 8px rgba(15,23,42,.04)',
-    padding: '14px 16px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    flex: '1 1 0',
-    minWidth: 0,
-  }}>
-    <div style={{
-      width: 36, height: 36, borderRadius: 10,
-      background: iconBg, color: iconColor,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexShrink: 0,
-    }}>
-      <Icon size={18} />
-    </div>
-    <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
-      <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <span style={{ fontSize: 18, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>{value}</span>
-        {pct && (
-          <span style={{ fontSize: 10, fontWeight: 600, color: isPositive ? '#16A34A' : '#DC2626', whiteSpace: 'nowrap' }}>
-            {pct} vs last month
-          </span>
-        )}
-      </div>
-    </div>
-  </div>
-);
+import { apiFetch, formatDate } from '../../lib/api';
+import { useToast } from '../ui/Toast';
 
 export function DigitalSignatures() {
+  const { addToast } = useToast();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [signaturesList, setSignaturesList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [meta, setMeta] = useState({ employees: [], departments: [] });
+  const [dashboard, setDashboard] = useState({
+    kpis: { empDocsCount: 0, compDocsCount: 0, policiesCount: 0, publishedPolicies: 0, templatesCount: 0, signaturesCount: 0 },
+    sigPie: []
+  });
+
+  const [formData, setFormData] = useState({
+    doc_name: '',
+    requested_to: '',
+    expiry_date: '',
+    status: 'Pending'
+  });
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const metaRes = await apiFetch('/documents/meta');
+      if (metaRes.success) setMeta(metaRes.data);
+
+      const res = await apiFetch('/documents/signatures');
+      if (res.success) setSignaturesList(res.data || []);
+
+      const dbRes = await apiFetch('/documents/dashboard');
+      if (dbRes.success) setDashboard(dbRes.data);
+    } catch (err) {
+      addToast('Failed to load digital signatures data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [addToast]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!formData.doc_name || !formData.requested_to) {
+      addToast('Please fill all required fields', 'error');
+      return;
+    }
+    try {
+      const res = await apiFetch('/documents/signatures', {
+        method: 'POST',
+        body: JSON.stringify({
+          doc_name: formData.doc_name,
+          requested_to: formData.requested_to,
+          expiry_date: formData.expiry_date || null,
+          status: formData.status,
+          file: 'uploads/signatures/dummy_signature.png'
+        })
+      });
+      if (res.success) {
+        addToast('Signature request created successfully', 'success');
+        setShowAddModal(false);
+        setFormData({ doc_name: '', requested_to: '', expiry_date: '', status: 'Pending' });
+        fetchData();
+      } else {
+        addToast(res.message || 'Failed to request signature', 'error');
+      }
+    } catch (err) {
+      addToast('Error connecting to server', 'error');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this request?')) return;
+    try {
+      const res = await apiFetch(`/documents/signatures/${id}`, { method: 'DELETE' });
+      if (res.success) {
+        addToast('Request deleted successfully', 'success');
+        fetchData();
+      } else {
+        addToast(res.message || 'Failed to delete request', 'error');
+      }
+    } catch (err) {
+      addToast('Error connecting to server', 'error');
+    }
+  };
+
+  if (loading) {
+    return <div style={{ padding: 40, textAlign: 'center', color: '#6B7280', fontSize: 14 }}>Loading Digital Signatures...</div>;
+  }
+
+  const KpiCard = ({ label, value, iconBg, iconColor, icon: Icon }) => (
+    <div style={{
+      background: '#FFF',
+      borderRadius: 14,
+      border: '1px solid #E5E7EB',
+      boxShadow: '0 2px 8px rgba(15,23,42,.04)',
+      padding: '14px 16px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      flex: '1 1 0',
+      minWidth: 0,
+    }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: 10,
+        background: iconBg, color: iconColor,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <Icon size={18} />
+      </div>
+      <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+        <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{ fontSize: 18, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>{value}</span>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box', background: '#F8FAFC', minHeight: '100vh', padding: 0 }}>
       
-      {/* Header & Toolbar */}
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Digital Signatures</h1>
@@ -72,7 +135,7 @@ export function DigitalSignatures() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button style={{
+          <button onClick={() => setShowAddModal(true)} style={{
             display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
             background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
           }}>
@@ -81,16 +144,15 @@ export function DigitalSignatures() {
         </div>
       </div>
 
-      {/* 5 KPI Cards Row */}
+      {/* KPI Cards Row */}
       <div style={{ display: 'flex', gap: 12, marginBottom: 20, width: '100%' }}>
-        <KpiCard label="Total Requests" value="86" pct="+12.4%" isPositive={true}  iconBg="#EFF6FF" iconColor="#2563EB" icon={FileText} />
-        <KpiCard label="Completed"      value="68" pct="+10.3%" isPositive={true}  iconBg="#ECFDF5" iconColor="#059669" icon={CheckCircle} />
-        <KpiCard label="Pending"        value="14" pct="+16.7%" isPositive={true}  iconBg="#FEF3C7" iconColor="#D97706" icon={Clock} />
-        <KpiCard label="Declined"       value="4"  pct="-20.0%" isPositive={true}  iconBg="#FEF2F2" iconColor="#EF4444" icon={XCircle} />
-        <KpiCard label="Expired"        value="2"  pct="+0.0%"  isPositive={true}  iconBg="#F3F4F6" iconColor="#6B7280" icon={AlertTriangle} />
+        <KpiCard label="Total Requests" value={dashboard.kpis.signaturesCount} iconBg="#EFF6FF" iconColor="#2563EB" icon={FileText} />
+        <KpiCard label="Completed" value={signaturesList.filter(s => s.status === 'Completed').length} iconBg="#ECFDF5" iconColor="#059669" icon={CheckCircle} />
+        <KpiCard label="Pending" value={signaturesList.filter(s => s.status === 'Pending').length} iconBg="#FEF3C7" iconColor="#D97706" icon={Clock} />
+        <KpiCard label="Declined" value={signaturesList.filter(s => s.status === 'Declined').length} iconBg="#FEF2F2" iconColor="#EF4444" icon={XCircle} />
+        <KpiCard label="Expired" value={signaturesList.filter(s => s.status === 'Expired').length} iconBg="#F3F4F6" iconColor="#6B7280" icon={AlertTriangle} />
       </div>
 
-      {/* Main Grid: Left Signature Requests Table + Right Signature Overview Widget */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 20, alignItems: 'start' }}>
         
         {/* Left: Signature Requests Table */}
@@ -109,13 +171,13 @@ export function DigitalSignatures() {
                 </tr>
               </thead>
               <tbody>
-                {SIG_REQUESTS.map((r, i) => (
+                {signaturesList.map((r, i) => (
                   <tr key={i} style={{ borderBottom: '1px solid #F3F4F6', height: 48 }}>
-                    <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>{r.docName}</td>
-                    <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.requestedBy}</td>
-                    <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.requestedTo}</td>
-                    <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{r.date}</td>
-                    <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{r.expiry}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>{r.doc_name}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.requested_by}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.requested_to}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{r.expiry_date ? formatDate(r.expiry_date) : '-'}</td>
                     <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
                       <span style={{
                         display: 'inline-block', padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600,
@@ -126,10 +188,9 @@ export function DigitalSignatures() {
                       </span>
                     </td>
                     <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', gap: 8, color: '#6B7280' }}>
-                        <button style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', padding: 4 }}><Eye size={16} /></button>
-                        <button style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', padding: 4 }}><Download size={16} /></button>
-                      </div>
+                      <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -147,49 +208,68 @@ export function DigitalSignatures() {
             <div style={{ width: '100%', height: 160, position: 'relative' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={SIG_PIE} cx="50%" cy="50%" innerRadius={48} outerRadius={68} dataKey="value" stroke="none">
-                    {SIG_PIE.map((e, i) => <Cell key={i} fill={e.color} />)}
+                  <Pie data={dashboard.sigPie} cx="50%" cy="50%" innerRadius={48} outerRadius={68} dataKey="value" stroke="none">
+                    {dashboard.sigPie.map((e, i) => <Cell key={i} fill={e.color} />)}
                   </Pie>
-                  <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }} />
+                  <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                <span style={{ fontSize: 20, fontWeight: 700, color: '#111827', lineHeight: 1 }}>86</span>
+                <span style={{ fontSize: 20, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{dashboard.kpis.signaturesCount}</span>
                 <span style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>Total</span>
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 14 }}>
-              {SIG_PIE.map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: 12 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#374151' }}>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
-                    {item.name}
-                  </span>
-                  <span style={{ color: '#6B7280', fontWeight: 500 }}>{item.value} ({item.percent})</span>
-                </div>
-              ))}
-            </div>
           </div>
-
-          {/* Recent Activity List Widget */}
-          <div style={{ background: '#FFF', borderRadius: 14, border: '1px solid #E5E7EB', padding: 20, boxShadow: '0 2px 8px rgba(15,23,42,.04)' }}>
-            <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 600, color: '#111827' }}>Recent Activity</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-              {RECENT_ACTIVITIES.map((act, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                  <img src={act.avatar} alt="User" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover', flexShrink: 0, marginTop: 2 }} />
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 12, color: '#374151', lineHeight: 1.3 }}>{act.text}</div>
-                    <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 2 }}>{act.time}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
         </div>
 
       </div>
+
+      {/* Request Modal */}
+      {showAddModal && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
+          <div className="modal-centered-content" style={{ width: '600px', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-[#0A1629]">Request Digital Signature</h2>
+                <p className="text-sm text-slate-500 mt-1">Initiate a signature flow on an agreement or contract.</p>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+            <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="grid grid-cols-1 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Document Name <span className="text-red-500">*</span></label>
+                  <input type="text" required value={formData.doc_name} onChange={e => setFormData({ ...formData, doc_name: e.target.value })} placeholder="e.g. NDAs and Agreements" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Requested To Employee Name <span className="text-red-500">*</span></label>
+                  <input type="text" required value={formData.requested_to} onChange={e => setFormData({ ...formData, requested_to: e.target.value })} placeholder="e.g. Priya Patel" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Expiry Date</label>
+                  <input type="date" value={formData.expiry_date} onChange={e => setFormData({ ...formData, expiry_date: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
+                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-white">
+                    <option value="Pending">Pending</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Declined">Declined</option>
+                    <option value="Expired">Expired</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
+                <button type="button" onClick={() => setShowAddModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+                <button type="submit" className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">Request Signature</button>
+              </div>
+            </form>
+          </div>
+        </>
+      )}
 
     </div>
   );
