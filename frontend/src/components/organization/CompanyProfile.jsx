@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useToast } from '../ui/Toast';
 import {
   Building2,
   Users,
@@ -226,6 +227,27 @@ export function CompanyProfile() {
   const [isEditing, setIsEditing] = useState(false);
   const [profile, setProfile] = useState(INITIAL_PROFILE);
   const [tempProfile, setTempProfile] = useState(JSON.parse(JSON.stringify(INITIAL_PROFILE)));
+  const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const { addToast } = useToast();
+
+  useEffect(() => {
+    fetch("http://localhost:3000/app/organization/profile")
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to fetch profile");
+        return res.json();
+      })
+      .then(data => {
+        setProfile(data);
+        setTempProfile(JSON.parse(JSON.stringify(data)));
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        addToast("Failed to load company profile from database", "error");
+        setLoading(false);
+      });
+  }, []);
 
   const handleInputChange = (section, field, value) => {
     setTempProfile(prev => {
@@ -235,13 +257,29 @@ export function CompanyProfile() {
   };
 
   const handleSave = (section) => {
-    setProfile(prev => {
-      const updatedSection = { ...prev[section], ...tempProfile[section] };
-      return { ...prev, [section]: updatedSection };
+    const updatedProfile = { ...profile, [section]: tempProfile[section] };
+    fetch("http://localhost:3000/app/organization/profile", {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(updatedProfile)
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("Failed to save profile");
+      return res.json();
+    })
+    .then(() => {
+      setProfile(updatedProfile);
+      setIsEditing(false);
+      setShowSuccess(true);
+      addToast("Company profile updated successfully!", "success");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    })
+    .catch(err => {
+      console.error(err);
+      addToast("Failed to save changes to database", "error");
     });
-    setIsEditing(false);
-    setShowSuccess(true);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleCancel = (section) => {
@@ -314,15 +352,39 @@ export function CompanyProfile() {
   ];
 
   const handleDownloadPDF = () => {
-    const jsonString = `data:text/json;charset=utf-8,${encodeURIComponent(
-      JSON.stringify(profile, null, 2)
-    )}`;
-    const downloadAnchor = document.createElement('a');
-    downloadAnchor.setAttribute('href', jsonString);
-    downloadAnchor.setAttribute('download', 'company_profile.json');
-    document.body.appendChild(downloadAnchor);
-    downloadAnchor.click();
-    downloadAnchor.remove();
+    setExporting(true);
+    addToast("Generating company profile report...", "info");
+
+    fetch("http://localhost:3000/app/organization/export-pdf", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        generatedBy: "John Doe"
+      })
+    })
+    .then(res => {
+      if (!res.ok) throw new Error("Failed to export PDF");
+      return res.blob();
+    })
+    .then(blob => {
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${profile.general.companyName.replace(/\s+/g, '_')}_profile.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      setExporting(false);
+      addToast("Company profile exported successfully!", "success");
+    })
+    .catch(err => {
+      console.error(err);
+      setExporting(false);
+      addToast("Failed to export company profile PDF", "error");
+    });
   };
 
   const formatValue = (val) => {
@@ -369,6 +431,14 @@ export function CompanyProfile() {
     return tabId;
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -380,10 +450,23 @@ export function CompanyProfile() {
         <div className="flex items-center gap-3">
           <button 
             onClick={handleDownloadPDF}
-            className="px-5 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center gap-2"
+            disabled={exporting}
+            className={`px-5 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center gap-2 ${exporting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            <Download size={16} />
-            Export Profile
+            {exporting ? (
+              <>
+                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Exporting...
+              </>
+            ) : (
+              <>
+                <Download size={16} />
+                Export Profile
+              </>
+            )}
           </button>
         </div>
       </div>
