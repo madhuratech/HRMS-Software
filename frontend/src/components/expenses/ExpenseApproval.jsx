@@ -1,45 +1,94 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Download, ChevronDown, Clock, CheckCircle, XCircle, Layers } from 'lucide-react';
-
-const PENDING_APPROVALS = [
-  { id: 'CLM00157', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80', emp: 'Priya Patel',   dept: 'Marketing',   purpose: 'Team lunch meeting',       date: '30 May 2024', amount: '₹ 2,850' },
-  { id: 'CLM00152', avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80', emp: 'Neha Singh',    dept: 'Sales',       purpose: 'Client presentation - Pune',date: '28 May 2024', amount: '₹ 3,450' },
-  { id: 'CLM00151', avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&auto=format&fit=crop&q=80', emp: 'Raj Kumar',     dept: 'Engineering', purpose: 'Conference registration', date: '28 May 2024', amount: '₹ 4,250' },
-  { id: 'CLM00150', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80', emp: 'Anjali Mehta',  dept: 'HR',          purpose: 'Candidate interview lunch',date: '27 May 2024', amount: '₹ 1,750' },
-  { id: 'CLM00149', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80', emp: 'Karan Verma',   dept: 'Operations',  purpose: 'Site visit - Hyderabad',   date: '27 May 2024', amount: '₹ 2,900' },
-];
-
-const KpiCard = ({ label, value, subtext, iconBg, iconColor, icon: Icon }) => (
-  <div style={{
-    background: '#FFF',
-    borderRadius: 12,
-    border: '1px solid #E5E7EB',
-    boxShadow: '0 1px 4px rgba(15,23,42,.06)',
-    padding: '12px 16px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    overflow: 'hidden',
-    minWidth: 0,
-  }}>
-    <div style={{
-      width: 36, height: 36, borderRadius: 10,
-      background: iconBg, color: iconColor,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexShrink: 0,
-    }}>
-      <Icon size={18} />
-    </div>
-    <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
-      <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
-      <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>{value}</div>
-      {subtext && <div style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>{subtext}</div>}
-    </div>
-  </div>
-);
+import { apiFetch, formatDate } from '../../lib/api';
+import { useToast } from '../ui/Toast';
 
 export function ExpenseApproval() {
+  const { addToast } = useToast();
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
+  const [claimsList, setClaimsList] = useState([]);
+  const [meta, setMeta] = useState({ departments: [] });
+  const [dashboard, setDashboard] = useState({
+    kpis: { totalClaims: 0, pendingClaims: 0, approvedClaims: 0, rejectedClaims: 0, totalReimbursement: 0 }
+  });
+  
+  const [deptFilter, setDeptFilter] = useState('');
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const metaRes = await apiFetch('/expenses/meta');
+      if (metaRes.success) setMeta(metaRes.data);
+
+      let url = '/expenses/claims?status=Pending&';
+      if (deptFilter) url += `department_id=${deptFilter}&`;
+
+      const claimsRes = await apiFetch(url);
+      if (claimsRes.success) setClaimsList(claimsRes.data || []);
+
+      const dbRes = await apiFetch('/expenses/dashboard');
+      if (dbRes.success) setDashboard(dbRes.data);
+    } catch (err) {
+      addToast('Failed to load expense approvals', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [deptFilter, addToast]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleAction = async (id, status) => {
+    try {
+      const res = await apiFetch(`/expenses/claims/${id}/approve`, {
+        method: 'PUT',
+        body: JSON.stringify({ status })
+      });
+      if (res.success) {
+        addToast(`Claim status updated to ${status.toLowerCase()}`, 'success');
+        fetchData();
+      } else {
+        addToast(res.message || 'Action failed', 'error');
+      }
+    } catch (err) {
+      addToast('Error communicating with server', 'error');
+    }
+  };
+
+  if (loading) {
+    return <div style={{ padding: 40, textAlign: 'center', color: '#6B7280', fontSize: 14 }}>Loading Expense Approvals...</div>;
+  }
+
+  const KpiCard = ({ label, value, subtext, iconBg, iconColor, icon: Icon }) => (
+    <div style={{
+      background: '#FFF',
+      borderRadius: 12,
+      border: '1px solid #E5E7EB',
+      boxShadow: '0 1px 4px rgba(15,23,42,.06)',
+      padding: '12px 16px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      overflow: 'hidden',
+      minWidth: 0,
+      flex: '1 1 0'
+    }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: 10,
+        background: iconBg, color: iconColor,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <Icon size={18} />
+      </div>
+      <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+        <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', marginBottom: 3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+        <div style={{ fontSize: 18, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>{value}</div>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box', background: '#F8FAFC', minHeight: '100vh', padding: 0 }}>
@@ -54,35 +103,25 @@ export function ExpenseApproval() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {/* Department Filter */}
           <div style={{ position: 'relative' }}>
-            <select style={{
+            <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)} style={{
               appearance: 'none', WebkitAppearance: 'none', height: 38,
               paddingLeft: 14, paddingRight: 32, background: '#FFF',
               border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#374151', cursor: 'pointer', outline: 'none',
             }}>
-              <option>All Departments</option>
-              <option>Sales</option>
-              <option>Marketing</option>
-              <option>Engineering</option>
+              <option value="">All Departments</option>
+              {meta.departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
             </select>
             <ChevronDown size={13} color="#6B7280" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
-
-          {/* Export Report */}
-          <button style={{
-            display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px',
-            background: '#FFF', border: '1px solid #2563EB', color: '#2563EB', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-          }}>
-            <Download size={14} /> Export Report
-          </button>
         </div>
       </div>
 
       {/* 4 KPI Cards Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20, width: '100%' }}>
-        <KpiCard label="Pending Approval" value="28" subtext="₹ 6,45,320"  iconBg="#FEF3C7" iconColor="#D97706" icon={Clock} />
-        <KpiCard label="Approved"         value="98" subtext="₹ 15,25,680" iconBg="#ECFDF5" iconColor="#059669" icon={CheckCircle} />
-        <KpiCard label="Rejected"         value="32" subtext="₹ 2,87,750"  iconBg="#FEF2F2" iconColor="#EF4444" icon={XCircle} />
-        <KpiCard label="Total Amount"     value="₹ 24,58,750" subtext="This Month" iconBg="#EFF6FF" iconColor="#2563EB" icon={Layers} />
+      <div style={{ display: 'flex', gap: 14, marginBottom: 20, width: '100%' }}>
+        <KpiCard label="Pending Approval" value={dashboard.kpis.pendingClaims} iconBg="#FEF3C7" iconColor="#D97706" icon={Clock} />
+        <KpiCard label="Approved" value={dashboard.kpis.approvedClaims} iconBg="#ECFDF5" iconColor="#059669" icon={CheckCircle} />
+        <KpiCard label="Rejected" value={dashboard.kpis.rejectedClaims} iconBg="#FEF2F2" iconColor="#EF4444" icon={XCircle} />
+        <KpiCard label="Total Claim Amount" value={`₹ ${dashboard.kpis.totalReimbursement.toLocaleString('en-IN')}`} iconBg="#EFF6FF" iconColor="#2563EB" icon={Layers} />
       </div>
 
       {/* Pending Approval List Table */}
@@ -101,27 +140,22 @@ export function ExpenseApproval() {
               </tr>
             </thead>
             <tbody>
-              {PENDING_APPROVALS.map((r, i) => (
+              {claimsList.map((r, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid #F3F4F6', height: 48 }}>
-                  <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>{r.id}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#111827', whiteSpace: 'nowrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <img src={r.avatar} alt={r.emp} style={{ width: 26, height: 26, borderRadius: '50%', objectFit: 'cover' }} />
-                      <span style={{ fontWeight: 500 }}>{r.emp}</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.dept}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.purpose}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{r.date}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>{r.amount}</td>
+                  <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>CLM-{r.id}</td>
+                  <td style={{ padding: '0 16px', fontSize: 13, color: '#111827', whiteSpace: 'nowrap' }}>{r.employee_name}</td>
+                  <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.department_name || 'Unassigned'}</td>
+                  <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.title}</td>
+                  <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
+                  <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>₹ {parseFloat(r.amount).toLocaleString('en-IN')}</td>
                   <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
                     <div style={{ display: 'flex', gap: 8 }}>
-                      <button style={{
+                      <button onClick={() => handleAction(r.id, 'Approved')} style={{
                         background: 'none', border: 'none', color: '#16A34A', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                       }}>
                         Approve
                       </button>
-                      <button style={{
+                      <button onClick={() => handleAction(r.id, 'Rejected')} style={{
                         background: 'none', border: 'none', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                       }}>
                         Reject
@@ -132,26 +166,6 @@ export function ExpenseApproval() {
               ))}
             </tbody>
           </table>
-        </div>
-
-        {/* Footer Pagination */}
-        <div style={{ padding: '12px 20px', borderTop: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFF' }}>
-          <span style={{ fontSize: 12, color: '#6B7280' }}>Showing 1 to 5 of 28 entries</span>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {[1, 2, 3, 4, 5, 6].map((page) => (
-              <button
-                key={page}
-                onClick={() => setCurrentPage(page)}
-                style={{
-                  width: 28, height: 28, borderRadius: 6, fontSize: 12, fontWeight: 500, border: 'none', cursor: 'pointer',
-                  background: currentPage === page ? '#2563EB' : '#F3F4F6',
-                  color: currentPage === page ? '#FFF' : '#374151',
-                }}
-              >
-                {page}
-              </button>
-            ))}
-          </div>
         </div>
       </div>
 

@@ -27,7 +27,7 @@ export default function SalaryStructure() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '0', background: '#F8FAFC', minHeight: '100%' }}>
-      
+
       {/* Header Area */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
@@ -80,13 +80,13 @@ export default function SalaryStructure() {
                   <td style={{ padding: '20px 24px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>{row.date}</td>
                   <td style={{ padding: '20px 24px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>{row.employees}</td>
                   <td style={{ padding: '20px 24px', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                    <span style={{ 
-                      padding: '6px 12px', 
-                      borderRadius: '4px', 
-                      fontSize: '12px', 
-                      fontWeight: '600', 
-                      backgroundColor: row.status === 'Active' ? '#ECFDF5' : '#FEF2F2', 
-                      color: row.status === 'Active' ? '#10B981' : '#EF4444' 
+                    <span style={{
+                      padding: '6px 12px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      backgroundColor: row.status === 'Active' ? '#ECFDF5' : '#FEF2F2',
+                      color: row.status === 'Active' ? '#10B981' : '#EF4444'
                     }}>
                       {row.status}
                     </span>
@@ -113,14 +113,14 @@ export default function SalaryStructure() {
           <button style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '8px', cursor: 'pointer', color: '#64748B' }}>
             <ChevronLeft size={18} />
           </button>
-          
+
           <button style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2952E3', border: 'none', borderRadius: '8px', cursor: 'pointer', color: '#FFF', fontSize: '14px', fontWeight: '500' }}>
             1
           </button>
           <button style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '8px', cursor: 'pointer', color: '#64748B', fontSize: '14px', fontWeight: '500' }}>
             2
           </button>
-          
+
           <button style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '8px', cursor: 'pointer', color: '#64748B' }}>
             <ChevronRight size={18} />
           </button>

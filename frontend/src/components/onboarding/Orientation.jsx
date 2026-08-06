@@ -1,31 +1,143 @@
-import React from 'react';
-import { Calendar, CheckCircle, Users, Percent, Plus, Info, Shield, CheckSquare, Presentation } from 'lucide-react';
-
-const kpiData = [
-  { title: 'Upcoming Sessions', value: '8', icon: <Calendar size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
-  { title: 'Completed Sessions', value: '15', icon: <CheckCircle size={20} color="#10B981" />, bgColor: '#ECFDF5' },
-  { title: 'Total Attendees', value: '45', icon: <Users size={20} color="#8B5CF6" />, bgColor: '#F5F3FF' },
-  { title: 'Avg. Attendance', value: '92%', icon: <Percent size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
-];
-
-const sessionsData = [
-  { id: 1, title: 'Company Overview', date: '22 May 2024', time: '10:00 AM', venue: 'Conference Room A', trainer: 'Arjun Mehta', attendees: 12, status: 'Upcoming' },
-  { id: 2, title: 'HR Policies', date: '23 May 2024', time: '11:00 AM', venue: 'Conference Room B', trainer: 'Sneha Kapoor', attendees: 10, status: 'Upcoming' },
-  { id: 3, title: 'IT Systems Training', date: '24 May 2024', time: '02:00 PM', venue: 'Online (Zoom)', trainer: 'Rohan Verma', attendees: 15, status: 'Upcoming' },
-  { id: 4, title: 'Code of Conduct', date: '25 May 2024', time: '10:30 AM', venue: 'Conference Room A', trainer: 'Neha Singh', attendees: 8, status: 'Completed' },
-  { id: 5, title: 'Security Awareness', date: '27 May 2024', time: '03:00 PM', venue: 'Online (Zoom)', trainer: 'Vikram Singh', attendees: 10, status: 'Upcoming' },
-];
-
-const topicsData = [
-  { name: 'Company Overview', icon: <Presentation size={16} /> },
-  { name: 'HR Policies', icon: <Info size={16} /> },
-  { name: 'IT Systems Training', icon: <Calendar size={16} /> },
-  { name: 'Code of Conduct', icon: <Shield size={16} /> },
-  { name: 'Security Awareness', icon: <CheckCircle size={16} /> },
-  { name: 'Role & Responsibilities', icon: <Users size={16} /> },
-];
+import React, { useState, useEffect, useCallback } from 'react';
+import { Calendar, CheckCircle, Users, Percent, Plus, Info, Shield, CheckSquare, Presentation, X, Clock, ChevronLeft, ChevronRight, Search } from 'lucide-react';
+import { useToast } from '../ui/Toast';
 
 export default function Orientation() {
+  const { addToast } = useToast();
+  const [sessionsList, setSessionsList] = useState([]);
+  const [eligibleJoiners, setEligibleJoiners] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+
+  // Pagination & Search
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const limit = 10;
+  const [search, setSearch] = useState('');
+
+  // KPI States
+  const [kpiData, setKpiData] = useState({
+    upcoming: 0,
+    completed: 0,
+    totalAttendees: 0,
+    todaySessions: 0
+  });
+
+  const [formData, setFormData] = useState({
+    new_joiner_id: '',
+    title: '',
+    orientation_date: '',
+    start_time: '',
+    end_time: '',
+    trainer: '',
+    venue: '',
+    session_type: 'Offline',
+    meeting_link: '',
+    notes: ''
+  });
+
+  const [templateForm, setTemplateForm] = useState({
+    templateName: '',
+    department: '',
+    designation: '',
+    description: '',
+    checklistItems: '',
+    status: 'Active'
+  });
+
+  const [taskForm, setTaskForm] = useState({
+    taskName: '',
+    employee: '',
+    assignedTo: '',
+    dueDate: '',
+    priority: 'Medium',
+    description: '',
+    status: 'Pending'
+  });
+
+  const getAuthToken = () => {
+    const auth = localStorage.getItem('hrms_auth');
+    if (auth) {
+      try {
+        const parsed = JSON.parse(auth);
+        return parsed.token || 'mock_jwt_token';
+      } catch (e) {
+        return 'mock_jwt_token';
+      }
+    }
+    return 'mock_jwt_token';
+  };
+
+  const fetchMeta = async () => {
+    try {
+      const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
+      
+      // Fetch eligible joiners (verified new joiners)
+      const res = await fetch('http://localhost:5000/app/orientations/eligible', { headers });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setEligibleJoiners(data.data);
+      }
+    } catch (err) {
+      console.error('Failed to load orientation metadata:', err);
+    }
+  };
+
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      const res = await fetch('http://localhost:5000/app/orientations/dashboard', {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+      });
+      const resData = await res.json();
+      if (resData.success && resData.data) {
+        setKpiData(resData.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch dashboard stats:', err);
+    }
+  }, []);
+
+  const fetchSessions = useCallback(async () => {
+    setLoading(true);
+    try {
+      let url = `http://localhost:5000/app/orientations?page=${page}&limit=${limit}`;
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
+      }
+
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+      });
+      const resData = await res.json();
+      if (resData.success && resData.data) {
+        setSessionsList(resData.data.orientations || []);
+        setTotal(resData.data.total || 0);
+      } else {
+        addToast(resData.message || 'Failed to load orientation schedule', 'error');
+      }
+    } catch (err) {
+      addToast('Error connecting to backend server', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, addToast]);
+
+  useEffect(() => {
+    fetchMeta();
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search]);
+
+  useEffect(() => {
+    fetchSessions();
+    fetchDashboardStats();
+  }, [page, fetchSessions, fetchDashboardStats]);
+
   const cardStyle = {
     background: '#FFFFFF',
     borderRadius: '16px',
@@ -36,10 +148,109 @@ export default function Orientation() {
   const getStatusStyle = (status) => {
     switch (status) {
       case 'Completed': return { bg: '#ECFDF5', text: '#10B981', border: '#A7F3D0' };
-      case 'Upcoming': return { bg: '#EFF6FF', text: '#2952E3', border: '#BFDBFE' };
+      case 'Scheduled': return { bg: '#EFF6FF', text: '#2952E3', border: '#BFDBFE' };
       default: return { bg: '#F1F5F9', text: '#64748B', border: '#E2E8F0' };
     }
   };
+
+  const handleScheduleSubmit = async (e) => {
+    e.preventDefault();
+    if (!formData.new_joiner_id || !formData.title || !formData.orientation_date || !formData.trainer || !formData.start_time || !formData.end_time) {
+      addToast('Please fill in all required fields.', 'error');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        new_joiner_id: parseInt(formData.new_joiner_id),
+        title: formData.title.trim(),
+        orientation_date: formData.orientation_date,
+        start_time: formData.start_time,
+        end_time: formData.end_time,
+        trainer: formData.trainer.trim(),
+        venue: formData.venue.trim() || (formData.session_type === 'Online' ? 'Online' : 'Office Office'),
+        session_type: formData.session_type,
+        meeting_link: formData.meeting_link.trim(),
+        notes: formData.notes.trim()
+      };
+
+      const res = await fetch('http://localhost:5000/app/orientations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const resData = await res.json();
+      if (resData.success) {
+        addToast('Orientation session scheduled successfully!', 'success');
+        setShowScheduleModal(false);
+        setFormData({ new_joiner_id: '', title: '', orientation_date: '', start_time: '', end_time: '', trainer: '', venue: '', session_type: 'Offline', meeting_link: '', notes: '' });
+        fetchSessions();
+        fetchDashboardStats();
+      } else {
+        addToast(resData.message || 'Failed to schedule orientation session', 'error');
+      }
+    } catch (err) {
+      addToast('Connection error occurred', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleComplete = async (sessionId) => {
+    try {
+      const res = await fetch(`http://localhost:5000/app/orientations/${sessionId}/complete`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`
+        }
+      });
+      const resData = await res.json();
+      if (resData.success) {
+        addToast('Orientation session marked as Completed!', 'success');
+        fetchSessions();
+        fetchDashboardStats();
+      } else {
+        addToast(resData.message || 'Failed to update orientation status', 'error');
+      }
+    } catch (err) {
+      addToast('Connection error occurred', 'error');
+    }
+  };
+
+  const handleTemplateSubmit = (e) => {
+    e.preventDefault();
+    setShowTemplateModal(false);
+    addToast('Template created successfully!', 'success');
+  };
+
+  const handleTaskSubmit = (e) => {
+    e.preventDefault();
+    setShowTaskModal(false);
+    addToast('Task created successfully!', 'success');
+  };
+
+  const selectedJoiner = eligibleJoiners.find(j => j.id === parseInt(formData.new_joiner_id));
+  const totalPages = Math.ceil(total / limit) || 1;
+
+  const kpis = [
+    { title: 'Upcoming Sessions', value: kpiData.upcoming, icon: <Calendar size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
+    { title: 'Completed Sessions', value: kpiData.completed, icon: <CheckCircle size={20} color="#10B981" />, bgColor: '#ECFDF5' },
+    { title: 'Total Attendees', value: kpiData.totalAttendees, icon: <Users size={20} color="#8B5CF6" />, bgColor: '#F5F3FF' },
+    { title: 'Today\'s Sessions', value: kpiData.todaySessions, icon: <Percent size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
+  ];
+
+  const topicsData = [
+    { name: 'Company Overview', icon: <Presentation size={16} /> },
+    { name: 'HR Policies', icon: <Info size={16} /> },
+    { name: 'IT Systems Training', icon: <Calendar size={16} /> },
+    { name: 'Code of Conduct', icon: <Shield size={16} /> },
+    { name: 'Security Awareness', icon: <CheckCircle size={16} /> },
+    { name: 'Role & Responsibilities', icon: <Users size={16} /> },
+  ];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: '"Inter", sans-serif', paddingBottom: '24px' }}>
@@ -47,19 +258,25 @@ export default function Orientation() {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <h1 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '700', color: '#1E293B' }}>Orientation</h1>
-          <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Schedule and manage orientation sessions</p>
+          <h1 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '700', color: '#1E293B' }}>Orientation & Templates</h1>
+          <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Schedule sessions, configure templates and onboarding tasks</p>
         </div>
-        <div>
-          <button style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
-            <Plus size={18} /> Schedule Session
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <button onClick={() => setShowTaskModal(true)} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+            <CheckSquare size={16} /> Add Task
+          </button>
+          <button onClick={() => setShowTemplateModal(true)} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+            <Plus size={16} /> Add Template
+          </button>
+          <button onClick={() => setShowScheduleModal(true)} style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+            <Calendar size={16} /> Schedule Orientation
           </button>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
-        {kpiData.map((kpi, idx) => (
+        {kpis.map((kpi, idx) => (
           <div key={idx} style={{ ...cardStyle, display: 'flex', gap: '16px', padding: '20px', alignItems: 'center' }}>
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: kpi.bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {kpi.icon}
@@ -78,60 +295,126 @@ export default function Orientation() {
         {/* Left Side: Table */}
         <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
           
-          <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Orientation Schedule</h3>
+            <div style={{ position: 'relative' }}>
+              <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+              <input 
+                type="text" 
+                placeholder="Search..." 
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ width: '180px', padding: '8px 10px 8px 30px', borderRadius: '6px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '13px' }}
+              />
+            </div>
           </div>
 
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-              <thead>
-                <tr style={{ background: '#F8FAFC' }}>
-                  <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Session Title</th>
-                  <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Date</th>
-                  <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Time</th>
-                  <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Venue/Link</th>
-                  <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Trainer</th>
-                  <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Attendees</th>
-                  <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sessionsData.map((row, index) => (
-                  <tr key={row.id} style={{ borderBottom: index === sessionsData.length - 1 ? 'none' : '1px solid #F8FAFC', transition: 'background 0.2s', ':hover': { background: '#F8FAFC' } }}>
-                    <td style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '500', color: '#334155', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          <Presentation size={14} color="#64748B" />
-                        </div>
-                        {row.title}
-                      </div>
-                    </td>
-                    <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.date}</td>
-                    <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.time}</td>
-                    <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.venue}</td>
-                    <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.trainer}</td>
-                    <td style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#1E293B', textAlign: 'center' }}>{row.attendees}</td>
-                    <td style={{ padding: '16px 24px', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                      <span style={{ 
-                        padding: '4px 10px', 
-                        borderRadius: '20px', 
-                        fontSize: '11px', 
-                        fontWeight: '600', 
-                        backgroundColor: getStatusStyle(row.status).bg, 
-                        color: getStatusStyle(row.status).text,
-                        border: `1px solid ${getStatusStyle(row.status).border}`
-                      }}>
-                        {row.status}
-                      </span>
-                    </td>
+            {loading ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>Loading orientation schedules...</div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#F8FAFC' }}>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Session Title</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Attendee</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Date</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Time</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Venue/Link</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Trainer</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Status</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Action</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {sessionsList.length === 0 ? (
+                    <tr>
+                      <td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No orientations scheduled</td>
+                    </tr>
+                  ) : (
+                    sessionsList.map((row, index) => {
+                      const orientDate = row.orientation_date ? new Date(row.orientation_date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : '-';
+                      return (
+                        <tr key={row.id} style={{ borderBottom: index === sessionsList.length - 1 ? 'none' : '1px solid #F8FAFC', transition: 'background 0.2s', ':hover': { background: '#F8FAFC' } }}>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '500', color: '#334155', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                <Presentation size={14} color="#64748B" />
+                              </div>
+                              {row.title}
+                            </div>
+                          </td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.employee_name}</td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{orientDate}</td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.start_time.substring(0, 5)} - {row.end_time.substring(0, 5)}</td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>
+                            {row.session_type === 'Online' ? (
+                              <a href={row.meeting_link} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Zoom Link</a>
+                            ) : row.venue}
+                          </td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.trainer}</td>
+                          <td style={{ padding: '16px 24px', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                            <span style={{ 
+                              padding: '4px 10px', 
+                              borderRadius: '20px', 
+                              fontSize: '11px', 
+                              fontWeight: '600', 
+                              backgroundColor: getStatusStyle(row.status).bg, 
+                              color: getStatusStyle(row.status).text,
+                              border: `1px solid ${getStatusStyle(row.status).border}`
+                            }}>
+                              {row.status}
+                            </span>
+                          </td>
+                          <td style={{ padding: '16px 24px', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                            {row.status === 'Scheduled' && (
+                              <button 
+                                onClick={() => handleComplete(row.id)}
+                                style={{ background: '#ECFDF5', border: '1px solid #10B981', color: '#10B981', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}
+                              >
+                                Mark Complete
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
           
-          <div style={{ padding: '16px 24px', borderTop: '1px solid #F1F5F9', textAlign: 'center' }}>
-            <button style={{ background: 'none', border: 'none', color: '#2952E3', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>View Full Schedule</button>
+          {/* Pagination */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderTop: '1px solid #F1F5F9' }}>
+            <div style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>
+              Showing {total === 0 ? 0 : (page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} entries
+            </div>
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+              <button 
+                disabled={page === 1}
+                onClick={() => setPage(prev => Math.max(prev - 1, 1))}
+                style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: page === 1 ? 'not-allowed' : 'pointer', color: '#64748B' }}
+              >
+                <ChevronLeft size={16} />
+              </button>
+              {[...Array(totalPages)].map((_, i) => (
+                <button 
+                  key={i + 1}
+                  onClick={() => setPage(i + 1)}
+                  style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: page === i + 1 ? '#2952E3' : '#FFF', border: page === i + 1 ? 'none' : '1px solid #E2E8F0', borderRadius: '6px', cursor: 'pointer', color: page === i + 1 ? '#FFF' : '#64748B', fontSize: '13px', fontWeight: '500' }}
+                >
+                  {i + 1}
+                </button>
+              ))}
+              <button 
+                disabled={page === totalPages}
+                onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
+                style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: page === totalPages ? 'not-allowed' : 'pointer', color: '#64748B' }}
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
 
         </div>
@@ -155,6 +438,195 @@ export default function Orientation() {
         </div>
 
       </div>
+
+      {/* Schedule Orientation Modal */}
+      {showScheduleModal && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setShowScheduleModal(false)} />
+          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-[#0A1629]">Schedule Orientation Session</h2>
+                <p className="text-sm text-slate-500 mt-1">Book an onboarding session for a verified new joiner.</p>
+              </div>
+              <button onClick={() => setShowScheduleModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+            <form onSubmit={handleScheduleSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">New Joiner <span className="text-red-500">*</span></label>
+                  <select 
+                    required 
+                    value={formData.new_joiner_id} 
+                    onChange={e => setFormData({ ...formData, new_joiner_id: e.target.value })} 
+                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                  >
+                    <option value="">Select Onboarding Joiner</option>
+                    {eligibleJoiners.map(j => (
+                      <option key={j.id} value={j.id}>{j.employee_name} ({j.designation})</option>
+                    ))}
+                  </select>
+                </div>
+
+                {selectedJoiner && (
+                  <div className="col-span-1 sm:col-span-2 grid grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600">
+                    <div><strong>Department:</strong> {selectedJoiner.department_name}</div>
+                    <div><strong>Designation:</strong> {selectedJoiner.designation}</div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Session Title <span className="text-red-500">*</span></label>
+                  <input type="text" required value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. Welcome & IT Systems Setup" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Orientation Date <span className="text-red-500">*</span></label>
+                  <input type="date" required value={formData.orientation_date} onChange={e => setFormData({ ...formData, orientation_date: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Start Time <span className="text-red-500">*</span></label>
+                  <input type="time" required value={formData.start_time} onChange={e => setFormData({ ...formData, start_time: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">End Time <span className="text-red-500">*</span></label>
+                  <input type="time" required value={formData.end_time} onChange={e => setFormData({ ...formData, end_time: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Trainer <span className="text-red-500">*</span></label>
+                  <input type="text" required value={formData.trainer} onChange={e => setFormData({ ...formData, trainer: e.target.value })} placeholder="e.g. Sneha Kapoor" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Session Type <span className="text-red-500">*</span></label>
+                  <select value={formData.session_type} onChange={e => setFormData({ ...formData, session_type: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
+                    <option value="Offline">Offline (Office Conference)</option>
+                    <option value="Online">Online (Zoom / Meet)</option>
+                    <option value="Hybrid">Hybrid</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Venue / Location</label>
+                  <input type="text" value={formData.venue} onChange={e => setFormData({ ...formData, venue: e.target.value })} placeholder="e.g. Conference Room A" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Meeting Link (If Online)</label>
+                  <input type="url" value={formData.meeting_link} onChange={e => setFormData({ ...formData, meeting_link: e.target.value })} placeholder="e.g. https://zoom.us/j/123456" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div className="col-span-1 sm:col-span-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Notes / Agenda</label>
+                  <textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder="Agenda description, pre-requisites..." style={{ height: '80px' }} className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
+                <button type="button" onClick={() => setShowScheduleModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+                <button type="submit" disabled={submitting} className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50">
+                  {submitting ? 'Scheduling...' : 'Schedule Session'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </>
+      )}
+
+      {/* Add Onboarding Template Modal (1100px Standard) */}
+      {showTemplateModal && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setShowTemplateModal(false)} />
+          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-[#0A1629]">Add Onboarding Template</h2>
+                <p className="text-sm text-slate-500 mt-1">Configure standard onboarding workflow template for departments.</p>
+              </div>
+              <button onClick={() => setShowTemplateModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+            <form onSubmit={handleTemplateSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Template Name <span className="text-red-500">*</span></label>
+                  <input type="text" required value={templateForm.templateName} onChange={e => setTemplateForm({ ...templateForm, templateName: e.target.value })} placeholder="e.g. Senior Developer Onboarding Template" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Department <span className="text-red-500">*</span></label>
+                  <input type="text" required value={templateForm.department} onChange={e => setTemplateForm({ ...templateForm, department: e.target.value })} placeholder="e.g. Engineering" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Designation <span className="text-red-500">*</span></label>
+                  <input type="text" required value={templateForm.designation} onChange={e => setTemplateForm({ ...templateForm, designation: e.target.value })} placeholder="e.g. Software Engineer" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
+                  <select value={templateForm.status} onChange={e => setTemplateForm({ ...templateForm, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+                <div className="col-span-1 sm:col-span-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Description <span className="text-red-500">*</span></label>
+                  <textarea required value={templateForm.description} onChange={e => setTemplateForm({ ...templateForm, description: e.target.value })} placeholder="Describe purpose and scope of this onboarding template..." style={{ height: '90px' }} className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
+                <button type="button" onClick={() => setShowTemplateModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+                <button type="submit" className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">Save Template</button>
+              </div>
+            </form>
+          </div>
+        </>
+      )}
+
+      {/* Add Onboarding Task Modal (1100px Standard) */}
+      {showTaskModal && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setShowTaskModal(false)} />
+          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-[#0A1629]">Add Onboarding Task</h2>
+                <p className="text-sm text-slate-500 mt-1">Assign an onboarding task to a new joiner or HR coordinator.</p>
+              </div>
+              <button onClick={() => setShowTaskModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+            <form onSubmit={handleTaskSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Task Name <span className="text-red-500">*</span></label>
+                  <input type="text" required value={taskForm.taskName} onChange={e => setTaskForm({ ...taskForm, taskName: e.target.value })} placeholder="e.g. Complete Security Assessment" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Employee <span className="text-red-500">*</span></label>
+                  <input type="text" required value={taskForm.employee} onChange={e => setTaskForm({ ...taskForm, employee: e.target.value })} placeholder="e.g. Rahul Sharma" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Assigned To <span className="text-red-500">*</span></label>
+                  <input type="text" required value={taskForm.assignedTo} onChange={e => setTaskForm({ ...taskForm, assignedTo: e.target.value })} placeholder="e.g. Sneha Kapoor (HR)" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Due Date <span className="text-red-500">*</span></label>
+                  <input type="date" required value={taskForm.dueDate} onChange={e => setTaskForm({ ...taskForm, dueDate: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Priority</label>
+                  <select value={taskForm.priority} onChange={e => setTaskForm({ ...taskForm, priority: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
+                <button type="button" onClick={() => setShowTaskModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+                <button type="submit" className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">Save Task</button>
+              </div>
+            </form>
+          </div>
+        </>
+      )}
 
     </div>
   );
