@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { Search, ChevronDown, Plus, Eye, FileText, Clock, CheckCircle, AlertCircle, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Search, ChevronDown, Plus, Eye, FileText, Clock, CheckCircle, AlertCircle, ArrowUpRight, ArrowDownRight, X } from 'lucide-react';
 
-const TICKETS_DATA = [
+const INITIAL_TICKETS_DATA = [
   { id: 'TKT-1248', subject: 'System not logging in',       cat: 'IT Support',          priority: 'High',   requester: 'Rohit Sharma',  status: 'Resolved',    date: '31 May 2024 10:30 AM' },
   { id: 'TKT-1247', subject: 'Salary not credited',        cat: 'Payroll',             priority: 'High',   requester: 'Priya Patel',   status: 'Resolved',    date: '31 May 2024 09:15 AM' },
   { id: 'TKT-1246', subject: 'Leave application issue',    cat: 'Leave & Attendance',  priority: 'Medium', requester: 'Amit Kumar',    status: 'Pending',     date: '31 May 2024 08:45 AM' },
@@ -51,6 +51,36 @@ const KpiCard = ({ label, value, subtext, isPositive, iconBg, iconColor, icon: I
 
 export function Tickets() {
   const [currentPage, setCurrentPage] = useState(1);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [ticketsList, setTicketsList] = useState(INITIAL_TICKETS_DATA);
+  const [formData, setFormData] = useState({
+    title: '',
+    employee: '',
+    department: '',
+    category: '',
+    priority: 'Medium',
+    assignedTo: '',
+    description: '',
+    attachment: null,
+    status: 'Open'
+  });
+
+  const handleSave = (e) => {
+    e.preventDefault();
+    if (!formData.title || !formData.employee || !formData.category) return;
+    const newItem = {
+      id: 'TKT-' + String(Math.floor(1000 + Math.random() * 9000)),
+      subject: formData.title,
+      cat: formData.category,
+      priority: formData.priority,
+      requester: formData.employee,
+      status: formData.status,
+      date: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    };
+    setTicketsList([newItem, ...ticketsList]);
+    setShowAddModal(false);
+    setFormData({ title: '', employee: '', department: '', category: '', priority: 'Medium', assignedTo: '', description: '', attachment: null, status: 'Open' });
+  };
 
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box', background: '#F8FAFC', minHeight: '100vh', padding: 0 }}>
@@ -110,7 +140,7 @@ export function Tickets() {
           </div>
 
           {/* Primary Action Button */}
-          <button style={{
+          <button onClick={() => setShowAddModal(true)} style={{
             display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
             background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
           }}>
@@ -140,7 +170,7 @@ export function Tickets() {
               </tr>
             </thead>
             <tbody>
-              {TICKETS_DATA.map((r, i) => (
+              {ticketsList.map((r, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid #F3F4F6', height: 48 }}>
                   <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>{r.id}</td>
                   <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 500, color: '#111827', whiteSpace: 'nowrap' }}>{r.subject}</td>
@@ -195,8 +225,94 @@ export function Tickets() {
         </div>
       </div>
 
+      {/* Create Support Ticket Modal (1100px Standard) */}
+      {showAddModal && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
+          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-[#0A1629]">Create Support Ticket</h2>
+                <p className="text-sm text-slate-500 mt-1">Submit a new help desk support ticket to IT or HR coordinators.</p>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+            <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Ticket Title <span className="text-red-500">*</span></label>
+                  <input type="text" required value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. VPN Access & Login Error" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Employee <span className="text-red-500">*</span></label>
+                  <input type="text" required value={formData.employee} onChange={e => setFormData({ ...formData, employee: e.target.value })} placeholder="e.g. Rohit Sharma" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Department <span className="text-red-500">*</span></label>
+                  <select required value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
+                    <option value="">Select Department</option>
+                    <option value="IT Support">IT Support</option>
+                    <option value="HR Support">HR Support</option>
+                    <option value="Payroll">Payroll</option>
+                    <option value="Facilities">Facilities</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Category <span className="text-red-500">*</span></label>
+                  <select required value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
+                    <option value="">Select Help Desk Category</option>
+                    <option value="IT Support">IT Hardware & Software</option>
+                    <option value="Payroll">Payroll & Tax Queries</option>
+                    <option value="Leave & Attendance">Leave & Attendance</option>
+                    <option value="HR Support">HR General Requests</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Priority</label>
+                  <select value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                    <option value="Critical">Critical</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Assigned To <span className="text-red-500">*</span></label>
+                  <input type="text" required value={formData.assignedTo} onChange={e => setFormData({ ...formData, assignedTo: e.target.value })} placeholder="e.g. IT Admin / Help Desk Specialist" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Attachment</label>
+                  <input type="file" className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
+                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
+                    <option value="Open">Open</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Pending">Pending</option>
+                    <option value="Resolved">Resolved</option>
+                    <option value="Closed">Closed</option>
+                  </select>
+                </div>
+                <div className="col-span-1 sm:col-span-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Description <span className="text-red-500">*</span></label>
+                  <textarea required value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Describe error message and steps to reproduce..." style={{ height: '90px' }} className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
+                <button type="button" onClick={() => setShowAddModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+                <button type="submit" className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">Create Ticket</button>
+              </div>
+            </form>
+          </div>
+        </>
+      )}
+
     </div>
   );
 }
 
 export default Tickets;
+

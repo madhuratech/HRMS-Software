@@ -56,7 +56,7 @@ export default function KPIs() {
   const fetchMeta = async () => {
     try {
       const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
-      const deptRes = await fetch('/app/requirements/meta/all', { headers });
+      const deptRes = await fetch('http://localhost:5000/app/requirements/meta/all', { headers });
       const deptData = await deptRes.json();
       if (deptData && deptData.departments) {
         setDepartments(deptData.departments);
@@ -68,7 +68,7 @@ export default function KPIs() {
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const res = await fetch('/app/kpis/dashboard', {
+      const res = await fetch('http://localhost:5000/app/kpis/dashboard', {
         headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
       const resData = await res.json();
@@ -83,7 +83,7 @@ export default function KPIs() {
   const fetchKpis = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `/app/kpis?page=${page}&limit=${limit}`;
+      let url = `http://localhost:5000/app/kpis?page=${page}&limit=${limit}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
@@ -139,7 +139,7 @@ export default function KPIs() {
         status: formData.status
       };
 
-      const res = await fetch('/app/kpis', {
+      const res = await fetch('http://localhost:5000/app/kpis', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

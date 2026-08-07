@@ -59,14 +59,14 @@ export default function DocumentVerification() {
       const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
       
       // Fetch departments
-      const deptRes = await fetch('/app/requirements/meta/all', { headers });
+      const deptRes = await fetch('http://localhost:5000/app/requirements/meta/all', { headers });
       const deptData = await deptRes.json();
       if (deptData && deptData.departments) {
         setDepartments(deptData.departments);
       }
 
       // Fetch active new joiners
-      const joinersRes = await fetch('/app/joiners?limit=1000', { headers });
+      const joinersRes = await fetch('http://localhost:5000/app/joiners?limit=1000', { headers });
       const joinersData = await joinersRes.json();
       if (joinersData.success && joinersData.data) {
         setNewJoiners(joinersData.data.joiners || []);
@@ -78,7 +78,7 @@ export default function DocumentVerification() {
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const res = await fetch('/app/verifications/stats', {
+      const res = await fetch('http://localhost:5000/app/verifications/stats', {
         headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
       const resData = await res.json();
@@ -98,7 +98,7 @@ export default function DocumentVerification() {
       if (activeTab === 'Rejected Documents') mappedStatus = 'Rejected';
       if (activeTab === 'Completed Verification') mappedStatus = 'Completed';
 
-      let url = `/app/verifications?page=${page}&limit=${limit}&status=${mappedStatus}`;
+      let url = `http://localhost:5000/app/verifications?page=${page}&limit=${limit}&status=${mappedStatus}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
@@ -199,8 +199,8 @@ export default function DocumentVerification() {
       });
 
       const url = selectedVerification 
-        ? `/app/verifications/${selectedVerification.id}`
-        : '/app/verifications';
+        ? `http://localhost:5000/app/verifications/${selectedVerification.id}`
+        : 'http://localhost:5000/app/verifications';
       
       const method = selectedVerification ? 'PUT' : 'POST';
 
@@ -232,7 +232,7 @@ export default function DocumentVerification() {
     
     setSubmitting(true);
     try {
-      const res = await fetch(`/app/verifications/${verifyId}/complete`, {
+      const res = await fetch(`http://localhost:5000/app/verifications/${verifyId}/complete`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`

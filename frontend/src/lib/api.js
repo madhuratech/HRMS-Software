@@ -1,4 +1,4 @@
-const API_BASE = '/app';
+const API_BASE = 'http://localhost:5000/app';
 
 export const getAuthToken = () => {
   const auth = localStorage.getItem('hrms_auth');
@@ -15,15 +15,10 @@ export const getAuthToken = () => {
 
 export const apiFetch = async (path, options = {}) => {
   const headers = {
+    'Content-Type': 'application/json',
     'Authorization': `Bearer ${getAuthToken()}`,
     ...(options.headers || {})
   };
-  
-  // Only set application/json content-type if the body is not FormData (which handles its own boundary)
-  if (!(options.body instanceof FormData)) {
-    headers['Content-Type'] = 'application/json';
-  }
-  
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
   return res.json();
 };

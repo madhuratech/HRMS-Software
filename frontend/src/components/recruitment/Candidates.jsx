@@ -56,7 +56,7 @@ export default function Candidates() {
   // Fetch departments metadata
   const fetchMeta = async () => {
     try {
-      const res = await fetch('/app/requirements/meta/all', {
+      const res = await fetch('http://localhost:5000/app/requirements/meta/all', {
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`
         }
@@ -74,7 +74,7 @@ export default function Candidates() {
   const fetchCandidates = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `/app/candidates?page=${page}&limit=${limit}`;
+      let url = `http://localhost:5000/app/candidates?page=${page}&limit=${limit}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
@@ -217,7 +217,7 @@ export default function Candidates() {
       if (formData.address) data.append('address', formData.address.trim());
       data.append('status', formData.status);
 
-      const res = await fetch('/app/candidates', {
+      const res = await fetch('http://localhost:5000/app/candidates', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`
