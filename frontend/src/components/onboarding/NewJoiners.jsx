@@ -67,14 +67,14 @@ export default function NewJoiners() {
       const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
       
       // Fetch departments
-      const res = await fetch('http://localhost:5000/app/requirements/meta/all', { headers });
+      const res = await fetch('/app/requirements/meta/all', { headers });
       const data = await res.json();
       if (data && data.departments) {
         setDepartments(data.departments);
       }
 
       // Fetch accepted offers
-      const offerRes = await fetch('http://localhost:5000/app/offers?status=Accepted&limit=100', { headers });
+      const offerRes = await fetch('/app/offers?status=Accepted&limit=100', { headers });
       const offerData = await offerRes.json();
       if (offerData.success && offerData.data) {
         setAcceptedOffers(offerData.data.offers || []);
@@ -86,7 +86,7 @@ export default function NewJoiners() {
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:5000/app/joiners/dashboard', {
+      const res = await fetch('/app/joiners/dashboard', {
         headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
       const resData = await res.json();
@@ -101,7 +101,7 @@ export default function NewJoiners() {
   const fetchJoiners = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `http://localhost:5000/app/joiners?page=${page}&limit=${limit}`;
+      let url = `/app/joiners?page=${page}&limit=${limit}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
@@ -210,7 +210,7 @@ export default function NewJoiners() {
         status: formData.status
       };
 
-      const res = await fetch('http://localhost:5000/app/joiners', {
+      const res = await fetch('/app/joiners', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

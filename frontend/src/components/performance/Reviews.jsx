@@ -64,14 +64,14 @@ export default function Reviews() {
       const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
       
       // Fetch departments
-      const deptRes = await fetch('http://localhost:5000/app/requirements/meta/all', { headers });
+      const deptRes = await fetch('/app/requirements/meta/all', { headers });
       const deptData = await deptRes.json();
       if (deptData && deptData.departments) {
         setDepartments(deptData.departments);
       }
 
       // Fetch employees
-      const empRes = await fetch('http://localhost:5000/app/employees', { headers });
+      const empRes = await fetch('/app/employees', { headers });
       const empData = await empRes.json();
       if (Array.isArray(empData)) {
         setEmployees(empData);
@@ -83,7 +83,7 @@ export default function Reviews() {
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:5000/app/reviews/dashboard', {
+      const res = await fetch('/app/reviews/dashboard', {
         headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
       const resData = await res.json();
@@ -98,7 +98,7 @@ export default function Reviews() {
   const fetchReviews = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `http://localhost:5000/app/reviews?page=${page}&limit=${limit}`;
+      let url = `/app/reviews?page=${page}&limit=${limit}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
@@ -158,7 +158,7 @@ export default function Reviews() {
         status: formData.status
       };
 
-      const res = await fetch('http://localhost:5000/app/reviews', {
+      const res = await fetch('/app/reviews', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

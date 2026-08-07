@@ -32,7 +32,7 @@ export default function HiringPipeline() {
   const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/app/pipeline/stats', {
+      const res = await fetch('/app/pipeline/stats', {
         headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
       const data = await res.json();
@@ -73,7 +73,7 @@ export default function HiringPipeline() {
 
     setSubmitting(true);
     try {
-      const res = await fetch('http://localhost:5000/app/pipeline/sources', {
+      const res = await fetch('/app/pipeline/sources', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

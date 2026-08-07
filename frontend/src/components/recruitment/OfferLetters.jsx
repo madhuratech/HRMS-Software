@@ -47,7 +47,7 @@ export default function OfferLetters() {
 
   const fetchMeta = async () => {
     try {
-      const res = await fetch('http://localhost:5000/app/requirements/meta/all', {
+      const res = await fetch('/app/requirements/meta/all', {
         headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
       const data = await res.json();
@@ -62,7 +62,7 @@ export default function OfferLetters() {
   const fetchOffers = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `http://localhost:5000/app/offers?page=${page}&limit=${limit}`;
+      let url = `/app/offers?page=${page}&limit=${limit}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
@@ -140,7 +140,7 @@ export default function OfferLetters() {
         status: formData.status
       };
 
-      const res = await fetch('http://localhost:5000/app/offers', {
+      const res = await fetch('/app/offers', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

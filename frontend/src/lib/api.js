@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:5000/app';
+const API_BASE = '/app';
 
 export const getAuthToken = () => {
   const auth = localStorage.getItem('hrms_auth');

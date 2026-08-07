@@ -60,14 +60,14 @@ export default function Feedback() {
       const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
       
       // Fetch departments
-      const deptRes = await fetch('http://localhost:5000/app/requirements/meta/all', { headers });
+      const deptRes = await fetch('/app/requirements/meta/all', { headers });
       const deptData = await deptRes.json();
       if (deptData && deptData.departments) {
         setDepartments(deptData.departments);
       }
 
       // Fetch employees
-      const empRes = await fetch('http://localhost:5000/app/employees', { headers });
+      const empRes = await fetch('/app/employees', { headers });
       const empData = await empRes.json();
       if (Array.isArray(empData)) {
         setEmployees(empData);
@@ -79,7 +79,7 @@ export default function Feedback() {
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:5000/app/feedback/dashboard', {
+      const res = await fetch('/app/feedback/dashboard', {
         headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
       const resData = await res.json();
@@ -94,7 +94,7 @@ export default function Feedback() {
   const fetchFeedback = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `http://localhost:5000/app/feedback?page=${page}&limit=${limit}`;
+      let url = `/app/feedback?page=${page}&limit=${limit}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
@@ -150,7 +150,7 @@ export default function Feedback() {
         comments: formData.comments.trim()
       };
 
-      const res = await fetch('http://localhost:5000/app/feedback', {
+      const res = await fetch('/app/feedback', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

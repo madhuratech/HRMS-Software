@@ -61,7 +61,7 @@ export default function JobOpenings() {
 
   const fetchMeta = async () => {
     try {
-      const res = await fetch('http://localhost:5000/app/requirements/meta/all', {
+      const res = await fetch('/app/requirements/meta/all', {
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`
         }
@@ -87,7 +87,7 @@ export default function JobOpenings() {
       if (selectedDept) query.append('department_id', selectedDept);
       if (selectedStatus) query.append('status', selectedStatus);
 
-      const res = await fetch(`http://localhost:5000/app/requirements?${query}`, {
+      const res = await fetch(`/app/requirements?${query}`, {
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`
         }
@@ -146,7 +146,7 @@ export default function JobOpenings() {
     };
 
     try {
-      const res = await fetch('http://localhost:5000/app/requirements', {
+      const res = await fetch('/app/requirements', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
