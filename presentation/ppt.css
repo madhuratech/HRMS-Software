@@ -1,0 +1,410 @@
+:root {
+  --accent-teal: #10b981;
+  --accent-blue: #3b82f6;
+  --accent-purple: #8b5cf6;
+  --accent-gold: #f59e0b;
+  --accent-red: #ef4444;
+  --bg-dark: #080d1a;
+  --text-white: #f8fafc;
+  --text-muted: rgba(248,250,252,0.6);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background: var(--bg-dark);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  user-select: none;
+}
+
+/* ─── Progress Bar ─── */
+.progress-bar {
+  position: fixed; top: 0; left: 0; right: 0; height: 4px;
+  background: rgba(255,255,255,0.08); z-index: 100;
+}
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-blue), var(--accent-teal));
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1);
+}
+
+/* ─── Slide Counter ─── */
+.slide-counter {
+  position: fixed; top: 16px; right: 20px; z-index: 100;
+  font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.5);
+}
+
+/* ─── Keyboard Hint ─── */
+.keyboard-hint {
+  position: fixed; bottom: 80px; right: 20px; z-index: 100;
+  font-size: 11px; color: rgba(255,255,255,0.3);
+}
+kbd {
+  background: rgba(255,255,255,0.1);
+  padding: 2px 6px; border-radius: 4px;
+  font-family: monospace; font-size: 10px;
+}
+
+/* ─── Navigation Buttons ─── */
+.nav-btn {
+  position: fixed; top: 50%; transform: translateY(-50%);
+  z-index: 100; background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: #fff; font-size: 20px; cursor: pointer;
+  width: 48px; height: 48px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s; backdrop-filter: blur(6px);
+}
+.nav-btn:hover { background: rgba(255,255,255,0.15); }
+.nav-btn:disabled { opacity: 0.2; cursor: not-allowed; }
+.nav-btn.prev { left: 16px; }
+.nav-btn.next { right: 16px; }
+
+/* ─── Deck & Slides ─── */
+.deck {
+  width: 100vw; height: 100vh; position: relative;
+}
+
+.slide {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.6s cubic-bezier(0.4,0,0.2,1);
+  overflow: hidden;
+}
+.slide.active {
+  opacity: 1; pointer-events: all;
+}
+
+/* ─── Slide Backgrounds ─── */
+.slide-bg {
+  position: absolute; inset: 0; z-index: 0;
+}
+.bg-1 { background: radial-gradient(circle at 30% 40%, #1a2f6b 0%, #080d1a 60%), radial-gradient(circle at 80% 80%, #0d3a2e 0%, transparent 50%); }
+.bg-2 { background: radial-gradient(circle at 70% 30%, #2d1a45 0%, #080d1a 60%); }
+.bg-3 { background: radial-gradient(circle at 20% 60%, #0a2540 0%, #080d1a 60%), radial-gradient(circle at 90% 20%, #0a3020 0%, transparent 40%); }
+.bg-4 { background: radial-gradient(circle at 50% 50%, #1a2f6b 0%, #080d1a 70%); }
+.bg-5 { background: radial-gradient(circle at 30% 30%, #0d3a2e 0%, #080d1a 60%); }
+.bg-6 { background: radial-gradient(circle at 70% 70%, #1a2f6b 0%, #080d1a 60%); }
+.bg-7 { background: radial-gradient(circle at 20% 40%, #2d1a00 0%, #080d1a 60%); }
+.bg-8 { background: radial-gradient(circle at 80% 50%, #1a003a 0%, #080d1a 60%); }
+.bg-9 { background: radial-gradient(circle at 40% 60%, #001a3a 0%, #080d1a 60%); }
+.bg-10 { background: radial-gradient(circle at 60% 30%, #2d0a1a 0%, #080d1a 60%); }
+.bg-11 { background: radial-gradient(circle at 50% 50%, #0d2040 0%, #080d1a 50%), radial-gradient(circle at 80% 20%, #0a3020 0%, transparent 40%); }
+
+/* ─── Center Content Layout (Title Slide) ─── */
+.center-content {
+  position: relative; z-index: 1;
+  display: flex; flex-direction: column;
+  align-items: center; text-align: center; gap: 20px;
+  padding: 40px;
+}
+
+.title-badge {
+  background: rgba(59,130,246,0.15); color: var(--accent-blue);
+  border: 1px solid rgba(59,130,246,0.3); border-radius: 20px;
+  padding: 6px 18px; font-size: 13px; font-weight: 600; letter-spacing: 0.5px;
+}
+.mega-title {
+  font-size: clamp(52px, 9vw, 110px); font-weight: 900;
+  background: linear-gradient(135deg, #fff 0%, #94a3b8 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  line-height: 1;
+}
+.mega-sub {
+  font-size: clamp(18px, 2.5vw, 30px); font-weight: 400;
+  color: var(--text-muted); letter-spacing: 2px; text-transform: uppercase;
+}
+.title-desc {
+  max-width: 600px; font-size: 16px; color: var(--text-muted); line-height: 1.6;
+}
+.pill-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.pill {
+  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.12);
+  color: #fff; padding: 7px 18px; border-radius: 20px;
+  font-size: 13px; font-weight: 600;
+}
+.title-logo {
+  position: absolute; bottom: -40px; right: 40px;
+  width: 100px; height: 100px; border-radius: 24px;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px; font-weight: 900; color: #fff;
+  box-shadow: 0 20px 60px rgba(59,130,246,0.3);
+  opacity: 0.3;
+}
+
+/* ─── Inner Slide Layout ─── */
+.slide-inner {
+  position: relative; z-index: 1;
+  width: 100%; max-width: 1200px; padding: 60px 60px 40px;
+  display: flex; flex-direction: column; gap: 28px;
+}
+.slide-tag {
+  font-size: 12px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1.5px; color: var(--text-muted);
+}
+.module-tag { color: var(--accent-teal); }
+.slide-title {
+  font-size: clamp(28px, 4vw, 52px); font-weight: 800; color: #fff; line-height: 1.1;
+}
+.slide-sub {
+  font-size: 16px; color: var(--text-muted); max-width: 700px; line-height: 1.5;
+}
+
+/* ─── Slide 2: Problem Grid ─── */
+.problem-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 16px; margin-top: 4px;
+}
+.problem-card {
+  padding: 24px; border-radius: 16px; display: flex; flex-direction: column; gap: 8px;
+}
+.problem-card.red { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.2); }
+.problem-card.orange { background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2); }
+.problem-card.purple { background: rgba(139,92,246,0.1); border: 1px solid rgba(139,92,246,0.2); }
+.problem-card.blue { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2); }
+.p-icon { font-size: 28px; }
+.problem-card h4 { font-size: 16px; font-weight: 700; color: #fff; }
+.problem-card p { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+
+/* ─── Slide 3: Architecture ─── */
+.arch-flow {
+  display: flex; align-items: center; gap: 16px; margin-top: 4px;
+}
+.arch-block {
+  flex: 1; padding: 28px; border-radius: 16px; display: flex; flex-direction: column; gap: 8px;
+}
+.arch-block.teal { background: rgba(16,185,129,0.1); border: 1px solid rgba(16,185,129,0.25); }
+.arch-block.blue { background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.25); }
+.arch-block.indigo { background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25); }
+.arch-icon { font-size: 32px; }
+.arch-block h4 { font-size: 18px; font-weight: 700; color: #fff; }
+.arch-block span { font-size: 13px; color: var(--accent-blue); font-weight: 600; }
+.arch-block p { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+.arch-arrow { font-size: 28px; color: rgba(255,255,255,0.2); flex-shrink: 0; }
+.tech-tags { display: flex; gap: 8px; flex-wrap: wrap; }
+.t-tag {
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.7); padding: 4px 12px;
+  border-radius: 20px; font-size: 12px; font-weight: 600;
+}
+
+/* ─── Slide 4: Recruitment Flow ─── */
+.flow-row {
+  display: flex; align-items: center; gap: 8px; overflow-x: auto; padding-bottom: 8px;
+}
+.flow-step {
+  flex: 1; min-width: 120px; background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08); border-radius: 14px;
+  padding: 20px 16px; display: flex; flex-direction: column;
+  align-items: center; text-align: center; gap: 8px; position: relative;
+}
+.flow-step.highlight-step {
+  background: rgba(59,130,246,0.12); border-color: rgba(59,130,246,0.3);
+}
+.step-num {
+  position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+  background: var(--accent-blue); color: #fff; width: 22px; height: 22px;
+  border-radius: 50%; font-size: 11px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+}
+.step-icon { font-size: 28px; margin-top: 8px; }
+.flow-step h4 { font-size: 13px; font-weight: 700; color: #fff; }
+.flow-step p { font-size: 11px; color: var(--text-muted); line-height: 1.3; }
+.flow-arrow { font-size: 20px; color: rgba(255,255,255,0.2); flex-shrink: 0; }
+
+/* ─── Slide 5: Onboarding ─── */
+.two-col { display: grid; grid-template-columns: 1fr 280px; gap: 24px; }
+.checklist-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 14px 16px; border-radius: 10px; font-size: 14px; color: #fff; font-weight: 500;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.checklist-item + .checklist-item { margin-top: 8px; }
+.checklist-item.done { background: rgba(16,185,129,0.07); }
+.checklist-item.done span { color: var(--accent-teal); font-weight: 700; font-size: 16px; }
+.checklist-item.pending { background: rgba(255,255,255,0.02); }
+.checklist-item.pending span { color: rgba(255,255,255,0.3); }
+.col-right { display: flex; flex-direction: column; gap: 14px; }
+.stat-card {
+  background: rgba(59,130,246,0.1); border: 1px solid rgba(59,130,246,0.2);
+  border-radius: 14px; padding: 24px; display: flex; flex-direction: column;
+  align-items: center; text-align: center; gap: 4px;
+}
+.stat-card.green { background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.2); }
+.stat-num { font-size: 42px; font-weight: 900; color: #fff; line-height: 1; }
+.stat-label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+
+/* ─── Slide 6: Feature Grid ─── */
+.feature-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+}
+.feature-card {
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 8px;
+}
+.f-icon { font-size: 28px; }
+.feature-card h4 { font-size: 14px; font-weight: 700; color: #fff; }
+.feature-card p { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+
+/* ─── Slide 7: Payroll Flow ─── */
+.payroll-flow {
+  display: flex; align-items: center; gap: 12px;
+}
+.pay-step {
+  flex: 1; background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07); border-radius: 16px;
+  padding: 24px 18px; display: flex; flex-direction: column;
+  align-items: center; text-align: center; gap: 10px;
+}
+.pay-step.highlight-pay {
+  background: rgba(245,158,11,0.1); border-color: rgba(245,158,11,0.3);
+}
+.pay-icon { font-size: 36px; width: 60px; height: 60px; border-radius: 14px; display: flex; align-items: center; justify-content: center; }
+.blue-bg { background: rgba(59,130,246,0.15); }
+.green-bg { background: rgba(16,185,129,0.15); }
+.purple-bg { background: rgba(139,92,246,0.15); }
+.gold-bg { background: rgba(245,158,11,0.15); }
+.pay-step h4 { font-size: 14px; font-weight: 700; color: #fff; }
+.pay-step p { font-size: 12px; color: var(--text-muted); line-height: 1.3; }
+.pay-connector {
+  font-size: 28px; font-weight: 800; color: rgba(255,255,255,0.2); flex-shrink: 0;
+}
+
+/* ─── Slide 8: Appraisal Cycle ─── */
+.appraisal-cycle {
+  display: flex; gap: 0; align-items: stretch;
+}
+.cycle-step {
+  flex: 1; background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07); border-radius: 14px;
+  padding: 28px 20px; display: flex; flex-direction: column; gap: 10px;
+}
+.cycle-step.highlight-cycle {
+  background: rgba(139,92,246,0.12); border-color: rgba(139,92,246,0.3);
+}
+.cycle-arrow {
+  font-size: 24px; color: rgba(255,255,255,0.15);
+  display: flex; align-items: center; padding: 0 8px;
+}
+.cycle-num {
+  font-size: 28px; font-weight: 900; color: var(--accent-purple);
+}
+.cycle-step h4 { font-size: 15px; font-weight: 700; color: #fff; }
+.cycle-step p { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+
+/* ─── Slide 9: Documents ─── */
+.doc-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; }
+.doc-section {
+  background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.07);
+  border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 12px;
+}
+.doc-section-title { font-size: 15px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.doc-row {
+  display: flex; flex-direction: column; gap: 2px;
+  border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px;
+}
+.doc-row:last-child { border-bottom: none; padding-bottom: 0; }
+.doc-type {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--accent-blue);
+}
+.doc-row > span:last-child { font-size: 12px; color: var(--text-muted); }
+
+/* ─── Slide 10: Separation ─── */
+.sep-flow { display: flex; align-items: stretch; gap: 8px; }
+.sep-step {
+  flex: 1; background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.07); border-radius: 14px;
+  padding: 28px 20px; display: flex; flex-direction: column; gap: 10px;
+}
+.sep-step.highlight-sep {
+  background: rgba(16,185,129,0.1); border-color: rgba(16,185,129,0.3);
+}
+.sep-arrow {
+  font-size: 24px; color: rgba(255,255,255,0.15);
+  display: flex; align-items: center; flex-shrink: 0;
+}
+.sep-badge {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 1px; color: var(--accent-red);
+}
+.done-badge { color: var(--accent-teal); }
+.sep-step h4 { font-size: 15px; font-weight: 700; color: #fff; }
+.sep-step p { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+
+/* ─── Slide 11: Module Wheel ─── */
+.module-wheel {
+  position: relative; width: 240px; height: 240px; margin: 0 auto;
+}
+.wheel-center {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: 80px; height: 80px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+  color: #fff; font-size: 14px; font-weight: 800;
+  display: flex; align-items: center; justify-content: center;
+  z-index: 2; box-shadow: 0 0 30px rgba(59,130,246,0.4);
+}
+.wheel-item {
+  position: absolute; background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1); color: #fff;
+  font-size: 11px; font-weight: 600; padding: 5px 10px; border-radius: 20px;
+  white-space: nowrap;
+}
+.w1 { top: 0; left: 50%; transform: translateX(-50%); }
+.w2 { top: 20%; right: -20px; }
+.w3 { bottom: 20%; right: -20px; }
+.w4 { bottom: 0; left: 50%; transform: translateX(-50%); }
+.w5 { bottom: 20%; left: -20px; }
+.w6 { top: 20%; left: -20px; }
+
+/* ─── Thumbnail Strip ─── */
+.thumbnail-strip {
+  position: fixed; bottom: 0; left: 0; right: 0; height: 64px;
+  background: rgba(8,13,26,0.9); backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(255,255,255,0.06);
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px; padding: 0 16px; z-index: 90;
+}
+.thumb {
+  height: 40px; width: 64px; border-radius: 6px;
+  background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+  cursor: pointer; transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.3);
+  flex-shrink: 0;
+}
+.thumb:hover { border-color: rgba(255,255,255,0.2); color: rgba(255,255,255,0.6); }
+.thumb.active-thumb {
+  border-color: var(--accent-blue); color: var(--accent-blue);
+  background: rgba(59,130,246,0.1);
+}
+
+/* ─── Animations on Active Slide ─── */
+.slide.active .slide-inner > * {
+  animation: fadeUp 0.6s ease both;
+}
+.slide.active .slide-inner > *:nth-child(1) { animation-delay: 0.05s; }
+.slide.active .slide-inner > *:nth-child(2) { animation-delay: 0.15s; }
+.slide.active .slide-inner > *:nth-child(3) { animation-delay: 0.25s; }
+.slide.active .slide-inner > *:nth-child(4) { animation-delay: 0.35s; }
+.slide.active .slide-inner > *:nth-child(5) { animation-delay: 0.45s; }
+
+.slide.active .center-content > * {
+  animation: fadeUp 0.6s ease both;
+}
+.slide.active .center-content > *:nth-child(1) { animation-delay: 0.05s; }
+.slide.active .center-content > *:nth-child(2) { animation-delay: 0.15s; }
+.slide.active .center-content > *:nth-child(3) { animation-delay: 0.25s; }
+.slide.active .center-content > *:nth-child(4) { animation-delay: 0.35s; }
+.slide.active .center-content > *:nth-child(5) { animation-delay: 0.45s; }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
