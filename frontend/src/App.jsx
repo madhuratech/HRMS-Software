@@ -151,6 +151,8 @@ function App() {
   const handleLogin = (role, name) => {
     setUserRole(role);
     setIsLoggedIn(true);
+    localStorage.setItem('userName', name);
+    localStorage.setItem('userRole', role);
   };
 
   const handleLogout = () => {

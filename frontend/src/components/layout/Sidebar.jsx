@@ -407,11 +407,11 @@ export function Sidebar({ userRole, onLogout }) {
       <div className="p-3 custom-sidebar-border-t">
         <div className="custom-sidebar-profile-bg rounded-lg p-3 flex items-center gap-3">
           <div className="w-9 h-9 rounded-full custom-sidebar-profile-avatar-bg flex items-center justify-center text-xs font-bold">
-            JD
+            {(localStorage.getItem('userName') || 'John Doe').split(' ').map(n => n[0]).join('')}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">John Doe</p>
-            <p className="text-xs text-slate-400 truncate">Super Admin</p>
+            <p className="text-sm font-medium text-white truncate">{localStorage.getItem('userName') || 'John Doe'}</p>
+            <p className="text-xs text-slate-400 truncate">{localStorage.getItem('userRole') || 'Super Admin'}</p>
           </div>
           <button
             onClick={onLogout}

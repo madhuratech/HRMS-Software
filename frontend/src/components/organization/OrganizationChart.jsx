@@ -130,8 +130,8 @@ export const OrganizationChart = () => {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-12 overflow-x-auto min-h-[600px] flex justify-center">
-        <div className="py-8">
+      <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm p-12 overflow-x-auto min-h-[600px]">
+        <div className="inline-flex min-w-full justify-center py-8">
           <OrgNode node={ORG_DATA} />
         </div>
       </div>
