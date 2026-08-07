@@ -22,6 +22,9 @@ app.use("/app/payroll", require("./routes/payroll"));
 app.use("/app/projects", require("./routes/projects"));
 app.use("/app/dashboard", require("./routes/dashboard"));
 app.use("/app/organization", require("./routes/organizationRoute"));
+app.use("/app/expenses", require("./routes/expenses"));
+app.use("/app/candidates", require("./routes/candidates"));
+app.use("/app/appraisals", require("./routes/appraisals"));
 
 const PORT = process.env.PORT || 3000;
 

@@ -13,7 +13,7 @@ export default function EmployeeDocuments() {
   // New Doc Form
   const [docType, setDocType] = useState('PAN');
   const [fileName, setFileName] = useState('');
-  const [filePath, setFilePath] = useState('');
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const empId = localStorage.getItem('selectedEmployeeId') || '1';
 
@@ -39,36 +39,46 @@ export default function EmployeeDocuments() {
     loadDocuments();
   }, [empId]);
 
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setSelectedFile(file);
+      setFileName(file.name);
+    }
+  };
+
   const handleUpload = (e) => {
     e.preventDefault();
-    if (!fileName) {
-      addToast("Please provide a file name", "error");
+    if (!selectedFile) {
+      addToast("Please select a file to upload", "error");
       return;
     }
 
+    const formData = new FormData();
+    formData.append('document', selectedFile);
+    formData.append('docType', docType);
+
     fetch(`http://localhost:3000/app/employees/${empId}/documents`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        docType,
-        fileName,
-        filePath: filePath || `/uploads/docs/${fileName}`
-      })
+      body: formData
     })
-    .then(res => {
-      if (!res.ok) throw new Error("Upload failed");
+    .then(async res => {
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.details || errData.error || "Upload failed");
+      }
       return res.json();
     })
     .then(() => {
-      addToast("Document registered successfully!", "success");
+      addToast("Document uploaded successfully!", "success");
       setFileName('');
-      setFilePath('');
+      setSelectedFile(null);
       setShowAddForm(false);
       loadDocuments();
     })
     .catch(err => {
       console.error(err);
-      addToast("Failed to save document record", "error");
+      addToast(err.message || "Failed to upload document file", "error");
     });
   };
 
@@ -127,13 +137,9 @@ export default function EmployeeDocuments() {
                 <option value="Contract">Contract</option>
               </select>
             </div>
-            <div className="hrms-input-group">
-              <label className="hrms-label">File Name *</label>
-              <input type="text" className="hrms-input" value={fileName} onChange={(e) => setFileName(e.target.value)} placeholder="e.g. Passport_Copy.pdf" />
-            </div>
             <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
-              <label className="hrms-label">Document File Path (Optional)</label>
-              <input type="text" className="hrms-input" value={filePath} onChange={(e) => setFilePath(e.target.value)} placeholder="Defaults to /uploads/docs/..." />
+              <label className="hrms-label">Select File *</label>
+              <input type="file" className="hrms-input" onChange={handleFileChange} style={{ padding: '8px' }} />
             </div>
           </div>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
@@ -199,7 +205,7 @@ export default function EmployeeDocuments() {
                     <td style={{ whiteSpace: 'nowrap' }}>{new Date(doc.uploaded_at).toLocaleDateString()}</td>
                     <td>
                       <div style={{ display: 'flex', gap: '12px' }}>
-                        <a href={doc.file_path} download title="Download" style={{cursor: 'pointer', color: '#64748b'}}><Download size={16} /></a>
+                        <a href={doc.file_path.startsWith('http') ? doc.file_path : `http://localhost:3000${doc.file_path}`} target="_blank" rel="noreferrer" download title="Download" style={{cursor: 'pointer', color: '#64748b'}}><Download size={16} /></a>
                         <button title="Delete" onClick={() => handleDelete(doc.id)} style={{background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444'}}><Trash2 size={16} /></button>
                       </div>
                     </td>

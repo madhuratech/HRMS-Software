@@ -505,7 +505,7 @@ export default function EmployeeProfileContent() {
                       <p className="hrms-text-xs hrms-text-muted">{doc.doc_type} • Uploaded on {new Date(doc.uploaded_at).toLocaleDateString()}</p>
                     </div>
                   </div>
-                  <a href={doc.file_path} download className="hrms-text-primary hrms-text-xs hrms-font-semibold hover:underline">Download</a>
+                  <a href={doc.file_path.startsWith('http') ? doc.file_path : `http://localhost:3000${doc.file_path}`} target="_blank" rel="noreferrer" download className="hrms-text-primary hrms-text-xs hrms-font-semibold hover:underline">Download</a>
                 </div>
               ))}
             </div>

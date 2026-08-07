@@ -32,6 +32,25 @@ const uploadPhoto = multer({
   }
 });
 
+// Configure multer for documents uploads
+const docUploadDir = path.join(__dirname, '..', 'uploads', 'documents');
+if (!fs.existsSync(docUploadDir)) {
+  fs.mkdirSync(docUploadDir, { recursive: true });
+}
+
+const docStorage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, docUploadDir),
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `doc_${req.params.id}_${Date.now()}${ext}`);
+  }
+});
+
+const uploadDoc = multer({
+  storage: docStorage,
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB max
+});
+
 /**
  * Helper to log employment history changes
  */
@@ -584,7 +603,19 @@ router.put("/exits/:id/settle", (req, res) => {
  * GET EMPLOYEE DOCUMENTS
  */
 router.get("/:id/documents", (req, res) => {
-  const sql = "SELECT * FROM employee_documents WHERE employee_id = ? ORDER BY uploaded_at DESC";
+  const sql = `
+    SELECT 
+      id, 
+      employee_id, 
+      document_type as doc_type, 
+      document_name as file_name, 
+      file as file_path, 
+      created_at as uploaded_at, 
+      status 
+    FROM employee_documents 
+    WHERE employee_id = ? 
+    ORDER BY created_at DESC
+  `;
   db.query(sql, [req.params.id], (err, rows) => {
     if (err) return res.status(500).json({ error: "Failed to fetch documents", details: err });
     res.json(rows);
@@ -594,14 +625,20 @@ router.get("/:id/documents", (req, res) => {
 /**
  * UPLOAD EMPLOYEE DOCUMENT PATH
  */
-router.post("/:id/documents", (req, res) => {
-  const { docType, fileName, filePath } = req.body;
+router.post("/:id/documents", uploadDoc.single('document'), (req, res) => {
+  const { docType } = req.body;
+  const fileName = req.file ? req.file.originalname : (req.body.fileName || 'Untitled');
+  const filePath = req.file ? `/uploads/documents/${req.file.filename}` : req.body.filePath;
+
   const sql = `
-    INSERT INTO employee_documents (employee_id, doc_type, file_name, file_path)
-    VALUES (?, ?, ?, ?)
+    INSERT INTO employee_documents (employee_id, document_type, document_name, file, status)
+    VALUES (?, ?, ?, ?, 'Pending')
   `;
   db.query(sql, [req.params.id, docType, fileName, filePath || `/uploads/docs/${fileName}`], (err, result) => {
-    if (err) return res.status(500).json({ error: "Failed to save document record", details: err });
+    if (err) {
+      console.error("Document upload DB error:", err);
+      return res.status(500).json({ error: "Failed to save document record", details: err.message, stack: err.stack });
+    }
     res.json({ message: "Document uploaded successfully", id: result.insertId });
   });
 });
