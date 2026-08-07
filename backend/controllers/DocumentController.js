@@ -160,7 +160,7 @@ class DocumentController {
     }
   }
 
-  static async deleteTemplate(id) {
+  static async deleteTemplate(req, res) {
     try {
       await DocumentService.deleteTemplate(req.params.id);
       return response(res, true, 200, 'Template deleted successfully.');
