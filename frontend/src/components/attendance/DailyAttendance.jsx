@@ -1,38 +1,60 @@
-import React, { useState } from 'react';
-import { Search, Filter, Download, Upload, CheckCircle2, XCircle, Clock, AlertCircle, MoreVertical, Calendar as CalendarIcon, MapPin, Users, Briefcase, ChevronDown } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Filter, CheckCircle2, XCircle, Clock, AlertCircle, MoreVertical, Calendar as CalendarIcon, ChevronDown } from 'lucide-react';
 
 export default function DailyAttendance() {
   const [searchTerm, setSearchTerm] = useState('');
+  const [attendanceData, setAttendanceData] = useState([]);
+  const [kpis, setKpis] = useState({
+    totalEmployees: 0,
+    present: 0,
+    presentPct: '0.00%',
+    absent: 0,
+    absentPct: '0.00%',
+    late: 0,
+    latePct: '0.00%',
+    leave: 0,
+    leavePct: '0.00%'
+  });
+  const [loading, setLoading] = useState(true);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
-  const attendanceData = [
-    { id: 'EMP001', name: 'Aarav Sharma', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026024d', department: 'Design', checkIn: '09:05 AM', checkOut: '06:15 PM', status: 'Present', workingHours: '09h 10m' },
-    { id: 'EMP002', name: 'Neha Patel', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', department: 'HR', checkIn: '08:55 AM', checkOut: '06:05 PM', status: 'Present', workingHours: '09h 05m' },
-    { id: 'EMP003', name: 'Rohan Mehta', avatar: 'https://i.pravatar.cc/150?u=a04258114e29026702d', department: 'Sales', checkIn: '09:15 AM', checkOut: '06:30 PM', status: 'Present', workingHours: '09h 05m' },
-    { id: 'EMP004', name: 'Priya Nair', avatar: 'https://i.pravatar.cc/150?u=a048581f4e29026701d', department: 'Finance', checkIn: '09:45 AM', checkOut: '06:30 PM', status: 'Late', workingHours: '08h 45m' },
-    { id: 'EMP005', name: 'Karan Verma', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026703d', department: 'Development', checkIn: '09:10 AM', checkOut: '06:00 PM', status: 'Present', workingHours: '08h 50m' },
-    { id: 'EMP006', name: 'Anjali Desai', avatar: 'https://i.pravatar.cc/150?img=32', department: 'Marketing', checkIn: '--', checkOut: '--', status: 'Absent', workingHours: '00h 00m' },
-    { id: 'EMP007', name: 'Vikram Singh', avatar: 'https://i.pravatar.cc/150?img=11', department: 'Operations', checkIn: '09:02 AM', checkOut: '06:10 PM', status: 'Present', workingHours: '09h 08m' },
-    { id: 'EMP008', name: 'Pooja Reddy', avatar: 'https://i.pravatar.cc/150?img=5', department: 'HR', checkIn: '--', checkOut: '--', status: 'On Leave', workingHours: '00h 00m' },
-  ];
-
-  const getStatusBadge = (status) => {
-    switch (status) {
-      case 'Present': return 'hrms-badge-active';
-      case 'Absent': return 'hrms-badge-danger';
-      case 'Late': return 'hrms-badge-warning';
-      case 'On Leave': return 'hrms-badge-pending';
-      default: return 'hrms-badge-inactive';
-    }
+  const loadDailyAttendance = () => {
+    setLoading(true);
+    fetch(`/api/attendance/daily?date=${selectedDate}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.records) setAttendanceData(data.records);
+        if (data.kpis) setKpis(data.kpis);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch daily attendance", err);
+        setLoading(false);
+      });
   };
+
+  useEffect(() => {
+    loadDailyAttendance();
+  }, [selectedDate]);
+
+  const filteredDocs = attendanceData.filter(emp =>
+    emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    emp.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    emp.department.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="hrms-content">
       {/* Header and Toolbar */}
       <div className="hrms-header" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', gap: '16px', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: '4px' }}>
         <div className="hrms-flex-start" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', minWidth: '180px', justifyContent: 'space-between', cursor: 'pointer' }}>
-            <span className="hrms-text-sm" style={{ color: '#475569', fontWeight: '500' }}>May 20, 2024</span>
-            <CalendarIcon size={16} style={{ color: '#64748b' }} />
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', minWidth: '180px', justifyContent: 'space-between' }}>
+            <input 
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              style={{ border: 'none', outline: 'none', color: '#475569', fontWeight: '500', fontSize: '14px', width: '100%', cursor: 'pointer' }}
+            />
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', minWidth: '180px', justifyContent: 'space-between', cursor: 'pointer' }}>
             <span className="hrms-text-sm" style={{ color: '#475569', fontWeight: '500' }}>All Departments</span>
@@ -63,34 +85,34 @@ export default function DailyAttendance() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '24px' }}>
             <div className="hrms-card" style={{ padding: '20px' }}>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '20px' }}>Total Employees</div>
-              <div style={{ fontSize: '32px', fontWeight: '700', color: '#2952E3', lineHeight: '1' }}>245</div>
+              <div style={{ fontSize: '32px', fontWeight: '700', color: '#2952E3', lineHeight: '1' }}>{kpis.totalEmployees}</div>
             </div>
             <div className="hrms-card" style={{ padding: '20px' }}>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '20px' }}>Present</div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
-                <div style={{ fontSize: '32px', fontWeight: '700', color: '#10b981', lineHeight: '1' }}>198</div>
-                <span style={{ fontSize: '11px', color: '#94a3b8', paddingBottom: '4px', fontWeight: '500' }}>80.82%</span>
+                <div style={{ fontSize: '32px', fontWeight: '700', color: '#10b981', lineHeight: '1' }}>{kpis.present}</div>
+                <span style={{ fontSize: '11px', color: '#94a3b8', paddingBottom: '4px', fontWeight: '500' }}>{kpis.presentPct}</span>
               </div>
             </div>
             <div className="hrms-card" style={{ padding: '20px' }}>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '20px' }}>Absent</div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
-                <div style={{ fontSize: '32px', fontWeight: '700', color: '#ef4444', lineHeight: '1' }}>28</div>
-                <span style={{ fontSize: '11px', color: '#94a3b8', paddingBottom: '4px', fontWeight: '500' }}>11.43%</span>
+                <div style={{ fontSize: '32px', fontWeight: '700', color: '#ef4444', lineHeight: '1' }}>{kpis.absent}</div>
+                <span style={{ fontSize: '11px', color: '#94a3b8', paddingBottom: '4px', fontWeight: '500' }}>{kpis.absentPct}</span>
               </div>
             </div>
             <div className="hrms-card" style={{ padding: '20px' }}>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '20px' }}>Late</div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
-                <div style={{ fontSize: '32px', fontWeight: '700', color: '#f59e0b', lineHeight: '1' }}>12</div>
-                <span style={{ fontSize: '11px', color: '#94a3b8', paddingBottom: '4px', fontWeight: '500' }}>4.90%</span>
+                <div style={{ fontSize: '32px', fontWeight: '700', color: '#f59e0b', lineHeight: '1' }}>{kpis.late}</div>
+                <span style={{ fontSize: '11px', color: '#94a3b8', paddingBottom: '4px', fontWeight: '500' }}>{kpis.latePct}</span>
               </div>
             </div>
             <div className="hrms-card" style={{ padding: '20px' }}>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '20px' }}>On Leave</div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
-                <div style={{ fontSize: '32px', fontWeight: '700', color: '#8b5cf6', lineHeight: '1' }}>7</div>
-                <span style={{ fontSize: '11px', color: '#94a3b8', paddingBottom: '4px', fontWeight: '500' }}>2.86%</span>
+                <div style={{ fontSize: '32px', fontWeight: '700', color: '#8b5cf6', lineHeight: '1' }}>{kpis.leave}</div>
+                <span style={{ fontSize: '11px', color: '#94a3b8', paddingBottom: '4px', fontWeight: '500' }}>{kpis.leavePct}</span>
               </div>
             </div>
           </div>
@@ -124,38 +146,48 @@ export default function DailyAttendance() {
                     </tr>
                   </thead>
                   <tbody>
-                    {attendanceData.map((emp) => (
-                      <tr key={emp.id}>
-                        <td style={{ whiteSpace: 'nowrap' }}>
-                          <div className="hrms-user-info">
-                            <img src={emp.avatar} alt={emp.name} className="hrms-avatar" style={{ width: '32px', height: '32px' }} />
-                            <span className="hrms-font-medium hrms-text-primary">{emp.name}</span>
-                          </div>
-                        </td>
-                        <td style={{ whiteSpace: 'nowrap' }}><span className="hrms-text-muted">{emp.id}</span></td>
-                        <td style={{ whiteSpace: 'nowrap' }}>{emp.department}</td>
-                        <td style={{ whiteSpace: 'nowrap' }} className="hrms-font-medium">{emp.checkIn}</td>
-                        <td style={{ whiteSpace: 'nowrap' }}>{emp.checkOut}</td>
-                        <td>
-                        <span style={{
-                          padding: '4px 10px', 
-                          borderRadius: '12px', 
-                          fontSize: '11px', 
-                          fontWeight: '600',
-                          backgroundColor: emp.status === 'On Leave' ? '#f3e8ff' : emp.status === 'Late' ? '#fef3c7' : emp.status === 'Absent' ? '#fee2e2' : '#dcfce7',
-                          color: emp.status === 'On Leave' ? '#9333ea' : emp.status === 'Late' ? '#d97706' : emp.status === 'Absent' ? '#dc2626' : '#16a34a'
-                        }}>
-                          {emp.status}
-                        </span>
-                      </td>
-                        <td style={{ whiteSpace: 'nowrap' }}>{emp.workingHours}</td>
-                        <td>
-                          <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
-                            <MoreVertical size={18} />
-                          </button>
-                        </td>
+                    {loading ? (
+                      <tr>
+                        <td colSpan="8" style={{ textAlign: 'center', padding: '24px' }}>Loading daily attendance records...</td>
                       </tr>
-                    ))}
+                    ) : filteredDocs.length === 0 ? (
+                      <tr>
+                        <td colSpan="8" style={{ textAlign: 'center', padding: '24px' }}>No records found.</td>
+                      </tr>
+                    ) : (
+                      filteredDocs.map((emp) => (
+                        <tr key={emp.id}>
+                          <td style={{ whiteSpace: 'nowrap' }}>
+                            <div className="hrms-user-info">
+                              <img src={emp.avatar} alt={emp.name} className="hrms-avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
+                              <span className="hrms-font-medium hrms-text-primary">{emp.name}</span>
+                            </div>
+                          </td>
+                          <td style={{ whiteSpace: 'nowrap' }}><span className="hrms-text-muted">{emp.id}</span></td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{emp.department}</td>
+                          <td style={{ whiteSpace: 'nowrap' }} className="hrms-font-medium">{emp.checkIn}</td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{emp.checkOut}</td>
+                          <td>
+                            <span style={{
+                              padding: '4px 10px', 
+                              borderRadius: '12px', 
+                              fontSize: '11px', 
+                              fontWeight: '600',
+                              backgroundColor: emp.status === 'On Leave' ? '#f3e8ff' : emp.status === 'Late' ? '#fef3c7' : emp.status === 'Absent' ? '#fee2e2' : '#dcfce7',
+                              color: emp.status === 'On Leave' ? '#9333ea' : emp.status === 'Late' ? '#d97706' : emp.status === 'Absent' ? '#dc2626' : '#16a34a'
+                            }}>
+                              {emp.status}
+                            </span>
+                          </td>
+                          <td style={{ whiteSpace: 'nowrap' }}>{emp.workingHours}</td>
+                          <td>
+                            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                              <MoreVertical size={18} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -163,18 +195,14 @@ export default function DailyAttendance() {
               {/* Pagination */}
               <div className="hrms-flex-between" style={{ padding: '16px 24px', borderTop: '1px solid #f1f5f9' }}>
                 <span className="hrms-text-sm hrms-text-muted">
-                  Showing 1 to 8 of 245 entries
+                  Showing 1 to {filteredDocs.length} of {attendanceData.length} entries
                 </span>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <button className="hrms-secondary-btn" style={{ padding: '6px', borderRadius: '4px' }} disabled>
                     &lt;
                   </button>
                   <button className="hrms-primary-btn" style={{ padding: '6px 12px', borderRadius: '4px' }}>1</button>
-                  <button className="hrms-secondary-btn" style={{ padding: '6px 12px', borderRadius: '4px', border: 'none' }}>2</button>
-                  <button className="hrms-secondary-btn" style={{ padding: '6px 12px', borderRadius: '4px', border: 'none' }}>3</button>
-                  <span className="hrms-text-muted">...</span>
-                  <button className="hrms-secondary-btn" style={{ padding: '6px 12px', borderRadius: '4px', border: 'none' }}>23</button>
-                  <button className="hrms-secondary-btn" style={{ padding: '6px', borderRadius: '4px' }}>
+                  <button className="hrms-secondary-btn" style={{ padding: '6px', borderRadius: '4px' }} disabled>
                     &gt;
                   </button>
                 </div>
