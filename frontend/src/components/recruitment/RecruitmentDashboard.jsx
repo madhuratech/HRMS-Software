@@ -29,11 +29,11 @@ export default function RecruitmentDashboard() {
       const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
 
       // Fetch Stats
-      const statsRes = await fetch('/app/requirements/dashboard', { headers });
+      const statsRes = await fetch('http://localhost:5000/app/requirements/dashboard', { headers });
       const statsData = await statsRes.json();
 
       // Fetch Recent Jobs
-      const jobsRes = await fetch('/app/requirements?limit=5', { headers });
+      const jobsRes = await fetch('http://localhost:5000/app/requirements?limit=5', { headers });
       const jobsData = await jobsRes.json();
 
       if (statsData.success && jobsData.success) {

@@ -60,7 +60,7 @@ export default function Probation() {
       const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
       
       // Fetch active employees
-      const empRes = await fetch('/app/employees', { headers });
+      const empRes = await fetch('http://localhost:5000/app/employees', { headers });
       const empData = await empRes.json();
       if (Array.isArray(empData)) {
         setEmployees(empData);
@@ -72,7 +72,7 @@ export default function Probation() {
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const res = await fetch('/app/probations/dashboard', {
+      const res = await fetch('http://localhost:5000/app/probations/dashboard', {
         headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
       const resData = await res.json();
@@ -87,7 +87,7 @@ export default function Probation() {
   const fetchProbations = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `/app/probations?page=${page}&limit=${limit}`;
+      let url = `http://localhost:5000/app/probations?page=${page}&limit=${limit}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
@@ -157,7 +157,7 @@ export default function Probation() {
         remarks: formData.remarks.trim()
       };
 
-      const res = await fetch('/app/probations', {
+      const res = await fetch('http://localhost:5000/app/probations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -184,7 +184,7 @@ export default function Probation() {
 
   const handleComplete = async (probationId) => {
     try {
-      const res = await fetch(`/app/probations/${probationId}/complete`, {
+      const res = await fetch(`http://localhost:5000/app/probations/${probationId}/complete`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`
@@ -208,7 +208,7 @@ export default function Probation() {
     if (!newDate) return;
 
     try {
-      const res = await fetch(`/app/probations/${probationId}/extend`, {
+      const res = await fetch(`http://localhost:5000/app/probations/${probationId}/extend`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

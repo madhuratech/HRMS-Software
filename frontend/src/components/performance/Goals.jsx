@@ -63,14 +63,14 @@ export default function Goals() {
       const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
       
       // Fetch branches (used as departments in employee records)
-      const deptRes = await fetch('/app/requirements/meta/all', { headers });
+      const deptRes = await fetch('http://localhost:5000/app/requirements/meta/all', { headers });
       const deptData = await deptRes.json();
       if (deptData && deptData.branches) {
         setDepartments(deptData.branches); // branches serve as department grouping
       }
 
       // Fetch employees
-      const empRes = await fetch('/app/employees', { headers });
+      const empRes = await fetch('http://localhost:5000/app/employees', { headers });
       const empData = await empRes.json();
       if (Array.isArray(empData)) {
         setEmployees(empData);
@@ -82,7 +82,7 @@ export default function Goals() {
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const res = await fetch('/app/goals/dashboard', {
+      const res = await fetch('http://localhost:5000/app/goals/dashboard', {
         headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
       const resData = await res.json();
@@ -97,7 +97,7 @@ export default function Goals() {
   const fetchGoals = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `/app/goals?page=${page}&limit=${limit}`;
+      let url = `http://localhost:5000/app/goals?page=${page}&limit=${limit}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
@@ -153,7 +153,7 @@ export default function Goals() {
         goal_description: formData.description.trim()
       };
 
-      const res = await fetch('/app/goals', {
+      const res = await fetch('http://localhost:5000/app/goals', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

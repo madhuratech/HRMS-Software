@@ -32,7 +32,7 @@ export default function HiringPipeline() {
   const fetchStats = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/app/pipeline/stats', {
+      const res = await fetch('http://localhost:5000/app/pipeline/stats', {
         headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
       const data = await res.json();
@@ -73,7 +73,7 @@ export default function HiringPipeline() {
 
     setSubmitting(true);
     try {
-      const res = await fetch('/app/pipeline/sources', {
+      const res = await fetch('http://localhost:5000/app/pipeline/sources', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -119,25 +119,25 @@ export default function HiringPipeline() {
 
       {/* Horizontal Pipeline */}
       <div style={{ display: 'flex', alignItems: 'stretch', gap: '8px' }}>
-        <div className="pipeline-step-wrapper" style={{ flex: 1, background: '#EEF2FF', borderRadius: '12px 0 0 12px', padding: '24px', position: 'relative' }}>
+        <div style={{ flex: 1, background: '#EEF2FF', borderRadius: '12px 0 0 12px', padding: '24px', position: 'relative' }}>
           <div style={{ fontSize: '14px', color: '#6366F1', fontWeight: '600' }}>Applied</div>
           <div style={{ fontSize: '28px', color: '#1E293B', fontWeight: '700', marginTop: '8px' }}>{totals.applied}</div>
-          <div style={{ position: 'absolute', right: '-12px', top: '50%', width: '24px', height: '24px', background: '#FFF', transform: 'translateY(-50%) rotate(45deg)', zIndex: 1 }}></div>
+          <div style={{ position: 'absolute', right: '-12px', top: '50%', transform: 'translateY(-50%)', width: '24px', height: '24px', background: '#FFF', transform: 'translateY(-50%) rotate(45deg)', zIndex: 1 }}></div>
         </div>
         <div style={{ flex: 1, background: '#F5F3FF', padding: '24px', position: 'relative' }}>
           <div style={{ fontSize: '14px', color: '#8B5CF6', fontWeight: '600' }}>Screening</div>
           <div style={{ fontSize: '28px', color: '#1E293B', fontWeight: '700', marginTop: '8px' }}>{totals.screening}</div>
-          <div style={{ position: 'absolute', right: '-12px', top: '50%', width: '24px', height: '24px', background: '#FFF', transform: 'translateY(-50%) rotate(45deg)', zIndex: 1 }}></div>
+          <div style={{ position: 'absolute', right: '-12px', top: '50%', transform: 'translateY(-50%)', width: '24px', height: '24px', background: '#FFF', transform: 'translateY(-50%) rotate(45deg)', zIndex: 1 }}></div>
         </div>
         <div style={{ flex: 1, background: '#FFFBEB', padding: '24px', position: 'relative' }}>
           <div style={{ fontSize: '14px', color: '#F59E0B', fontWeight: '600' }}>Interview</div>
           <div style={{ fontSize: '28px', color: '#1E293B', fontWeight: '700', marginTop: '8px' }}>{totals.interview}</div>
-          <div style={{ position: 'absolute', right: '-12px', top: '50%', width: '24px', height: '24px', background: '#FFF', transform: 'translateY(-50%) rotate(45deg)', zIndex: 1 }}></div>
+          <div style={{ position: 'absolute', right: '-12px', top: '50%', transform: 'translateY(-50%)', width: '24px', height: '24px', background: '#FFF', transform: 'translateY(-50%) rotate(45deg)', zIndex: 1 }}></div>
         </div>
         <div style={{ flex: 1, background: '#F0FDF4', padding: '24px', position: 'relative' }}>
           <div style={{ fontSize: '14px', color: '#10B981', fontWeight: '600' }}>Offered</div>
           <div style={{ fontSize: '28px', color: '#1E293B', fontWeight: '700', marginTop: '8px' }}>{totals.offer}</div>
-          <div style={{ position: 'absolute', right: '-12px', top: '50%', width: '24px', height: '24px', background: '#FFF', transform: 'translateY(-50%) rotate(45deg)', zIndex: 1 }}></div>
+          <div style={{ position: 'absolute', right: '-12px', top: '50%', transform: 'translateY(-50%)', width: '24px', height: '24px', background: '#FFF', transform: 'translateY(-50%) rotate(45deg)', zIndex: 1 }}></div>
         </div>
         <div style={{ flex: 1, background: '#ECFDF5', borderRadius: '0 12px 12px 0', padding: '24px' }}>
           <div style={{ fontSize: '14px', color: '#059669', fontWeight: '600' }}>Hired</div>

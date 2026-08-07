@@ -54,7 +54,7 @@ import { AppLayout } from './components/layout/AppLayout';
 
 // Attendance Module Imports
 import DailyAttendance from './components/attendance/DailyAttendance';
-import GPSAttendance from './components/attendance/GPSAttendance';
+import BiometricAttendance from './components/attendance/BiometricAttendance';
 import Regularization from './components/attendance/Regularization';
 import ShiftRoster from './components/attendance/ShiftRoster';
 import Overtime from './components/attendance/Overtime';
@@ -145,20 +145,72 @@ import { Agentation } from 'agentation';
 function App() {
   const [authView, setAuthView] = useState('login');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [currentView, setCurrentView] = useState('dashboard');
   const [userRole, setUserRole] = useState('SUPER_ADMIN');
+  const [userName, setUserName] = useState('');
+
+  // On mount: restore auth state from localStorage
+  React.useEffect(() => {
+    try {
+      const storedAuth = localStorage.getItem('hrms_auth');
+      if (storedAuth) {
+        const { role, name, loggedIn } = JSON.parse(storedAuth);
+        if (loggedIn && role) {
+          setUserRole(role);
+          setUserName(name || '');
+          setIsLoggedIn(true);
+        }
+      }
+    } catch (err) {
+      // Corrupted storage — clear it and stay on login
+      localStorage.removeItem('hrms_auth');
+    } finally {
+      setIsInitializing(false);
+    }
+  }, []);
 
   const handleLogin = (role, name) => {
     setUserRole(role);
+    setUserName(name || '');
     setIsLoggedIn(true);
-    localStorage.setItem('userName', name);
-    localStorage.setItem('userRole', role);
+    // Persist auth to localStorage so refresh doesn't log out the user
+    localStorage.setItem('hrms_auth', JSON.stringify({ role, name, loggedIn: true }));
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
+    setUserName('');
     setAuthView('login');
+    // Clear persisted auth on explicit logout
+    localStorage.removeItem('hrms_auth');
   };
+
+  // Show a full-screen loading spinner while restoring auth state
+  if (isInitializing) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)',
+        gap: 20,
+      }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: '50%',
+          border: '4px solid rgba(255,255,255,0.15)',
+          borderTopColor: '#3b82f6',
+          animation: 'spin 0.85s linear infinite',
+        }} />
+        <p style={{ color: '#94a3b8', fontSize: 15, fontWeight: 500, letterSpacing: '0.02em' }}>
+          Loading HRMS…
+        </p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
 
   if (!isLoggedIn) {
     if (authView === 'register') {
@@ -237,7 +289,7 @@ function App() {
             
             {/* Attendance Routes */}
             <Route path="/attendance/daily" element={<DailyAttendance />} />
-            <Route path="/attendance/gps" element={<GPSAttendance />} />
+            <Route path="/attendance/biometric" element={<BiometricAttendance />} />
             <Route path="/attendance/regularization" element={<Regularization />} />
             <Route path="/attendance/shift-roster" element={<ShiftRoster />} />
             <Route path="/attendance/overtime" element={<Overtime />} />

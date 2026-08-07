@@ -60,14 +60,14 @@ export default function Appraisals() {
       const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
       
       // Fetch departments
-      const deptRes = await fetch('/app/requirements/meta/all', { headers });
+      const deptRes = await fetch('http://localhost:5000/app/requirements/meta/all', { headers });
       const deptData = await deptRes.json();
       if (deptData && deptData.departments) {
         setDepartments(deptData.departments);
       }
 
       // Fetch employees
-      const empRes = await fetch('/app/employees', { headers });
+      const empRes = await fetch('http://localhost:5000/app/employees', { headers });
       const empData = await empRes.json();
       if (Array.isArray(empData)) {
         setEmployees(empData);
@@ -79,7 +79,7 @@ export default function Appraisals() {
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const res = await fetch('/app/appraisals/dashboard', {
+      const res = await fetch('http://localhost:5000/app/appraisals/dashboard', {
         headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
       const resData = await res.json();
@@ -94,7 +94,7 @@ export default function Appraisals() {
   const fetchAppraisals = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `/app/appraisals?page=${page}&limit=${limit}`;
+      let url = `http://localhost:5000/app/appraisals?page=${page}&limit=${limit}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
@@ -151,7 +151,7 @@ export default function Appraisals() {
         status: 'In Progress'
       };
 
-      const res = await fetch('/app/appraisals', {
+      const res = await fetch('http://localhost:5000/app/appraisals', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -178,7 +178,7 @@ export default function Appraisals() {
 
   const handleApprove = async (appraisalId) => {
     try {
-      const res = await fetch(`/app/appraisals/${appraisalId}`, {
+      const res = await fetch(`http://localhost:5000/app/appraisals/${appraisalId}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

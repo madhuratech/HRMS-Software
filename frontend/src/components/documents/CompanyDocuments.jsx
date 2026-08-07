@@ -64,7 +64,7 @@ export function CompanyDocuments() {
       data.append('status', formData.status);
       data.append('file', selectedFile);
 
-      const response = await fetch('/app/documents/company', {
+      const response = await fetch('http://localhost:5000/app/documents/company', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`

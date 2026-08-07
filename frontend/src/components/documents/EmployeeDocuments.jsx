@@ -66,7 +66,7 @@ export function EmployeeDocuments() {
       data.append('status', formData.status);
       data.append('file', selectedFile);
 
-      const response = await fetch('/app/documents/employee', {
+      const response = await fetch('http://localhost:5000/app/documents/employee', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`

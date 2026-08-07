@@ -59,14 +59,14 @@ export default function AssetAllocation() {
       const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
       
       // Fetch active employees
-      const empRes = await fetch('/app/employees', { headers });
+      const empRes = await fetch('http://localhost:5000/app/employees', { headers });
       const empData = await empRes.json();
       if (Array.isArray(empData)) {
         setEmployees(empData);
       }
 
       // Fetch available assets
-      const assetRes = await fetch('/app/assets/available', { headers });
+      const assetRes = await fetch('http://localhost:5000/app/assets/available', { headers });
       const assetData = await assetRes.json();
       if (assetData.success && assetData.data) {
         setAvailableAssets(assetData.data);
@@ -78,7 +78,7 @@ export default function AssetAllocation() {
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const res = await fetch('/app/assets/dashboard', {
+      const res = await fetch('http://localhost:5000/app/assets/dashboard', {
         headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
       const resData = await res.json();
@@ -93,7 +93,7 @@ export default function AssetAllocation() {
   const fetchAllocations = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `/app/assets?page=${page}&limit=${limit}`;
+      let url = `http://localhost:5000/app/assets?page=${page}&limit=${limit}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
@@ -162,7 +162,7 @@ export default function AssetAllocation() {
         description: formData.description.trim()
       };
 
-      const res = await fetch('/app/assets', {
+      const res = await fetch('http://localhost:5000/app/assets', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -192,7 +192,7 @@ export default function AssetAllocation() {
     if (!window.confirm('Are you sure you want to mark this asset as returned?')) return;
     
     try {
-      const res = await fetch(`/app/assets/${allocationId}/return`, {
+      const res = await fetch(`http://localhost:5000/app/assets/${allocationId}/return`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`

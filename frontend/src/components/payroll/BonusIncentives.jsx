@@ -42,15 +42,15 @@ export default function BonusIncentives() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      
+
       {/* Top Toolbar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '16px', flex: 1 }}>
           <div style={{ position: 'relative', width: '300px' }}>
             <Search size={18} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-            <input 
-              type="text" 
-              placeholder="Search Employee..." 
+            <input
+              type="text"
+              placeholder="Search Employee..."
               style={{ width: '100%', padding: '10px 10px 10px 40px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px' }}
             />
           </div>
@@ -92,7 +92,7 @@ export default function BonusIncentives() {
               <BarChart data={barData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} dx={-10} tickFormatter={(val) => `₹${val/1000}k`} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} dx={-10} tickFormatter={(val) => `₹${val / 1000}k`} />
                 <Tooltip cursor={{ fill: '#F8FAFC' }} />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
                 <Bar dataKey="Bonus" fill="#2952E3" radius={[4, 4, 0, 0]} maxBarSize={40} />
@@ -101,7 +101,7 @@ export default function BonusIncentives() {
             </ResponsiveContainer>
           </div>
         </div>
-        
+
         <div style={cardStyle}>
           <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Bonus Distribution</h3>
           <div style={{ height: '220px', width: '100%' }}>
@@ -111,11 +111,11 @@ export default function BonusIncentives() {
                   {pieData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
-                  <Label 
-                    value="600k" 
-                    position="center" 
-                    fill="#1E293B" 
-                    style={{ fontSize: '24px', fontWeight: '700' }} 
+                  <Label
+                    value="600k"
+                    position="center"
+                    fill="#1E293B"
+                    style={{ fontSize: '24px', fontWeight: '700' }}
                   />
                 </Pie>
                 <Tooltip />
@@ -165,13 +165,13 @@ export default function BonusIncentives() {
                   <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: '600', color: '#1E293B' }}>{row.amount}</td>
                   <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569' }}>{row.date}</td>
                   <td style={{ padding: '16px 24px', textAlign: 'center' }}>
-                    <span style={{ 
-                      padding: '6px 12px', 
-                      borderRadius: '20px', 
-                      fontSize: '12px', 
-                      fontWeight: '600', 
-                      backgroundColor: row.status === 'Paid' ? '#ECFDF5' : row.status === 'Approved' ? '#EFF6FF' : '#FFFBEB', 
-                      color: row.status === 'Paid' ? '#10B981' : row.status === 'Approved' ? '#2952E3' : '#F59E0B' 
+                    <span style={{
+                      padding: '6px 12px',
+                      borderRadius: '20px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      backgroundColor: row.status === 'Paid' ? '#ECFDF5' : row.status === 'Approved' ? '#EFF6FF' : '#FFFBEB',
+                      color: row.status === 'Paid' ? '#10B981' : row.status === 'Approved' ? '#2952E3' : '#F59E0B'
                     }}>
                       {row.status}
                     </span>
