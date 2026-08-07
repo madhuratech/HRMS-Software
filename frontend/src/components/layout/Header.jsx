@@ -144,11 +144,11 @@ export function Header({ title, userRole, currentView }) {
         {/* User Info */}
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold text-white">
-            JD
+            {(localStorage.getItem('userName') || 'John Doe').split(' ').map(n => n[0]).join('')}
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-800">John Doe</p>
-            <p className="text-xs text-slate-500">Super Admin</p>
+            <p className="text-sm font-semibold text-slate-800">{localStorage.getItem('userName') || 'John Doe'}</p>
+            <p className="text-xs text-slate-500">{localStorage.getItem('userRole') || 'Super Admin'}</p>
           </div>
         </div>
       </div>

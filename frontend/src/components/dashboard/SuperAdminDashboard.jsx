@@ -144,6 +144,67 @@ export function SuperAdminDashboard() {
   const completedProjects = stats ? stats.completedProjects : 0;
   const clientCount = stats ? stats.totalClients : 102;
 
+  // Dynamically calculate attendance stats
+  const presentToday = stats ? stats.attendanceToday : 856;
+  const leaveToday = stats ? stats.totalLeaves : 42;
+  const absentToday = stats ? Math.max(0, employeeCount - presentToday - leaveToday) : 136;
+
+  const totalForPct = employeeCount > 0 ? employeeCount : (presentToday + leaveToday + absentToday);
+  const presentPct = totalForPct > 0 ? Math.round((presentToday / totalForPct) * 100) : 83;
+  const leavePct = totalForPct > 0 ? Math.round((leaveToday / totalForPct) * 100) : 12;
+  const absentPct = Math.max(0, 100 - presentPct - leavePct);
+
+  const donutStatus = [
+    { name: 'Present', value: presentPct, color: '#10B981' },
+    { name: 'Leave', value: leavePct, color: '#CBD5E1' },
+    { name: 'Absent', value: absentPct, color: '#EF4444' },
+  ];
+
+  const perfList = stats && stats.performanceEmployees && stats.performanceEmployees.length > 0
+    ? stats.performanceEmployees.map((row, idx) => ({
+        ...row,
+        avatar: `https://i.pravatar.cc/100?u=perf${idx}`
+      }))
+    : [];
+
+  const holidayList = stats && stats.upcomingHolidays && stats.upcomingHolidays.length > 0
+    ? stats.upcomingHolidays.map(h => ({
+        date: new Date(h.date).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }),
+        day: new Date(h.date).toLocaleDateString([], { weekday: 'long' }),
+        name: h.name
+      }))
+    : [];
+
+  const birthdayList = stats && stats.upcomingBirthdays && stats.upcomingBirthdays.length > 0
+    ? stats.upcomingBirthdays.map((b, idx) => ({
+        img: `https://i.pravatar.cc/100?u=birth${idx}`,
+        name: b.name,
+        role: 'Team Member',
+        date: b.date || 'Today'
+      }))
+    : [];
+
+  const activityList = stats && stats.recentActivity && stats.recentActivity.length > 0
+    ? stats.recentActivity.map((act, idx) => ({
+        avatar: `https://i.pravatar.cc/100?u=act${idx}`,
+        name: act.employee_name,
+        action: act.punch_type === 'IN' ? 'punched in at' : 'punched out at',
+        highlight: new Date(act.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time: 'Just now',
+        dot: act.punch_type === 'IN' ? '#10B981' : '#EF4444'
+      }))
+    : [];
+
+  const leaveList = stats && stats.recentLeaves && stats.recentLeaves.length > 0
+    ? stats.recentLeaves.map((l, idx) => ({
+        avatar: `https://i.pravatar.cc/100?u=leave${idx}`,
+        name: l.employee_name,
+        dept: l.dept_name || 'HR',
+        type: l.leave_name || 'Sick Leave',
+        days: `${l.duration || 1} day`
+      }))
+    : [];
+
   // Adapt department summary to chart format
   const chartData = stats && stats.departmentSummary.length > 0 
     ? stats.departmentSummary.map(d => ({ team: d.dept, achievement: d.emp * 12 })) 
@@ -204,14 +265,14 @@ export function SuperAdminDashboard() {
             <div style={{ width: '100%', height: 160, position: 'relative' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={DONUT_STATUS} cx="50%" cy="50%" innerRadius={48} outerRadius={68} dataKey="value" stroke="none">
-                    {DONUT_STATUS.map((e, i) => <Cell key={i} fill={e.color} />)}
+                  <Pie data={donutStatus} cx="50%" cy="50%" innerRadius={48} outerRadius={68} dataKey="value" stroke="none">
+                    {donutStatus.map((e, i) => <Cell key={i} fill={e.color} />)}
                   </Pie>
                   <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }} />
                 </PieChart>
               </ResponsiveContainer>
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                <span style={{ fontSize: 24, fontWeight: 800, color: '#111827', lineHeight: 1 }}>83%</span>
+                <span style={{ fontSize: 24, fontWeight: 800, color: '#111827', lineHeight: 1 }}>{presentPct}%</span>
                 <span style={{ fontSize: 10, fontWeight: 600, color: '#6B7280', marginTop: 2, textTransform: 'uppercase' }}>Present</span>
               </div>
             </div>
@@ -223,7 +284,7 @@ export function SuperAdminDashboard() {
                   <UserCheck size={14} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>856</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>{presentToday}</div>
                   <div style={{ fontSize: 11, fontWeight: 500, color: '#16A34A' }}>Present</div>
                 </div>
               </div>
@@ -233,7 +294,7 @@ export function SuperAdminDashboard() {
                   <Calendar size={14} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>42</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>{leaveToday}</div>
                   <div style={{ fontSize: 11, fontWeight: 500, color: '#EF4444' }}>On Leave</div>
                 </div>
               </div>
@@ -243,7 +304,7 @@ export function SuperAdminDashboard() {
                   <Calendar size={14} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>136</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>{absentToday}</div>
                   <div style={{ fontSize: 11, fontWeight: 500, color: '#2563EB' }}>Absent</div>
                 </div>
               </div>
@@ -275,7 +336,7 @@ export function SuperAdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {PERFORMANCE_EMPLOYEES.map((row, idx) => (
+                {perfList.map((row, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9', height: 52 }} className="hover:bg-slate-50 transition-colors">
                     <td style={{ padding: '0 20px', fontSize: 13, color: '#111827', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -319,18 +380,12 @@ export function SuperAdminDashboard() {
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B' }} />
               <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#111827' }}>On Leave Today</h3>
             </div>
-            <span style={{ background: '#FEF3C7', color: '#D97706', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>42</span>
+            <span style={{ background: '#FEF3C7', color: '#D97706', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>{leaveToday}</span>
           </div>
 
           {/* Leave Employee List */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '10px 0' }}>
-            {[
-              { avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=80', name: 'Arjun Mehta', dept: 'Engineering', type: 'Sick Leave', days: '1 day' },
-              { avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&auto=format&fit=crop&q=80', name: 'Kavya Nair', dept: 'Marketing', type: 'Casual Leave', days: '2 days' },
-              { avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&auto=format&fit=crop&q=80', name: 'Rohan Gupta', dept: 'Finance', type: 'Annual Leave', days: '3 days' },
-              { avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80', name: 'Divya Pillai', dept: 'HR', type: 'Sick Leave', days: '1 day' },
-              { avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&auto=format&fit=crop&q=80', name: 'Amit Sharma', dept: 'Sales', type: 'Earned Leave', days: '5 days' },
-            ].map((emp, i) => {
+            {leaveList.map((emp, i) => {
               const typeColor = emp.type === 'Sick Leave'
                 ? { bg: '#FEF2F2', text: '#EF4444' }
                 : emp.type === 'Annual Leave' || emp.type === 'Earned Leave'
@@ -371,12 +426,7 @@ export function SuperAdminDashboard() {
             <button style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>View All</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {[
-              { date: '25 May, 2024', day: 'Saturday', name: 'Republic Day' },
-              { date: '17 Jun, 2024', day: 'Monday', name: 'Bakrid' },
-              { date: '15 Aug, 2024', day: 'Thursday', name: 'Independence Day' },
-              { date: '02 Oct, 2024', day: 'Wednesday', name: 'Gandhi Jayanti' },
-            ].map((h, i, arr) => (
+            {holidayList.map((h, i, arr) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '13px 0',
@@ -398,12 +448,7 @@ export function SuperAdminDashboard() {
             <button style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>View All</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {[
-              { img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80', name: 'Aarav Patel', role: 'Software Engineer', date: 'Today' },
-              { img: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80', name: 'Priya Sharma', role: 'HR Executive', date: 'Tomorrow' },
-              { img: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&auto=format&fit=crop&q=80', name: 'Rahul Kumar', role: 'Team Lead', date: 'May 26' },
-              { img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80', name: 'Sneha Reddy', role: 'UI/UX Designer', date: 'May 28' },
-            ].map((p, i) => (
+            {birthdayList.map((p, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                   <img src={p.img} alt={p.name} style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
@@ -425,28 +470,7 @@ export function SuperAdminDashboard() {
             <button style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>View All</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {[
-              {
-                avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-                name: 'John Doe', action: 'completed the project', highlight: '"HR Management System"',
-                time: '2 mins ago', dot: '#10B981',
-              },
-              {
-                avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
-                name: 'Alice Johnson', action: 'added a new employee', highlight: '',
-                time: '15 mins ago', dot: '#F59E0B',
-              },
-              {
-                avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
-                name: 'Robert Smith', action: 'updated project status', highlight: '',
-                time: '1 hour ago', dot: '#F59E0B',
-              },
-              {
-                avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&auto=format&fit=crop&q=80',
-                name: 'Emily Davis', action: 'submitted leave request', highlight: '',
-                time: '2 hours ago', dot: '#EF4444',
-              },
-            ].map((item, i, arr) => (
+            {activityList.map((item, i, arr) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '11px 0',
