@@ -150,3 +150,87 @@ exports.getDailyStats = (req, res) => {
     });
   });
 };
+
+exports.getGPSFeed = (req, res) => {
+  const targetDate = req.query.date || new Date().toISOString().split('T')[0];
+
+  const sql = `
+    SELECT
+      e.id as employee_id,
+      e.name,
+      e.profile_photo,
+      MIN(CASE WHEN a.punch_type = 'IN'  THEN a.punch_time END) as check_in_time,
+      MAX(CASE WHEN a.punch_type = 'OUT' THEN a.punch_time END) as check_out_time,
+      (SELECT latitude  FROM attendance WHERE employee_id = e.id AND DATE(punch_time) = ? ORDER BY punch_time DESC LIMIT 1) as last_lat,
+      (SELECT longitude FROM attendance WHERE employee_id = e.id AND DATE(punch_time) = ? ORDER BY punch_time DESC LIMIT 1) as last_lng
+    FROM employees e
+    INNER JOIN attendance a ON a.employee_id = e.id AND DATE(a.punch_time) = ?
+    GROUP BY e.id, e.name, e.profile_photo
+    ORDER BY MIN(a.punch_time) DESC
+  `;
+
+  db.query(sql, [targetDate, targetDate, targetDate], (err, rows) => {
+    if (err) {
+      console.error("GPS feed error:", err);
+      return res.status(500).json({ message: "Failed to load GPS feed", error: err.message });
+    }
+
+    const GEOFENCES = [
+      { id: 1, name: 'Main Headquarters',         lat: 12.9718, lng: 77.5945, radius: 100 },
+      { id: 2, name: 'Branch Office - Downtown',   lat: 12.9730, lng: 77.6190, radius: 150 },
+      { id: 3, name: 'Remote Office - Tech Hub',   lat: 12.9302, lng: 77.5315, radius: 200 },
+      { id: 4, name: 'Client Site - Retail Center', lat: 13.0010, lng: 77.5725, radius: 250 },
+    ];
+
+    function getDistance(lat1, lng1, lat2, lng2) {
+      const R = 6371000;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLng = (lng2 - lng1) * Math.PI / 180;
+      const a = Math.sin(dLat/2)*Math.sin(dLat/2)
+              + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)*Math.sin(dLng/2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function resolveZone(lat, lng) {
+      if (!lat || !lng) return { name: 'Unknown Location', onSite: false };
+      for (const z of GEOFENCES) {
+        if (getDistance(parseFloat(lat), parseFloat(lng), z.lat, z.lng) <= z.radius)
+          return { name: z.name, onSite: true };
+      }
+      return { name: 'Outside Geofence', onSite: false };
+    }
+
+    const records = rows.map(row => {
+      const zone = resolveZone(row.last_lat, row.last_lng);
+      const fmt = t => t ? new Date(t).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--';
+      const lat = row.last_lat ? parseFloat(row.last_lat).toFixed(4) : null;
+      const lng = row.last_lng ? parseFloat(row.last_lng).toFixed(4) : null;
+      return {
+        employee_id: row.employee_id,
+        name: row.name,
+        avatar: row.profile_photo ? `/${row.profile_photo}` : null,
+        location: zone.name,
+        checkIn: fmt(row.check_in_time),
+        checkOut: fmt(row.check_out_time),
+        coordinates: lat && lng ? `${lat}° N, ${lng}° E` : 'N/A',
+        lat: lat ? parseFloat(lat) : null,
+        lng: lng ? parseFloat(lng) : null,
+        status: zone.onSite ? 'On-Site' : 'Remote'
+      };
+    });
+
+    const onSite = records.filter(r => r.status === 'On-Site').length;
+    const remote = records.filter(r => r.status === 'Remote').length;
+    const geofences = GEOFENCES.map(z => ({
+      ...z,
+      activeStaff: records.filter(r => r.location === z.name).length
+    }));
+
+    res.json({
+      success: true,
+      kpis: { totalCheckins: records.length, onSite, remote, activeGeofences: GEOFENCES.length },
+      records,
+      geofences
+    });
+  });
+};
