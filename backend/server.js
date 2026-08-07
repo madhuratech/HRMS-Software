@@ -68,7 +68,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ success: false, message: err.message || 'Internal Server Error' });
 });
 
-const PORT = 5000;
+const PORT = 5001;
 
 app.listen(PORT, () => {
     console.log(`SERVER IS RUNNING at http://localhost:${PORT}`);
