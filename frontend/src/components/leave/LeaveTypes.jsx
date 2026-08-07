@@ -65,8 +65,8 @@ const leaveTypesData = [
     forward: 'No',
     encash: 'No',
     status: 'Active',
-    iconBg: '#eff6ff',
-    icon: <Baby size={18} color="#3b82f6" />
+    iconBg: '#ecfeff',
+    icon: <Briefcase size={18} color="#06b6d4" />
   },
   {
     name: 'Compensatory Off',
