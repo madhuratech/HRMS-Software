@@ -222,16 +222,19 @@ export function CompanyDocuments() {
                   </td>
                   <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                      {r.document_path && (
-                        <>
-                          <a href={`/${r.document_path}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: '#2563EB', fontSize: 12, fontWeight: 600 }}>
-                            View
-                          </a>
-                          <a href={`/${r.document_path}`} download style={{ textDecoration: 'none', color: '#16A34A', fontSize: 12, fontWeight: 600 }}>
-                            Download
-                          </a>
-                        </>
-                      )}
+                      {r.document_path && (() => {
+                        const fileUrl = r.document_path.startsWith('/') ? r.document_path : `/${r.document_path}`;
+                        return (
+                          <>
+                            <a href={fileUrl} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: '#2563EB', fontSize: 12, fontWeight: 600 }}>
+                              View
+                            </a>
+                            <a href={fileUrl} download style={{ textDecoration: 'none', color: '#16A34A', fontSize: 12, fontWeight: 600 }}>
+                              Download
+                            </a>
+                          </>
+                        );
+                      })()}
                       <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
                         Delete
                       </button>
