@@ -1,299 +1,314 @@
-import React, { useState } from 'react';
-import { Search, ChevronDown, Download, Upload, Eye, FileText, CheckCircle, Clock, AlertTriangle, XCircle, Filter } from 'lucide-react';
-
-const DOC_TYPES = [
-  { id: 'all',        label: 'All Documents',    count: 1248 },
-  { id: 'identity',   label: 'Identity Proof',   count: 256 },
-  { id: 'address',    label: 'Address Proof',    count: 168 },
-  { id: 'education',  label: 'Educational',      count: 312 },
-  { id: 'experience', label: 'Experience',       count: 245 },
-  { id: 'other',      label: 'Other Documents',  count: 267 },
-];
-
-const EMP_DOCS = [
-  { avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80', emp: 'Rohit Sharma',  role: 'Software Engineer',  type: 'Identity Proof',  docName: 'Aadhaar Card.pdf',    date: '20 May 2024', expiry: '20 May 2034', status: 'Verified' },
-  { avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80', emp: 'Priya Patel',   role: 'Marketing Executive',type: 'Address Proof',   docName: 'Passport.pdf',        date: '18 May 2024', expiry: '18 May 2034', status: 'Verified' },
-  { avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&auto=format&fit=crop&q=80', emp: 'Amit Kumar',   role: 'Product Manager',    type: 'Educational',     docName: 'Degree Certificate.pdf',date: '15 May 2024', expiry: '-',          status: 'Verified' },
-  { avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80', emp: 'Sneha Reddy',  role: 'HR Executive',       type: 'Experience',      docName: 'Experience Letter.pdf',date: '10 May 2024', expiry: '-',          status: 'Pending'  },
-  { avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80', emp: 'Vikram Singh', role: 'UI/UX Designer',    type: 'Identity Proof',  docName: 'PAN Card.pdf',        date: '08 May 2024', expiry: '08 May 2034', status: 'Verified' },
-];
-
-const KpiCard = ({ label, value, pct, isPositive, iconBg, iconColor, icon: Icon }) => (
-  <div style={{
-    background: '#FFF',
-    borderRadius: 14,
-    border: '1px solid #E5E7EB',
-    boxShadow: '0 2px 8px rgba(15,23,42,.04)',
-    padding: '14px 16px',
-    display: 'flex',
-    alignItems: 'center',
-    gap: 12,
-    flex: '1 1 0',
-    minWidth: 0,
-  }}>
-    <div style={{
-      width: 36, height: 36, borderRadius: 10,
-      background: iconBg, color: iconColor,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      flexShrink: 0,
-    }}>
-      <Icon size={18} />
-    </div>
-    <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
-      <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <span style={{ fontSize: 18, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>{value}</span>
-        {pct && (
-          <span style={{ fontSize: 10, fontWeight: 600, color: isPositive ? '#16A34A' : '#DC2626', whiteSpace: 'nowrap' }}>
-            {pct} vs last month
-          </span>
-        )}
-      </div>
-    </div>
-  </div>
-);
+import React, { useState, useEffect, useCallback } from 'react';
+import { Search, ChevronDown, Download, Upload, Eye, FileText, CheckCircle, Clock, AlertTriangle, XCircle, Filter, X } from 'lucide-react';
+import { apiFetch, formatDate, getAuthToken } from '../../lib/api';
+import { useToast } from '../ui/Toast';
 
 export function EmployeeDocuments() {
+  const { addToast } = useToast();
   const [selectedType, setSelectedType] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [docList, setDocList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [meta, setMeta] = useState({ employees: [], departments: [] });
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [dashboard, setDashboard] = useState({
+    kpis: { empDocsCount: 0, compDocsCount: 0, policiesCount: 0, publishedPolicies: 0, templatesCount: 0, signaturesCount: 0 }
+  });
+
+  const [formData, setFormData] = useState({
+    employee_id: '',
+    document_type: 'Identity Proof',
+    document_name: '',
+    expiry_date: '',
+    status: 'Pending'
+  });
+
+  const [search, setSearch] = useState('');
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const metaRes = await apiFetch('/documents/meta');
+      if (metaRes.success) setMeta(metaRes.data);
+
+      let url = `/documents/employee?document_type=${selectedType}&`;
+      if (search) url += `search=${encodeURIComponent(search)}&`;
+
+      const docRes = await apiFetch(url);
+      if (docRes.success) setDocList(docRes.data || []);
+
+      const dbRes = await apiFetch('/documents/dashboard');
+      if (dbRes.success) setDashboard(dbRes.data);
+    } catch (err) {
+      addToast('Failed to load employee documents data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedType, search, addToast]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!formData.employee_id || !formData.document_name || !selectedFile) {
+      addToast('Please fill all required fields including file upload', 'error');
+      return;
+    }
+    try {
+      const data = new FormData();
+      data.append('employee_id', formData.employee_id);
+      data.append('document_type', formData.document_type);
+      data.append('document_name', formData.document_name);
+      if (formData.expiry_date) data.append('expiry_date', formData.expiry_date);
+      data.append('status', formData.status);
+      data.append('file', selectedFile);
+
+      const response = await fetch('/app/documents/employee', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: data
+      });
+      const res = await response.json();
+      if (res.success) {
+        addToast('Document uploaded successfully', 'success');
+        setShowUploadModal(false);
+        setFormData({ employee_id: '', document_type: 'Identity Proof', document_name: '', expiry_date: '', status: 'Pending' });
+        setSelectedFile(null);
+        fetchData();
+      } else {
+        addToast(res.message || 'Failed to upload document', 'error');
+      }
+    } catch (err) {
+      addToast('Error uploading file', 'error');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this document?')) return;
+    try {
+      const res = await apiFetch(`/documents/employee/${id}`, { method: 'DELETE' });
+      if (res.success) {
+        addToast('Document deleted successfully', 'success');
+        fetchData();
+      } else {
+        addToast(res.message || 'Failed to delete document', 'error');
+      }
+    } catch (err) {
+      addToast('Error connecting to server', 'error');
+    }
+  };
+
+  if (loading) {
+    return <div style={{ padding: 40, textAlign: 'center', color: '#6B7280', fontSize: 14 }}>Loading Employee Documents...</div>;
+  }
+
+  const KpiCard = ({ label, value, pct, isPositive, iconBg, iconColor, icon: Icon }) => (
+    <div style={{
+      background: '#FFF',
+      borderRadius: 14,
+      border: '1px solid #E5E7EB',
+      boxShadow: '0 2px 8px rgba(15,23,42,.04)',
+      padding: '14px 16px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 12,
+      flex: '1 1 0',
+      minWidth: 0,
+    }}>
+      <div style={{
+        width: 36, height: 36, borderRadius: 10,
+        background: iconBg, color: iconColor,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexShrink: 0,
+      }}>
+        <Icon size={18} />
+      </div>
+      <div style={{ minWidth: 0, flex: 1, overflow: 'hidden' }}>
+        <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', marginBottom: 2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+          <span style={{ fontSize: 18, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>{value}</span>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box', background: '#F8FAFC', minHeight: '100vh', padding: 0 }}>
       
-      {/* ── HEADER & TOOLBAR ── */}
+      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Employee Documents</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Manage and track employee documents and their status</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Track, verify and manage employee verification documents</p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          {/* Search Box */}
           <div style={{ position: 'relative' }}>
-            <Search size={14} color="#9CA3AF" style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)' }} />
-            <input
-              type="text"
-              placeholder="Search documents, employee..."
-              style={{
-                height: 38, paddingLeft: 34, paddingRight: 14,
-                background: '#FFF', border: '1px solid #E5E7EB',
-                borderRadius: 8, fontSize: 13, color: '#111827',
-                outline: 'none', width: 220,
-              }}
-            />
+            <input placeholder="Search documents..." value={search} onChange={e => setSearch(e.target.value)} style={{ height: 38, paddingLeft: 12, paddingRight: 12, border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, outline: 'none', background: '#fff' }} />
           </div>
 
-          {/* Department Select */}
-          <div style={{ position: 'relative' }}>
-            <select style={{
-              appearance: 'none', WebkitAppearance: 'none', height: 38,
-              paddingLeft: 14, paddingRight: 32, background: '#FFF',
-              border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#374151', cursor: 'pointer', outline: 'none',
-            }}>
-              <option>All Departments</option>
-              <option>Engineering</option>
-              <option>Marketing</option>
-              <option>Sales</option>
-              <option>HR</option>
-            </select>
-            <ChevronDown size={13} color="#6B7280" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-          </div>
-
-          {/* Upload Document Primary Action Button */}
-          <button
-            onClick={() => setShowUploadModal(true)}
-            style={{
-              display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
-              background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
-            }}
-          >
-            <Upload size={14} /> Upload Document
+          <button onClick={() => setShowUploadModal(true)} style={{
+            display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
+            background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
+          }}>
+            <Upload size={16} /> Upload Document
           </button>
         </div>
       </div>
 
-      {/* ── 5 KPI CARDS IN A SINGLE ROW ── */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20, width: '100%' }}>
-        <KpiCard label="Total Documents"     value="1,248" pct="+12.5%" isPositive={true}  iconBg="#EFF6FF" iconColor="#2563EB" icon={FileText} />
-        <KpiCard label="Verified Documents"  value="1,105" pct="+8.2%"  isPositive={true}  iconBg="#ECFDF5" iconColor="#059669" icon={CheckCircle} />
-        <KpiCard label="Pending Documents"   value="98"    pct="+5.6%"  isPositive={true}  iconBg="#FEF3C7" iconColor="#D97706" icon={Clock} />
-        <KpiCard label="Expiring Soon"       value="45"    pct="+15.2%" isPositive={false} iconBg="#FFEDD5" iconColor="#EA580C" icon={AlertTriangle} />
-        <KpiCard label="Rejected Documents"  value="23"    pct="-3.1%"  isPositive={true}  iconBg="#FEF2F2" iconColor="#EF4444" icon={XCircle} />
+      {/* KPI Cards Row */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
+        <KpiCard label="Total Employee Docs" value={dashboard.kpis.empDocsCount} iconBg="#EFF6FF" iconColor="#2563EB" icon={FileText} />
+        <KpiCard label="Verified Documents" value={docList.filter(d => d.status === 'Verified').length} iconBg="#ECFDF5" iconColor="#16A34A" icon={CheckCircle} />
+        <KpiCard label="Pending Verification" value={docList.filter(d => d.status === 'Pending').length} iconBg="#FEF3C7" iconColor="#D97706" icon={Clock} />
+        <KpiCard label="Rejected/Expired" value={docList.filter(d => d.status === 'Rejected' || d.status === 'Expired').length} iconBg="#FEF2F2" iconColor="#DC2626" icon={XCircle} />
       </div>
 
-      {/* ── MAIN LAYOUT: LEFT SIDEBAR + CENTER DATA TABLE ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '220px 1fr', gap: 20, alignItems: 'start' }}>
-        
-        {/* Left Panel: Document Type Filter Sidebar */}
-        <div style={{ background: '#FFF', borderRadius: 14, border: '1px solid #E5E7EB', padding: 16, boxShadow: '0 2px 8px rgba(15,23,42,.04)' }}>
-          <h3 style={{ margin: '0 0 12px', fontSize: 13, fontWeight: 600, color: '#374151', textTransform: 'uppercase', letterSpacing: 0.5 }}>Document Type</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-            {DOC_TYPES.map((t) => {
-              const isActive = selectedType === t.id;
-              return (
-                <button
-                  key={t.id}
-                  onClick={() => setSelectedType(t.id)}
-                  style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '8px 12px', borderRadius: 8, fontSize: 13, fontWeight: isActive ? 600 : 500,
-                    background: isActive ? '#EFF6FF' : 'transparent',
-                    color: isActive ? '#2563EB' : '#4B5563',
-                    border: 'none', cursor: 'pointer', transition: 'all 0.15s ease',
-                  }}
-                >
-                  <span>{t.label}</span>
-                  <span style={{ fontSize: 11, background: isActive ? '#DBEAFE' : '#F3F4F6', color: isActive ? '#2563EB' : '#6B7280', padding: '2px 6px', borderRadius: 10 }}>
-                    {t.count}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+      {/* Categories Tabs */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, overflowX: 'auto', paddingBottom: 4 }}>
+        {[
+          { id: 'all', label: 'All Documents' },
+          { id: 'Identity Proof', label: 'Identity Proof' },
+          { id: 'Address Proof', label: 'Address Proof' },
+          { id: 'Educational', label: 'Educational' },
+          { id: 'Experience', label: 'Experience' },
+          { id: 'Other Documents', label: 'Other' }
+        ].map(type => (
+          <button
+            key={type.id}
+            onClick={() => setSelectedType(type.id)}
+            style={{
+              padding: '8px 16px', borderRadius: 8, fontSize: 13, fontWeight: 600, border: 'none', cursor: 'pointer',
+              background: selectedType === type.id ? '#2563EB' : '#FFF',
+              color: selectedType === type.id ? '#FFF' : '#475569',
+              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {type.label}
+          </button>
+        ))}
+      </div>
 
-        {/* Center Main Table: Employee Documents */}
-        <div style={{ background: '#FFF', borderRadius: 14, border: '1px solid #E5E7EB', boxShadow: '0 2px 8px rgba(15,23,42,.04)', overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #E5E7EB' }}>
-            <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#111827' }}>Employee Documents</h3>
-          </div>
-
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #E5E7EB' }}>
-                  {['Employee', 'Document Type', 'Document Name', 'Uploaded On', 'Expiry Date', 'Status', 'Actions'].map(h => (
-                    <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {EMP_DOCS.map((r, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #F3F4F6', height: 52 }}>
-                    <td style={{ padding: '0 16px', fontSize: 13, color: '#111827', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <img src={r.avatar} alt={r.emp} style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }} />
-                        <div>
-                          <div style={{ fontWeight: 600, color: '#111827' }}>{r.emp}</div>
-                          <div style={{ fontSize: 11, color: '#6B7280' }}>{r.role}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.type}</td>
-                    <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 500, color: '#2563EB', whiteSpace: 'nowrap' }}>{r.docName}</td>
-                    <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{r.date}</td>
-                    <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{r.expiry}</td>
-                    <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
-                      <span style={{
-                        display: 'inline-block', padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600,
-                        background: r.status === 'Verified' ? '#ECFDF5' : r.status === 'Pending' ? '#FEF3C7' : '#FEF2F2',
-                        color: r.status === 'Verified' ? '#059669' : r.status === 'Pending' ? '#D97706' : '#EF4444',
-                      }}>
-                        {r.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', gap: 8, color: '#6B7280' }}>
-                        <button style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', padding: 4 }}><Eye size={16} /></button>
-                        <button style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', padding: 4 }}><Download size={16} /></button>
-                      </div>
-                    </td>
-                  </tr>
+      {/* Documents Table */}
+      <div style={{ background: '#FFF', borderRadius: 14, border: '1px solid #E5E7EB', boxShadow: '0 2px 8px rgba(15,23,42,.04)', overflow: 'hidden' }}>
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#FAFAFA', borderBottom: '1px solid #E5E7EB' }}>
+                {['Employee', 'Designation', 'Document Type', 'Document Name', 'Uploaded Date', 'Expiry Date', 'Status', 'Actions'].map(h => (
+                  <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#374151', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Table Footer Pagination */}
-          <div style={{ padding: '12px 20px', borderTop: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFF' }}>
-            <span style={{ fontSize: 12, color: '#6B7280' }}>Showing 1 to 5 of 1,248 entries</span>
-            <div style={{ display: 'flex', gap: 4 }}>
-              {[1, 2, 3, 4, 5, '...', 250].map((page, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => typeof page === 'number' && setCurrentPage(page)}
-                  style={{
-                    minWidth: 28, height: 28, padding: '0 6px', borderRadius: 6, fontSize: 12, fontWeight: 500, border: 'none', cursor: 'pointer',
-                    background: currentPage === page ? '#2563EB' : '#F3F4F6',
-                    color: currentPage === page ? '#FFF' : '#374151',
-                  }}
-                >
-                  {page}
-                </button>
+              </tr>
+            </thead>
+            <tbody>
+              {docList.map((r, i) => (
+                <tr key={i} style={{ borderBottom: '1px solid #F3F4F6', height: 48 }}>
+                  <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>{r.employee_name}</td>
+                  <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.employee_role || 'Unassigned'}</td>
+                  <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.document_type}</td>
+                  <td style={{ padding: '0 16px', fontSize: 13, color: '#2563EB', fontWeight: 500, whiteSpace: 'nowrap' }}>{r.document_name}</td>
+                  <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{formatDate(r.created_at)}</td>
+                  <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{r.expiry_date ? formatDate(r.expiry_date) : '-'}</td>
+                  <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
+                    <span style={{
+                      display: 'inline-block', padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600,
+                      background: r.status === 'Verified' ? '#ECFDF5' : r.status === 'Pending' ? '#FEF3C7' : '#FEF2F2',
+                      color: r.status === 'Verified' ? '#059669' : r.status === 'Pending' ? '#D97706' : '#EF4444',
+                    }}>
+                      {r.status}
+                    </span>
+                  </td>
+                  <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
+                    <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                      {r.file && (
+                        <>
+                          <a href={`http://localhost:5000/${r.file}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: '#2563EB', fontSize: 12, fontWeight: 600 }}>
+                            View
+                          </a>
+                          <a href={`http://localhost:5000/${r.file}`} download style={{ textDecoration: 'none', color: '#16A34A', fontSize: 12, fontWeight: 600 }}>
+                            Download
+                          </a>
+                        </>
+                      )}
+                      <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
               ))}
-            </div>
-          </div>
+            </tbody>
+          </table>
         </div>
-
       </div>
 
-      {/* Upload Employee Document Modal */}
+      {/* Upload Document Modal */}
       {showUploadModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
-          <div style={{ background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '480px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #e2e8f0' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#1e293b' }}>Upload Employee Document</h3>
-              <button onClick={() => setShowUploadModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
-                ✕
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setShowUploadModal(false)} />
+          <div className="modal-centered-content" style={{ width: '600px', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-[#0A1629]">Upload Employee Document</h2>
+                <p className="text-sm text-slate-500 mt-1">Upload a verification document and map it to an employee.</p>
+              </div>
+              <button onClick={() => setShowUploadModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={20} className="text-slate-400" />
               </button>
             </div>
-            <form onSubmit={(e) => { e.preventDefault(); setShowUploadModal(false); }} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Employee Name / ID *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Aarav Sharma (EMP-101)"
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
-                />
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+            <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="grid grid-cols-1 gap-6">
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Document Type *</label>
-                  <select style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}>
-                    <option>Identity Proof</option>
-                    <option>Education Certificate</option>
-                    <option>Address Proof</option>
-                    <option>Tax & Salary</option>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Employee <span className="text-red-500">*</span></label>
+                  <select required value={formData.employee_id} onChange={e => setFormData({ ...formData, employee_id: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-white">
+                    <option value="">Select Employee</option>
+                    {meta.employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Document Title *</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Aadhaar Card"
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
-                  />
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Document Type <span className="text-red-500">*</span></label>
+                  <select required value={formData.document_type} onChange={e => setFormData({ ...formData, document_type: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-white">
+                    <option value="Identity Proof">Identity Proof</option>
+                    <option value="Address Proof">Address Proof</option>
+                    <option value="Educational">Educational Proof</option>
+                    <option value="Experience">Experience Proof</option>
+                    <option value="Other Documents">Other Documents</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Document Name <span className="text-red-500">*</span></label>
+                  <input type="text" required value={formData.document_name} onChange={e => setFormData({ ...formData, document_name: e.target.value })} placeholder="e.g. Aadhaar Card" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Upload File <span className="text-red-500">*</span></label>
+                  <input type="file" required onChange={e => setSelectedFile(e.target.files[0])} className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Expiry Date</label>
+                  <input type="date" value={formData.expiry_date} onChange={e => setFormData({ ...formData, expiry_date: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
+                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-white">
+                    <option value="Pending">Pending</option>
+                    <option value="Verified">Verified</option>
+                    <option value="Rejected">Rejected</option>
+                  </select>
                 </div>
               </div>
-              <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Select File *</label>
-                <input
-                  type="file"
-                  required
-                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
-                />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
-                <button
-                  type="button"
-                  onClick={() => setShowUploadModal(false)}
-                  style={{ padding: '10px 18px', background: '#f1f5f9', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#475569', cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  style={{ padding: '10px 18px', background: '#2952E3', border: 'none', borderRadius: '8px', fontSize: '13px', fontWeight: '600', color: '#fff', cursor: 'pointer' }}
-                >
-                  Upload File
-                </button>
+              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
+                <button type="button" onClick={() => setShowUploadModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+                <button type="submit" className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">Upload Document</button>
               </div>
             </form>
           </div>
-        </div>
+        </>
       )}
 
     </div>

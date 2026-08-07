@@ -1,347 +1,426 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronDown, Plus, Edit2, Link2, ArrowUp, ArrowDown, Target, CheckCircle2, AlertCircle, CheckCircle, ChevronLeft, ChevronRight } from 'lucide-react';
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ChevronDown, Plus, Target, CheckCircle, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Label } from 'recharts';
+import { useToast } from '../ui/Toast';
 
-/* ─────────────────── DATA ─────────────────── */
-const PIE_DATA = [
-  { name: 'On Track',    value: 75, percent: '58.6%', color: '#2563EB' },
-  { name: 'At Risk',     value: 32, percent: '25.0%', color: '#F59E0B' },
-  { name: 'Not Started', value: 15, percent: '11.7%', color: '#CBD5E1' },
-  { name: 'Completed',   value: 21, percent: '16.4%', color: '#22C55E' },
-];
+export default function Goals() {
+  const { addToast } = useToast();
+  const [goalsList, setGoalsList] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
-const BAR_DATA = [
-  { name: 'Design',          goals: 10 },
-  { name: 'Finance',         goals: 21 },
-  { name: 'Human Resources', goals: 26 },
-  { name: 'Sales',           goals: 31 },
-  { name: 'Marketing',       goals: 34 },
-  { name: 'Engineering',     goals: 38 },
-];
+  // Pagination & Filters
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const limit = 10;
+  const [search, setSearch] = useState('');
+  const [filterDept, setFilterDept] = useState('All Departments');
 
-const TABLE_DATA = [
-  { title: 'Improve Product Quality',   owner: 'Rahul Sharma',  dept: 'Engineering', date: '30 Jun 2024', progress: 75, status: 'On Track'    },
-  { title: 'Increase Website Traffic',  owner: 'Priya Patel',   dept: 'Marketing',   date: '15 Jul 2024', progress: 60, status: 'On Track'    },
-  { title: 'Boost Sales Revenue',       owner: 'Vikram Singh',  dept: 'Sales',       date: '31 Aug 2024', progress: 40, status: 'At Risk'     },
-  { title: 'Reduce Employee Turnover',  owner: 'Sneha Reddy',   dept: 'HR',          date: '30 Jun 2024', progress: 55, status: 'At Risk'     },
-  { title: 'Optimize Operational Cost', owner: 'Amit Kumar',    dept: 'Finance',     date: '30 Sep 2024', progress: 20, status: 'Not Started' },
-];
+  // KPI Dashboard Stats
+  const [kpiData, setKpiData] = useState({
+    total: 0,
+    completed: 0,
+    inProgress: 0,
+    pending: 0,
+    overdue: 0,
+    rate: '0%',
+    chartData: [
+      { name: 'On Track', value: 0, color: '#2563EB' },
+      { name: 'At Risk', value: 0, color: '#F59E0B' },
+      { name: 'Not Started', value: 0, color: '#CBD5E1' },
+      { name: 'Completed', value: 0, color: '#22C55E' }
+    ]
+  });
 
-/* ─────────────────── STYLE HELPERS ─────────────────── */
-const STATUS = {
-  'On Track':    { bg: '#DCFCE7', color: '#15803D' },
-  'At Risk':     { bg: '#FEF3C7', color: '#D97706' },
-  'Not Started': { bg: '#F3F4F6', color: '#6B7280' },
-};
+  const [formData, setFormData] = useState({
+    title: '',
+    department: '',
+    owner: '',
+    targetDate: '',
+    progress: '0',
+    status: 'Not Started',
+    description: ''
+  });
 
-/* ─────────────────── KPI CARD ─────────────────── */
-const KpiCard = ({ icon: Icon, iconBg, iconColor, label, value, pct, pctUp }) => (
-  <div style={{
-    background: '#fff',
-    borderRadius: 14,
-    border: '1px solid #E5E7EB',
-    boxShadow: '0 2px 8px rgba(15,23,42,.05)',
-    padding: '20px 24px',
-    height: 120,
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    flex: '1 1 0',
-    minWidth: 0,
-  }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <span style={{
-        width: 36, height: 36, borderRadius: '50%',
-        background: iconBg, color: iconColor,
-        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-      }}>
-        <Icon size={16} />
-      </span>
-      <span style={{ fontSize: 13, fontWeight: 500, color: '#6B7280' }}>{label}</span>
-    </div>
-    <div>
-      <div style={{ fontSize: 30, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{value}</div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 12 }}>
-        {pctUp
-          ? <ArrowUp size={12} color="#22C55E" />
-          : <ArrowDown size={12} color="#EF4444" />}
-        <span style={{ fontWeight: 600, color: pctUp ? '#22C55E' : '#EF4444' }}>{pct}</span>
-        <span style={{ color: '#6B7280' }}>vs last quarter</span>
-      </div>
-    </div>
-  </div>
-);
+  const getAuthToken = () => {
+    const auth = localStorage.getItem('hrms_auth');
+    if (auth) {
+      try {
+        const parsed = JSON.parse(auth);
+        return parsed.token || 'mock_jwt_token';
+      } catch (e) {
+        return 'mock_jwt_token';
+      }
+    }
+    return 'mock_jwt_token';
+  };
 
-/* ─────────────────── COMPONENT ─────────────────── */
-const Goals = () => {
-  const [loaded, setLoaded] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setLoaded(true), 120);
-    return () => clearTimeout(t);
+  const fetchMeta = async () => {
+    try {
+      const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
+      
+      // Fetch branches (used as departments in employee records)
+      const deptRes = await fetch('/app/requirements/meta/all', { headers });
+      const deptData = await deptRes.json();
+      if (deptData && deptData.branches) {
+        setDepartments(deptData.branches); // branches serve as department grouping
+      }
+
+      // Fetch employees
+      const empRes = await fetch('/app/employees', { headers });
+      const empData = await empRes.json();
+      if (Array.isArray(empData)) {
+        setEmployees(empData);
+      }
+    } catch (err) {
+      console.error('Failed to load goals metadata:', err);
+    }
+  };
+
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      const res = await fetch('/app/goals/dashboard', {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+      });
+      const resData = await res.json();
+      if (resData.success && resData.data) {
+        setKpiData(resData.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch dashboard stats:', err);
+    }
   }, []);
 
-  return (
-    <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box' }}>
+  const fetchGoals = useCallback(async () => {
+    setLoading(true);
+    try {
+      let url = `/app/goals?page=${page}&limit=${limit}`;
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
+      }
+      if (filterDept && filterDept !== 'All Departments') {
+        url += `&department_id=${encodeURIComponent(filterDept)}`;
+      }
 
-      {/* ── HEADER ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+      });
+      const resData = await res.json();
+      if (resData.success && resData.data) {
+        setGoalsList(resData.data.goals || []);
+        setTotal(resData.data.total || 0);
+      } else {
+        addToast(resData.message || 'Failed to fetch goals', 'error');
+      }
+    } catch (err) {
+      addToast('Error connecting to backend server', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, filterDept, addToast]);
+
+  useEffect(() => {
+    fetchMeta();
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, filterDept]);
+
+  useEffect(() => {
+    fetchGoals();
+    fetchDashboardStats();
+  }, [page, fetchGoals, fetchDashboardStats]);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!formData.title || !formData.owner || !formData.targetDate) {
+      addToast('Please fill in all required fields.', 'error');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        employee_id: parseInt(formData.owner),
+        goal_title: formData.title.trim(),
+        target_date: formData.targetDate,
+        completion_percentage: parseInt(formData.progress) || 0,
+        status: formData.status,
+        goal_description: formData.description.trim()
+      };
+
+      const res = await fetch('/app/goals', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const resData = await res.json();
+      if (resData.success) {
+        addToast('Goal scheduled successfully!', 'success');
+        setShowAddModal(false);
+        setFormData({ title: '', department: '', owner: '', targetDate: '', progress: '0', status: 'Not Started', description: '' });
+        fetchGoals();
+        fetchDashboardStats();
+      } else {
+        addToast(resData.message || 'Failed to schedule goal', 'error');
+      }
+    } catch (err) {
+      addToast('Connection error occurred', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case 'Completed': return { bg: '#ECFDF5', color: '#10B981' };
+      case 'On Track': return { bg: '#EFF6FF', color: '#2952E3' };
+      case 'At Risk': return { bg: '#FEF2F2', color: '#EF4444' };
+      default: return { bg: '#F1F5F9', color: '#64748B' };
+    }
+  };
+
+  const cardStyle = {
+    background: '#FFF',
+    borderRadius: '12px',
+    border: '1px solid #F1F5F9',
+    padding: '24px',
+    boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)'
+  };
+
+  const totalPages = Math.ceil(total / limit) || 1;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: '"Inter", sans-serif', paddingBottom: '24px' }}>
+      
+      {/* Add Goal Modal (1100px Standard) */}
+      {showAddModal && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
+          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-[#0A1629]">Add Goal</h2>
+                <p className="text-sm text-slate-500 mt-1">Define strategic organizational or individual performance targets.</p>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+            <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Goal Title <span className="text-red-500">*</span></label>
+                  <input type="text" required value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. Improve Product Quality & Test Coverage" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Goal Owner <span className="text-red-500">*</span></label>
+                  <select 
+                    required 
+                    value={formData.owner} 
+                    onChange={e => setFormData({ ...formData, owner: e.target.value })} 
+                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                  >
+                    <option value="">Select Employee</option>
+                    {employees.map(e => (
+                      <option key={e.id} value={e.id}>{e.name} (EMP{String(e.id).padStart(3, '0')})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Target Completion Date <span className="text-red-500">*</span></label>
+                  <input type="date" required value={formData.targetDate} onChange={e => setFormData({ ...formData, targetDate: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Initial Progress (%)</label>
+                  <input type="number" min="0" max="100" value={formData.progress} onChange={e => setFormData({ ...formData, progress: e.target.value })} placeholder="0" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
+                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
+                    <option value="Not Started">Not Started</option>
+                    <option value="On Track">On Track</option>
+                    <option value="At Risk">At Risk</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                </div>
+                <div className="col-span-1 sm:col-span-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Goal Description</label>
+                  <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Detailed objectives, success metrics, and key results..." style={{ height: '80px' }} className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
+                <button type="button" onClick={() => setShowAddModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+                <button type="submit" disabled={submitting} className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50">
+                  {submitting ? 'Saving...' : 'Save Goal'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </>
+      )}
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Goals</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280', fontWeight: 400 }}>Set, track and achieve organizational and individual goals</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Set, track and achieve organizational and individual goals</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ position: 'relative' }}>
-            <select style={{
-              appearance: 'none', WebkitAppearance: 'none',
-              height: 42, paddingLeft: 14, paddingRight: 36,
-              background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8,
-              fontSize: 13, fontWeight: 500, color: '#111827',
-              boxShadow: '0 1px 3px rgba(0,0,0,.06)', cursor: 'pointer', outline: 'none',
-            }}>
-              <option>All Departments</option>
-            </select>
-            <ChevronDown size={15} color="#6B7280" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-          </div>
-          <button style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            height: 42, paddingLeft: 16, paddingRight: 16,
-            background: '#2563EB', color: '#fff', border: 'none', borderRadius: 8,
-            fontSize: 13, fontWeight: 600, cursor: 'pointer',
-            boxShadow: '0 1px 3px rgba(37,99,235,.3)',
-          }}>
-            <Plus size={15} /> Add Goal
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <select 
+            value={filterDept} 
+            onChange={e => setFilterDept(e.target.value)} 
+            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '13px', color: '#334155', cursor: 'pointer' }}
+          >
+            <option value="All Departments">All Departments</option>
+            {departments.map(d => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+          <button onClick={() => setShowAddModal(true)} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+            <Plus size={16} /> Add Goal
           </button>
         </div>
       </div>
 
-      {/* ── KPI CARDS ── */}
-      <div style={{ display: 'flex', gap: 20, marginBottom: 20, flexWrap: 'wrap' }}>
-        <KpiCard icon={Target}       iconBg="#DBEAFE" iconColor="#2563EB" label="Total Goals" value={128} pct="12%" pctUp />
-        <KpiCard icon={CheckCircle2} iconBg="#DCFCE7" iconColor="#16A34A" label="On Track"    value={75}  pct="10%" pctUp />
-        <KpiCard icon={AlertCircle}  iconBg="#FEF3C7" iconColor="#D97706" label="At Risk"     value={32}  pct="6%"  pctUp={false} />
-        <KpiCard icon={CheckCircle}  iconBg="#DCFCE7" iconColor="#16A34A" label="Completed"   value={21}  pct="25%" pctUp />
+      {/* KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+        {[
+          { title: 'Total Goals', value: kpiData.total, icon: <Target size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
+          { title: 'Completed Goals', value: kpiData.completed, icon: <CheckCircle size={20} color="#10B981" />, bgColor: '#ECFDF5' },
+          { title: 'Completion Rate', value: kpiData.rate, icon: <Target size={20} color="#8B5CF6" />, bgColor: '#F5F3FF' },
+          { title: 'Pending Goals', value: kpiData.pending, icon: <Target size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
+        ].map((kpi, idx) => (
+          <div key={idx} style={{ ...cardStyle, display: 'flex', gap: '16px', padding: '20px', alignItems: 'center' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: kpi.bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {kpi.icon}
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '500', marginBottom: '4px' }}>{kpi.title}</div>
+              <div style={{ fontSize: '24px', color: '#1E293B', fontWeight: '700' }}>{kpi.value}</div>
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* ── CHARTS ROW ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
+      {/* Main Content */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: '24px' }}>
+        
+        {/* Left Table */}
+        <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Goal Tracker</h3>
+            <input 
+              type="text" 
+              placeholder="Search..." 
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '13px' }}
+            />
+          </div>
 
-        {/* LEFT: Donut */}
-        <div style={{
-          background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
-          boxShadow: '0 2px 8px rgba(15,23,42,.05)', padding: 24, height: 350,
-          display: 'flex', flexDirection: 'column',
-        }}>
-          <h3 style={{ margin: '0 0 20px', fontSize: 15, fontWeight: 600, color: '#111827' }}>Goals Progress Overview</h3>
-          <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-            {/* Doughnut */}
-            <div style={{ width: 200, height: 200, position: 'relative', flexShrink: 0 }}>
+          <div style={{ overflowX: 'auto' }}>
+            {loading ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>Loading goals...</div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#F8FAFC' }}>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Goal Title</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Goal Owner</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Department</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Target Date</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Progress</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {goalsList.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No goals defined</td>
+                    </tr>
+                  ) : (
+                    goalsList.map((row, idx) => {
+                      const tgtDate = row.target_date ? new Date(row.target_date).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+                      return (
+                        <tr key={row.id} style={{ borderBottom: idx === goalsList.length - 1 ? 'none' : '1px solid #F8FAFC' }}>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#1E293B' }}>{row.goal_title}</td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.employee_name}</td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.department_name}</td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{tgtDate}</td>
+                          <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                            <span style={{ fontSize: '12px', fontWeight: '600', color: '#2563EB' }}>{row.completion_percentage}%</span>
+                          </td>
+                          <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                            <span style={{ 
+                              padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600',
+                              backgroundColor: getStatusStyle(row.status).bg, color: getStatusStyle(row.status).color
+                            }}>
+                              {row.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          {/* Pagination */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderTop: '1px solid #F1F5F9' }}>
+            <div style={{ fontSize: '13px', color: '#64748B' }}>
+              Showing {total === 0 ? 0 : (page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} entries
+            </div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button disabled={page === 1} onClick={() => setPage(prev => prev - 1)} style={{ padding: '4px 8px', border: '1px solid #E2E8F0', borderRadius: '6px', background: '#FFF', cursor: page === 1 ? 'not-allowed' : 'pointer' }}><ChevronLeft size={16} /></button>
+              <button disabled={page === totalPages} onClick={() => setPage(prev => prev + 1)} style={{ padding: '4px 8px', border: '1px solid #E2E8F0', borderRadius: '6px', background: '#FFF', cursor: page === totalPages ? 'not-allowed' : 'pointer' }}><ChevronRight size={16} /></button>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side: Charts */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={cardStyle}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Goal Completion Status</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '140px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={PIE_DATA} cx="50%" cy="50%" innerRadius={66} outerRadius={92}
-                    paddingAngle={0} dataKey="value" stroke="none">
-                    {PIE_DATA.map((e, i) => <Cell key={i} fill={e.color} />)}
+                  <Pie data={kpiData.chartData} innerRadius={40} outerRadius={55} paddingAngle={2} dataKey="value" cx="50%" cy="50%" stroke="none">
+                    {kpiData.chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                    <Label value={kpiData.total} position="center" fill="#1E293B" style={{ fontSize: '24px', fontWeight: '700' }} />
                   </Pie>
-                  <Tooltip contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,.1)' }} />
+                  <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
-              {/* Center label */}
-              <div style={{
-                position: 'absolute', inset: 0,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                pointerEvents: 'none',
-              }}>
-                <span style={{ fontSize: 28, fontWeight: 700, color: '#111827', lineHeight: 1 }}>128</span>
-                <span style={{ fontSize: 12, color: '#6B7280', marginTop: 3 }}>Total Goals</span>
-              </div>
             </div>
+          </div>
 
-            {/* Legend */}
-            <div style={{ flex: 1, paddingLeft: 28, display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {PIE_DATA.map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <span style={{ width: 11, height: 11, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{item.name}</span>
-                  </div>
-                  <span style={{ fontSize: 13, fontWeight: 500, color: '#6B7280' }}>
-                    {item.value} <span style={{ fontWeight: 400, color: '#9CA3AF' }}>({item.percent})</span>
-                  </span>
+          <div style={cardStyle}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Department Wise Goals</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {kpiData.deptData?.map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <span style={{ color: '#475569', fontWeight: '500' }}>{item.name}</span>
+                  <span style={{ color: '#1E293B', fontWeight: '600' }}>{item.goals}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* RIGHT: Bar Chart */}
-        <div style={{
-          background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
-          boxShadow: '0 2px 8px rgba(15,23,42,.05)', padding: 24, height: 350,
-          display: 'flex', flexDirection: 'column',
-        }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 600, color: '#111827' }}>Goals by Department</h3>
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={BAR_DATA} layout="vertical" margin={{ top: 0, right: 24, left: 30, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#F1F5F9" />
-                <XAxis type="number" axisLine={{ stroke: '#E5E7EB' }} tickLine={false}
-                  tick={{ fill: '#9CA3AF', fontSize: 11 }} domain={[0, 40]} ticks={[0, 10, 20, 30, 40]} />
-                <YAxis dataKey="name" type="category" axisLine={{ stroke: '#E5E7EB' }} tickLine={false}
-                  tick={{ fill: '#111827', fontSize: 12, fontWeight: 500 }} width={118} />
-                <Tooltip cursor={{ fill: '#F8FAFC' }} contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,.1)' }} />
-                <Bar dataKey="goals" fill="#2563EB" barSize={14} radius={[0, 6, 6, 0]} animationDuration={900} />
-                <text x="55%" y="100%" dy={-2} textAnchor="middle" fill="#9CA3AF" fontSize={11}>No. Goals</text>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
       </div>
 
-      {/* ── TABLE ── */}
-      <div style={{
-        background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
-        boxShadow: '0 2px 8px rgba(15,23,42,.05)', overflow: 'hidden',
-      }}>
-        {/* Table header label */}
-        <div style={{ padding: '18px 24px', borderBottom: '1px solid #E5E7EB' }}>
-          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#111827' }}>Recent Goals</h3>
-        </div>
-
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-            <colgroup>
-              <col style={{ width: '25%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '16%' }} />
-              <col style={{ width: '12%' }} />
-              <col style={{ width: '8%' }} />
-            </colgroup>
-            <thead>
-              <tr>
-                {['Goal Title', 'Owner', 'Department', 'Due Date', 'Progress', 'Status', 'Actions'].map(h => (
-                  <th key={h} style={{
-                    padding: '12px 16px 12px 20px',
-                    textAlign: h === 'Actions' ? 'center' : 'left',
-                    fontSize: 12, fontWeight: 500, color: '#6B7280',
-                    borderBottom: '1px solid #E5E7EB', whiteSpace: 'nowrap',
-                    background: '#fff',
-                  }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {TABLE_DATA.map((row, idx) => {
-                const s = STATUS[row.status];
-                return (
-                  <tr key={idx} style={{ height: 60, borderBottom: '1px solid #F3F4F6' }}>
-                    <td style={{ padding: '0 16px 0 20px', fontSize: 13, fontWeight: 600, color: '#111827' }}>
-                      {row.title}
-                    </td>
-                    <td style={{ padding: '0 16px', fontSize: 13, color: '#374151' }}>
-                      {row.owner}
-                    </td>
-                    <td style={{ padding: '0 16px', fontSize: 13, color: '#374151' }}>
-                      {row.dept}
-                    </td>
-                    <td style={{ padding: '0 16px', fontSize: 13, color: '#374151' }}>
-                      {row.date}
-                    </td>
-                    <td style={{ padding: '0 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ flex: 1, height: 6, borderRadius: 999, background: '#E5E7EB', overflow: 'hidden' }}>
-                          <div style={{
-                            height: '100%', borderRadius: 999, background: '#2563EB',
-                            width: loaded ? `${row.progress}%` : '0%',
-                            transition: 'width 900ms ease',
-                          }} />
-                        </div>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#374151', minWidth: 30 }}>
-                          {row.progress}%
-                        </span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '0 16px' }}>
-                      <span style={{
-                        display: 'inline-block', padding: '3px 10px', borderRadius: 999,
-                        background: s.bg, color: s.color,
-                        fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
-                      }}>
-                        {row.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0 16px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                        <button style={{
-                          width: 28, height: 28, borderRadius: 6, border: 'none',
-                          background: 'transparent', color: '#2563EB', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}
-                          onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button style={{
-                          width: 28, height: 28, borderRadius: 6, border: 'none',
-                          background: 'transparent', color: '#2563EB', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}
-                          onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                        >
-                          <Link2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div style={{
-          padding: '14px 24px', borderTop: '1px solid #E5E7EB',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
-        }}>
-          <span style={{ fontSize: 13, color: '#6B7280' }}>Showing 1 to 5 of 128 entries</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            {[null, 1, 2, 3, '...', 26, null].map((pg, i) => {
-              if (pg === null) {
-                const isLeft = i === 0;
-                return (
-                  <button key={i} style={{
-                    width: 32, height: 32, borderRadius: 6,
-                    border: '1px solid #E5E7EB', background: '#fff',
-                    color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {isLeft ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
-                  </button>
-                );
-              }
-              if (pg === '...') return <span key={i} style={{ width: 32, textAlign: 'center', color: '#6B7280', fontSize: 13 }}>...</span>;
-              const isActive = pg === 1;
-              return (
-                <button key={i} style={{
-                  width: 32, height: 32, borderRadius: 6,
-                  border: isActive ? 'none' : '1px solid #E5E7EB',
-                  background: isActive ? '#2563EB' : '#fff',
-                  color: isActive ? '#fff' : '#374151',
-                  fontWeight: isActive ? 600 : 500,
-                  fontSize: 13, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {pg}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      </div>
     </div>
   );
-};
-
-export default Goals;
+}
