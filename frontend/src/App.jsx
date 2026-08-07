@@ -277,6 +277,7 @@ function App() {
             <Route path="/dashboard" element={userRole === 'SERVICE_STAFF' || userRole === 'SALES_MANAGER' ? <StaffDashboard /> : <SuperAdminDashboard />} />
 
             {/* Employee Routes - explicitly rendering their own components */}
+            <Route path="/employees/dashboard" element={<StaffDashboard />} />
             <Route path="/employees" element={<EmployeeDirectory />} />
             <Route path="/employees/list" element={<EmployeeListContent />} />
             <Route path="/employees/add" element={<AddEmployeeForm />} />
