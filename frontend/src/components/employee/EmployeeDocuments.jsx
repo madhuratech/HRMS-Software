@@ -205,7 +205,19 @@ export default function EmployeeDocuments() {
                     <td style={{ whiteSpace: 'nowrap' }}>{new Date(doc.uploaded_at).toLocaleDateString()}</td>
                     <td>
                       <div style={{ display: 'flex', gap: '12px' }}>
-                        <a href={doc.file_path.startsWith('http') ? doc.file_path : `http://localhost:3000${doc.file_path}`} target="_blank" rel="noreferrer" download title="Download" style={{cursor: 'pointer', color: '#64748b'}}><Download size={16} /></a>
+                        {(() => {
+                          const fileUrl = doc.file_path.startsWith('http') ? doc.file_path : (doc.file_path.startsWith('/') ? doc.file_path : `/${doc.file_path}`);
+                          return (
+                            <>
+                              <a href={fileUrl} target="_blank" rel="noreferrer" title="View" style={{cursor: 'pointer', color: '#64748b'}}>
+                                <Eye size={16} />
+                              </a>
+                              <a href={fileUrl} target="_blank" rel="noreferrer" download title="Download" style={{cursor: 'pointer', color: '#64748b'}}>
+                                <Download size={16} />
+                              </a>
+                            </>
+                          );
+                        })()}
                         <button title="Delete" onClick={() => handleDelete(doc.id)} style={{background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444'}}><Trash2 size={16} /></button>
                       </div>
                     </td>
