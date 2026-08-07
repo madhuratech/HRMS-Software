@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HAWKEYE NEST - HRMS Workflow Explorer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="glass-bg"></div>
+  <div class="container">
+    
+    <!-- Top Header -->
+    <header class="header">
+      <div class="brand">
+        <div class="logo-box">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        </div>
+        <div>
+          <h1>HAWKEYE NEST</h1>
+          <span class="subtitle">HRMS End-to-End Workflow Explorer</span>
+        </div>
+      </div>
+      <div class="status-badge">
+        <span class="pulse-dot"></span>
+        Interactive Blueprint
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs">
+      <button class="tab-btn active" data-tab="recruitment">
+        <span class="icon">💼</span> Recruitment
+      </button>
+      <button class="tab-btn" data-tab="onboarding">
+        <span class="icon">🚀</span> Onboarding
+      </button>
+      <button class="tab-btn" data-tab="attendance">
+        <span class="icon">📅</span> Attendance & Leave
+      </button>
+      <button class="tab-btn" data-tab="performance">
+        <span class="icon">🎯</span> Performance
+      </button>
+      <button class="tab-btn" data-tab="payroll">
+        <span class="icon">💰</span> Payroll
+      </button>
+      <button class="tab-btn" data-tab="exit">
+        <span class="icon">🚪</span> Separation
+      </button>
+    </nav>
+
+    <!-- Main Content Grid -->
+    <main class="main-content">
+      
+      <!-- Left Panel: Flow Steps -->
+      <section class="steps-panel">
+        <h2 class="panel-title">Workflow Lifecycle Steps</h2>
+        <div class="steps-list" id="steps-container">
+          <!-- Dynamic steps loaded via JS -->
+        </div>
+      </section>
+
+      <!-- Right Panel: Step Detail View -->
+      <section class="detail-panel">
+        <div class="detail-card" id="detail-card">
+          <!-- Dynamic details loaded via JS -->
+          <div class="empty-state">
+            <span class="empty-icon">👈</span>
+            <h3>Select a lifecycle step to inspect</h3>
+            <p>Explore the file mappings, database tables, and UI integrations.</p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+      <p>&copy; 2026 Hawkeye Nest Ltd. System Blueprint & Developer Walkthrough.</p>
+    </footer>
+
+  </div>
+
+  <!-- Interactive Sandbox Modal -->
+  <div class="modal" id="preview-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title">Blueprint Preview</h3>
+        <button class="close-btn" id="close-modal">&times;</button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- Rendered preview content -->
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
