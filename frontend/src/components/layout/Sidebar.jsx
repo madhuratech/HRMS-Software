@@ -77,6 +77,7 @@ export function Sidebar({ userRole, onLogout }) {
       icon: Users,
       roles: ['ALL'],
       children: [
+        { id: 'employee-dashboard', label: 'Employee Dashboard', path: '/employees/dashboard' },
         { id: 'employee-directory', label: 'Employee Directory', path: '/employees' },
         { id: 'employee-list', label: 'Employee List', path: '/employees/list' },
         { id: 'add-employee', label: 'Add Employee', path: '/employees/add' },
