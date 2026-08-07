@@ -12,30 +12,31 @@ export default function GPSAttendance() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Leaflet references
+  // Google Maps references
   const mapContainerRef = useRef(null);
-  const [leafletLoaded, setLeafletLoaded] = useState(false);
+  const [googleMapsLoaded, setGoogleMapsLoaded] = useState(false);
   const mapInstance = useRef(null);
-  const markersGroup = useRef(null);
+  const mapObjects = useRef([]); // tracks circles/markers to clear them on update
 
-  // Load Leaflet resources dynamically
+  // Load Google Maps dynamically via CDN
   useEffect(() => {
-    if (window.L) {
-      setLeafletLoaded(true);
+    if (window.google && window.google.maps) {
+      setGoogleMapsLoaded(true);
       return;
     }
-    const link = document.createElement('link');
-    link.rel = 'stylesheet';
-    link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    link.integrity = 'sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=';
-    link.crossOrigin = '';
-    document.head.appendChild(link);
+
+    const existingScript = document.getElementById('google-maps-api-script');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => setGoogleMapsLoaded(true));
+      return;
+    }
 
     const script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
-    script.crossOrigin = '';
-    script.onload = () => setLeafletLoaded(true);
+    script.id = 'google-maps-api-script';
+    script.src = 'https://maps.googleapis.com/maps/api/js?v=weekly';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => setGoogleMapsLoaded(true);
     document.body.appendChild(script);
   }, []);
 
@@ -58,89 +59,115 @@ export default function GPSAttendance() {
     loadFeed();
   }, [loadFeed]);
 
-  // Render map layers
+  // Initialize and update Google Map
   useEffect(() => {
-    if (!leafletLoaded || !mapContainerRef.current) return;
+    if (!googleMapsLoaded || !mapContainerRef.current) return;
 
-    const L = window.L;
-
-    // Use Bangalore coordinates as default midpoint
-    const defaultCenter = [12.9716, 77.5946];
+    const maps = window.google.maps;
+    const defaultCenter = { lat: 12.9716, lng: 77.5946 };
 
     if (!mapInstance.current) {
-      mapInstance.current = L.map(mapContainerRef.current).setView(defaultCenter, 12);
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(mapInstance.current);
-
-      markersGroup.current = L.featureGroup().addTo(mapInstance.current);
+      mapInstance.current = new maps.Map(mapContainerRef.current, {
+        center: defaultCenter,
+        zoom: 12,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        zoomControl: true
+      });
     }
 
-    // Clear previous markers
-    markersGroup.current.clearLayers();
+    // Clear existing markers & circles
+    mapObjects.current.forEach(obj => obj.setMap(null));
+    mapObjects.current = [];
 
-    // 1. Draw Office locations & radius circles
+    const bounds = new maps.LatLngBounds();
+    let hasBounds = false;
+
+    // 1. Draw Office Geofences
     geofences.forEach(gf => {
-      const circle = L.circle([gf.lat, gf.lng], {
-        radius: gf.radius,
-        color: '#2563EB',
+      const center = { lat: gf.lat, lng: gf.lng };
+
+      const circle = new maps.Circle({
+        strokeColor: '#2563EB',
+        strokeOpacity: 0.8,
+        strokeWeight: 2,
         fillColor: '#3B82F6',
         fillOpacity: 0.15,
-        dashArray: '4, 4'
-      }).addTo(markersGroup.current);
+        map: mapInstance.current,
+        center: center,
+        radius: gf.radius
+      });
+      mapObjects.current.push(circle);
 
-      // Office Marker
-      L.marker([gf.lat, gf.lng], {
-        icon: L.divIcon({
-          className: 'custom-office-pin',
-          html: `<div style="background:#2563EB; color:#fff; padding:4px 8px; border-radius:4px; font-weight:700; font-size:10px; border:1px solid #fff; white-space:nowrap; box-shadow:0 2px 4px rgba(0,0,0,0.15)">🏢 ${gf.name}</div>`
-        })
-      }).addTo(markersGroup.current);
+      // Office Marker (Label/Pin)
+      const marker = new maps.Marker({
+        position: center,
+        map: mapInstance.current,
+        title: gf.name,
+        icon: {
+          path: maps.SymbolPath.FORWARD_CLOSED_ARROW,
+          scale: 4,
+          fillColor: '#2563EB',
+          fillOpacity: 1,
+          strokeColor: '#FFFFFF',
+          strokeWeight: 2
+        }
+      });
+      mapObjects.current.push(marker);
+
+      bounds.extend(center);
+      hasBounds = true;
     });
 
-    // 2. Draw employee check-in pins
+    // 2. Draw Employee Pins
     records.forEach(r => {
       if (!r.lat || !r.lng) return;
 
       const isInside = r.status === 'On-Site';
       const markerColor = isInside ? '#10B981' : '#F59E0B'; // On-Site is Green, Remote is Yellow/Orange
-      const statusLabel = isInside ? 'On-Site' : 'Remote';
+      const position = { lat: r.lat, lng: r.lng };
 
-      L.marker([r.lat, r.lng], {
-        icon: L.divIcon({
-          className: 'custom-employee-pin',
-          html: `
-            <div style="position:relative; display:inline-block;">
-              <div style="width:36px; height:36px; border-radius:50%; background:#fff; border:3px solid ${markerColor}; overflow:hidden; box-shadow:0 4px 8px rgba(0,0,0,0.2); display:flex; align-items:center; justify-content:center; font-weight:700; color:#475569; font-size:11px">
-                ${r.avatar ? `<img src="${r.avatar}" style="width:100%; height:100%; object-fit:cover" />` : r.name.substring(0,2).toUpperCase()}
-              </div>
-              <div style="position:absolute; bottom:-2px; right:-2px; width:12px; height:12px; border-radius:50%; background:${markerColor}; border:2px solid #fff;"></div>
-            </div>
-          `
-        })
-      }).addTo(markersGroup.current)
-        .bindPopup(`
+      const empMarker = new maps.Marker({
+        position: position,
+        map: mapInstance.current,
+        title: r.name,
+        icon: {
+          path: maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: markerColor,
+          fillOpacity: 1,
+          strokeColor: '#FFFFFF',
+          strokeWeight: 2
+        }
+      });
+      mapObjects.current.push(empMarker);
+
+      // Bind InfoWindow popup
+      const infoWindow = new maps.InfoWindow({
+        content: `
           <div style="font-family:sans-serif; padding:4px">
             <b style="font-size:13px; color:#1e293b">${r.name}</b><br/>
             <span style="font-size:11px; color:#64748b">Location: ${r.location}</span><br/>
             <span style="font-size:11px; color:#64748b">In: ${r.checkIn} | Out: ${r.checkOut}</span><br/>
-            <span style="display:inline-block; margin-top:4px; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; background:${markerColor}15; color:${markerColor}">${statusLabel} (${r.distance}m)</span>
+            <span style="display:inline-block; margin-top:4px; padding:2px 6px; border-radius:4px; font-size:10px; font-weight:700; background:${markerColor}15; color:${markerColor}">${r.status} (${r.distance}m)</span>
           </div>
-        `);
+        `
+      });
+
+      empMarker.addListener('click', () => {
+        infoWindow.open(mapInstance.current, empMarker);
+      });
+
+      bounds.extend(position);
+      hasBounds = true;
     });
 
-    // Auto fit map bounds if layers exist
-    if (geofences.length > 0 || records.length > 0) {
-      try {
-        const bounds = markersGroup.current.getBounds();
-        if (bounds.isValid()) {
-          mapInstance.current.fitBounds(bounds, { padding: [40, 40] });
-        }
-      } catch (e) {
-        console.error("Fit bounds failed:", e);
-      }
+    // Auto adjust bounds
+    if (hasBounds && mapInstance.current) {
+      mapInstance.current.fitBounds(bounds);
     }
-  }, [leafletLoaded, geofences, records]);
+  }, [googleMapsLoaded, geofences, records]);
 
   const onSitePct = kpis.totalCheckins > 0
     ? ((kpis.onSite / kpis.totalCheckins) * 100).toFixed(1)
@@ -220,12 +247,12 @@ export default function GPSAttendance() {
                 </div>
 
                 <div style={{ height: '380px', backgroundColor: '#f1f5f9', position: 'relative' }}>
-                  {!leafletLoaded && (
+                  {!googleMapsLoaded && (
                     <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: 13, zIndex: 10 }}>
-                      Loading map modules...
+                      Loading Google Maps module...
                     </div>
                   )}
-                  <div ref={mapContainerRef} style={{ width: '100%', height: '100%', zIndex: 1 }} />
+                  <div ref={mapContainerRef} style={{ width: '100%', height: '100%' }} />
                 </div>
               </div>
 
