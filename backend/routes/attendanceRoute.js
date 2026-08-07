@@ -5,5 +5,6 @@ const attendanceController = require("../controllers/attendanceController");
 router.post("/punch", attendanceController.punch);
 router.get("/recent/:employee_id", attendanceController.getRecent);
 router.get("/daily", attendanceController.getDailyStats);
+router.get("/gps-feed", attendanceController.getGPSFeed);
 
 module.exports = router;
