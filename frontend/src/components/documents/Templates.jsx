@@ -8,6 +8,9 @@ export function Templates() {
   const [selectedCat, setSelectedCat] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [viewTemplate, setViewTemplate] = useState(null);
+  const [editTemplateId, setEditTemplateId] = useState(null);
   const [templatesList, setTemplatesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [dashboard, setDashboard] = useState({
@@ -48,8 +51,10 @@ export function Templates() {
       return;
     }
     try {
-      const res = await apiFetch('/documents/templates', {
-        method: 'POST',
+      const url = editTemplateId ? `/documents/templates/${editTemplateId}` : '/documents/templates';
+      const method = editTemplateId ? 'PUT' : 'POST';
+      const res = await apiFetch(url, {
+        method,
         body: JSON.stringify({
           template_name: formData.template_name,
           category: formData.category,
@@ -58,8 +63,9 @@ export function Templates() {
         })
       });
       if (res.success) {
-        addToast('Template saved successfully', 'success');
+        addToast(editTemplateId ? 'Template updated successfully' : 'Template saved successfully', 'success');
         setShowAddModal(false);
+        setEditTemplateId(null);
         setFormData({ template_name: '', category: 'Offer Letters', content: '', status: 'Active' });
         fetchData();
       } else {
@@ -68,6 +74,22 @@ export function Templates() {
     } catch (err) {
       addToast('Error connecting to server', 'error');
     }
+  };
+
+  const handleEdit = (template) => {
+    setEditTemplateId(template.id);
+    setFormData({
+      template_name: template.template_name,
+      category: template.category,
+      content: template.content || '',
+      status: template.status
+    });
+    setShowAddModal(true);
+  };
+
+  const handleView = (template) => {
+    setViewTemplate(template);
+    setShowViewModal(true);
   };
 
   const handleDelete = async (id) => {
@@ -83,6 +105,12 @@ export function Templates() {
     } catch (err) {
       addToast('Error connecting to server', 'error');
     }
+  };
+
+  const openCreateModal = () => {
+    setEditTemplateId(null);
+    setFormData({ template_name: '', category: 'Offer Letters', content: '', status: 'Active' });
+    setShowAddModal(true);
   };
 
   if (loading) {
@@ -130,7 +158,7 @@ export function Templates() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button onClick={() => setShowAddModal(true)} style={{
+          <button onClick={openCreateModal} style={{
             display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
             background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
           }}>
@@ -208,9 +236,17 @@ export function Templates() {
                       </span>
                     </td>
                     <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
-                      <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
-                        Delete
-                      </button>
+                      <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                        <button onClick={() => handleView(r)} style={{ background: 'none', border: 'none', color: '#2563EB', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
+                          View
+                        </button>
+                        <button onClick={() => handleEdit(r)} style={{ background: 'none', border: 'none', color: '#059669', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
+                          Edit
+                        </button>
+                        <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -221,15 +257,15 @@ export function Templates() {
 
       </div>
 
-      {/* Create Template Modal */}
+      {/* Create / Edit Template Modal */}
       {showAddModal && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
           <div className="modal-centered-content" style={{ width: '650px', maxWidth: '90vw', maxHeight: '90vh' }}>
             <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
               <div>
-                <h2 className="text-xl font-bold text-[#0A1629]">Create Document Template</h2>
-                <p className="text-sm text-slate-500 mt-1">Design a reusable template for official correspondence.</p>
+                <h2 className="text-xl font-bold text-[#0A1629]">{editTemplateId ? 'Edit Document Template' : 'Create Document Template'}</h2>
+                <p className="text-sm text-slate-500 mt-1">{editTemplateId ? 'Modify template properties and content.' : 'Design a reusable template for official correspondence.'}</p>
               </div>
               <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
                 <X size={20} className="text-slate-400" />
@@ -264,9 +300,63 @@ export function Templates() {
               </div>
               <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
                 <button type="button" onClick={() => setShowAddModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-                <button type="submit" className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">Create Template</button>
+                <button type="submit" className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">{editTemplateId ? 'Save Changes' : 'Create Template'}</button>
               </div>
             </form>
+          </div>
+        </>
+      )}
+
+      {/* View Template Modal */}
+      {showViewModal && viewTemplate && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setShowViewModal(false)} />
+          <div className="modal-centered-content" style={{ width: '650px', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-[#0A1629]">View Template Details</h2>
+                <p className="text-sm text-slate-500 mt-1">Read-only view of the document template.</p>
+              </div>
+              <button onClick={() => setShowViewModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="block text-xs font-semibold text-slate-400 uppercase">Template Name</span>
+                  <span className="text-sm font-bold text-slate-800">{viewTemplate.template_name}</span>
+                </div>
+                <div>
+                  <span className="block text-xs font-semibold text-slate-400 uppercase">Category</span>
+                  <span className="text-sm font-bold text-slate-800">{viewTemplate.category}</span>
+                </div>
+                <div>
+                  <span className="block text-xs font-semibold text-slate-400 uppercase">Status</span>
+                  <span style={{
+                    display: 'inline-block', padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600,
+                    background: viewTemplate.status === 'Active' ? '#ECFDF5' : '#FEF3C7',
+                    color: viewTemplate.status === 'Active' ? '#059669' : '#D97706',
+                  }}>{viewTemplate.status}</span>
+                </div>
+                <div>
+                  <span className="block text-xs font-semibold text-slate-400 uppercase">Created On</span>
+                  <span className="text-sm font-bold text-slate-800">{formatDate(viewTemplate.created_at)}</span>
+                </div>
+              </div>
+              <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 16 }}>
+                <span className="block text-xs font-semibold text-slate-400 uppercase mb-2">Template Body Content</span>
+                <div style={{
+                  padding: 16, background: '#F8FAFC', border: '1px solid #E5E7EB', borderRadius: 8,
+                  fontSize: 13, color: '#334155', minHeight: '100px', whiteSpace: 'pre-wrap', fontFamily: 'monospace'
+                }}>
+                  {viewTemplate.content || '(No body content specified)'}
+                </div>
+              </div>
+              <div className="flex items-center justify-end pt-6 border-t border-slate-200 shrink-0">
+                <button type="button" onClick={() => setShowViewModal(false)} className="px-8 h-12 bg-slate-800 text-white rounded-xl text-base font-semibold hover:bg-slate-900 transition-colors shadow-md">Close</button>
+              </div>
+            </div>
           </div>
         </>
       )}
