@@ -56,7 +56,7 @@ export default function KRAs() {
   const fetchMeta = async () => {
     try {
       const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
-      const deptRes = await fetch('http://localhost:5000/app/requirements/meta/all', { headers });
+      const deptRes = await fetch('/app/requirements/meta/all', { headers });
       const deptData = await deptRes.json();
       if (deptData && deptData.departments) {
         setDepartments(deptData.departments);
@@ -68,7 +68,7 @@ export default function KRAs() {
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:5000/app/kras/dashboard', {
+      const res = await fetch('/app/kras/dashboard', {
         headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
       const resData = await res.json();
@@ -83,7 +83,7 @@ export default function KRAs() {
   const fetchKras = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `http://localhost:5000/app/kras?page=${page}&limit=${limit}`;
+      let url = `/app/kras?page=${page}&limit=${limit}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
@@ -139,7 +139,7 @@ export default function KRAs() {
         description: formData.description.trim()
       };
 
-      const res = await fetch('http://localhost:5000/app/kras', {
+      const res = await fetch('/app/kras', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

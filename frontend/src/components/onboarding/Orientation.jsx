@@ -76,7 +76,7 @@ export default function Orientation() {
       const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
       
       // Fetch eligible joiners (verified new joiners)
-      const res = await fetch('http://localhost:5000/app/orientations/eligible', { headers });
+      const res = await fetch('/app/orientations/eligible', { headers });
       const data = await res.json();
       if (data.success && data.data) {
         setEligibleJoiners(data.data);
@@ -88,7 +88,7 @@ export default function Orientation() {
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const res = await fetch('http://localhost:5000/app/orientations/dashboard', {
+      const res = await fetch('/app/orientations/dashboard', {
         headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
       const resData = await res.json();
@@ -103,7 +103,7 @@ export default function Orientation() {
   const fetchSessions = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `http://localhost:5000/app/orientations?page=${page}&limit=${limit}`;
+      let url = `/app/orientations?page=${page}&limit=${limit}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
@@ -175,7 +175,7 @@ export default function Orientation() {
         notes: formData.notes.trim()
       };
 
-      const res = await fetch('http://localhost:5000/app/orientations', {
+      const res = await fetch('/app/orientations', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -202,7 +202,7 @@ export default function Orientation() {
 
   const handleComplete = async (sessionId) => {
     try {
-      const res = await fetch(`http://localhost:5000/app/orientations/${sessionId}/complete`, {
+      const res = await fetch(`/app/orientations/${sessionId}/complete`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`

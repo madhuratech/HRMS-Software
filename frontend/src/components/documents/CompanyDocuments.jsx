@@ -64,7 +64,7 @@ export function CompanyDocuments() {
       data.append('status', formData.status);
       data.append('file', selectedFile);
 
-      const response = await fetch('http://localhost:5000/app/documents/company', {
+      const response = await fetch('/app/documents/company', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${getAuthToken()}`
@@ -224,10 +224,10 @@ export function CompanyDocuments() {
                     <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                       {r.document_path && (
                         <>
-                          <a href={`http://localhost:5000/${r.document_path}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: '#2563EB', fontSize: 12, fontWeight: 600 }}>
+                          <a href={`/${r.document_path}`} target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none', color: '#2563EB', fontSize: 12, fontWeight: 600 }}>
                             View
                           </a>
-                          <a href={`http://localhost:5000/${r.document_path}`} download style={{ textDecoration: 'none', color: '#16A34A', fontSize: 12, fontWeight: 600 }}>
+                          <a href={`/${r.document_path}`} download style={{ textDecoration: 'none', color: '#16A34A', fontSize: 12, fontWeight: 600 }}>
                             Download
                           </a>
                         </>

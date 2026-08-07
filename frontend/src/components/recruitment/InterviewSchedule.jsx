@@ -57,14 +57,14 @@ export default function InterviewSchedule() {
       const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
       
       // Fetch candidates
-      const candRes = await fetch('http://localhost:5000/app/candidates/dropdown', { headers });
+      const candRes = await fetch('/app/candidates/dropdown', { headers });
       const candData = await candRes.json();
       if (candData.success) {
         setCandidates(candData.data);
       }
 
       // Fetch employees
-      const empRes = await fetch('http://localhost:5000/app/employees', { headers });
+      const empRes = await fetch('/app/employees', { headers });
       const empData = await empRes.json();
       if (Array.isArray(empData)) {
         setEmployees(empData);
@@ -120,7 +120,7 @@ export default function InterviewSchedule() {
   const fetchSchedules = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('http://localhost:5000/app/interviews', {
+      const res = await fetch('/app/interviews', {
         headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
       const data = await res.json();
@@ -180,7 +180,7 @@ export default function InterviewSchedule() {
         remarks: scheduleForm.remarks
       };
 
-      const res = await fetch('http://localhost:5000/app/interviews', {
+      const res = await fetch('/app/interviews', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -214,7 +214,7 @@ export default function InterviewSchedule() {
     
     setSubmitting(true);
     try {
-      const res = await fetch(`http://localhost:5000/app/interviews/${feedbackForm.schedule_id}/status`, {
+      const res = await fetch(`/app/interviews/${feedbackForm.schedule_id}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
