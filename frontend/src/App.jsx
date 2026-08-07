@@ -60,6 +60,7 @@ import ShiftRoster from './components/attendance/ShiftRoster';
 import Overtime from './components/attendance/Overtime';
 import LateArrival from './components/attendance/LateArrival';
 import AttendanceReports from './components/attendance/AttendanceReports';
+import PunchLocations from './components/attendance/PunchLocations';
 
 // Leave Module Imports
 import LeaveDashboard from './components/leave/LeaveDashboard';
@@ -296,6 +297,7 @@ function App() {
             <Route path="/attendance/overtime" element={<Overtime />} />
             <Route path="/attendance/late-arrival" element={<LateArrival />} />
             <Route path="/attendance/reports" element={<AttendanceReports />} />
+            <Route path="/attendance/punch-locations" element={<PunchLocations />} />
             
             {/* Leave Module */}
             <Route path="/leave-dashboard" element={<LeaveDashboard />} />

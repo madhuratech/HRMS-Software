@@ -101,7 +101,8 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'shift-roster', label: 'Shift Roster', path: '/attendance/shift-roster' },
         { id: 'overtime', label: 'Overtime', path: '/attendance/overtime' },
         { id: 'late-arrival', label: 'Late Arrival', path: '/attendance/late-arrival' },
-        { id: 'attendance-reports', label: 'Attendance Reports', path: '/attendance/reports' }
+        { id: 'attendance-reports', label: 'Attendance Reports', path: '/attendance/reports' },
+        { id: 'punch-locations', label: 'Punch Locations', path: '/attendance/punch-locations' }
       ]
     },
     {
