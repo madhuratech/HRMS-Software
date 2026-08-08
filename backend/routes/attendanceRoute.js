@@ -23,4 +23,8 @@ router.get("/reports", authenticateJWT, attendanceController.getGPSReport);
 router.get("/reports/pdf", authenticateJWT, attendanceController.exportGPSReportPDF);
 router.get("/reports/excel", authenticateJWT, attendanceController.exportGPSReportExcel);
 
+// Daily Attendance Record Management
+router.put("/records/:employeeId/:date", authenticateJWT, attendanceController.updateAttendanceRecord);
+router.delete("/records/:employeeId/:date", authenticateJWT, attendanceController.deleteAttendanceRecord);
+
 module.exports = router;

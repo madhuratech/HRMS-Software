@@ -114,8 +114,9 @@ exports.getDailyStats = (req, res) => {
 
       return {
         id: `EMP${String(row.id).padStart(3, '0')}`,
+        db_id: row.id,
         name: row.name,
-        avatar: row.avatar ? `/${row.avatar}` : `https://i.pravatar.cc/150?u=emp${row.id}`,
+        avatar: row.avatar ? `/${row.avatar}` : null,
         department: row.department || 'General',
         checkIn,
         checkOut,
@@ -383,5 +384,110 @@ exports.getTodayStatus = async (req, res) => {
   } catch (error) {
     console.error("Failed to get today status:", error);
     return res.status(500).json({ success: false, message: "Internal server error fetching today's status" });
+  }
+};
+
+exports.updateAttendanceRecord = async (req, res) => {
+  try {
+    const { employeeId, date } = req.params;
+    const { checkInTime, checkOutTime, status, workingHours } = req.body;
+
+    if (!employeeId || !date) {
+      return res.status(400).json({ success: false, message: "Missing employee ID or date" });
+    }
+
+    const checkInTimestamp = checkInTime ? new Date(`${date} ${checkInTime}`) : null;
+    const checkOutTimestamp = checkOutTime ? new Date(`${date} ${checkOutTime}`) : null;
+
+    const existing = await new Promise((resolve, reject) => {
+      db.query("SELECT * FROM GPSAttendance WHERE employee_id = ? AND punch_date = ?", [employeeId, date], (err, rows) => {
+        if (err) return reject(err);
+        resolve(rows);
+      });
+    });
+
+    if (existing.length === 0) {
+      const sqlInsert = `
+        INSERT INTO GPSAttendance (employee_id, punch_date, check_in_time, check_out_time, working_hours, status, latitude_in, longitude_in, punch_in_location)
+        VALUES (?, ?, ?, ?, ?, ?, 11.013011, 76.956732, 'Main Headquarters')
+      `;
+      await new Promise((resolve, reject) => {
+        db.query(sqlInsert, [employeeId, date, checkInTimestamp, checkOutTimestamp, workingHours || '08h 00m', status || 'Present'], (err, results) => {
+          if (err) return reject(err);
+          resolve(results);
+        });
+      });
+    } else {
+      const sqlUpdate = `
+        UPDATE GPSAttendance
+        SET check_in_time = ?, check_out_time = ?, working_hours = ?, status = ?
+        WHERE employee_id = ? AND punch_date = ?
+      `;
+      await new Promise((resolve, reject) => {
+        db.query(sqlUpdate, [checkInTimestamp, checkOutTimestamp, workingHours || '08h 00m', status || 'Present', employeeId, date], (err, results) => {
+          if (err) return reject(err);
+          resolve(results);
+        });
+      });
+    }
+
+    await new Promise((resolve, reject) => {
+      db.query("DELETE FROM attendance WHERE employee_id = ? AND DATE(punch_time) = ?", [employeeId, date], (err, results) => {
+        if (err) return reject(err);
+        resolve(results);
+      });
+    });
+
+    if (checkInTimestamp) {
+      await new Promise((resolve, reject) => {
+        db.query("INSERT INTO attendance (employee_id, punch_type, punch_time, latitude, longitude) VALUES (?, 'IN', ?, 11.013011, 76.956732)", [employeeId, checkInTimestamp], (err, results) => {
+          if (err) return reject(err);
+          resolve(results);
+        });
+      });
+    }
+    if (checkOutTimestamp) {
+      await new Promise((resolve, reject) => {
+        db.query("INSERT INTO attendance (employee_id, punch_type, punch_time, latitude, longitude) VALUES (?, 'OUT', ?, 11.013011, 76.956732)", [employeeId, checkOutTimestamp], (err, results) => {
+          if (err) return reject(err);
+          resolve(results);
+        });
+      });
+    }
+
+    return res.status(200).json({ success: true, message: "Attendance record updated successfully!" });
+  } catch (error) {
+    console.error("Failed to update attendance record:", error);
+    return res.status(500).json({ success: false, message: "Internal server error updating attendance record" });
+  }
+};
+
+exports.deleteAttendanceRecord = async (req, res) => {
+  try {
+    const { employeeId, date } = req.params;
+
+    if (!employeeId || !date) {
+      return res.status(400).json({ success: false, message: "Missing employee ID or date" });
+    }
+
+    await Promise.all([
+      new Promise((resolve, reject) => {
+        db.query("DELETE FROM GPSAttendance WHERE employee_id = ? AND punch_date = ?", [employeeId, date], (err, results) => {
+          if (err) return reject(err);
+          resolve(results);
+        });
+      }),
+      new Promise((resolve, reject) => {
+        db.query("DELETE FROM attendance WHERE employee_id = ? AND DATE(punch_time) = ?", [employeeId, date], (err, results) => {
+          if (err) return reject(err);
+          resolve(results);
+        });
+      })
+    ]);
+
+    return res.status(200).json({ success: true, message: "Attendance record deleted successfully!" });
+  } catch (error) {
+    console.error("Failed to delete attendance record:", error);
+    return res.status(500).json({ success: false, message: "Internal server error deleting attendance record" });
   }
 };
