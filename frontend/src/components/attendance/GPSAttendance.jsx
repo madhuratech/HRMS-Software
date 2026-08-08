@@ -4,6 +4,8 @@ import {
   CheckCircle2, XCircle, Clock
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import { GeoPunch } from './GeoPunch';
+
 
 export default function GPSAttendance() {
   const [records, setRecords] = useState([]);
@@ -11,6 +13,7 @@ export default function GPSAttendance() {
   const [kpis, setKpis] = useState({ totalCheckins: 0, onSite: 0, remote: 0, activeGeofences: 0 });
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [showPunchModal, setShowPunchModal] = useState(false);
 
   // Google Maps references
   const mapContainerRef = useRef(null);
@@ -199,9 +202,14 @@ export default function GPSAttendance() {
             <Filter size={16} /> Filter
           </button>
         </div>
-        <button onClick={loadFeed} style={{ background: '#f8faff', border: '1px solid #dbeafe', borderRadius: '8px', padding: '8px 20px', color: '#2952E3', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <RefreshCw size={14} /> Refresh Logs
-        </button>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={() => setShowPunchModal(true)} style={{ background: '#2563EB', border: 'none', borderRadius: '8px', padding: '8px 20px', color: '#FFF', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <MapPin size={14} /> Punch Attendance
+          </button>
+          <button onClick={loadFeed} style={{ background: '#f8faff', border: '1px solid #dbeafe', borderRadius: '8px', padding: '8px 20px', color: '#2952E3', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <RefreshCw size={14} /> Refresh Logs
+          </button>
+        </div>
       </div>
 
       <div style={{ width: '100%', flex: 1, display: 'flex' }}>
@@ -378,6 +386,20 @@ export default function GPSAttendance() {
 
         </div>
       </div>
+
+      {showPunchModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: '#FFF', borderRadius: 16, border: '1px solid #E5E7EB', width: '90%', maxWidth: 460, padding: '24px 24px 16px', position: 'relative', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <button
+              onClick={() => { setShowPunchModal(false); loadFeed(); }}
+              style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', fontSize: 18, fontWeight: '700', zIndex: 1300 }}
+            >
+              ✕
+            </button>
+            <GeoPunch />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
