@@ -48,6 +48,8 @@ app.use("/app/reviews", require("./routes/reviews"));
 app.use("/app/feedback", require("./routes/feedback"));
 app.use("/app/promotions", require("./routes/promotions"));
 
+app.use("/app/leaves", require("./routes/leaves"));
+
 // Projects Management Module
 app.use("/app/projects", require("./routes/projects"));
 app.use("/app/tasks", require("./routes/tasks"));
