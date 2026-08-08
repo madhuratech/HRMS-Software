@@ -213,7 +213,7 @@ export function GeoPunch() {
       
       <div className="mt-6">
         <h4 className="font-bold text-slate-700 mb-3 px-2">Recent Activity</h4>
-        <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 max-h-48 overflow-y-auto">
+        <div className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 max-h-40 overflow-y-auto">
           {recent.length === 0 ? (
             <div className="p-4 text-center text-slate-500 text-sm">No recent punch activity.</div>
           ) : (
