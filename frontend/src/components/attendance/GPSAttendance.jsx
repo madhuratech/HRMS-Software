@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   Filter, Navigation, MapPin, ChevronDown, RefreshCw, CalendarIcon,
-  CheckCircle2, XCircle, Clock
+  CheckCircle2, XCircle, Clock, Eye
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { GeoPunch } from './GeoPunch';
+import { useNavigate } from 'react-router-dom';
+import EmployeeAvatar from '../employee/EmployeeAvatar';
 
 
 export default function GPSAttendance() {
+  const navigate = useNavigate();
   const [records, setRecords] = useState([]);
   const [geofences, setGeofences] = useState([]);
   const [kpis, setKpis] = useState({ totalCheckins: 0, onSite: 0, remote: 0, activeGeofences: 0 });
@@ -283,17 +286,7 @@ export default function GPSAttendance() {
                       return (
                         <div key={log.employee_id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '18px 0', borderBottom: idx !== records.length - 1 ? '1px solid #f1f5f9' : 'none', gap: '16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                            <div style={{
-                              width: '42px', height: '42px', borderRadius: '50%', flexShrink: 0,
-                              background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              fontSize: '13px', fontWeight: '700', color: '#475569', overflow: 'hidden'
-                            }}>
-                              {log.avatar ? (
-                                <img src={log.avatar} alt={log.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                              ) : (
-                                log.name.substring(0, 2).toUpperCase()
-                              )}
-                            </div>
+                            <EmployeeAvatar name={log.name} photoUrl={log.avatar} size={42} />
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                               <span style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b' }}>{log.name}</span>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
@@ -305,7 +298,7 @@ export default function GPSAttendance() {
                               </div>
                             </div>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexShrink: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexShrink: 0 }}>
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
                               <span style={{ fontSize: '13px', fontWeight: '600', color: '#334155' }}>In: {log.checkIn}</span>
                               <span style={{ fontSize: '11px', color: '#94a3b8' }}>Out: {log.checkOut}</span>
@@ -317,6 +310,31 @@ export default function GPSAttendance() {
                             }}>
                               {log.status}
                             </span>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              <button 
+                                onClick={() => {
+                                  if (log.lat && log.lng && mapInstance.current) {
+                                    mapInstance.current.setCenter({ lat: log.lat, lng: log.lng });
+                                    mapInstance.current.setZoom(16);
+                                    mapContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                  }
+                                }}
+                                title="Locate on Map"
+                                style={{ background: 'none', cursor: 'pointer', color: '#2563eb', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: '1px solid #dbeafe', backgroundColor: '#f8faff' }}
+                              >
+                                <Navigation size={14} style={{ transform: 'rotate(45deg)' }} />
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  localStorage.setItem('selectedEmployeeId', log.employee_id);
+                                  navigate('/employees/profile');
+                                }}
+                                title="View Profile"
+                                style={{ background: 'none', cursor: 'pointer', color: '#64748b', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '6px', border: '1px solid #e2e8f0', backgroundColor: '#fff' }}
+                              >
+                                <Eye size={14} />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       );
