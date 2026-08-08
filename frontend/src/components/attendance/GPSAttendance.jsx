@@ -388,8 +388,8 @@ export default function GPSAttendance() {
       </div>
 
       {showPunchModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)' }}>
-          <div style={{ background: '#FFF', borderRadius: 16, border: '1px solid #E5E7EB', width: '90%', maxWidth: 460, padding: '24px 24px 16px', position: 'relative', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)', padding: '20px' }}>
+          <div style={{ background: '#FFF', borderRadius: 16, border: '1px solid #E5E7EB', width: '100%', maxWidth: 460, maxHeight: '90vh', overflowY: 'auto', padding: '24px 24px 16px', position: 'relative', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', scrollbarWidth: 'thin' }}>
             <button
               onClick={() => { setShowPunchModal(false); loadFeed(); }}
               style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', fontSize: 18, fontWeight: '700', zIndex: 1300 }}
