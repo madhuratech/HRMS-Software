@@ -7,6 +7,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LabelList
 } from 'recharts';
+import { apiFetch } from '../../lib/api';
 
 // ── Team Performance Single Bar Chart Data (Achievement %) ──
 const TEAM_PERFORMANCE_DATA = [
