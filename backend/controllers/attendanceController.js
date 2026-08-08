@@ -338,3 +338,50 @@ exports.exportGPSReportExcel = async (req, res) => {
     return res.status(500).send("Failed to export Excel report");
   }
 };
+
+exports.getTodayStatus = async (req, res) => {
+  try {
+    const employeeId = req.user ? req.user.id : req.query.employee_id;
+    if (!employeeId) {
+      return res.status(400).json({ success: false, message: "Employee ID is required" });
+    }
+    const today = new Date().toISOString().split('T')[0];
+    const results = await new Promise((resolve, reject) => {
+      db.query("SELECT * FROM GPSAttendance WHERE employee_id = ? AND punch_date = ?", [employeeId, today], (err, rows) => {
+        if (err) return reject(err);
+        resolve(rows);
+      });
+    });
+
+    if (results.length === 0) {
+      return res.status(200).json({ success: true, status: 'NOT_PUNCHED' });
+    }
+
+    const rec = results[0];
+    if (rec.check_in_time && !rec.check_out_time) {
+      return res.status(200).json({
+        success: true,
+        status: 'PUNCHED_IN',
+        punchInTime: new Date(rec.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        checkInTimeRaw: rec.check_in_time,
+        latitudeIn: rec.latitude_in,
+        longitudeIn: rec.longitude_in,
+        locationName: rec.punch_in_location,
+        statusLabel: rec.status || 'Present'
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      status: 'PUNCHED_OUT',
+      punchInTime: new Date(rec.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      punchOutTime: new Date(rec.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      workingHours: rec.working_hours,
+      statusLabel: rec.status || 'Completed'
+    });
+
+  } catch (error) {
+    console.error("Failed to get today status:", error);
+    return res.status(500).json({ success: false, message: "Internal server error fetching today's status" });
+  }
+};
