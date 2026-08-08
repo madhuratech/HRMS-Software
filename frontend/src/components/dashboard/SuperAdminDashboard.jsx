@@ -133,8 +133,7 @@ export function SuperAdminDashboard() {
   const [stats, setStats] = useState(null);
 
   useEffect(() => {
-    fetch('http://localhost:3000/app/dashboard/stats')
-      .then(res => res.json())
+    apiFetch('/dashboard/stats')
       .then(data => setStats(data))
       .catch(err => console.error("Failed to fetch dashboard stats", err));
   }, []);
@@ -142,17 +141,27 @@ export function SuperAdminDashboard() {
   const employeeCount = stats ? stats.totalEmployees : 0;
   const projectCount = stats ? stats.totalProjects : 0;
   const completedProjects = stats ? stats.completedProjects : 0;
-  const clientCount = stats ? stats.totalClients : 102;
+  const clientCount = stats ? stats.totalClients : 0;
+
+  const formatRevenue = (value) => {
+    const num = parseFloat(value) || 0;
+    if (num >= 100000) {
+      return `₹${(num / 100000).toFixed(1)}L`;
+    }
+    return `₹${num.toLocaleString('en-IN')}`;
+  };
+
+  const revenueValue = stats ? formatRevenue(stats.totalRevenue) : '₹0.0';
 
   // Dynamically calculate attendance stats
-  const presentToday = stats ? stats.attendanceToday : 856;
-  const leaveToday = stats ? stats.totalLeaves : 42;
-  const absentToday = stats ? Math.max(0, employeeCount - presentToday - leaveToday) : 136;
+  const presentToday = stats ? stats.attendanceToday : 0;
+  const leaveToday = stats ? stats.totalLeaves : 0;
+  const absentToday = stats ? Math.max(0, employeeCount - presentToday - leaveToday) : 0;
 
   const totalForPct = employeeCount > 0 ? employeeCount : (presentToday + leaveToday + absentToday);
-  const presentPct = totalForPct > 0 ? Math.round((presentToday / totalForPct) * 100) : 83;
-  const leavePct = totalForPct > 0 ? Math.round((leaveToday / totalForPct) * 100) : 12;
-  const absentPct = Math.max(0, 100 - presentPct - leavePct);
+  const presentPct = totalForPct > 0 ? Math.round((presentToday / totalForPct) * 100) : 0;
+  const leavePct = totalForPct > 0 ? Math.round((leaveToday / totalForPct) * 100) : 0;
+  const absentPct = totalForPct > 0 ? Math.max(0, 100 - presentPct - leavePct) : 0;
 
   const donutStatus = [
     { name: 'Present', value: presentPct, color: '#10B981' },
@@ -207,15 +216,15 @@ export function SuperAdminDashboard() {
 
   // Adapt department summary to chart format
   const chartData = stats && stats.departmentSummary.length > 0 
-    ? stats.departmentSummary.map(d => ({ team: d.dept, achievement: d.emp * 12 })) 
-    : TEAM_PERFORMANCE_DATA;
+    ? stats.departmentSummary.map(d => ({ team: d.dept, achievement: Math.min(100, Math.round(d.emp * 12)) })) 
+    : [];
 
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box', background: '#F8FAFC', minHeight: '100vh', padding: 0 }}>
 
       {/* ── FIRST ROW: EXACTLY 5 KPI CARDS MATCHING REFERENCE IMAGE ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24, width: '100%' }}>
-        <KpiCard label="Total Revenue" value="₹24.8L" trend="12.5%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="₹" />
+        <KpiCard label="Total Revenue" value={revenueValue} trend="12.5%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="₹" />
         <KpiCard label="Total Employees" value={employeeCount} trend="8.3%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="👥" />
         <KpiCard label="Total Projects" value={projectCount} trend="15.7%" trendLabel="vs last month" iconBg="#DCFCE7" iconColor="#16A34A" iconSymbol="💼" />
         <KpiCard label="Completed Projects" value={completedProjects} trend="22.1%" trendLabel="vs last month" iconBg="#FEF3C7" iconColor="#D97706" iconSymbol="☑" />
