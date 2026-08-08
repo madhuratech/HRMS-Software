@@ -138,10 +138,10 @@ export function SuperAdminDashboard() {
       .catch(err => console.error("Failed to fetch dashboard stats", err));
   }, []);
 
-  const employeeCount = stats ? stats.totalEmployees : 0;
-  const projectCount = stats ? stats.totalProjects : 0;
-  const completedProjects = stats ? stats.completedProjects : 0;
-  const clientCount = stats ? stats.totalClients : 0;
+  const employeeCount = stats?.totalEmployees || 0;
+  const projectCount = stats?.totalProjects || 0;
+  const completedProjects = stats?.completedProjects || 0;
+  const clientCount = stats?.totalClients || 0;
 
   const formatRevenue = (value) => {
     const num = parseFloat(value) || 0;
@@ -154,9 +154,9 @@ export function SuperAdminDashboard() {
   const revenueValue = stats ? formatRevenue(stats.totalRevenue) : '₹0.0';
 
   // Dynamically calculate attendance stats
-  const presentToday = stats ? stats.attendanceToday : 0;
-  const leaveToday = stats ? stats.totalLeaves : 0;
-  const absentToday = stats ? Math.max(0, employeeCount - presentToday - leaveToday) : 0;
+  const presentToday = stats?.attendanceToday || 0;
+  const leaveToday = stats?.totalLeaves || 0;
+  const absentToday = Math.max(0, employeeCount - presentToday - leaveToday);
 
   const totalForPct = employeeCount > 0 ? employeeCount : (presentToday + leaveToday + absentToday);
   const presentPct = totalForPct > 0 ? Math.round((presentToday / totalForPct) * 100) : 0;
@@ -169,14 +169,14 @@ export function SuperAdminDashboard() {
     { name: 'Absent', value: absentPct, color: '#EF4444' },
   ];
 
-  const perfList = stats && stats.performanceEmployees && stats.performanceEmployees.length > 0
+  const perfList = Array.isArray(stats?.performanceEmployees)
     ? stats.performanceEmployees.map((row, idx) => ({
         ...row,
         avatar: `https://i.pravatar.cc/100?u=perf${idx}`
       }))
     : [];
 
-  const holidayList = stats && stats.upcomingHolidays && stats.upcomingHolidays.length > 0
+  const holidayList = Array.isArray(stats?.upcomingHolidays)
     ? stats.upcomingHolidays.map(h => ({
         date: new Date(h.date).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }),
         day: new Date(h.date).toLocaleDateString([], { weekday: 'long' }),
@@ -184,7 +184,7 @@ export function SuperAdminDashboard() {
       }))
     : [];
 
-  const birthdayList = stats && stats.upcomingBirthdays && stats.upcomingBirthdays.length > 0
+  const birthdayList = Array.isArray(stats?.upcomingBirthdays)
     ? stats.upcomingBirthdays.map((b, idx) => ({
         img: `https://i.pravatar.cc/100?u=birth${idx}`,
         name: b.name,
@@ -193,7 +193,7 @@ export function SuperAdminDashboard() {
       }))
     : [];
 
-  const activityList = stats && stats.recentActivity && stats.recentActivity.length > 0
+  const activityList = Array.isArray(stats?.recentActivity)
     ? stats.recentActivity.map((act, idx) => ({
         avatar: `https://i.pravatar.cc/100?u=act${idx}`,
         name: act.employee_name,
@@ -204,7 +204,7 @@ export function SuperAdminDashboard() {
       }))
     : [];
 
-  const leaveList = stats && stats.recentLeaves && stats.recentLeaves.length > 0
+  const leaveList = Array.isArray(stats?.recentLeaves)
     ? stats.recentLeaves.map((l, idx) => ({
         avatar: `https://i.pravatar.cc/100?u=leave${idx}`,
         name: l.employee_name,
@@ -215,7 +215,7 @@ export function SuperAdminDashboard() {
     : [];
 
   // Adapt department summary to chart format
-  const chartData = stats && stats.departmentSummary.length > 0 
+  const chartData = Array.isArray(stats?.departmentSummary)
     ? stats.departmentSummary.map(d => ({ team: d.dept, achievement: Math.min(100, Math.round(d.emp * 12)) })) 
     : [];
 
