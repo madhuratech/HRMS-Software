@@ -4,6 +4,7 @@ import { Edit2, Mail, Phone, MapPin, Briefcase, Calendar, DollarSign, Clock, Fil
 import { useToast } from '../ui/Toast';
 import EmployeeAvatar from './EmployeeAvatar';
 import './employee-module.css';
+import { apiFetch, getAuthToken } from '../../lib/api';
 
 const tabs = [
   'Overview', 'Employment', 'Salary', 'Attendance', 'Leave', 
@@ -58,8 +59,11 @@ export default function EmployeeProfileContent() {
     }
     const formData = new FormData();
     formData.append('photo', file);
-    fetch(`http://localhost:3000/app/employees/${empId}/photo`, {
+    fetch(`/app/employees/${empId}/photo`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getAuthToken()}`
+      },
       body: formData
     })
     .then(res => { if (!res.ok) throw new Error('Upload failed'); return res.json(); })
@@ -72,8 +76,7 @@ export default function EmployeeProfileContent() {
   };
 
   const handlePhotoRemove = () => {
-    fetch(`http://localhost:3000/app/employees/${empId}/photo`, { method: 'DELETE' })
-    .then(res => { if (!res.ok) throw new Error('Failed'); return res.json(); })
+    apiFetch(`/employees/${empId}/photo`, { method: 'DELETE' })
     .then(() => {
       addToast('Photo removed', 'success');
       loadProfile();
@@ -83,11 +86,7 @@ export default function EmployeeProfileContent() {
 
   const loadProfile = () => {
     setLoading(true);
-    fetch(`http://localhost:3000/app/employees/${empId}/profile`)
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to load profile");
-        return res.json();
-      })
+    apiFetch(`/employees/${empId}/profile`)
       .then(data => {
         setProfile(data);
         setLoading(false);
@@ -103,8 +102,7 @@ export default function EmployeeProfileContent() {
     loadProfile();
 
     // Fetch documents
-    fetch(`http://localhost:3000/app/employees/${empId}/documents`)
-      .then(res => res.json())
+    apiFetch(`/employees/${empId}/documents`)
       .then(data => {
         if (Array.isArray(data)) {
           setDocuments(data);
@@ -115,14 +113,14 @@ export default function EmployeeProfileContent() {
       .catch(err => console.error("Error loading docs:", err));
 
     // Fetch lookup data for dropdowns
-    fetch('http://localhost:3000/app/employees/lookup/designations')
-      .then(res => res.json()).then(data => Array.isArray(data) && setDesignations(data)).catch(() => {});
-    fetch('http://localhost:3000/app/employees/lookup/departments')
-      .then(res => res.json()).then(data => Array.isArray(data) && setDepartments(data)).catch(() => {});
-    fetch('http://localhost:3000/app/employees/lookup/branches')
-      .then(res => res.json()).then(data => Array.isArray(data) && setBranches(data)).catch(() => {});
-    fetch('http://localhost:3000/app/employees/lookup/teams')
-      .then(res => res.json()).then(data => Array.isArray(data) && setTeams(data)).catch(() => {});
+    apiFetch('/employees/lookup/designations')
+      .then(data => Array.isArray(data) && setDesignations(data)).catch(() => {});
+    apiFetch('/employees/lookup/departments')
+      .then(data => Array.isArray(data) && setDepartments(data)).catch(() => {});
+    apiFetch('/employees/lookup/branches')
+      .then(data => Array.isArray(data) && setBranches(data)).catch(() => {});
+    apiFetch('/employees/lookup/teams')
+      .then(data => Array.isArray(data) && setTeams(data)).catch(() => {});
   }, [empId]);
 
   if (loading) {
@@ -202,14 +200,9 @@ export default function EmployeeProfileContent() {
       teamName: editForm.teamName
     };
 
-    fetch(`http://localhost:3000/app/employees/${empId}`, {
+    apiFetch(`/employees/${empId}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
-    })
-    .then(res => {
-      if (!res.ok) throw new Error("Failed to update profile");
-      return res.json();
     })
     .then(() => {
       addToast("Profile updated successfully!", "success");
