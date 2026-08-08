@@ -77,3 +77,118 @@ exports.updateStatus = (req, res) => {
     res.json({ message: "Leave application updated successfully" });
   });
 };
+
+exports.getDashboardStats = async (req, res) => {
+  try {
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // 1. Total Employees
+    const totalEmployees = await new Promise((resolve, reject) => {
+      db.query("SELECT COUNT(*) as count FROM employees WHERE status = 'Active'", (err, rows) => {
+        if (err) return reject(err);
+        resolve(rows[0].count);
+      });
+    });
+
+    // 2. On Leave Today
+    const onLeaveTodayCount = await new Promise((resolve, reject) => {
+      db.query("SELECT COUNT(DISTINCT employee_id) as count FROM leave_applications WHERE status = 'Approved' AND ? BETWEEN start_date AND end_date", [todayStr], (err, rows) => {
+        if (err) return reject(err);
+        resolve(rows[0].count);
+      });
+    });
+
+    // 3. Pending Approvals
+    const pendingApprovals = await new Promise((resolve, reject) => {
+      db.query("SELECT COUNT(*) as count FROM leave_applications WHERE status = 'Pending'", (err, rows) => {
+        if (err) return reject(err);
+        resolve(rows[0].count);
+      });
+    });
+
+    // 4. Leaves Taken This Month
+    const leavesTakenThisMonth = await new Promise((resolve, reject) => {
+      db.query("SELECT COALESCE(SUM(DATEDIFF(end_date, start_date) + 1), 0) as count FROM leave_applications WHERE status = 'Approved' AND MONTH(start_date) = MONTH(?) AND YEAR(start_date) = YEAR(?)", [todayStr, todayStr], (err, rows) => {
+        if (err) return reject(err);
+        resolve(rows[0].count);
+      });
+    });
+
+    // 5. On Leave Today List
+    const onLeaveTodayList = await new Promise((resolve, reject) => {
+      const sqlList = `
+        SELECT la.employee_id, e.name, lt.code as leave_code, d.dept_name as dept, e.profile_photo as avatar
+        FROM leave_applications la
+        JOIN employees e ON la.employee_id = e.id
+        LEFT JOIN departments d ON e.department_id = d.id
+        JOIN leave_types lt ON la.leave_type_id = lt.id
+        WHERE la.status = 'Approved' AND ? BETWEEN la.start_date AND la.end_date
+      `;
+      db.query(sqlList, [todayStr], (err, rows) => {
+        if (err) return reject(err);
+        resolve(rows.map(r => ({
+          name: r.name,
+          role: r.dept || 'General Staff',
+          type: r.leave_code,
+          avatar: r.avatar ? `/${r.avatar}` : null
+        })));
+      });
+    });
+
+    // 6. Leave By Department list
+    const leaveByDept = await new Promise((resolve, reject) => {
+      const sqlDept = `
+        SELECT 
+          d.dept_name as dept, 
+          COUNT(DISTINCT e.id) as emp,
+          COALESCE(SUM(CASE WHEN la.status = 'Approved' THEN (DATEDIFF(la.end_date, la.start_date) + 1) ELSE 0 END), 0) as taken,
+          COALESCE(SUM(CASE WHEN la.status = 'Pending' THEN 1 ELSE 0 END), 0) as pending
+        FROM departments d
+        LEFT JOIN employees e ON e.department_id = d.id AND e.status = 'Active'
+        LEFT JOIN leave_applications la ON la.employee_id = e.id
+        GROUP BY d.id, d.dept_name
+      `;
+      db.query(sqlDept, (err, rows) => {
+        if (err) return reject(err);
+        resolve(rows);
+      });
+    });
+
+    // 7. Leave Distribution Summary
+    const leaveDist = await new Promise((resolve, reject) => {
+      const sqlDist = `
+        SELECT lt.name, COALESCE(SUM(DATEDIFF(la.end_date, la.start_date) + 1), 0) as value
+        FROM leave_types lt
+        LEFT JOIN leave_applications la ON la.leave_type_id = lt.id AND la.status = 'Approved'
+        GROUP BY lt.id, lt.name
+      `;
+      db.query(sqlDist, (err, rows) => {
+        if (err) return reject(err);
+        const colors = ['#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#64748b'];
+        resolve(rows.map((r, i) => ({
+          name: r.name,
+          value: r.value || 0,
+          color: colors[i % colors.length]
+        })));
+      });
+    });
+
+    return res.status(200).json({
+      success: true,
+      kpis: {
+        totalEmployees,
+        onLeaveToday: onLeaveTodayCount,
+        leavesTaken: leavesTakenThisMonth,
+        pendingApprovals,
+        leaveEncashment: '₹0.00'
+      },
+      onLeaveToday: onLeaveTodayList,
+      leaveByDepartment: leaveByDept,
+      leaveDistribution: leaveDist
+    });
+
+  } catch (error) {
+    console.error("Failed to load leave dashboard stats:", error);
+    return res.status(500).json({ success: false, message: "Internal server error loading dashboard stats" });
+  }
+};
