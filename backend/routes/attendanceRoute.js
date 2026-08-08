@@ -5,6 +5,7 @@ const { authenticateJWT } = require("../middlewares/auth");
 
 // Standard attendance endpoints
 router.post("/punch", authenticateJWT, attendanceController.punch);
+router.get("/today-status", authenticateJWT, attendanceController.getTodayStatus);
 router.get("/recent/:employee_id", authenticateJWT, attendanceController.getRecent);
 router.get("/daily", authenticateJWT, attendanceController.getDailyStats);
 router.get("/gps-feed", authenticateJWT, attendanceController.getGPSFeed);

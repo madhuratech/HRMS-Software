@@ -37,10 +37,9 @@ class GPSAttendanceService {
       throw new Error("Invalid GPS coordinates provided.");
     }
 
-    // Get active locations
+    // Get active office locations
     const activeLocations = await PunchLocationService.getActiveLocations();
     if (activeLocations.length === 0) {
-      // Log failed attempt
       await this.logPunchAttempt(employeeId, punchType, lat, lng, 'No Office Location', 0, 'No', deviceInfo, browser, ipAddress, 'Failed', 'No active office locations configured.');
       throw new Error("Attendance settings error: No active office punch locations configured.");
     }
@@ -56,67 +55,111 @@ class GPSAttendanceService {
       }
     }
 
+    // GPS Validation: Permitted radius check
     const insideRadius = minDistance <= nearestLocation.radius ? 'Yes' : 'No';
 
     if (insideRadius === 'No') {
-      // Log failed punch attempt
       await this.logPunchAttempt(employeeId, punchType, lat, lng, nearestLocation.name, minDistance, 'No', deviceInfo, browser, ipAddress, 'Failed', 'Outside allowed geofence radius.');
-      throw new Error("You are outside the allowed office location. Attendance cannot be recorded.");
+      throw new Error("You are outside the permitted office location.");
     }
 
-    // Successful punch.
     const punchDate = new Date().toISOString().split('T')[0];
     const timestamp = new Date();
 
-    // 1. Log punch attempt
+    // Log successful punch attempt
     await this.logPunchAttempt(employeeId, punchType, lat, lng, nearestLocation.name, minDistance, 'Yes', deviceInfo, browser, ipAddress, 'Success', null);
 
-    // 2. Add to GPSAttendance summary table (aggregating check_in and check_out)
+    // Fetch today's record for this employee
     const existing = await query("SELECT * FROM GPSAttendance WHERE employee_id = ? AND punch_date = ?", [employeeId, punchDate]);
 
-    if (existing.length === 0) {
-      // Insert new check-in or record
-      const sqlInsert = `
-        INSERT INTO GPSAttendance (employee_id, punch_date, check_in_time, check_out_time, latitude, longitude, location_name, distance, inside_radius, device_info, browser, ip_address)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    // Shift settings
+    const SHIFT_START = "09:30:00";
+    const SHIFT_END = "18:30:00";
+    const nowTimeStr = timestamp.toTimeString().split(' ')[0]; // "HH:MM:SS"
+
+    if (punchType === 'IN') {
+      // CASE 5: Employee cannot Punch In twice
+      if (existing.length > 0 && existing[0].check_in_time) {
+        throw new Error("You have already checked in today.");
+      }
+
+      // Check late entry
+      const isLate = nowTimeStr > SHIFT_START;
+      const status = isLate ? 'Late' : 'Present';
+
+      if (existing.length === 0) {
+        const sqlInsert = `
+          INSERT INTO GPSAttendance (employee_id, punch_date, check_in_time, latitude_in, longitude_in, punch_in_location, status, late_entry, early_exit)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+        `;
+        await query(sqlInsert, [
+          employeeId,
+          punchDate,
+          timestamp,
+          lat,
+          lng,
+          nearestLocation.name,
+          status,
+          isLate ? 1 : 0
+        ]);
+      } else {
+        const sqlUpdate = `
+          UPDATE GPSAttendance
+          SET check_in_time = ?, latitude_in = ?, longitude_in = ?, punch_in_location = ?, status = ?, late_entry = ?
+          WHERE employee_id = ? AND punch_date = ?
+        `;
+        await query(sqlUpdate, [
+          timestamp,
+          lat,
+          lng,
+          nearestLocation.name,
+          status,
+          isLate ? 1 : 0,
+          employeeId,
+          punchDate
+        ]);
+      }
+    } else {
+      // Punch OUT
+      // CASE 6: Employee cannot Punch Out before Punch In
+      if (existing.length === 0 || !existing[0].check_in_time) {
+        throw new Error("Employee cannot Punch Out before Punch In.");
+      }
+
+      // Employee cannot Punch Out twice
+      if (existing[0].check_out_time) {
+        throw new Error("You have already checked out today.");
+      }
+
+      const checkInTime = new Date(existing[0].check_in_time);
+      const diffMs = timestamp - checkInTime;
+      const diffHrs = Math.floor(diffMs / 3600000);
+      const diffMins = Math.floor((diffMs % 3600000) / 60000);
+      const workingHours = `${diffHrs}h ${diffMins}m`;
+
+      // Check if early exit
+      const isEarly = nowTimeStr < SHIFT_END;
+      const status = isEarly ? 'Early Exit' : 'Completed';
+
+      const sqlUpdate = `
+        UPDATE GPSAttendance
+        SET check_out_time = ?, latitude_out = ?, longitude_out = ?, punch_out_location = ?, working_hours = ?, status = ?, early_exit = ?
+        WHERE employee_id = ? AND punch_date = ?
       `;
-      await query(sqlInsert, [
-        employeeId,
-        punchDate,
-        punchType === 'IN' ? timestamp : null,
-        punchType === 'OUT' ? timestamp : null,
+      await query(sqlUpdate, [
+        timestamp,
         lat,
         lng,
         nearestLocation.name,
-        minDistance,
-        'Yes',
-        deviceInfo,
-        browser,
-        ipAddress
+        workingHours,
+        status,
+        isEarly ? 1 : 0,
+        employeeId,
+        punchDate
       ]);
-    } else {
-      // Update existing record
-      let sqlUpdate = '';
-      const params = [];
-      if (punchType === 'IN') {
-        sqlUpdate = `
-          UPDATE GPSAttendance
-          SET check_in_time = ?, latitude = ?, longitude = ?, location_name = ?, distance = ?, inside_radius = ?, device_info = ?, browser = ?, ip_address = ?
-          WHERE employee_id = ? AND punch_date = ?
-        `;
-        params.push(timestamp, lat, lng, nearestLocation.name, minDistance, 'Yes', deviceInfo, browser, ipAddress, employeeId, punchDate);
-      } else {
-        sqlUpdate = `
-          UPDATE GPSAttendance
-          SET check_out_time = ?, latitude = ?, longitude = ?, location_name = ?, distance = ?, inside_radius = ?, device_info = ?, browser = ?, ip_address = ?
-          WHERE employee_id = ? AND punch_date = ?
-        `;
-        params.push(timestamp, lat, lng, nearestLocation.name, minDistance, 'Yes', deviceInfo, browser, ipAddress, employeeId, punchDate);
-      }
-      await query(sqlUpdate, params);
     }
 
-    // 3. To maintain backward compatibility with other modules, sync to the original attendance table
+    // Sync to original log table for backward compatibility
     const sqlSync = `
       INSERT INTO attendance (employee_id, punch_type, punch_time, latitude, longitude)
       VALUES (?, ?, ?, ?, ?)
@@ -138,7 +181,6 @@ class GPSAttendanceService {
     `;
     await query(sql, [employeeId, punchType, lat, lng, locationName, distance, insideRadius, deviceInfo, browser, ipAddress, status, reason]);
 
-    // Update LocationHistory if successful
     if (status === 'Success') {
       await query(`INSERT INTO LocationHistory (employee_id, latitude, longitude) VALUES (?, ?, ?)`, [employeeId, lat, lng]);
     }
@@ -147,18 +189,15 @@ class GPSAttendanceService {
   static async getGPSDashboardStats(targetDate) {
     const date = targetDate || new Date().toISOString().split('T')[0];
 
-    // 1. KPIs
-    // Total Checkins: employees checked in today in GPSAttendance
     const statsRow = await query(`
       SELECT 
         COUNT(DISTINCT employee_id) as total_checkins,
-        SUM(CASE WHEN check_in_time IS NOT NULL AND inside_radius = 'Yes' THEN 1 ELSE 0 END) as onsite_checkins,
-        SUM(CASE WHEN check_in_time IS NOT NULL AND inside_radius = 'No' THEN 1 ELSE 0 END) as remote_checkins
+        SUM(CASE WHEN check_in_time IS NOT NULL THEN 1 ELSE 0 END) as onsite_checkins,
+        0 as remote_checkins
       FROM GPSAttendance
       WHERE punch_date = ?
     `, [date]);
 
-    // Active geofence locations
     const geofenceCountRow = await query(`SELECT COUNT(*) as active_geofences FROM GeofenceLocations WHERE status = 'Active'`);
 
     const totalCheckins = statsRow[0].total_checkins || 0;
@@ -166,7 +205,6 @@ class GPSAttendanceService {
     const remote = statsRow[0].remote_checkins || 0;
     const activeGeofences = geofenceCountRow[0].active_geofences || 0;
 
-    // 2. Geofence Zones list with today's count
     const geofenceZones = await query(`
       SELECT 
         id, 
@@ -177,25 +215,22 @@ class GPSAttendanceService {
         (
           SELECT COUNT(DISTINCT g.employee_id)
           FROM GPSAttendance g
-          WHERE g.punch_date = ? AND g.location_name = GeofenceLocations.name
+          WHERE g.punch_date = ? AND (g.punch_in_location = GeofenceLocations.name OR g.punch_out_location = GeofenceLocations.name)
         ) as activeStaff
       FROM GeofenceLocations
       WHERE status = 'Active'
     `, [date]);
 
-    // 3. Live GPS Feed (records)
     const sqlFeed = `
       SELECT 
         g.employee_id,
         e.name,
         e.profile_photo as avatar,
-        g.location_name as location,
-        g.latitude as lat,
-        g.longitude as lng,
+        COALESCE(g.punch_out_location, g.punch_in_location) as location,
+        COALESCE(g.latitude_out, g.latitude_in) as lat,
+        COALESCE(g.longitude_out, g.longitude_in) as lng,
         g.check_in_time,
-        g.check_out_time,
-        g.distance,
-        g.inside_radius
+        g.check_out_time
       FROM GPSAttendance g
       JOIN employees e ON e.id = g.employee_id
       WHERE g.punch_date = ?
@@ -217,8 +252,8 @@ class GPSAttendanceService {
         coordinates: lat && lng ? `${lat}° N, ${lng}° E` : 'N/A',
         lat: r.lat ? parseFloat(r.lat) : null,
         lng: r.lng ? parseFloat(r.lng) : null,
-        status: r.inside_radius === 'Yes' ? 'On-Site' : 'Remote',
-        distance: r.distance ? parseFloat(r.distance).toFixed(2) : '0'
+        status: 'On-Site',
+        distance: '0.00'
       };
     });
 
