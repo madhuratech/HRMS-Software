@@ -1,87 +1,116 @@
 const db = require("../config/database");
 
-exports.getStats = (req, res) => {
-  const stats = {
-    totalEmployees: 0,
-    totalDepartments: 0,
-    totalBranches: 0,
-    totalLeaves: 0,
-    attendanceToday: 0,
-    totalProjects: 0,
-    completedProjects: 0,
-    totalClients: 102,
-    departmentSummary: [],
-    recentActivity: [],
-    upcomingHolidays: [],
-    upcomingBirthdays: [],
-    performanceEmployees: [],
-    recentLeaves: []
-  };
+const query = (sql, params = []) => {
+  return new Promise((resolve, reject) => {
+    db.query(sql, params, (err, results) => {
+      if (err) return reject(err);
+      resolve(results);
+    });
+  });
+};
 
-  const queries = [
-    { key: 'totalEmployees', sql: "SELECT COUNT(*) as count FROM employees WHERE status = 'Active'" },
-    { key: 'totalDepartments', sql: "SELECT COUNT(*) as count FROM departments" },
-    { key: 'totalBranches', sql: "SELECT COUNT(*) as count FROM branches" },
-    { key: 'totalLeaves', sql: "SELECT COUNT(*) as count FROM leave_applications WHERE status = 'Approved' AND CURRENT_DATE BETWEEN start_date AND end_date" },
-    { key: 'attendanceToday', sql: "SELECT COUNT(DISTINCT employee_id) as count FROM attendance WHERE DATE(punch_time) = CURRENT_DATE" },
-    { key: 'totalProjects', sql: "SELECT COUNT(*) as count FROM projects" },
-    { key: 'completedProjects', sql: "SELECT COUNT(*) as count FROM projects WHERE status = 'Completed'" },
-    { key: 'totalClients', sql: "SELECT 102 as count" },
-    { key: 'departmentSummary', sql: `
+exports.getStats = async (req, res) => {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Execute queries in parallel using Promise.all
+    const [
+      totalEmployeesRow,
+      totalDepartmentsRow,
+      totalBranchesRow,
+      totalLeavesRow,
+      attendanceTodayRow,
+      totalProjectsRow,
+      completedProjectsRow,
+      totalClientsRow,
+      totalRevenueRow,
+      departmentSummary,
+      recentActivity,
+      upcomingHolidays,
+      upcomingBirthdays,
+      performanceEmployees,
+      recentLeaves
+    ] = await Promise.all([
+      query("SELECT COUNT(*) as count FROM employees WHERE status = 'Active'"),
+      query("SELECT COUNT(*) as count FROM departments"),
+      query("SELECT COUNT(*) as count FROM branches"),
+      query("SELECT COUNT(*) as count FROM leave_applications WHERE status = 'Approved' AND ? BETWEEN start_date AND end_date", [today]),
+      query("SELECT COUNT(DISTINCT employee_id) as count FROM attendance WHERE DATE(punch_time) = ?", [today]),
+      query("SELECT COUNT(*) as count FROM projects"),
+      query("SELECT COUNT(*) as count FROM projects WHERE status = 'Completed'"),
+      query("SELECT COUNT(DISTINCT client) as count FROM projects"),
+      query("SELECT COALESCE(SUM(budget), 0) as count FROM projects"),
+      query(`
         SELECT d.dept_name as dept, COUNT(e.id) as emp 
         FROM departments d 
-        LEFT JOIN employees e ON e.department_id = d.id 
-        GROUP BY d.id
-    `},
-    { key: 'recentActivity', sql: `
-        SELECT punch_type, punch_time, e.name as employee_name 
+        LEFT JOIN employees e ON e.department_id = d.id AND e.status = 'Active'
+        GROUP BY d.id, d.dept_name
+      `),
+      query(`
+        SELECT a.punch_type, a.punch_time, e.id as employee_id, e.name as employee_name, e.profile_photo 
         FROM attendance a
         JOIN employees e ON a.employee_id = e.id
-        ORDER BY punch_time DESC LIMIT 5
-    `},
-    { key: 'upcomingHolidays', sql: `
-        SELECT holiday_date as date, name 
-        FROM holidays 
-        ORDER BY holiday_date ASC LIMIT 4
-    `},
-    { key: 'upcomingBirthdays', sql: `
-        SELECT name, 'Today' as date 
-        FROM employees 
+        WHERE e.status = 'Active'
+        ORDER BY a.punch_time DESC LIMIT 5
+      `),
+      query("SELECT holiday_date as date, name FROM holidays WHERE holiday_date >= ? ORDER BY holiday_date ASC LIMIT 4", [today]),
+      query(`
+        SELECT e.id, e.name, e.profile_photo, DATE_FORMAT(e.dob, '%M %d') as date
+        FROM employees e
+        WHERE e.status = 'Active' AND e.dob IS NOT NULL
+        ORDER BY DATE_FORMAT(e.dob, '%m%d') ASC
         LIMIT 4
-    `},
-    { key: 'performanceEmployees', sql: `
-        SELECT e.name, d.dept_name as dept, desg.role_name as designation, '4.25' as score, '85%' as goals, 4 as stars, '↑ 3.2%' as trend, 1 as isUp 
+      `),
+      query(`
+        SELECT 
+          e.id,
+          e.name, 
+          e.profile_photo,
+          COALESCE(d.dept_name, 'General') as dept, 
+          COALESCE(desg.role_name, 'Employee') as designation, 
+          IF(COUNT(g.id) > 0, ROUND(AVG(g.completion_percentage)/20, 2), 0.00) as score,
+          CONCAT(IF(COUNT(g.id) > 0, ROUND(AVG(g.completion_percentage)), 0), '%') as goals,
+          IF(COUNT(g.id) > 0, ROUND(AVG(g.completion_percentage)/20), 0) as stars,
+          IF(COUNT(g.id) > 0, '↑ 5.0%', '0.0%') as trend, 
+          IF(COUNT(g.id) > 0, 1, 0) as isUp 
         FROM employees e 
         LEFT JOIN departments d ON e.department_id = d.id 
         LEFT JOIN designations desg ON e.designation_id = desg.id 
+        LEFT JOIN goals g ON e.id = g.employee_id
+        WHERE e.status = 'Active'
+        GROUP BY e.id, e.name, e.profile_photo, d.dept_name, desg.role_name
         LIMIT 5
-    `},
-    { key: 'recentLeaves', sql: `
-        SELECT e.name as employee_name, d.dept_name, lt.name as leave_name, DATEDIFF(la.end_date, la.start_date) + 1 as duration
+      `),
+      query(`
+        SELECT e.id, e.name as employee_name, e.profile_photo, d.dept_name, lt.name as leave_name, DATEDIFF(la.end_date, la.start_date) + 1 as duration
         FROM leave_applications la
         JOIN employees e ON la.employee_id = e.id
         LEFT JOIN departments d ON e.department_id = d.id
         JOIN leave_types lt ON la.leave_type_id = lt.id
-        WHERE la.status = 'Approved' AND CURRENT_DATE BETWEEN la.start_date AND la.end_date
-    `}
-  ];
+        WHERE la.status = 'Approved' AND ? BETWEEN la.start_date AND la.end_date
+      `, [today])
+    ]);
 
-  let completed = 0;
-  queries.forEach(q => {
-    db.query(q.sql, (err, rows) => {
-      if (err) {
-        console.error(`Error running query for dashboard: ${q.key}`, err);
-      } else {
-        if (['departmentSummary', 'recentActivity', 'upcomingHolidays', 'upcomingBirthdays', 'performanceEmployees', 'recentLeaves'].includes(q.key)) {
-          stats[q.key] = rows;
-        } else {
-          stats[q.key] = rows[0]?.count || 0;
-        }
-      }
-      completed++;
-      if (completed === queries.length) {
-        res.json(stats);
-      }
+    return res.status(200).json({
+      totalEmployees: totalEmployeesRow[0]?.count || 0,
+      totalDepartments: totalDepartmentsRow[0]?.count || 0,
+      totalBranches: totalBranchesRow[0]?.count || 0,
+      totalLeaves: totalLeavesRow[0]?.count || 0,
+      attendanceToday: attendanceTodayRow[0]?.count || 0,
+      totalProjects: totalProjectsRow[0]?.count || 0,
+      completedProjects: completedProjectsRow[0]?.count || 0,
+      totalClients: totalClientsRow[0]?.count || 0,
+      totalRevenue: totalRevenueRow[0]?.count || 0,
+      departmentSummary,
+      recentActivity,
+      upcomingHolidays,
+      upcomingBirthdays,
+      performanceEmployees,
+      recentLeaves
     });
-  });
+
+  } catch (error) {
+    console.error("Dashboard stats error:", error);
+    return res.status(500).json({ success: false, message: "Internal server error fetching dashboard statistics" });
+  }
 };

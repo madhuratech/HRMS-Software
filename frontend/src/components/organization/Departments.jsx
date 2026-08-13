@@ -1,4 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { apiFetch } from '../../lib/api';
+import { useToast } from '../ui/Toast';
 import {
   Building2,
   Users,
@@ -30,151 +32,8 @@ import {
   Calendar
 } from 'lucide-react';
 
-const INITIAL_DEPARTMENTS = [
-  {
-    id: 1,
-    name: 'Human Resources',
-    code: 'HR01',
-    headName: 'Sarah Johnson',
-    headRole: 'HR Manager',
-    headAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150',
-    employees: 15,
-    branch: 'Chennai',
-    createdDate: '12 Jan 2026',
-    updatedDate: '12 Jan 2026',
-    status: 'Active',
-    email: 'hr@hawkeyenest.com',
-    phone: '+91 98765 43210',
-    extension: '101',
-    location: 'Building A, 2nd Floor',
-    parentDepartment: '',
-    description: 'Manages employee relations, recruiting, and benefits.'
-  },
-  {
-    id: 2,
-    name: 'Finance',
-    code: 'FIN01',
-    headName: 'Michael Lee',
-    headRole: 'Finance Manager',
-    headAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150',
-    employees: 10,
-    branch: 'Chennai',
-    createdDate: '12 Jan 2026',
-    updatedDate: '12 Jan 2026',
-    status: 'Active',
-    email: 'finance@hawkeyenest.com',
-    phone: '+91 98765 43211',
-    extension: '102',
-    location: 'Building A, 2nd Floor',
-    parentDepartment: '',
-    description: 'Responsible for accounting, budgeting, and financial reports.'
-  },
-  {
-    id: 3,
-    name: 'Development',
-    code: 'DEV01',
-    headName: 'David Kumar',
-    headRole: 'Development Manager',
-    headAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150',
-    employees: 82,
-    branch: 'Bangalore',
-    createdDate: '12 Jan 2026',
-    updatedDate: '12 Jan 2026',
-    status: 'Active',
-    email: 'dev@hawkeyenest.com',
-    phone: '+91 98765 43212',
-    extension: '201',
-    location: 'Tech Park, Tower B',
-    parentDepartment: '',
-    description: 'Handles software development, testing, and system maintenance.'
-  },
-  {
-    id: 4,
-    name: 'Quality Assurance',
-    code: 'QA01',
-    headName: 'Priya Sharma',
-    headRole: 'QA Manager',
-    headAvatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150',
-    employees: 28,
-    branch: 'Bangalore',
-    createdDate: '12 Jan 2026',
-    updatedDate: '12 Jan 2026',
-    status: 'Active',
-    email: 'qa@hawkeyenest.com',
-    phone: '+91 98765 43213',
-    extension: '202',
-    location: 'Tech Park, Tower B',
-    parentDepartment: 'Development',
-    description: 'Ensures application quality standards and automated testing workflows.'
-  },
-  {
-    id: 5,
-    name: 'UI/UX Design',
-    code: 'UI01',
-    headName: 'John Peter',
-    headRole: 'Design Manager',
-    headAvatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150',
-    employees: 12,
-    branch: 'Chennai',
-    createdDate: '12 Jan 2026',
-    updatedDate: '12 Jan 2026',
-    status: 'Active',
-    email: 'design@hawkeyenest.com',
-    phone: '+91 98765 43214',
-    extension: '103',
-    location: 'Building A, 1st Floor',
-    parentDepartment: '',
-    description: 'Creates layouts, user flows, design assets, and brand design guidelines.'
-  },
-  {
-    id: 6,
-    name: 'Marketing',
-    code: 'MKT01',
-    headName: 'Rahul Singh',
-    headRole: 'Marketing Manager',
-    headAvatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150',
-    employees: 18,
-    branch: 'Hyderabad',
-    createdDate: '12 Jan 2026',
-    updatedDate: '12 Jan 2026',
-    status: 'Active',
-    email: 'marketing@hawkeyenest.com',
-    phone: '+91 98765 43215',
-    extension: '301',
-    location: 'Building C, Floor 4',
-    parentDepartment: '',
-    description: 'Runs advertising, social outreach, events, and business development.'
-  },
-  {
-    id: 7,
-    name: 'Sales',
-    code: 'SAL01',
-    headName: 'Ramesh Kumar',
-    headRole: 'Sales Manager',
-    headAvatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150',
-    employees: 24,
-    branch: 'Mumbai',
-    createdDate: '12 Jan 2026',
-    updatedDate: '12 Jan 2026',
-    status: 'Active',
-    email: 'sales@hawkeyenest.com',
-    phone: '+91 98765 43216',
-    extension: '401',
-    location: 'Building D, Room 502',
-    parentDepartment: '',
-    description: 'Oversees product sales, client accounts, and partnerships.'
-  }
-];
-
-const MOCK_EMPLOYEES = [
-  { name: 'Sarah Johnson', role: 'HR Manager', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150' },
-  { name: 'Michael Lee', role: 'Finance Manager', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150' },
-  { name: 'David Kumar', role: 'Development Manager', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150' },
-  { name: 'Priya Sharma', role: 'QA Manager', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150' },
-  { name: 'John Peter', role: 'Design Manager', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150' },
-  { name: 'Rahul Singh', role: 'Marketing Manager', avatar: 'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=150' },
-  { name: 'Ramesh Kumar', role: 'Sales Manager', avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=150' }
-];
+const INITIAL_DEPARTMENTS = [];
+const MOCK_EMPLOYEES = [];
 
 const emptyForm = { name: '', code: '', headName: '', headAvatar: '', headRole: '', parentDepartment: '', email: '', phone: '', description: '', status: 'Active' };
 
@@ -277,11 +136,14 @@ function CustomSelect({ label, value, options, placeholder, error, onChange }) {
 }
 
 export function Departments() {
-  const [departments, setDepartments] = useState(INITIAL_DEPARTMENTS);
+  const { addToast } = useToast();
+  const [departments, setDepartments] = useState([]);
+  const [employeesList, setEmployeesList] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [branchFilter, setBranchFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
 
   // Modal states
   const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
@@ -290,6 +152,28 @@ export function Departments() {
   const [selectedDept, setSelectedDept] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
   const [formErrors, setFormErrors] = useState({});
+
+  const loadDepartments = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch('/organization/departments');
+      if (Array.isArray(data)) {
+        setDepartments(data);
+      }
+    } catch (e) {
+      console.error("Failed to load departments:", e);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadDepartments();
+    apiFetch('/employees?status=Active')
+      .then(data => {
+        if (Array.isArray(data)) setEmployeesList(data);
+      })
+      .catch(err => console.error("Failed to load employees:", err));
+  }, []);
 
   const isAnyModalOpen = isAddEditModalOpen || isViewModalOpen || isDeleteModalOpen;
 
@@ -334,9 +218,9 @@ export function Departments() {
   // Filters & Search
   const filteredDepartments = useMemo(() => {
     return departments.filter(dept => {
-      const matchSearch = dept.name.toLowerCase().includes(search.toLowerCase()) ||
-        dept.code.toLowerCase().includes(search.toLowerCase()) ||
-        dept.headName.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = (dept.name || '').toLowerCase().includes(search.toLowerCase()) ||
+        (dept.code || '').toLowerCase().includes(search.toLowerCase()) ||
+        (dept.headName || '').toLowerCase().includes(search.toLowerCase());
       const matchStatus = statusFilter === 'All' || dept.status === statusFilter;
       const matchBranch = branchFilter === 'All' || dept.branch === branchFilter;
 
@@ -401,68 +285,50 @@ export function Departments() {
     }
   };
 
-  const handleSaveDepartment = () => {
+  const handleSaveDepartment = async () => {
     const errors = {};
-    if (!formData.name.trim()) errors.name = 'Department Name is required';
-    if (!formData.code.trim()) errors.code = 'Department Code is required';
-    if (!formData.headName) errors.headName = 'Department Head is required';
+    if (!formData.name || !formData.name.trim()) errors.name = 'Department Name is required';
+    if (!formData.code || !formData.code.trim()) errors.code = 'Department Code is required';
 
     if (Object.keys(errors).length > 0) {
       setFormErrors(errors);
       return;
     }
 
-    const matchedEmployee = MOCK_EMPLOYEES.find(e => e.name === formData.headName);
-
-    if (selectedDept) {
-      // Edit mode
-      setDepartments(prev => prev.map(d => {
-        if (d.id === selectedDept.id) {
-          return {
-            ...d,
-            name: formData.name,
-            code: formData.code,
-            headName: formData.headName,
-            headRole: matchedEmployee ? matchedEmployee.role : 'Manager',
-            headAvatar: matchedEmployee ? matchedEmployee.avatar : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-            parentDepartment: formData.parentDepartment,
-            email: formData.email,
-            phone: formData.phone,
-            status: formData.status,
-            description: formData.description,
-            updatedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-          };
-        }
-        return d;
-      }));
-    } else {
-      // Add mode
-      const newId = departments.length > 0 ? Math.max(...departments.map(d => d.id)) + 1 : 1;
-      const newDept = {
-        id: newId,
-        name: formData.name,
-        code: formData.code,
-        headName: formData.headName,
-        headRole: matchedEmployee ? matchedEmployee.role : 'Manager',
-        headAvatar: matchedEmployee ? matchedEmployee.avatar : 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150',
-        employees: 0,
-        createdDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-        updatedDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-        status: formData.status,
-        email: formData.email,
-        phone: formData.phone,
-        parentDepartment: formData.parentDepartment,
-        description: formData.description
-      };
-      setDepartments(prev => [newDept, ...prev]);
+    try {
+      if (selectedDept) {
+        // Edit mode
+        await apiFetch(`/organization/departments/${selectedDept.id}`, {
+          method: 'PUT',
+          body: JSON.stringify(formData)
+        });
+        addToast('Department updated successfully!', 'success');
+      } else {
+        // Add mode
+        await apiFetch('/organization/departments', {
+          method: 'POST',
+          body: JSON.stringify(formData)
+        });
+        addToast('Department created successfully!', 'success');
+      }
+      await loadDepartments();
+      setIsAddEditModalOpen(false);
+    } catch (err) {
+      console.error("Error saving department:", err);
+      addToast('Failed to save department', 'error');
     }
-
-    setIsAddEditModalOpen(false);
   };
 
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (selectedDept) {
-      setDepartments(prev => prev.filter(d => d.id !== selectedDept.id));
+      try {
+        await apiFetch(`/organization/departments/${selectedDept.id}`, {
+          method: 'DELETE'
+        });
+        await loadDepartments();
+      } catch (err) {
+        console.error("Error deleting department:", err);
+      }
     }
     setIsDeleteModalOpen(false);
   };
@@ -791,12 +657,12 @@ export function Departments() {
               </div>
 
               <CustomSelect
-                label="Department Head *"
-                value={formData.headName}
+                label="Department Head"
+                value={formData.headName || 'Unassigned'}
                 placeholder="Select Employee"
-                options={MOCK_EMPLOYEES.map(emp => emp.name)}
+                options={['Unassigned', ...employeesList.map(emp => emp.name)]}
                 error={formErrors.headName}
-                onChange={(val) => handleFormChange('headName', val)}
+                onChange={(val) => handleFormChange('headName', val === 'Unassigned' ? '' : val)}
               />
 
               <CustomSelect

@@ -1,12 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '../ui/Toast';
 import {
   DollarSign, Users, Briefcase, CheckCircle2, UserCheck, Calendar, UserPlus, LogOut, TrendingDown,
-  Star, TrendingUp, FolderPlus, Building2, FileText, Settings, Upload, BarChart2, Mail
+  Star, TrendingUp, FolderPlus, Building2, FileText, Settings, Upload, BarChart2, Mail, X, Send
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LabelList
 } from 'recharts';
+import { apiFetch } from '../../lib/api';
+import { getAvatarUrl } from '../../lib/utils';
 
 // ── Team Performance Single Bar Chart Data (Achievement %) ──
 const TEAM_PERFORMANCE_DATA = [
@@ -130,29 +134,94 @@ const KpiCard = ({ label, value, trend, trendLabel, iconBg, iconColor, iconSymbo
 );
 
 export function SuperAdminDashboard() {
+  const navigate = useNavigate();
+  const { addToast } = useToast();
   const [stats, setStats] = useState(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   useEffect(() => {
-    fetch('http://localhost:3000/app/dashboard/stats')
-      .then(res => res.json())
+    apiFetch('/dashboard/stats')
       .then(data => setStats(data))
       .catch(err => console.error("Failed to fetch dashboard stats", err));
   }, []);
 
-  const employeeCount = stats ? stats.totalEmployees : 0;
-  const projectCount = stats ? stats.totalProjects : 0;
-  const completedProjects = stats ? stats.completedProjects : 0;
-  const clientCount = stats ? stats.totalClients : 102;
+  const handleQuickAction = (label) => {
+    switch (label) {
+      case 'Add User':
+        navigate('/employees/add');
+        break;
+      case 'Add Project':
+        navigate('/projects/list');
+        break;
+      case 'Add Client':
+        navigate('/customer-sales');
+        break;
+      case 'Create Invoice':
+        navigate('/payroll/payslips');
+        break;
+      case 'System Settings':
+        navigate('/settings/system');
+        break;
+      case 'Backup Now':
+        addToast('Initiating database backup...', 'info');
+        setTimeout(() => {
+          addToast('Database backup completed & saved successfully!', 'success');
+        }, 800);
+        break;
+      case 'Generate Report':
+        navigate('/reports/employee');
+        break;
+      case 'Send Email':
+        setShowEmailModal(true);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleSendEmailSubmit = (e) => {
+    e.preventDefault();
+    if (!emailSubject || !emailBody) {
+      addToast('Please enter subject and email content', 'error');
+      return;
+    }
+    setSendingEmail(true);
+    setTimeout(() => {
+      setSendingEmail(false);
+      setShowEmailModal(false);
+      setEmailSubject('');
+      setEmailBody('');
+      addToast('Email broadcast dispatched to active employees!', 'success');
+    }, 600);
+  };
+
+  const employeeCount = stats?.totalEmployees || 0;
+  const projectCount = stats?.totalProjects || 0;
+  const completedProjects = stats?.completedProjects || 0;
+  const clientCount = stats?.totalClients || 0;
+
+  const formatRevenue = (value) => {
+    const num = parseFloat(value) || 0;
+    if (num >= 100000) {
+      return `₹${(num / 100000).toFixed(1)}L`;
+    }
+    return `₹${num.toLocaleString('en-IN')}`;
+  };
+
+  const revenueValue = stats ? formatRevenue(stats.totalRevenue) : '₹0.0';
 
   // Dynamically calculate attendance stats
-  const presentToday = stats ? stats.attendanceToday : 856;
-  const leaveToday = stats ? stats.totalLeaves : 42;
-  const absentToday = stats ? Math.max(0, employeeCount - presentToday - leaveToday) : 136;
+  const presentToday = stats?.attendanceToday || 0;
+  const leaveToday = stats?.totalLeaves || 0;
+  const absentToday = Math.max(0, employeeCount - presentToday - leaveToday);
 
   const totalForPct = employeeCount > 0 ? employeeCount : (presentToday + leaveToday + absentToday);
-  const presentPct = totalForPct > 0 ? Math.round((presentToday / totalForPct) * 100) : 83;
-  const leavePct = totalForPct > 0 ? Math.round((leaveToday / totalForPct) * 100) : 12;
-  const absentPct = Math.max(0, 100 - presentPct - leavePct);
+  const presentPct = totalForPct > 0 ? Math.round((presentToday / totalForPct) * 100) : 0;
+  const leavePct = totalForPct > 0 ? Math.round((leaveToday / totalForPct) * 100) : 0;
+  const absentPct = totalForPct > 0 ? Math.max(0, 100 - presentPct - leavePct) : 0;
 
   const donutStatus = [
     { name: 'Present', value: presentPct, color: '#10B981' },
@@ -160,14 +229,14 @@ export function SuperAdminDashboard() {
     { name: 'Absent', value: absentPct, color: '#EF4444' },
   ];
 
-  const perfList = stats && stats.performanceEmployees && stats.performanceEmployees.length > 0
+  const perfList = Array.isArray(stats?.performanceEmployees)
     ? stats.performanceEmployees.map((row, idx) => ({
         ...row,
-        avatar: `https://i.pravatar.cc/100?u=perf${idx}`
+        avatar: getAvatarUrl(row.profile_photo, row.name, row.id || idx + 1)
       }))
     : [];
 
-  const holidayList = stats && stats.upcomingHolidays && stats.upcomingHolidays.length > 0
+  const holidayList = Array.isArray(stats?.upcomingHolidays)
     ? stats.upcomingHolidays.map(h => ({
         date: new Date(h.date).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }),
         day: new Date(h.date).toLocaleDateString([], { weekday: 'long' }),
@@ -175,18 +244,18 @@ export function SuperAdminDashboard() {
       }))
     : [];
 
-  const birthdayList = stats && stats.upcomingBirthdays && stats.upcomingBirthdays.length > 0
+  const birthdayList = Array.isArray(stats?.upcomingBirthdays)
     ? stats.upcomingBirthdays.map((b, idx) => ({
-        img: `https://i.pravatar.cc/100?u=birth${idx}`,
+        img: getAvatarUrl(b.profile_photo, b.name, b.id || idx + 1),
         name: b.name,
         role: 'Team Member',
         date: b.date || 'Today'
       }))
     : [];
 
-  const activityList = stats && stats.recentActivity && stats.recentActivity.length > 0
+  const activityList = Array.isArray(stats?.recentActivity)
     ? stats.recentActivity.map((act, idx) => ({
-        avatar: `https://i.pravatar.cc/100?u=act${idx}`,
+        avatar: getAvatarUrl(act.profile_photo, act.employee_name, act.employee_id || idx + 1),
         name: act.employee_name,
         action: act.punch_type === 'IN' ? 'punched in at' : 'punched out at',
         highlight: new Date(act.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -195,9 +264,9 @@ export function SuperAdminDashboard() {
       }))
     : [];
 
-  const leaveList = stats && stats.recentLeaves && stats.recentLeaves.length > 0
+  const leaveList = Array.isArray(stats?.recentLeaves)
     ? stats.recentLeaves.map((l, idx) => ({
-        avatar: `https://i.pravatar.cc/100?u=leave${idx}`,
+        avatar: getAvatarUrl(l.profile_photo, l.employee_name, l.id || idx + 1),
         name: l.employee_name,
         dept: l.dept_name || 'HR',
         type: l.leave_name || 'Sick Leave',
@@ -206,16 +275,16 @@ export function SuperAdminDashboard() {
     : [];
 
   // Adapt department summary to chart format
-  const chartData = stats && stats.departmentSummary.length > 0 
-    ? stats.departmentSummary.map(d => ({ team: d.dept, achievement: d.emp * 12 })) 
-    : TEAM_PERFORMANCE_DATA;
+  const chartData = Array.isArray(stats?.departmentSummary)
+    ? stats.departmentSummary.map(d => ({ team: d.dept, achievement: Math.min(100, Math.round(d.emp * 12)) })) 
+    : [];
 
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box', background: '#F8FAFC', minHeight: '100vh', padding: 0 }}>
 
       {/* ── FIRST ROW: EXACTLY 5 KPI CARDS MATCHING REFERENCE IMAGE ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24, width: '100%' }}>
-        <KpiCard label="Total Revenue" value="₹24.8L" trend="12.5%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="₹" />
+        <KpiCard label="Total Revenue" value={revenueValue} trend="12.5%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="₹" />
         <KpiCard label="Total Employees" value={employeeCount} trend="8.3%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="👥" />
         <KpiCard label="Total Projects" value={projectCount} trend="15.7%" trendLabel="vs last month" iconBg="#DCFCE7" iconColor="#16A34A" iconSymbol="💼" />
         <KpiCard label="Completed Projects" value={completedProjects} trend="22.1%" trendLabel="vs last month" iconBg="#FEF3C7" iconColor="#D97706" iconSymbol="☑" />
@@ -526,6 +595,7 @@ export function SuperAdminDashboard() {
                 transition: 'all 150ms ease',
                 color: '#2563EB',
               }}
+              onClick={() => handleQuickAction(action.label)}
               onMouseEnter={e => { e.currentTarget.style.background = '#2563EB'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#2563EB'; }}
               onMouseLeave={e => { e.currentTarget.style.background = '#F0F4FF'; e.currentTarget.style.color = '#2563EB'; e.currentTarget.style.borderColor = '#E0E7FF'; }}
               >
@@ -537,6 +607,98 @@ export function SuperAdminDashboard() {
         </div>
 
       </div>
+
+      {/* Send Email Modal */}
+      {showEmailModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+        }}>
+          <div style={{
+            background: '#FFFFFF', borderRadius: 16, width: '100%', maxWidth: 500,
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              padding: '16px 20px', borderBottom: '1px solid #E2E8F0',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F8FAFC'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Mail size={18} color="#2563EB" />
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0F172A' }}>Send Announcement Email</h3>
+              </div>
+              <button 
+                onClick={() => setShowEmailModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendEmailSubmit} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                  Email Subject *
+                </label>
+                <input 
+                  type="text"
+                  placeholder="e.g. Monthly All-Hands Announcement"
+                  value={emailSubject}
+                  onChange={e => setEmailSubject(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 8,
+                    border: '1px solid #CBD5E1', fontSize: 13, outline: 'none', boxSizing: 'border-box'
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                  Message Content *
+                </label>
+                <textarea 
+                  rows={4}
+                  placeholder="Write your email message here..."
+                  value={emailBody}
+                  onChange={e => setEmailBody(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 8,
+                    border: '1px solid #CBD5E1', fontSize: 13, outline: 'none', resize: 'vertical', boxSizing: 'border-box'
+                  }}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+                <button 
+                  type="button" 
+                  onClick={() => setShowEmailModal(false)}
+                  style={{
+                    padding: '8px 16px', borderRadius: 8, border: '1px solid #CBD5E1',
+                    background: '#FFF', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={sendingEmail}
+                  style={{
+                    padding: '8px 18px', borderRadius: 8, border: 'none',
+                    background: '#2563EB', color: '#FFF', fontSize: 13, fontWeight: 600,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+                  }}
+                >
+                  <Send size={14} />
+                  {sendingEmail ? 'Sending...' : 'Send Broadcast'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

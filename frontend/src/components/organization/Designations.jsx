@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { apiFetch } from '../../lib/api';
 import {
   Award,
   Users,
@@ -27,40 +28,7 @@ import {
   Layers
 } from 'lucide-react';
 
-const INITIAL_DESIGNATIONS = [
-  { id: 1, name: 'Chief Executive Officer', code: 'CEO', department: 'Management', reportsTo: '—', grade: 'L1', level: 'Executive', employees: 1, createdDate: '12 Jan 2026', status: 'Active', description: 'Top executive responsible for overall company strategy and operations.' },
-  { id: 2, name: 'Chief Technology Officer', code: 'CTO', department: 'Technology', reportsTo: 'CEO', grade: 'L1', level: 'Executive', employees: 1, createdDate: '10 Jan 2026', status: 'Active', description: 'Leads technology strategy and innovation.' },
-  { id: 3, name: 'Human Resources Manager', code: 'HRM', department: 'Human Resources', reportsTo: 'CEO', grade: 'L2', level: 'Manager', employees: 8, createdDate: '09 Jan 2026', status: 'Active', description: 'Manages employee relations and HR operations.' },
-  { id: 4, name: 'Finance Manager', code: 'FM', department: 'Finance', reportsTo: 'CEO', grade: 'L2', level: 'Manager', employees: 6, createdDate: '08 Jan 2026', status: 'Active', description: 'Oversees financial planning and accounting.' },
-  { id: 5, name: 'Senior Developer', code: 'SD', department: 'Technology', reportsTo: 'CTO', grade: 'L3', level: 'Senior', employees: 15, createdDate: '08 Jan 2026', status: 'Active', description: 'Leads development teams and technical projects.' },
-  { id: 6, name: 'UI/UX Designer', code: 'UXD', department: 'Design', reportsTo: 'CTO', grade: 'L3', level: 'Senior', employees: 7, createdDate: '07 Jan 2026', status: 'Active', description: 'Creates user interfaces and experience designs.' },
-  { id: 7, name: 'Sales Manager', code: 'SM', department: 'Sales', reportsTo: 'CEO', grade: 'L2', level: 'Manager', employees: 12, createdDate: '06 Jan 2026', status: 'Active', description: 'Manages sales team and revenue targets.' },
-  { id: 8, name: 'Marketing Executive', code: 'MKT', department: 'Marketing', reportsTo: 'SM', grade: 'L4', level: 'Executive', employees: 10, createdDate: '05 Jan 2026', status: 'Inactive', description: 'Runs marketing campaigns and brand outreach.' },
-  { id: 9, name: 'QA Engineer', code: 'QAE', department: 'Technology', reportsTo: 'CTO', grade: 'L3', level: 'Senior', employees: 9, createdDate: '04 Jan 2026', status: 'Active', description: 'Tests software and ensures product quality.' },
-  { id: 10, name: 'DevOps Engineer', code: 'DOE', department: 'Technology', reportsTo: 'CTO', grade: 'L3', level: 'Senior', employees: 5, createdDate: '03 Jan 2026', status: 'Active', description: 'Manages infrastructure and CI/CD pipelines.' },
-  { id: 11, name: 'Product Manager', code: 'PM', department: 'Management', reportsTo: 'CEO', grade: 'L2', level: 'Manager', employees: 4, createdDate: '02 Jan 2026', status: 'Active', description: 'Defines product roadmap and feature prioritization.' },
-  { id: 12, name: 'Business Analyst', code: 'BA', department: 'Management', reportsTo: 'PM', grade: 'L3', level: 'Senior', employees: 6, createdDate: '01 Jan 2026', status: 'Active', description: 'Analyzes business requirements and processes.' },
-  { id: 13, name: 'Junior Developer', code: 'JD', department: 'Technology', reportsTo: 'SD', grade: 'L5', level: 'Junior', employees: 20, createdDate: '28 Dec 2025', status: 'Active', description: 'Entry-level development position.' },
-  { id: 14, name: 'Intern', code: 'INT', department: 'Technology', reportsTo: 'SD', grade: 'L6', level: 'Trainee', employees: 8, createdDate: '27 Dec 2025', status: 'Active', description: 'Training and learning position.' },
-  { id: 15, name: 'Data Analyst', code: 'DA', department: 'Technology', reportsTo: 'CTO', grade: 'L3', level: 'Senior', employees: 4, createdDate: '26 Dec 2025', status: 'Active', description: 'Analyzes data to provide business insights.' },
-  { id: 16, name: 'System Administrator', code: 'SA', department: 'Technology', reportsTo: 'CTO', grade: 'L3', level: 'Senior', employees: 3, createdDate: '25 Dec 2025', status: 'Active', description: 'Manages servers and network infrastructure.' },
-  { id: 17, name: 'Content Writer', code: 'CW', department: 'Marketing', reportsTo: 'MKT', grade: 'L4', level: 'Executive', employees: 5, createdDate: '24 Dec 2025', status: 'Active', description: 'Creates content for marketing and communications.' },
-  { id: 18, name: 'Graphic Designer', code: 'GD', department: 'Design', reportsTo: 'UXD', grade: 'L4', level: 'Executive', employees: 4, createdDate: '23 Dec 2025', status: 'Active', description: 'Designs visual content and brand assets.' },
-  { id: 19, name: 'Accountant', code: 'ACC', department: 'Finance', reportsTo: 'FM', grade: 'L4', level: 'Executive', employees: 6, createdDate: '22 Dec 2025', status: 'Active', description: 'Handles financial records and reporting.' },
-  { id: 20, name: 'HR Executive', code: 'HRE', department: 'Human Resources', reportsTo: 'HRM', grade: 'L4', level: 'Executive', employees: 5, createdDate: '21 Dec 2025', status: 'Active', description: 'Supports HR operations and employee services.' },
-  { id: 21, name: 'Sales Executive', code: 'SE', department: 'Sales', reportsTo: 'SM', grade: 'L4', level: 'Executive', employees: 14, createdDate: '20 Dec 2025', status: 'Active', description: 'Manages client relationships and sales.' },
-  { id: 22, name: 'Team Lead', code: 'TL', department: 'Technology', reportsTo: 'SD', grade: 'L3', level: 'Senior', employees: 8, createdDate: '19 Dec 2025', status: 'Active', description: 'Leads development teams and sprints.' },
-  { id: 23, name: 'Project Manager', code: 'PJM', department: 'Management', reportsTo: 'CEO', grade: 'L2', level: 'Manager', employees: 3, createdDate: '18 Dec 2025', status: 'Active', description: 'Plans and executes project deliverables.' },
-  { id: 24, name: 'Technical Writer', code: 'TW', department: 'Technology', reportsTo: 'PM', grade: 'L4', level: 'Executive', employees: 2, createdDate: '17 Dec 2025', status: 'Active', description: 'Creates technical documentation and guides.' },
-  { id: 25, name: 'Security Analyst', code: 'SEC', department: 'Technology', reportsTo: 'CTO', grade: 'L3', level: 'Senior', employees: 3, createdDate: '16 Dec 2025', status: 'Active', description: 'Ensures cybersecurity and compliance.' },
-  { id: 26, name: 'Operations Manager', code: 'OM', department: 'Management', reportsTo: 'CEO', grade: 'L2', level: 'Manager', employees: 7, createdDate: '15 Dec 2025', status: 'Active', description: 'Manages daily business operations.' },
-  { id: 27, name: 'Support Executive', code: 'SUP', department: 'Support', reportsTo: 'OM', grade: 'L4', level: 'Executive', employees: 10, createdDate: '14 Dec 2025', status: 'Active', description: 'Provides customer and internal support.' },
-  { id: 28, name: 'Recruiter', code: 'REC', department: 'Human Resources', reportsTo: 'HRM', grade: 'L4', level: 'Executive', employees: 4, createdDate: '13 Dec 2025', status: 'Active', description: 'Handles talent acquisition and hiring.' },
-  { id: 29, name: 'Compliance Officer', code: 'CO', department: 'Finance', reportsTo: 'FM', grade: 'L3', level: 'Senior', employees: 2, createdDate: '12 Dec 2025', status: 'Inactive', description: 'Ensures regulatory compliance.' },
-  { id: 30, name: 'Training Manager', code: 'TM', department: 'Human Resources', reportsTo: 'HRM', grade: 'L2', level: 'Manager', employees: 3, createdDate: '11 Dec 2025', status: 'Active', description: 'Manages employee training and development.' },
-  { id: 31, name: 'Network Engineer', code: 'NE', department: 'Technology', reportsTo: 'SA', grade: 'L4', level: 'Executive', employees: 4, createdDate: '10 Dec 2025', status: 'Active', description: 'Manages network infrastructure and connectivity.' },
-  { id: 32, name: 'Legal Advisor', code: 'LA', department: 'Management', reportsTo: 'CEO', grade: 'L2', level: 'Manager', employees: 2, createdDate: '09 Dec 2025', status: 'Active', description: 'Provides legal counsel and contract review.' }
-];
+const INITIAL_DESIGNATIONS = [];
 
 const DEPARTMENTS = ['Management', 'Technology', 'Human Resources', 'Finance', 'Sales', 'Marketing', 'Design', 'Support'];
 const GRADES = ['L1', 'L2', 'L3', 'L4', 'L5', 'L6'];
@@ -106,11 +74,12 @@ const CustomSelect = ({ label, required, value, onChange, options, placeholder }
 };
 
 export const Designations = () => {
-  const [designations, setDesignations] = useState(INITIAL_DESIGNATIONS);
+  const [designations, setDesignations] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [deptFilter, setDeptFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -119,16 +88,33 @@ export const Designations = () => {
   const [formData, setFormData] = useState(emptyForm);
   const itemsPerPage = 8;
 
+  const loadDesignations = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch('/organization/designations');
+      if (Array.isArray(data)) {
+        setDesignations(data);
+      }
+    } catch (e) {
+      console.error("Failed to load designations:", e);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadDesignations();
+  }, []);
+
   const statistics = useMemo(() => ({
     total: designations.length,
     active: designations.filter(d => d.status === 'Active').length,
-    employees: designations.reduce((sum, d) => sum + d.employees, 0),
+    employees: designations.reduce((sum, d) => sum + (Number(d.employees) || 0), 0),
     levels: new Set(designations.map(d => d.level)).size
   }), [designations]);
 
   const filteredData = useMemo(() => {
     return designations.filter(d => {
-      const matchSearch = d.name.toLowerCase().includes(searchTerm.toLowerCase()) || d.code.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchSearch = (d.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (d.code || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchStatus = statusFilter === 'All' || d.status === statusFilter;
       const matchDept = deptFilter === 'All' || d.department === deptFilter;
       return matchSearch && matchStatus && matchDept;
@@ -139,20 +125,48 @@ export const Designations = () => {
   const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleAdd = () => { setFormData(emptyForm); setShowAddModal(true); };
-  const handleSaveAdd = () => {
+  const handleSaveAdd = async () => {
     if (!formData.name || !formData.code) return;
-    setDesignations(prev => [...prev, { ...formData, id: Date.now(), employees: 0, createdDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) }]);
+    try {
+      await apiFetch('/organization/designations', {
+        method: 'POST',
+        body: JSON.stringify(formData)
+      });
+      await loadDesignations();
+    } catch (err) {
+      console.error("Error creating designation:", err);
+    }
     setShowAddModal(false);
   };
   const handleOpenEdit = (item) => { setSelectedItem(item); setFormData({ name: item.name, code: item.code, department: item.department, reportsTo: item.reportsTo, grade: item.grade, level: item.level, status: item.status, description: item.description }); setShowEditModal(true); };
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!formData.name || !formData.code) return;
-    setDesignations(prev => prev.map(d => d.id === selectedItem.id ? { ...d, ...formData } : d));
+    try {
+      await apiFetch(`/organization/designations/${selectedItem.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(formData)
+      });
+      await loadDesignations();
+    } catch (err) {
+      console.error("Error updating designation:", err);
+    }
     setShowEditModal(false);
   };
   const handleOpenView = (item) => { setSelectedItem(item); setShowViewModal(true); };
   const handleOpenDelete = (item) => { setSelectedItem(item); setShowDeleteModal(true); };
-  const handleConfirmDelete = () => { setDesignations(prev => prev.filter(d => d.id !== selectedItem.id)); setShowDeleteModal(false); };
+  const handleConfirmDelete = async () => {
+    if (selectedItem) {
+      try {
+        await apiFetch(`/organization/designations/${selectedItem.id}`, {
+          method: 'DELETE'
+        });
+        await loadDesignations();
+      } catch (err) {
+        console.error("Error deleting designation:", err);
+      }
+    }
+    setShowDeleteModal(false);
+  };
 
   const renderFormModal = (title, subtitle, show, onClose, onSave, saveLabel) => {
     if (!show) return null;

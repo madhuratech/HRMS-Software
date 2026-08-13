@@ -1,325 +1,393 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronDown, Plus, Edit2, Link2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ChevronDown, Plus, ChevronLeft, ChevronRight, X, CheckCircle } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts';
+import { useToast } from '../ui/Toast';
 
-/* ─────────────────── DATA ─────────────────── */
-const PIE_DATA = [
-  { name: 'On Track',        value: 64, percent: '74.4%', color: '#2563EB' },
-  { name: 'Needs Attention', value: 12, percent: '11.6%', color: '#F59E0B' },
-  { name: 'Overdue',         value: 10, percent: '11.6%', color: '#EF4444' },
-];
+export default function KRAs() {
+  const { addToast } = useToast();
+  const [kraList, setKraList] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
-const TABLE_DATA = [
-  { name: 'Product Development',   dept: 'Engineering', owner: 'Rahul Sharma',             weightage: '30%', progress: 75, status: 'On Track'         },
-  { name: 'Quality Assurance',     dept: 'Engineering', owner: 'Rahul Sharma',             weightage: '20%', progress: 10, status: 'Needs Attention'   },
-  { name: 'Client Management',     dept: 'Sales',       owner: 'Vikram Singh',             weightage: '25%', progress: 25, status: 'On Track'          },
-  { name: 'Market Research',       dept: 'Marketing',   owner: 'Priya Patel',              weightage: '20%', progress: 55, status: 'Needs Attention'   },
-  { name: 'Financial Planning',    dept: 'Finance',     owner: 'Neha Singh\nSneha Reddy', weightage: '25%', progress: 70, status: 'On Track'          },
-  { name: 'Recruitment',           dept: 'HR',          owner: 'Sneha Reddy',              weightage: '20%', progress: 55, status: 'Needs Attention'   },
-  { name: 'Operations Efficiency', dept: 'Operations',  owner: 'Arjun Mehta',              weightage: '25%', progress: 20, status: 'Needs Attention'   },
-];
+  // Pagination & Filters
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const limit = 10;
+  const [search, setSearch] = useState('');
+  const [filterDept, setFilterDept] = useState('All Departments');
 
-const TOP_OVERDUE = [
-  { name: 'Operations Efficiency', owner: 'Arjun Mehta' },
-  { name: 'Market Research',       owner: 'Priya Patel' },
-  { name: 'Recruitment',           owner: 'Sneha Reddy' },
-];
+  // KPI Dashboard Stats
+  const [kpiData, setKpiData] = useState({
+    total: 0,
+    active: 0,
+    inactive: 0,
+    rate: '0%',
+    chartData: [
+      { name: 'Active', value: 0, color: '#10B981' },
+      { name: 'Inactive', value: 0, color: '#EF4444' }
+    ],
+    deptData: []
+  });
 
-/* ─────────────────── STATUS STYLES ─────────────────── */
-const STATUS_STYLE = {
-  'On Track':        { bg: '#DCFCE7', color: '#15803D' },
-  'Needs Attention': { bg: '#FEF3C7', color: '#D97706' },
-  'Overdue':         { bg: '#FEE2E2', color: '#DC2626' },
-};
+  const [formData, setFormData] = useState({
+    title: '',
+    department: '',
+    role: '',
+    weightage: '',
+    status: 'Active',
+    description: ''
+  });
 
-const PROGRESS_COLOR = {
-  'On Track':        '#2563EB',
-  'Needs Attention': '#F59E0B',
-  'Overdue':         '#EF4444',
-};
+  const getAuthToken = () => {
+    const auth = localStorage.getItem('hrms_auth');
+    if (auth) {
+      try {
+        const parsed = JSON.parse(auth);
+        return parsed.token || 'mock_jwt_token';
+      } catch (e) {
+        return 'mock_jwt_token';
+      }
+    }
+    return 'mock_jwt_token';
+  };
 
-/* ─────────────────── KPI CARD ─────────────────── */
-const KpiCard = ({ iconBg, iconColor, icon, label, value }) => (
-  <div style={{
-    background: '#fff',
-    borderRadius: 14,
-    border: '1px solid #E5E7EB',
-    boxShadow: '0 2px 8px rgba(15,23,42,.05)',
-    padding: '20px 24px',
-    height: 110,
-    display: 'flex',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    flex: '1 1 0',
-    minWidth: 0,
-  }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <span style={{
-        width: 34, height: 34, borderRadius: 10,
-        background: iconBg, color: iconColor,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 16, flexShrink: 0,
-      }}>
-        {icon}
-      </span>
-      <span style={{ fontSize: 13, fontWeight: 500, color: '#6B7280' }}>{label}</span>
-    </div>
-    <div style={{ fontSize: 30, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{value}</div>
-  </div>
-);
+  const fetchMeta = async () => {
+    try {
+      const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
+      const deptRes = await fetch('/app/requirements/meta/all', { headers });
+      const deptData = await deptRes.json();
+      if (deptData && deptData.departments) {
+        setDepartments(deptData.departments);
+      }
+    } catch (err) {
+      console.error('Failed to load KRAs metadata:', err);
+    }
+  };
 
-/* ─────────────────── COMPONENT ─────────────────── */
-const KRAs = () => {
-  const [loaded, setLoaded] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setLoaded(true), 120);
-    return () => clearTimeout(t);
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      const res = await fetch('/app/kras/dashboard', {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+      });
+      const resData = await res.json();
+      if (resData.success && resData.data) {
+        setKpiData(resData.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch KRA dashboard stats:', err);
+    }
   }, []);
 
-  return (
-    <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box' }}>
+  const fetchKras = useCallback(async () => {
+    setLoading(true);
+    try {
+      let url = `/app/kras?page=${page}&limit=${limit}`;
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
+      }
+      if (filterDept && filterDept !== 'All Departments') {
+        url += `&department_id=${encodeURIComponent(filterDept)}`;
+      }
 
-      {/* ── HEADER ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
-        <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>KRAs</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280', fontWeight: 400 }}>Key Result Areas for roles and employees</p>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ position: 'relative' }}>
-            <select style={{
-              appearance: 'none', WebkitAppearance: 'none',
-              height: 42, paddingLeft: 14, paddingRight: 36,
-              background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8,
-              fontSize: 13, fontWeight: 500, color: '#111827',
-              boxShadow: '0 1px 3px rgba(0,0,0,.06)', cursor: 'pointer', outline: 'none',
-            }}>
-              <option>All Departments</option>
-            </select>
-            <ChevronDown size={15} color="#6B7280" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+      });
+      const resData = await res.json();
+      if (resData.success && resData.data) {
+        setKraList(resData.data.kras || []);
+        setTotal(resData.data.total || 0);
+      } else {
+        addToast(resData.message || 'Failed to fetch KRAs', 'error');
+      }
+    } catch (err) {
+      addToast('Error connecting to backend server', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, filterDept, addToast]);
+
+  useEffect(() => {
+    fetchMeta();
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, filterDept]);
+
+  useEffect(() => {
+    fetchKras();
+    fetchDashboardStats();
+  }, [page, fetchKras, fetchDashboardStats]);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!formData.title || !formData.department || !formData.role) {
+      addToast('Please fill in all required fields.', 'error');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        kra_title: formData.title.trim(),
+        department_id: parseInt(formData.department),
+        role_id: formData.role.trim(),
+        weightage: formData.weightage.trim(),
+        status: formData.status,
+        description: formData.description.trim()
+      };
+
+      const res = await fetch('/app/kras', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const resData = await res.json();
+      if (resData.success) {
+        addToast('KRA created successfully!', 'success');
+        setShowAddModal(false);
+        setFormData({ title: '', department: '', role: '', weightage: '', status: 'Active', description: '' });
+        fetchKras();
+        fetchDashboardStats();
+      } else {
+        addToast(resData.message || 'Failed to save KRA', 'error');
+      }
+    } catch (err) {
+      addToast('Connection error occurred', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const getStatusStyle = (status) => {
+    return status === 'Active'
+      ? { bg: '#DCFCE7', color: '#15803D' }
+      : { bg: '#F3F4F6', color: '#6B7280' };
+  };
+
+  const cardStyle = {
+    background: '#FFFFFF',
+    borderRadius: '16px',
+    padding: '24px',
+    boxShadow: '0 8px 24px rgba(15,23,42,0.08)',
+  };
+
+  const totalPages = Math.ceil(total / limit) || 1;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: '"Inter", sans-serif', paddingBottom: '24px' }}>
+      
+      {/* Add KRA Modal */}
+      {showAddModal && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
+          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-[#0A1629]">Add KRA Target</h2>
+                <p className="text-sm text-slate-500 mt-1">Define key result areas and roles assignments.</p>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+            <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">KRA Title <span className="text-red-500">*</span></label>
+                  <input type="text" required value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. Optimize CI/CD Pipelines" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Department <span className="text-red-500">*</span></label>
+                  <select required value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
+                    <option value="">Select Department</option>
+                    {departments.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">KRA Role / Designation <span className="text-red-500">*</span></label>
+                  <input type="text" required value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} placeholder="e.g. Software Engineer" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Weightage</label>
+                  <input type="text" value={formData.weightage} onChange={e => setFormData({ ...formData, weightage: e.target.value })} placeholder="e.g. 20%" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
+                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+                <div className="col-span-1 sm:col-span-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Description</label>
+                  <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Role responsibilities and key goals..." style={{ height: '80px' }} className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
+                <button type="button" onClick={() => setShowAddModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+                <button type="submit" disabled={submitting} className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50">
+                  {submitting ? 'Saving...' : 'Save KRA'}
+                </button>
+              </div>
+            </form>
           </div>
-          <button style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            height: 42, paddingLeft: 16, paddingRight: 16,
-            background: '#2563EB', color: '#fff', border: 'none', borderRadius: 8,
-            fontSize: 13, fontWeight: 600, cursor: 'pointer',
-            boxShadow: '0 1px 3px rgba(37,99,235,.3)',
-          }}>
-            <Plus size={15} /> Add KRA
+        </>
+      )}
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Key Result Areas (KRAs)</h1>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Configure department job roles performance areas</p>
+        </div>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <select 
+            value={filterDept} 
+            onChange={e => setFilterDept(e.target.value)} 
+            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '13px', color: '#334155', cursor: 'pointer' }}
+          >
+            <option value="All Departments">All Departments</option>
+            {departments.map(d => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+          <button onClick={() => setShowAddModal(true)} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+            <Plus size={16} /> Add KRA
           </button>
         </div>
       </div>
 
-      {/* ── KPI CARDS ── */}
-      <div style={{ display: 'flex', gap: 20, marginBottom: 20, flexWrap: 'wrap' }}>
-        <KpiCard iconBg="#DBEAFE" iconColor="#2563EB" icon="📋" label="Total KRAs"  value={86} />
-        <KpiCard iconBg="#DCFCE7" iconColor="#16A34A" icon="✓"  label="Active KRAs" value={64} />
-        <KpiCard iconBg="#ECFDF5" iconColor="#10B981" icon="✔"  label="Completed"   value={12} />
-        <KpiCard iconBg="#FEE2E2" iconColor="#DC2626" icon="⚠"  label="Overdue"     value={10} />
+      {/* KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+        {[
+          { title: 'Total KRAs', value: kpiData.total, icon: <CheckCircle size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
+          { title: 'Active KRAs', value: kpiData.active, icon: <CheckCircle size={20} color="#10B981" />, bgColor: '#ECFDF5' },
+          { title: 'Active Rate', value: kpiData.rate, icon: <CheckCircle size={20} color="#8B5CF6" />, bgColor: '#F5F3FF' },
+          { title: 'Inactive KRAs', value: kpiData.inactive, icon: <CheckCircle size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
+        ].map((kpi, idx) => (
+          <div key={idx} style={{ ...cardStyle, display: 'flex', gap: '16px', padding: '20px', alignItems: 'center' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: kpi.bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {kpi.icon}
+            </div>
+            <div>
+              <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '500', marginBottom: '4px' }}>{kpi.title}</div>
+              <div style={{ fontSize: '24px', color: '#1E293B', fontWeight: '700' }}>{kpi.value}</div>
+            </div>
+          </div>
+        ))}
       </div>
 
-      {/* ── FULL-WIDTH TABLE ── */}
-      <div style={{
-        background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
-        boxShadow: '0 2px 8px rgba(15,23,42,.05)', overflow: 'hidden', marginBottom: 20,
-      }}>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
-            <colgroup>
-              <col style={{ width: '22%' }} />
-              <col style={{ width: '13%' }} />
-              <col style={{ width: '15%' }} />
-              <col style={{ width: '10%' }} />
-              <col style={{ width: '18%' }} />
-              <col style={{ width: '14%' }} />
-              <col style={{ width: '8%' }} />
-            </colgroup>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
-                {['KRA Name', 'Department', 'Owner', 'Weightage', 'Progress', 'Status', 'Actions'].map(h => (
-                  <th key={h} style={{
-                    padding: '12px 16px 12px 20px', textAlign: 'left',
-                    fontSize: 12, fontWeight: 500, color: '#6B7280',
-                    whiteSpace: 'nowrap', background: '#fff',
-                  }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {TABLE_DATA.map((row, idx) => {
-                const s = STATUS_STYLE[row.status];
-                const barColor = PROGRESS_COLOR[row.status];
-                return (
-                  <tr key={idx} style={{ height: 58, borderBottom: '1px solid #F3F4F6' }}>
-                    <td style={{ padding: '0 16px 0 20px', fontSize: 13, fontWeight: 600, color: '#111827' }}>
-                      {row.name}
-                    </td>
-                    <td style={{ padding: '0 16px', fontSize: 13, color: '#374151' }}>
-                      {row.dept}
-                    </td>
-                    <td style={{ padding: '0 16px', fontSize: 13, color: '#374151' }}>
-                      {row.owner}
-                    </td>
-                    <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 500, color: '#111827' }}>
-                      {row.weightage}
-                    </td>
-                    <td style={{ padding: '0 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ flex: 1, height: 6, borderRadius: 999, background: '#E5E7EB', overflow: 'hidden' }}>
-                          <div style={{
-                            height: '100%', borderRadius: 999, background: barColor,
-                            width: loaded ? `${row.progress}%` : '0%',
-                            transition: 'width 900ms ease',
-                          }} />
-                        </div>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: '#374151', minWidth: 32 }}>
-                          {row.progress}%
-                        </span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '0 16px' }}>
-                      <span style={{
-                        display: 'inline-block', padding: '3px 10px', borderRadius: 999,
-                        background: s.bg, color: s.color,
-                        fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
-                      }}>
-                        {row.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0 16px', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                        <button style={{
-                          width: 28, height: 28, borderRadius: 6, border: 'none',
-                          background: 'transparent', color: '#2563EB', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}
-                          onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                        ><Edit2 size={13} /></button>
-                        <button style={{
-                          width: 28, height: 28, borderRadius: 6, border: 'none',
-                          background: 'transparent', color: '#2563EB', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}
-                          onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'}
-                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                        ><Link2 size={13} /></button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      {/* Main Content Layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: '24px' }}>
+        
+        {/* Table */}
+        <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>KRA Tracker</h3>
+            <input 
+              type="text" 
+              placeholder="Search..." 
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '13px' }}
+            />
+          </div>
 
-        {/* Pagination */}
-        <div style={{
-          padding: '14px 24px', borderTop: '1px solid #E5E7EB',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
-        }}>
-          <span style={{ fontSize: 13, color: '#6B7280' }}>Showing 1 to 7 of 86 entries</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-            {[null, 1, 2, 3, '...', 13, null].map((pg, i) => {
-              if (pg === null) {
-                const isLeft = i === 0;
-                return (
-                  <button key={i} style={{
-                    width: 32, height: 32, borderRadius: 6,
-                    border: '1px solid #E5E7EB', background: '#fff',
-                    color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {isLeft ? <ChevronLeft size={14} /> : <ChevronRight size={14} />}
-                  </button>
-                );
-              }
-              if (pg === '...') return <span key={i} style={{ width: 32, textAlign: 'center', color: '#6B7280', fontSize: 13 }}>...</span>;
-              const isActive = pg === 1;
-              return (
-                <button key={i} style={{
-                  width: 32, height: 32, borderRadius: 6,
-                  border: isActive ? 'none' : '1px solid #E5E7EB',
-                  background: isActive ? '#2563EB' : '#fff',
-                  color: isActive ? '#fff' : '#374151',
-                  fontWeight: isActive ? 600 : 500,
-                  fontSize: 13, cursor: 'pointer',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  {pg}
-                </button>
-              );
-            })}
+          <div style={{ overflowX: 'auto' }}>
+            {loading ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>Loading KRAs...</div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#F8FAFC' }}>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>KRA Title</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Department</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Target Role</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Weightage</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {kraList.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No KRAs defined</td>
+                    </tr>
+                  ) : (
+                    kraList.map((row, idx) => (
+                      <tr key={row.id} style={{ borderBottom: idx === kraList.length - 1 ? 'none' : '1px solid #F8FAFC' }}>
+                        <td style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#1E293B' }}>{row.kra_title}</td>
+                        <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.department_name}</td>
+                        <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.role_id}</td>
+                        <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.weightage || '-'}</td>
+                        <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                          <span style={{ 
+                            padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600',
+                            backgroundColor: getStatusStyle(row.status).bg, color: getStatusStyle(row.status).color
+                          }}>
+                            {row.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderTop: '1px solid #F1F5F9' }}>
+            <div style={{ fontSize: '13px', color: '#64748B' }}>
+              Showing {total === 0 ? 0 : (page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} entries
+            </div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button disabled={page === 1} onClick={() => setPage(prev => prev - 1)} style={{ padding: '4px 8px', border: '1px solid #E2E8F0', borderRadius: '6px', background: '#FFF', cursor: page === 1 ? 'not-allowed' : 'pointer' }}><ChevronLeft size={16} /></button>
+              <button disabled={page === totalPages} onClick={() => setPage(prev => prev + 1)} style={{ padding: '4px 8px', border: '1px solid #E2E8F0', borderRadius: '6px', background: '#FFF', cursor: page === totalPages ? 'not-allowed' : 'pointer' }}><ChevronRight size={16} /></button>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* ── BOTTOM ROW: Donut + Top Overdue ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
-
-        {/* LEFT: KRA Progress Overview */}
-        <div style={{
-          background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
-          boxShadow: '0 2px 8px rgba(15,23,42,.05)', padding: 24,
-        }}>
-          <h3 style={{ margin: '0 0 16px', fontSize: 15, fontWeight: 600, color: '#111827' }}>KRA Progress Overview</h3>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            {/* Donut */}
-            <div style={{ width: 160, height: 160, position: 'relative', flexShrink: 0 }}>
+        {/* Right Widgets */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={cardStyle}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>KRA Status</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '140px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={PIE_DATA} cx="50%" cy="50%" innerRadius={52} outerRadius={72}
-                    paddingAngle={0} dataKey="value" stroke="none">
-                    {PIE_DATA.map((e, i) => <Cell key={i} fill={e.color} />)}
+                  <Pie data={kpiData.chartData} innerRadius={40} outerRadius={55} paddingAngle={2} dataKey="value" cx="50%" cy="50%" stroke="none">
+                    {kpiData.chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                    <Label value={kpiData.total} position="center" fill="#1E293B" style={{ fontSize: '24px', fontWeight: '700' }} />
                   </Pie>
-                  <Tooltip contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,.1)' }} />
+                  <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            {/* Legend */}
-            <div style={{ flex: 1, paddingLeft: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
-              {PIE_DATA.map((item, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ width: 10, height: 10, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{item.name}</span>
-                  </div>
-                  <span style={{ fontSize: 13, color: '#6B7280' }}>
-                    {item.value} <span style={{ color: '#9CA3AF' }}>({item.percent})</span>
-                  </span>
+          </div>
+
+          <div style={cardStyle}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Department Wise KRAs</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {kpiData.deptData?.map((item, idx) => (
+                <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <span style={{ color: '#475569', fontWeight: '500' }}>{item.name}</span>
+                  <span style={{ color: '#1E293B', fontWeight: '600' }}>{item.kras}</span>
                 </div>
               ))}
             </div>
           </div>
         </div>
 
-        {/* RIGHT: Top Overdue KRAs */}
-        <div style={{
-          background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
-          boxShadow: '0 2px 8px rgba(15,23,42,.05)', padding: 24,
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#111827' }}>Top Overdue KRAs</h3>
-            <span style={{ fontSize: 12, color: '#6B7280', fontWeight: 500 }}>Owner</span>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {TOP_OVERDUE.map((item, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{
-                    width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
-                    background: i === 0 ? '#2563EB' : i === 1 ? '#F59E0B' : '#EF4444',
-                  }} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{item.name}</span>
-                </div>
-                <span style={{ fontSize: 13, color: '#374151' }}>{item.owner}</span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
     </div>
   );
-};
-
-export default KRAs;
+}

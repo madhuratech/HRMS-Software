@@ -1,32 +1,47 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../lib/api';
 import { Search, Filter, Download, Plus, MoreVertical, Layers, TrendingUp, TrendingDown, Landmark } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 
-// Mock Data
-const kpiData = [
-  { title: 'Total Components', value: '24', icon: <Layers size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
-  { title: 'Earnings', value: '14', icon: <TrendingUp size={20} color="#10B981" />, bgColor: '#ECFDF5' },
-  { title: 'Deductions', value: '7', icon: <TrendingDown size={20} color="#EF4444" />, bgColor: '#FEF2F2' },
-  { title: 'Employer Contributions', value: '3', icon: <Landmark size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
-];
-
-const tableData = [
-  { id: 1, name: 'Basic Salary', type: 'Earning', taxable: 'Yes', formula: '40% of CTC', freq: 'Monthly', status: 'Active' },
-  { id: 2, name: 'House Rent Allowance (HRA)', type: 'Earning', taxable: 'Partial', formula: '50% of Basic', freq: 'Monthly', status: 'Active' },
-  { id: 3, name: 'Special Allowance', type: 'Earning', taxable: 'Yes', formula: 'Fixed Amount', freq: 'Monthly', status: 'Active' },
-  { id: 4, name: 'Provident Fund (Employee)', type: 'Deduction', taxable: 'No', formula: '12% of Basic', freq: 'Monthly', status: 'Active' },
-  { id: 5, name: 'Professional Tax', type: 'Deduction', taxable: 'No', formula: 'Slab Based', freq: 'Monthly', status: 'Active' },
-  { id: 6, name: 'TDS', type: 'Deduction', taxable: 'No', formula: 'Tax Slab', freq: 'Monthly', status: 'Active' },
-  { id: 7, name: 'Annual Bonus', type: 'Earning', taxable: 'Yes', formula: 'Performance Based', freq: 'Yearly', status: 'Active' },
-];
-
-const pieData = [
-  { name: 'Earnings', value: 14, color: '#10B981' },
-  { name: 'Deductions', value: 7, color: '#EF4444' },
-  { name: 'Contributions', value: 3, color: '#F59E0B' },
-];
-
 export default function SalaryComponents() {
+  const [tableData, setTableData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch('/payroll/components')
+      .then(data => {
+        if (Array.isArray(data)) {
+          setTableData(data.map(item => ({
+            ...item,
+            freq: item.frequency || item.freq || 'Monthly'
+          })));
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to load salary components:", err);
+        setLoading(false);
+      });
+  }, []);
+
+  const totalComp = tableData.length;
+  const earningsCount = tableData.filter(c => c.type === 'Earning').length;
+  const deductionsCount = tableData.filter(c => c.type === 'Deduction').length;
+  const contribCount = tableData.filter(c => c.type === 'Contribution').length;
+
+  const kpiData = [
+    { title: 'Total Components', value: String(totalComp), icon: <Layers size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
+    { title: 'Earnings', value: String(earningsCount), icon: <TrendingUp size={20} color="#10B981" />, bgColor: '#ECFDF5' },
+    { title: 'Deductions', value: String(deductionsCount), icon: <TrendingDown size={20} color="#EF4444" />, bgColor: '#FEF2F2' },
+    { title: 'Employer Contributions', value: String(contribCount), icon: <Landmark size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
+  ];
+
+  const pieData = [
+    { name: 'Earnings', value: earningsCount || 1, color: '#10B981' },
+    { name: 'Deductions', value: deductionsCount || 1, color: '#EF4444' },
+    { name: 'Contributions', value: contribCount || 1, color: '#F59E0B' },
+  ];
+
   const cardStyle = {
     background: '#FFFFFF',
     borderRadius: '16px',

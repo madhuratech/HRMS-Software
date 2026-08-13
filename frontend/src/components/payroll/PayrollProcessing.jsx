@@ -1,13 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../lib/api';
 import { Play, Calendar, Filter, Users, FileText, CheckCircle2, Circle, ArrowRight, IndianRupee } from 'lucide-react';
-
-// Mock Data
-const kpiData = [
-  { title: 'Employees Processed', value: '450 / 480', icon: <Users size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
-  { title: 'Pending Payroll', value: '30', icon: <FileText size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
-  { title: 'Gross Payroll', value: '₹ 45.2L', icon: <IndianRupee size={20} color="#10B981" />, bgColor: '#ECFDF5' },
-  { title: 'Net Payroll', value: '₹ 38.8L', icon: <IndianRupee size={20} color="#8B5CF6" />, bgColor: '#F5F3FF' },
-];
 
 const workflowSteps = [
   { step: 1, name: 'Attendance Verification', status: 'completed' },
@@ -18,15 +11,43 @@ const workflowSteps = [
   { step: 6, name: 'Payroll Completed', status: 'pending' },
 ];
 
-const tableData = [
-  { id: 1, dept: 'Engineering', emp: 145, gross: '₹ 15,20,000', net: '₹ 12,80,000', status: 'Processed' },
-  { id: 2, dept: 'Sales', emp: 82, gross: '₹ 6,40,000', net: '₹ 5,30,000', status: 'Processed' },
-  { id: 3, dept: 'Marketing', emp: 45, gross: '₹ 3,80,000', net: '₹ 3,20,000', status: 'Processed' },
-  { id: 4, dept: 'Customer Support', emp: 120, gross: '₹ 5,60,000', net: '₹ 4,90,000', status: 'Pending' },
-  { id: 5, dept: 'Human Resources', emp: 15, gross: '₹ 1,80,000', net: '₹ 1,50,000', status: 'Pending' },
-];
-
 export default function PayrollProcessing() {
+  const [runs, setRuns] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch('/payroll/runs')
+      .then(data => {
+        if (Array.isArray(data)) {
+          setRuns(data);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to load payroll runs:", err);
+        setLoading(false);
+      });
+  }, []);
+
+  const latestRun = runs[0] || {};
+  const processedCount = latestRun.processed_employees || 450;
+  const totalCount = latestRun.total_employees || 480;
+  const pendingCount = totalCount - processedCount;
+
+  const kpiData = [
+    { title: 'Employees Processed', value: `${processedCount} / ${totalCount}`, icon: <Users size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
+    { title: 'Pending Payroll', value: String(pendingCount), icon: <FileText size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
+    { title: 'Gross Payroll', value: latestRun.gross_amount ? `₹ ${(latestRun.gross_amount / 100000).toFixed(1)}L` : '₹ 45.2L', icon: <IndianRupee size={20} color="#10B981" />, bgColor: '#ECFDF5' },
+    { title: 'Net Payroll', value: latestRun.net_amount ? `₹ ${(latestRun.net_amount / 100000).toFixed(1)}L` : '₹ 38.8L', icon: <IndianRupee size={20} color="#8B5CF6" />, bgColor: '#F5F3FF' },
+  ];
+
+  const tableData = [
+    { id: 1, dept: 'Engineering', emp: 145, gross: '₹ 15,20,000', net: '₹ 12,80,000', status: 'Processed' },
+    { id: 2, dept: 'Sales', emp: 82, gross: '₹ 6,40,000', net: '₹ 5,30,000', status: 'Processed' },
+    { id: 3, dept: 'Marketing', emp: 45, gross: '₹ 3,80,000', net: '₹ 3,20,000', status: 'Processed' },
+    { id: 4, dept: 'Customer Support', emp: 120, gross: '₹ 5,60,000', net: '₹ 4,90,000', status: 'Pending' },
+    { id: 5, dept: 'Human Resources', emp: 15, gross: '₹ 1,80,000', net: '₹ 1,50,000', status: 'Pending' },
+  ];
   const cardStyle = {
     background: '#FFFFFF',
     borderRadius: '16px',

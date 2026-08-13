@@ -1,21 +1,37 @@
 import React, { useState, useEffect } from 'react';
+import { User } from 'lucide-react';
 import './employee-module.css';
 
 export default function EmploymentHistory() {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
+  const [allEmployees, setAllEmployees] = useState([]);
   
-  const empId = localStorage.getItem('selectedEmployeeId') || '1';
+  const [currentEmpId, setCurrentEmpId] = useState(() => localStorage.getItem('selectedEmployeeId') || '1');
+
+  const handleEmployeeSelect = (newId) => {
+    localStorage.setItem('selectedEmployeeId', newId);
+    setCurrentEmpId(newId);
+  };
+
+  useEffect(() => {
+    fetch('http://localhost:3000/app/employees')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setAllEmployees(data);
+      })
+      .catch(err => console.error("Error fetching all employees:", err));
+  }, []);
 
   useEffect(() => {
     setLoading(true);
     // Fetch profile first to get default details
-    fetch(`http://localhost:3000/app/employees/${empId}/profile`)
+    fetch(`http://localhost:3000/app/employees/${currentEmpId}/profile`)
       .then(res => res.json())
       .then(data => {
         setProfile(data);
-        return fetch(`http://localhost:3000/app/employees/${empId}/history`);
+        return fetch(`http://localhost:3000/app/employees/${currentEmpId}/history`);
       })
       .then(res => res.json())
       .then(data => {
@@ -26,7 +42,7 @@ export default function EmploymentHistory() {
         console.error(err);
         setLoading(false);
       });
-  }, [empId]);
+  }, [currentEmpId]);
 
   if (loading) {
     return (
@@ -39,12 +55,40 @@ export default function EmploymentHistory() {
 
   return (
     <div className="hrms-content">
-      <div className="hrms-header">
-        <h1>Employment History</h1>
+      <div className="hrms-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
+        <h1 style={{ margin: 0 }}>Employment History</h1>
+
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: '8px',
+          background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '8px',
+          padding: '8px 14px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+        }}>
+          <User size={16} color="#475569" />
+          <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>Select Employee:</span>
+          <select
+            value={currentEmpId}
+            onChange={(e) => handleEmployeeSelect(e.target.value)}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              fontSize: '13px',
+              fontWeight: 700,
+              color: '#0F172A',
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            {allEmployees.map(emp => (
+              <option key={emp.id} value={emp.id}>
+                {emp.name} ({emp.employeeCode || `EMP00${emp.id}`}) {emp.status === 'Terminated' ? '• Terminated' : ''}
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="hrms-card" style={{ maxWidth: '800px', margin: '0 auto' }}>
-        <h2 className="hrms-font-semibold hrms-mb-8">Employees &gt; EMP00{empId} {profile && `(${profile.name})`}</h2>
+        <h2 className="hrms-font-semibold hrms-mb-8">Employees &gt; EMP00{currentEmpId} {profile && `(${profile.name})`}</h2>
 
         {history.length === 0 ? (
           <div className="hrms-timeline">
