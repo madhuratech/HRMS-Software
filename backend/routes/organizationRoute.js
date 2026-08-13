@@ -10,15 +10,9 @@ router.get("/departments", (req, res) => {
     SELECT 
       d.id,
       d.dept_name as name,
-      d.dept_name as code, -- fallback code
+      d.dept_name as code,
       e.name as headName,
-      d.manager_id,
-      'Active' as status,
-      'hr@hawkeyenest.com' as email,
-      '+91 98765 43210' as phone,
-      '101' as extension,
-      'Building A, 2nd Floor' as location,
-      'Manages department operations.' as description
+      d.manager_id
     FROM departments d
     LEFT JOIN employees e ON d.manager_id = e.id
   `;
@@ -48,13 +42,7 @@ router.get("/designations", (req, res) => {
     SELECT 
       id,
       role_name as name,
-      role_code as code,
-      'Technology' as department,
-      'CEO' as reportsTo,
-      'L3' as grade,
-      'Senior' as level,
-      'Active' as status,
-      'Role definition' as description
+      role_code as code
     FROM designations
   `;
   db.query(sql, (err, rows) => {
@@ -440,5 +428,100 @@ router.post("/export-pdf", (req, res) => {
   });
 });
 
-module.exports = router;
+/**
+ * GET ALL TEAMS
+ */
+router.get("/teams", (req, res) => {
+  const sql = `
+    SELECT 
+      t.id,
+      t.name,
+      e.name as lead,
+      t.description,
+      (SELECT COUNT(*) FROM employees WHERE team_id = t.id) as members
+    FROM teams t
+    LEFT JOIN employees e ON t.team_lead_id = e.id
+  `;
+  db.query(sql, (err, rows) => {
+    // If employees table doesn't have team_id yet, we just return 0 members
+    if (err && err.code === 'ER_BAD_FIELD_ERROR') {
+      const fallbackSql = `
+        SELECT 
+          t.id,
+          t.name,
+          e.name as lead,
+          t.description,
+          0 as members
+        FROM teams t
+        LEFT JOIN employees e ON t.team_lead_id = e.id
+      `;
+      db.query(fallbackSql, (fallbackErr, fallbackRows) => {
+        if (fallbackErr) return res.status(500).json(fallbackErr);
+        return res.json(fallbackRows);
+      });
+    } else {
+      if (err) return res.status(500).json(err);
+      res.json(rows);
+    }
+  });
+});
 
+/**
+ * CREATE TEAM
+ */
+router.post("/teams", (req, res) => {
+  const { name, lead_id, description } = req.body;
+  const sql = "INSERT INTO teams (name, team_lead_id, description) VALUES (?, ?, ?)";
+  db.query(sql, [name, lead_id || null, description], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Team created successfully", id: result.insertId });
+  });
+});
+
+/**
+ * GET ALL SHIFTS
+ */
+router.get("/shifts", (req, res) => {
+  const sql = "SELECT * FROM shifts";
+  db.query(sql, (err, rows) => {
+    if (err) return res.status(500).json(err);
+    res.json(rows);
+  });
+});
+
+/**
+ * CREATE SHIFT
+ */
+router.post("/shifts", (req, res) => {
+  const { name, start_time, end_time, grace_time, shift_type, color, status } = req.body;
+  const sql = "INSERT INTO shifts (shift_name, start_time, end_time, grace_time, shift_type, color, status) VALUES (?, ?, ?, ?, ?, ?, ?)";
+  db.query(sql, [name, start_time, end_time, grace_time || 15, shift_type || 'Regular', color || '#3B82F6', status || 'Active'], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Shift created successfully", id: result.insertId });
+  });
+});
+
+/**
+ * GET ALL HOLIDAYS
+ */
+router.get("/holidays", (req, res) => {
+  const sql = "SELECT * FROM holidays ORDER BY holiday_date ASC";
+  db.query(sql, (err, rows) => {
+    if (err) return res.status(500).json(err);
+    res.json(rows);
+  });
+});
+
+/**
+ * CREATE HOLIDAY
+ */
+router.post("/holidays", (req, res) => {
+  const { name, date, type, location } = req.body;
+  const sql = "INSERT INTO holidays (holiday_name, holiday_date, holiday_type, location) VALUES (?, ?, ?, ?)";
+  db.query(sql, [name, date, type || 'National', location || 'All Locations'], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Holiday created successfully", id: result.insertId });
+  });
+});
+
+module.exports = router;

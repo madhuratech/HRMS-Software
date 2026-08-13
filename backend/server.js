@@ -17,7 +17,7 @@ app.get("/", (req, res) => {
 app.use("/app/auth", require("./routes/auth"));
 app.use("/app/employees", require("./routes/employee"));
 app.use("/app/attendance", require("./routes/attendanceRoute"));
-app.use("/app/leaves", require("./routes/leaves"));
+app.use("/app/leaves", require("./routes/leaveRoute"));
 app.use("/app/payroll", require("./routes/payroll"));
 app.use("/app/projects", require("./routes/projects"));
 app.use("/app/dashboard", require("./routes/dashboard"));
@@ -25,6 +25,10 @@ app.use("/app/organization", require("./routes/organizationRoute"));
 app.use("/app/expenses", require("./routes/expenses"));
 app.use("/app/candidates", require("./routes/candidates"));
 app.use("/app/appraisals", require("./routes/appraisals"));
+app.use("/app/tasks", require("./routes/taskRoute"));
+app.use("/app/sales", require("./routes/salesRoute"));
+app.use("/app/training", require("./routes/trainingRoute"));
+app.use("/app/performance", require("./routes/performanceRoute"));
 
 const PORT = process.env.PORT || 3000;
 

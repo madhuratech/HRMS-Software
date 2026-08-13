@@ -407,7 +407,7 @@ router.get("/promotions", (req, res) => {
  * SUBMIT PROMOTION REQUEST
  */
 router.post("/promotions", (req, res) => {
-  const { employeeId, newDesignationName, effectiveDate } = req.body;
+  const { employeeId, newDesignationName, newSalary, effectiveDate } = req.body;
 
   const sql = `
     INSERT INTO promotions (employee_id, old_designation_id, new_designation_id, effective_date, status)
@@ -422,6 +422,16 @@ router.post("/promotions", (req, res) => {
 
   db.query(sql, [employeeId, employeeId, newDesignationName, newDesignationName, effectiveDate], (err, result) => {
     if (err) return res.status(500).json({ error: "Failed to submit promotion request", details: err });
+    
+    // Automatically update salary if provided (as requested by Super Admin/HR)
+    if (newSalary) {
+      db.query("UPDATE employees SET salary = ? WHERE id = ?", [newSalary, employeeId], (empErr) => {
+        if (empErr) console.error("Failed to update salary during promotion:", empErr);
+        // Note: the promotion is still 'Pending' in the promotions table until approved, 
+        // but the salary is updated immediately per requirements.
+      });
+    }
+    
     res.json({ message: "Promotion request submitted successfully", id: result.insertId });
   });
 });
