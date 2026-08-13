@@ -65,11 +65,6 @@ const leaveTypesData = [
     forward: 'No',
     encash: 'No',
     status: 'Active',
-    code: 'PL',
-    desc: 'Paid leave for paternity',
-    max: 15,
-    forward: 'No',
-    status: 'Active',
     iconBg: '#ecfeff',
     icon: <Briefcase size={18} color="#06b6d4" />
   },

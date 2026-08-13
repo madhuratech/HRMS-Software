@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HAWKEYE NEST HRMS – Workflow Presentation</title>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="ppt.css">
+</head>
+<body>
+  <!-- Progress Bar -->
+  <div class="progress-bar"><div class="progress-fill" id="progress"></div></div>
+
+  <!-- Slide Counter -->
+  <div class="slide-counter">
+    <span id="current-slide">1</span> / <span id="total-slides">11</span>
+  </div>
+
+  <!-- Navigation -->
+  <button class="nav-btn prev" id="prev" disabled>&#8592;</button>
+  <button class="nav-btn next" id="next">&#8594;</button>
+
+  <!-- Keyboard Hint -->
+  <div class="keyboard-hint">Press <kbd>→</kbd> or <kbd>Space</kbd> to advance</div>
+
+  <!-- SLIDE DECK -->
+  <div class="deck" id="deck">
+
+    <!-- Slide 1: Title -->
+    <div class="slide active" id="slide-1">
+      <div class="slide-bg bg-1"></div>
+      <div class="center-content">
+        <div class="title-badge">Enterprise Software Solution</div>
+        <h1 class="mega-title">HAWKEYE NEST</h1>
+        <h2 class="mega-sub">Human Resource Management System</h2>
+        <p class="title-desc">An end-to-end HRMS built to automate your entire workforce lifecycle — from hire to retire.</p>
+        <div class="pill-row">
+          <span class="pill">Recruitment</span>
+          <span class="pill">Attendance</span>
+          <span class="pill">Payroll</span>
+          <span class="pill">Documents</span>
+          <span class="pill">Appraisals</span>
+        </div>
+        <div class="title-logo">HN</div>
+      </div>
+    </div>
+
+    <!-- Slide 2: Problem Statement -->
+    <div class="slide" id="slide-2">
+      <div class="slide-bg bg-2"></div>
+      <div class="slide-inner">
+        <div class="slide-tag">The Problem</div>
+        <h2 class="slide-title">What HRMS Solves</h2>
+        <p class="slide-sub">Traditional HR processes are scattered across spreadsheets and emails. HAWKEYE NEST unifies everything.</p>
+        <div class="problem-grid">
+          <div class="problem-card red">
+            <span class="p-icon">😤</span>
+            <h4>Manual Payroll Errors</h4>
+            <p>Salary calculations done in spreadsheets lead to miscalculations and delays.</p>
+          </div>
+          <div class="problem-card orange">
+            <span class="p-icon">📋</span>
+            <h4>Paper Attendance</h4>
+            <p>No digital record of employee working hours leads to payroll disputes.</p>
+          </div>
+          <div class="problem-card purple">
+            <span class="p-icon">🗂️</span>
+            <h4>Scattered Documents</h4>
+            <p>Employee files and offer letters lost across different folders and people.</p>
+          </div>
+          <div class="problem-card blue">
+            <span class="p-icon">🔀</span>
+            <h4>Disconnected Modules</h4>
+            <p>Recruitment, Onboarding, and Payroll not talking to each other causes redundancy.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 3: System Architecture -->
+    <div class="slide" id="slide-3">
+      <div class="slide-bg bg-3"></div>
+      <div class="slide-inner">
+        <div class="slide-tag">Architecture</div>
+        <h2 class="slide-title">System Architecture</h2>
+        <div class="arch-flow">
+          <div class="arch-block teal">
+            <div class="arch-icon">🖥️</div>
+            <h4>Frontend</h4>
+            <span>React.js + Vite</span>
+            <p>Fast, component-based UI with dynamic dashboards.</p>
+          </div>
+          <div class="arch-arrow">⟶</div>
+          <div class="arch-block blue">
+            <div class="arch-icon">⚙️</div>
+            <h4>Backend</h4>
+            <span>Node.js + Express</span>
+            <p>REST APIs with JWT authentication and file upload middleware.</p>
+          </div>
+          <div class="arch-arrow">⟶</div>
+          <div class="arch-block indigo">
+            <div class="arch-icon">🗄️</div>
+            <h4>Database</h4>
+            <span>MySQL (Cloud)</span>
+            <p>Relational data model supporting all HR modules.</p>
+          </div>
+        </div>
+        <div class="tech-tags">
+          <span class="t-tag">React 18</span>
+          <span class="t-tag">Vite 6</span>
+          <span class="t-tag">Node.js 20</span>
+          <span class="t-tag">Express 4</span>
+          <span class="t-tag">MySQL 8</span>
+          <span class="t-tag">JWT Auth</span>
+          <span class="t-tag">Multer</span>
+          <span class="t-tag">Lucide Icons</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 4: Recruitment Flow -->
+    <div class="slide" id="slide-4">
+      <div class="slide-bg bg-4"></div>
+      <div class="slide-inner">
+        <div class="slide-tag module-tag">Module 1</div>
+        <h2 class="slide-title">Recruitment Pipeline</h2>
+        <p class="slide-sub">From Job Posting to Offer Letter — all tracked in one place.</p>
+        <div class="flow-row">
+          <div class="flow-step">
+            <div class="step-num">1</div>
+            <div class="step-icon">📝</div>
+            <h4>Job Requirement</h4>
+            <p>HR posts vacancies with skills, location, count</p>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="step-num">2</div>
+            <div class="step-icon">👤</div>
+            <h4>Candidate Profile</h4>
+            <p>Candidates apply, resumes are uploaded & stored</p>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="step-num">3</div>
+            <div class="step-icon">💬</div>
+            <h4>Interview Panel</h4>
+            <p>Scheduled rounds tracked with statuses</p>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step">
+            <div class="step-num">4</div>
+            <div class="step-icon">📄</div>
+            <h4>Offer Letter</h4>
+            <p>System-generated offer with template</p>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-step highlight-step">
+            <div class="step-num">5</div>
+            <div class="step-icon">✅</div>
+            <h4>Joining</h4>
+            <p>Candidate becomes employee in the system</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 5: Onboarding -->
+    <div class="slide" id="slide-5">
+      <div class="slide-bg bg-5"></div>
+      <div class="slide-inner">
+        <div class="slide-tag module-tag">Module 2</div>
+        <h2 class="slide-title">Employee Onboarding</h2>
+        <p class="slide-sub">Seamlessly transition new hires into the organization with structured checklists.</p>
+        <div class="two-col">
+          <div class="col-left">
+            <div class="checklist-item done"><span>✔</span> Employee Profile Creation (Name, DOB, Department, Role)</div>
+            <div class="checklist-item done"><span>✔</span> Document Upload (PAN, Aadhaar, Degree Certificates)</div>
+            <div class="checklist-item done"><span>✔</span> Document Verification by HR Admin</div>
+            <div class="checklist-item done"><span>✔</span> System Account & Login Credentials Created</div>
+            <div class="checklist-item done"><span>✔</span> Payroll Structure Assigned</div>
+            <div class="checklist-item pending"><span>○</span> Induction Completion</div>
+          </div>
+          <div class="col-right">
+            <div class="stat-card">
+              <span class="stat-num">6</span>
+              <span class="stat-label">Onboarding Checklist Steps</span>
+            </div>
+            <div class="stat-card green">
+              <span class="stat-num">100%</span>
+              <span class="stat-label">Digital — Zero Paper Process</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 6: Attendance -->
+    <div class="slide" id="slide-6">
+      <div class="slide-bg bg-6"></div>
+      <div class="slide-inner">
+        <div class="slide-tag module-tag">Module 3</div>
+        <h2 class="slide-title">Attendance & Leave Management</h2>
+        <p class="slide-sub">GPS-based real-time tracking for all employees across all branches.</p>
+        <div class="feature-grid">
+          <div class="feature-card">
+            <div class="f-icon">📍</div>
+            <h4>GPS Geo-Punch</h4>
+            <p>Employees check in with precise GPS coordinates from their devices</p>
+          </div>
+          <div class="feature-card">
+            <div class="f-icon">📊</div>
+            <h4>Daily Dashboard</h4>
+            <p>Live metrics: Present, Absent, Late, On Leave — updated in real-time</p>
+          </div>
+          <div class="feature-card">
+            <div class="f-icon">🗓️</div>
+            <h4>Leave Requests</h4>
+            <p>Employees apply for leaves, managers approve with email notifications</p>
+          </div>
+          <div class="feature-card">
+            <div class="f-icon">⏰</div>
+            <h4>Overtime Tracking</h4>
+            <p>Auto-calculated beyond shift hours with supervisor approval</p>
+          </div>
+          <div class="feature-card">
+            <div class="f-icon">📅</div>
+            <h4>Shift Roster</h4>
+            <p>Weekly shift scheduling for all branches and teams</p>
+          </div>
+          <div class="feature-card">
+            <div class="f-icon">🔁</div>
+            <h4>Regularization</h4>
+            <p>Employees can correct missed punches with supporting evidence</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 7: Payroll -->
+    <div class="slide" id="slide-7">
+      <div class="slide-bg bg-7"></div>
+      <div class="slide-inner">
+        <div class="slide-tag module-tag">Module 4</div>
+        <h2 class="slide-title">Payroll Processing</h2>
+        <p class="slide-sub">Automated salary computation from attendance data to payslip generation.</p>
+        <div class="payroll-flow">
+          <div class="pay-step">
+            <div class="pay-icon blue-bg">📋</div>
+            <h4>Salary Structure</h4>
+            <p>Basic, HRA, Allowances, PF, Tax defined per employee grade</p>
+          </div>
+          <div class="pay-connector">+</div>
+          <div class="pay-step">
+            <div class="pay-icon green-bg">📅</div>
+            <h4>Attendance Data</h4>
+            <p>Present days, leaves, overtime fetched from the attendance module</p>
+          </div>
+          <div class="pay-connector">+</div>
+          <div class="pay-step">
+            <div class="pay-icon purple-bg">💸</div>
+            <h4>Deductions</h4>
+            <p>PF, ESI, TDS, LOP calculated automatically per policy</p>
+          </div>
+          <div class="pay-connector">=</div>
+          <div class="pay-step highlight-pay">
+            <div class="pay-icon gold-bg">🧾</div>
+            <h4>Net Salary + Payslip</h4>
+            <p>Payslip PDF generated and delivered to employee profile</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 8: Performance -->
+    <div class="slide" id="slide-8">
+      <div class="slide-bg bg-8"></div>
+      <div class="slide-inner">
+        <div class="slide-tag module-tag">Module 5</div>
+        <h2 class="slide-title">Performance & Appraisal</h2>
+        <p class="slide-sub">Structured goal-setting and review cycles to align employee growth with company objectives.</p>
+        <div class="appraisal-cycle">
+          <div class="cycle-step">
+            <div class="cycle-num">Q1</div>
+            <h4>Goal Setting</h4>
+            <p>Manager sets KRAs and performance targets for the quarter</p>
+          </div>
+          <div class="cycle-arrow">↓</div>
+          <div class="cycle-step">
+            <div class="cycle-num">Q2</div>
+            <h4>Mid-Year Review</h4>
+            <p>Progress tracked, objectives adjusted if needed</p>
+          </div>
+          <div class="cycle-arrow">↓</div>
+          <div class="cycle-step">
+            <div class="cycle-num">Q3</div>
+            <h4>Self Assessment</h4>
+            <p>Employee rates their own performance with evidence</p>
+          </div>
+          <div class="cycle-arrow">↓</div>
+          <div class="cycle-step highlight-cycle">
+            <div class="cycle-num">Q4</div>
+            <h4>Final Appraisal</h4>
+            <p>Scores compiled, increment/promotion decisions made</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 9: Documents -->
+    <div class="slide" id="slide-9">
+      <div class="slide-bg bg-9"></div>
+      <div class="slide-inner">
+        <div class="slide-tag module-tag">Module 6</div>
+        <h2 class="slide-title">Document & Template Management</h2>
+        <p class="slide-sub">Centralised storage for all company and employee documents with templates.</p>
+        <div class="doc-grid">
+          <div class="doc-section">
+            <h4 class="doc-section-title">📁 Employee Documents</h4>
+            <div class="doc-row"><span class="doc-type">Identity</span><span>PAN, Aadhaar, Passport</span></div>
+            <div class="doc-row"><span class="doc-type">Education</span><span>Degree Certificates, Transcripts</span></div>
+            <div class="doc-row"><span class="doc-type">Experience</span><span>Previous Offer Letters, Experience Letters</span></div>
+          </div>
+          <div class="doc-section">
+            <h4 class="doc-section-title">🏢 Company Documents</h4>
+            <div class="doc-row"><span class="doc-type">Legal</span><span>Company Registration, GST Docs</span></div>
+            <div class="doc-row"><span class="doc-type">Policy</span><span>HR Policies, Code of Conduct</span></div>
+            <div class="doc-row"><span class="doc-type">Templates</span><span>Offer Letters, Appointment Letters</span></div>
+          </div>
+          <div class="doc-section">
+            <h4 class="doc-section-title">⚡ Smart Templates</h4>
+            <div class="doc-row"><span class="doc-type">Auto-Fill</span><span>Dynamic employee data merged into templates</span></div>
+            <div class="doc-row"><span class="doc-type">Preview</span><span>View, Download or Print instantly</span></div>
+            <div class="doc-row"><span class="doc-type">Status</span><span>Draft / Active / Archived</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 10: Separation -->
+    <div class="slide" id="slide-10">
+      <div class="slide-bg bg-10"></div>
+      <div class="slide-inner">
+        <div class="slide-tag module-tag">Module 7</div>
+        <h2 class="slide-title">Employee Separation</h2>
+        <p class="slide-sub">Structured offboarding ensures continuity, compliance, and full settlement.</p>
+        <div class="sep-flow">
+          <div class="sep-step">
+            <span class="sep-badge">Step 1</span>
+            <h4>Resignation Submission</h4>
+            <p>Employee submits exit notice with reason and last working date</p>
+          </div>
+          <div class="sep-arrow">→</div>
+          <div class="sep-step">
+            <span class="sep-badge">Step 2</span>
+            <h4>Exit Interview</h4>
+            <p>HR conducts structured interview, records feedback</p>
+          </div>
+          <div class="sep-arrow">→</div>
+          <div class="sep-step">
+            <span class="sep-badge">Step 3</span>
+            <h4>Clearance Checklist</h4>
+            <p>Assets returned, system access revoked, pending leaves settled</p>
+          </div>
+          <div class="sep-arrow">→</div>
+          <div class="sep-step highlight-sep">
+            <span class="sep-badge done-badge">Step 4</span>
+            <h4>Full & Final Settlement</h4>
+            <p>Final payslip, experience letter generated. Employee deactivated.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Slide 11: Summary -->
+    <div class="slide" id="slide-11">
+      <div class="slide-bg bg-11"></div>
+      <div class="center-content">
+        <div class="title-badge">Complete System</div>
+        <h1 class="mega-title" style="font-size:clamp(36px,6vw,72px);">One Platform.</h1>
+        <h1 class="mega-title" style="font-size:clamp(36px,6vw,72px); -webkit-text-fill-color: var(--accent-teal);">Every HR Need.</h1>
+        <div class="module-wheel">
+          <div class="wheel-center">HRMS</div>
+          <div class="wheel-item w1">Recruitment</div>
+          <div class="wheel-item w2">Onboarding</div>
+          <div class="wheel-item w3">Attendance</div>
+          <div class="wheel-item w4">Payroll</div>
+          <div class="wheel-item w5">Performance</div>
+          <div class="wheel-item w6">Separation</div>
+        </div>
+        <p class="title-desc" style="max-width:500px;">Built with React, Node.js and MySQL — HAWKEYE NEST is the enterprise-grade HRMS your team deserves.</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Slide Thumbnails -->
+  <div class="thumbnail-strip" id="thumbnails"></div>
+
+  <script src="ppt.js"></script>
+</body>
+</html>

@@ -38,6 +38,19 @@ export function Sidebar({ userRole, onLogout }) {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const handleProfileClick = () => {
+    let userId = 1;
+    const auth = localStorage.getItem('hrms_auth');
+    if (auth) {
+      try {
+        const parsed = JSON.parse(auth);
+        if (parsed.user && parsed.user.id) userId = parsed.user.id;
+      } catch (e) {}
+    }
+    localStorage.setItem('selectedEmployeeId', userId);
+    navigate('/employees/profile');
+  };
+
   const toggleGroup = (groupId) => {
     setExpandedGroups(prev =>
       prev.includes(groupId)
@@ -77,6 +90,7 @@ export function Sidebar({ userRole, onLogout }) {
       icon: Users,
       roles: ['ALL'],
       children: [
+        { id: 'employee-dashboard', label: 'Employee Dashboard', path: '/employees/dashboard' },
         { id: 'employee-directory', label: 'Employee Directory', path: '/employees' },
         { id: 'employee-list', label: 'Employee List', path: '/employees/list' },
         { id: 'add-employee', label: 'Add Employee', path: '/employees/add' },
@@ -95,12 +109,13 @@ export function Sidebar({ userRole, onLogout }) {
       roles: ['ALL'],
       children: [
         { id: 'daily-attendance', label: 'Daily Attendance', path: '/attendance/daily' },
-        { id: 'biometric-attendance', label: 'Biometric Attendance', path: '/attendance/biometric' },
+        { id: 'gps-attendance', label: 'GPS Attendance', path: '/attendance/gps' },
         { id: 'regularization', label: 'Regularization', path: '/attendance/regularization' },
         { id: 'shift-roster', label: 'Shift Roster', path: '/attendance/shift-roster' },
         { id: 'overtime', label: 'Overtime', path: '/attendance/overtime' },
         { id: 'late-arrival', label: 'Late Arrival', path: '/attendance/late-arrival' },
-        { id: 'attendance-reports', label: 'Attendance Reports', path: '/attendance/reports' }
+        { id: 'attendance-reports', label: 'Attendance Reports', path: '/attendance/reports' },
+        { id: 'punch-locations', label: 'Punch Locations', path: '/attendance/punch-locations' }
       ]
     },
     {
@@ -178,19 +193,19 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'promotions-performance', label: 'Promotions', path: '/performance/promotions' }
       ]
     },
-    {
-      id: 'training',
-      label: 'Training',
-      icon: GraduationCap,
-      roles: ['ALL'],
-      children: [
-        { id: 'training-programs', label: 'Training Programs' },
-        { id: 'learning-portal', label: 'Learning Portal' },
-        { id: 'trainers', label: 'Trainers' },
-        { id: 'assessments', label: 'Assessments' },
-        { id: 'certificates', label: 'Certificates' }
-      ]
-    },
+    // {
+    //   id: 'training',
+    //   label: 'Training',
+    //   icon: GraduationCap,
+    //   roles: ['ALL'],
+    //   children: [
+    //     { id: 'training-programs', label: 'Training Programs' },
+    //     { id: 'learning-portal', label: 'Learning Portal' },
+    //     { id: 'trainers', label: 'Trainers' },
+    //     { id: 'assessments', label: 'Assessments' },
+    //     { id: 'certificates', label: 'Certificates' }
+    //   ]
+    // },
     {
       id: 'projects',
       label: 'Projects',
@@ -221,20 +236,20 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'project-reports', label: 'Project Reports', path: '/reports/project' }
       ]
     },
-    {
-      id: 'assets',
-      label: 'Assets',
-      icon: Package,
-      roles: ['ALL'],
-      children: [
-        { id: 'asset-categories', label: 'Asset Categories' },
-        { id: 'asset-inventory', label: 'Asset Inventory' },
-        { id: 'asset-allocation-module', label: 'Asset Allocation' },
-        { id: 'asset-return', label: 'Asset Return' },
-        { id: 'maintenance', label: 'Maintenance' },
-        { id: 'asset-reports', label: 'Asset Reports' }
-      ]
-    },
+    // {
+    //   id: 'assets',
+    //   label: 'Assets',
+    //   icon: Package,
+    //   roles: ['ALL'],
+    //   children: [
+    //     { id: 'asset-categories', label: 'Asset Categories' },
+    //     { id: 'asset-inventory', label: 'Asset Inventory' },
+    //     { id: 'asset-allocation-module', label: 'Asset Allocation' },
+    //     { id: 'asset-return', label: 'Asset Return' },
+    //     { id: 'maintenance', label: 'Maintenance' },
+    //     { id: 'asset-reports', label: 'Asset Reports' }
+    //   ]
+    // },
     {
       id: 'expenses',
       label: 'Expenses',
@@ -301,7 +316,7 @@ export function Sidebar({ userRole, onLogout }) {
   const renderMenuItem = (item) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedGroups.includes(item.id);
-    
+
     // Check if any child's path matches the current location exactly, or if the item's path matches
     const isActive = item.path === location.pathname || (hasChildren && item.children.some(child => child.path === location.pathname));
 
@@ -406,16 +421,22 @@ export function Sidebar({ userRole, onLogout }) {
       {/* User Profile */}
       <div className="p-3 custom-sidebar-border-t">
         <div className="custom-sidebar-profile-bg rounded-lg p-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full custom-sidebar-profile-avatar-bg flex items-center justify-center text-xs font-bold">
-            JD
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">John Doe</p>
-            <p className="text-xs text-slate-400 truncate">Super Admin</p>
+          <div 
+            onClick={handleProfileClick}
+            style={{ cursor: 'pointer' }}
+            className="flex flex-1 items-center gap-3 min-w-0 hover:opacity-85 transition-opacity"
+          >
+            <div className="w-9 h-9 rounded-full custom-sidebar-profile-avatar-bg flex items-center justify-center text-xs font-bold flex-shrink-0">
+              {(localStorage.getItem('userName') || 'John Doe').split(' ').map(n => n[0]).join('')}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-white truncate">{localStorage.getItem('userName') || 'John Doe'}</p>
+              <p className="text-xs text-slate-400 truncate">{localStorage.getItem('userRole') || 'Super Admin'}</p>
+            </div>
           </div>
           <button
             onClick={onLogout}
-            className="text-slate-400 hover:text-red-400 transition-colors p-1"
+            className="text-slate-400 hover:text-red-400 transition-colors p-1 flex-shrink-0"
           >
             <LogOut size={16} />
           </button>

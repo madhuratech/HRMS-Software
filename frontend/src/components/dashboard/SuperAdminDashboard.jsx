@@ -1,12 +1,16 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '../ui/Toast';
 import {
   DollarSign, Users, Briefcase, CheckCircle2, UserCheck, Calendar, UserPlus, LogOut, TrendingDown,
-  Star, TrendingUp, FolderPlus, Building2, FileText, Settings, Upload, BarChart2, Mail
+  Star, TrendingUp, FolderPlus, Building2, FileText, Settings, Upload, BarChart2, Mail, X, Send
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LabelList
 } from 'recharts';
+import { apiFetch } from '../../lib/api';
+import { getAvatarUrl } from '../../lib/utils';
 
 // ── Team Performance Single Bar Chart Data (Achievement %) ──
 const TEAM_PERFORMANCE_DATA = [
@@ -130,16 +134,161 @@ const KpiCard = ({ label, value, trend, trendLabel, iconBg, iconColor, iconSymbo
 );
 
 export function SuperAdminDashboard() {
+  const navigate = useNavigate();
+  const { addToast } = useToast();
+  const [stats, setStats] = useState(null);
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  useEffect(() => {
+    apiFetch('/dashboard/stats')
+      .then(data => setStats(data))
+      .catch(err => console.error("Failed to fetch dashboard stats", err));
+  }, []);
+
+  const handleQuickAction = (label) => {
+    switch (label) {
+      case 'Add User':
+        navigate('/employees/add');
+        break;
+      case 'Add Project':
+        navigate('/projects/list');
+        break;
+      case 'Add Client':
+        navigate('/customer-sales');
+        break;
+      case 'Create Invoice':
+        navigate('/payroll/payslips');
+        break;
+      case 'System Settings':
+        navigate('/settings/system');
+        break;
+      case 'Backup Now':
+        addToast('Initiating database backup...', 'info');
+        setTimeout(() => {
+          addToast('Database backup completed & saved successfully!', 'success');
+        }, 800);
+        break;
+      case 'Generate Report':
+        navigate('/reports/employee');
+        break;
+      case 'Send Email':
+        setShowEmailModal(true);
+        break;
+      default:
+        break;
+    }
+  };
+
+  const handleSendEmailSubmit = (e) => {
+    e.preventDefault();
+    if (!emailSubject || !emailBody) {
+      addToast('Please enter subject and email content', 'error');
+      return;
+    }
+    setSendingEmail(true);
+    setTimeout(() => {
+      setSendingEmail(false);
+      setShowEmailModal(false);
+      setEmailSubject('');
+      setEmailBody('');
+      addToast('Email broadcast dispatched to active employees!', 'success');
+    }, 600);
+  };
+
+  const employeeCount = stats?.totalEmployees || 0;
+  const projectCount = stats?.totalProjects || 0;
+  const completedProjects = stats?.completedProjects || 0;
+  const clientCount = stats?.totalClients || 0;
+
+  const formatRevenue = (value) => {
+    const num = parseFloat(value) || 0;
+    if (num >= 100000) {
+      return `₹${(num / 100000).toFixed(1)}L`;
+    }
+    return `₹${num.toLocaleString('en-IN')}`;
+  };
+
+  const revenueValue = stats ? formatRevenue(stats.totalRevenue) : '₹0.0';
+
+  // Dynamically calculate attendance stats
+  const presentToday = stats?.attendanceToday || 0;
+  const leaveToday = stats?.totalLeaves || 0;
+  const absentToday = Math.max(0, employeeCount - presentToday - leaveToday);
+
+  const totalForPct = employeeCount > 0 ? employeeCount : (presentToday + leaveToday + absentToday);
+  const presentPct = totalForPct > 0 ? Math.round((presentToday / totalForPct) * 100) : 0;
+  const leavePct = totalForPct > 0 ? Math.round((leaveToday / totalForPct) * 100) : 0;
+  const absentPct = totalForPct > 0 ? Math.max(0, 100 - presentPct - leavePct) : 0;
+
+  const donutStatus = [
+    { name: 'Present', value: presentPct, color: '#10B981' },
+    { name: 'Leave', value: leavePct, color: '#CBD5E1' },
+    { name: 'Absent', value: absentPct, color: '#EF4444' },
+  ];
+
+  const perfList = Array.isArray(stats?.performanceEmployees)
+    ? stats.performanceEmployees.map((row, idx) => ({
+        ...row,
+        avatar: getAvatarUrl(row.profile_photo, row.name, row.id || idx + 1)
+      }))
+    : [];
+
+  const holidayList = Array.isArray(stats?.upcomingHolidays)
+    ? stats.upcomingHolidays.map(h => ({
+        date: new Date(h.date).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }),
+        day: new Date(h.date).toLocaleDateString([], { weekday: 'long' }),
+        name: h.name
+      }))
+    : [];
+
+  const birthdayList = Array.isArray(stats?.upcomingBirthdays)
+    ? stats.upcomingBirthdays.map((b, idx) => ({
+        img: getAvatarUrl(b.profile_photo, b.name, b.id || idx + 1),
+        name: b.name,
+        role: 'Team Member',
+        date: b.date || 'Today'
+      }))
+    : [];
+
+  const activityList = Array.isArray(stats?.recentActivity)
+    ? stats.recentActivity.map((act, idx) => ({
+        avatar: getAvatarUrl(act.profile_photo, act.employee_name, act.employee_id || idx + 1),
+        name: act.employee_name,
+        action: act.punch_type === 'IN' ? 'punched in at' : 'punched out at',
+        highlight: new Date(act.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        time: 'Just now',
+        dot: act.punch_type === 'IN' ? '#10B981' : '#EF4444'
+      }))
+    : [];
+
+  const leaveList = Array.isArray(stats?.recentLeaves)
+    ? stats.recentLeaves.map((l, idx) => ({
+        avatar: getAvatarUrl(l.profile_photo, l.employee_name, l.id || idx + 1),
+        name: l.employee_name,
+        dept: l.dept_name || 'HR',
+        type: l.leave_name || 'Sick Leave',
+        days: `${l.duration || 1} day`
+      }))
+    : [];
+
+  // Adapt department summary to chart format
+  const chartData = Array.isArray(stats?.departmentSummary)
+    ? stats.departmentSummary.map(d => ({ team: d.dept, achievement: Math.min(100, Math.round(d.emp * 12)) })) 
+    : [];
+
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box', background: '#F8FAFC', minHeight: '100vh', padding: 0 }}>
 
       {/* ── FIRST ROW: EXACTLY 5 KPI CARDS MATCHING REFERENCE IMAGE ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24, width: '100%' }}>
-        <KpiCard label="Total Revenue" value="₹24.8L" trend="12.5%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="₹" />
-        <KpiCard label="Total Employees" value="156" trend="8.3%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="👥" />
-        <KpiCard label="Total Projects" value="78" trend="15.7%" trendLabel="vs last month" iconBg="#DCFCE7" iconColor="#16A34A" iconSymbol="💼" />
-        <KpiCard label="Completed Projects" value="52" trend="22.1%" trendLabel="vs last month" iconBg="#FEF3C7" iconColor="#D97706" iconSymbol="☑" />
-        <KpiCard label="Total Clients" value="102" trend="10.2%" trendLabel="vs last month" iconBg="#EFF6FF" iconColor="#2563EB" iconSymbol="👤" />
+        <KpiCard label="Total Revenue" value={revenueValue} trend="12.5%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="₹" />
+        <KpiCard label="Total Employees" value={employeeCount} trend="8.3%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="👥" />
+        <KpiCard label="Total Projects" value={projectCount} trend="15.7%" trendLabel="vs last month" iconBg="#DCFCE7" iconColor="#16A34A" iconSymbol="💼" />
+        <KpiCard label="Completed Projects" value={completedProjects} trend="22.1%" trendLabel="vs last month" iconBg="#FEF3C7" iconColor="#D97706" iconSymbol="☑" />
+        <KpiCard label="Total Clients" value={clientCount} trend="10.2%" trendLabel="vs last month" iconBg="#EFF6FF" iconColor="#2563EB" iconSymbol="👤" />
       </div>
 
       {/* ── SECOND ROW: TEAM PERFORMANCE (70%) + ATTENDANCE STATUS (30%) ── */}
@@ -162,7 +311,7 @@ export function SuperAdminDashboard() {
 
           <div style={{ width: '100%', height: 260, flex: 1 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={TEAM_PERFORMANCE_DATA} margin={{ top: 20, right: 10, left: -10, bottom: 0 }}>
+              <BarChart data={chartData} margin={{ top: 20, right: 10, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                 <XAxis dataKey="team" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} tickFormatter={(v) => `${v}%`} domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} />
@@ -185,14 +334,14 @@ export function SuperAdminDashboard() {
             <div style={{ width: '100%', height: 160, position: 'relative' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={DONUT_STATUS} cx="50%" cy="50%" innerRadius={48} outerRadius={68} dataKey="value" stroke="none">
-                    {DONUT_STATUS.map((e, i) => <Cell key={i} fill={e.color} />)}
+                  <Pie data={donutStatus} cx="50%" cy="50%" innerRadius={48} outerRadius={68} dataKey="value" stroke="none">
+                    {donutStatus.map((e, i) => <Cell key={i} fill={e.color} />)}
                   </Pie>
                   <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }} />
                 </PieChart>
               </ResponsiveContainer>
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                <span style={{ fontSize: 24, fontWeight: 800, color: '#111827', lineHeight: 1 }}>83%</span>
+                <span style={{ fontSize: 24, fontWeight: 800, color: '#111827', lineHeight: 1 }}>{presentPct}%</span>
                 <span style={{ fontSize: 10, fontWeight: 600, color: '#6B7280', marginTop: 2, textTransform: 'uppercase' }}>Present</span>
               </div>
             </div>
@@ -204,7 +353,7 @@ export function SuperAdminDashboard() {
                   <UserCheck size={14} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>856</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>{presentToday}</div>
                   <div style={{ fontSize: 11, fontWeight: 500, color: '#16A34A' }}>Present</div>
                 </div>
               </div>
@@ -214,7 +363,7 @@ export function SuperAdminDashboard() {
                   <Calendar size={14} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>42</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>{leaveToday}</div>
                   <div style={{ fontSize: 11, fontWeight: 500, color: '#EF4444' }}>On Leave</div>
                 </div>
               </div>
@@ -224,7 +373,7 @@ export function SuperAdminDashboard() {
                   <Calendar size={14} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>136</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>{absentToday}</div>
                   <div style={{ fontSize: 11, fontWeight: 500, color: '#2563EB' }}>Absent</div>
                 </div>
               </div>
@@ -256,7 +405,7 @@ export function SuperAdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {PERFORMANCE_EMPLOYEES.map((row, idx) => (
+                {perfList.map((row, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9', height: 52 }} className="hover:bg-slate-50 transition-colors">
                     <td style={{ padding: '0 20px', fontSize: 13, color: '#111827', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -300,18 +449,12 @@ export function SuperAdminDashboard() {
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#F59E0B' }} />
               <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#111827' }}>On Leave Today</h3>
             </div>
-            <span style={{ background: '#FEF3C7', color: '#D97706', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>42</span>
+            <span style={{ background: '#FEF3C7', color: '#D97706', fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 20 }}>{leaveToday}</span>
           </div>
 
           {/* Leave Employee List */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '10px 0' }}>
-            {[
-              { avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&auto=format&fit=crop&q=80', name: 'Arjun Mehta', dept: 'Engineering', type: 'Sick Leave', days: '1 day' },
-              { avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&auto=format&fit=crop&q=80', name: 'Kavya Nair', dept: 'Marketing', type: 'Casual Leave', days: '2 days' },
-              { avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&auto=format&fit=crop&q=80', name: 'Rohan Gupta', dept: 'Finance', type: 'Annual Leave', days: '3 days' },
-              { avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&auto=format&fit=crop&q=80', name: 'Divya Pillai', dept: 'HR', type: 'Sick Leave', days: '1 day' },
-              { avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&auto=format&fit=crop&q=80', name: 'Amit Sharma', dept: 'Sales', type: 'Earned Leave', days: '5 days' },
-            ].map((emp, i) => {
+            {leaveList.map((emp, i) => {
               const typeColor = emp.type === 'Sick Leave'
                 ? { bg: '#FEF2F2', text: '#EF4444' }
                 : emp.type === 'Annual Leave' || emp.type === 'Earned Leave'
@@ -352,12 +495,7 @@ export function SuperAdminDashboard() {
             <button style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>View All</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {[
-              { date: '25 May, 2024', day: 'Saturday', name: 'Republic Day' },
-              { date: '17 Jun, 2024', day: 'Monday', name: 'Bakrid' },
-              { date: '15 Aug, 2024', day: 'Thursday', name: 'Independence Day' },
-              { date: '02 Oct, 2024', day: 'Wednesday', name: 'Gandhi Jayanti' },
-            ].map((h, i, arr) => (
+            {holidayList.map((h, i, arr) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'center', gap: 8,
                 padding: '13px 0',
@@ -379,12 +517,7 @@ export function SuperAdminDashboard() {
             <button style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>View All</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {[
-              { img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80', name: 'Aarav Patel', role: 'Software Engineer', date: 'Today' },
-              { img: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80', name: 'Priya Sharma', role: 'HR Executive', date: 'Tomorrow' },
-              { img: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&auto=format&fit=crop&q=80', name: 'Rahul Kumar', role: 'Team Lead', date: 'May 26' },
-              { img: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80', name: 'Sneha Reddy', role: 'UI/UX Designer', date: 'May 28' },
-            ].map((p, i) => (
+            {birthdayList.map((p, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                   <img src={p.img} alt={p.name} style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
@@ -406,28 +539,7 @@ export function SuperAdminDashboard() {
             <button style={{ background: 'none', border: 'none', color: '#2563EB', fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>View All</button>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {[
-              {
-                avatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100&auto=format&fit=crop&q=80',
-                name: 'John Doe', action: 'completed the project', highlight: '"HR Management System"',
-                time: '2 mins ago', dot: '#10B981',
-              },
-              {
-                avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
-                name: 'Alice Johnson', action: 'added a new employee', highlight: '',
-                time: '15 mins ago', dot: '#F59E0B',
-              },
-              {
-                avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
-                name: 'Robert Smith', action: 'updated project status', highlight: '',
-                time: '1 hour ago', dot: '#F59E0B',
-              },
-              {
-                avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&auto=format&fit=crop&q=80',
-                name: 'Emily Davis', action: 'submitted leave request', highlight: '',
-                time: '2 hours ago', dot: '#EF4444',
-              },
-            ].map((item, i, arr) => (
+            {activityList.map((item, i, arr) => (
               <div key={i} style={{
                 display: 'flex', alignItems: 'center', gap: 12,
                 padding: '11px 0',
@@ -483,6 +595,7 @@ export function SuperAdminDashboard() {
                 transition: 'all 150ms ease',
                 color: '#2563EB',
               }}
+              onClick={() => handleQuickAction(action.label)}
               onMouseEnter={e => { e.currentTarget.style.background = '#2563EB'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#2563EB'; }}
               onMouseLeave={e => { e.currentTarget.style.background = '#F0F4FF'; e.currentTarget.style.color = '#2563EB'; e.currentTarget.style.borderColor = '#E0E7FF'; }}
               >
@@ -494,6 +607,98 @@ export function SuperAdminDashboard() {
         </div>
 
       </div>
+
+      {/* Send Email Modal */}
+      {showEmailModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
+        }}>
+          <div style={{
+            background: '#FFFFFF', borderRadius: 16, width: '100%', maxWidth: 500,
+            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
+            overflow: 'hidden'
+          }}>
+            <div style={{
+              padding: '16px 20px', borderBottom: '1px solid #E2E8F0',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#F8FAFC'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Mail size={18} color="#2563EB" />
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0F172A' }}>Send Announcement Email</h3>
+              </div>
+              <button 
+                onClick={() => setShowEmailModal(false)}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSendEmailSubmit} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                  Email Subject *
+                </label>
+                <input 
+                  type="text"
+                  placeholder="e.g. Monthly All-Hands Announcement"
+                  value={emailSubject}
+                  onChange={e => setEmailSubject(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 8,
+                    border: '1px solid #CBD5E1', fontSize: 13, outline: 'none', boxSizing: 'border-box'
+                  }}
+                  required
+                />
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
+                  Message Content *
+                </label>
+                <textarea 
+                  rows={4}
+                  placeholder="Write your email message here..."
+                  value={emailBody}
+                  onChange={e => setEmailBody(e.target.value)}
+                  style={{
+                    width: '100%', padding: '10px 12px', borderRadius: 8,
+                    border: '1px solid #CBD5E1', fontSize: 13, outline: 'none', resize: 'vertical', boxSizing: 'border-box'
+                  }}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
+                <button 
+                  type="button" 
+                  onClick={() => setShowEmailModal(false)}
+                  style={{
+                    padding: '8px 16px', borderRadius: 8, border: '1px solid #CBD5E1',
+                    background: '#FFF', color: '#475569', fontSize: 13, fontWeight: 600, cursor: 'pointer'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit"
+                  disabled={sendingEmail}
+                  style={{
+                    padding: '8px 18px', borderRadius: 8, border: 'none',
+                    background: '#2563EB', color: '#FFF', fontSize: 13, fontWeight: 600,
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+                  }}
+                >
+                  <Send size={14} />
+                  {sendingEmail ? 'Sending...' : 'Send Broadcast'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

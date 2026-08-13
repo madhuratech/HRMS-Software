@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../lib/api';
 import { ChevronLeft, ChevronRight, Filter, ChevronDown, Plus, X } from 'lucide-react';
 
 export default function ShiftRoster() {
@@ -22,44 +23,22 @@ export default function ShiftRoster() {
     }
   };
 
-  const rosterData = [
-    {
-      id: '1', employee: 'Aarav Sharma', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026024d', empId: 'EMP001',
-      shifts: [
-        { day: 'Mon', date: '20 May', shift: 'General Shift', time: '09:00 AM - 06:00 PM', type: 'general' },
-        { day: 'Tue', date: '21 May', shift: 'General Shift', time: '09:00 AM - 06:00 PM', type: 'general' },
-        { day: 'Wed', date: '22 May', shift: 'General Shift', time: '09:00 AM - 06:00 PM', type: 'general' },
-        { day: 'Thu', date: '23 May', shift: 'General Shift', time: '09:00 AM - 06:00 PM', type: 'general' },
-        { day: 'Fri', date: '24 May', shift: 'General Shift', time: '09:00 AM - 06:00 PM', type: 'general' },
-        { day: 'Sat', date: '25 May', shift: 'Weekly Off', time: '--', type: 'off' },
-        { day: 'Sun', date: '26 May', shift: 'Weekly Off', time: '--', type: 'off' },
-      ]
-    },
-    {
-      id: '2', employee: 'Neha Patel', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', empId: 'EMP002',
-      shifts: [
-        { day: 'Mon', date: '20 May', shift: 'Morning Shift', time: '06:00 AM - 03:00 PM', type: 'morning' },
-        { day: 'Tue', date: '21 May', shift: 'Morning Shift', time: '06:00 AM - 03:00 PM', type: 'morning' },
-        { day: 'Wed', date: '22 May', shift: 'Morning Shift', time: '06:00 AM - 03:00 PM', type: 'morning' },
-        { day: 'Thu', date: '23 May', shift: 'Morning Shift', time: '06:00 AM - 03:00 PM', type: 'morning' },
-        { day: 'Fri', date: '24 May', shift: 'Morning Shift', time: '06:00 AM - 03:00 PM', type: 'morning' },
-        { day: 'Sat', date: '25 May', shift: 'Weekly Off', time: '--', type: 'off' },
-        { day: 'Sun', date: '26 May', shift: 'Weekly Off', time: '--', type: 'off' },
-      ]
-    },
-    {
-      id: '3', employee: 'Rohan Verma', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704e', empId: 'EMP003',
-      shifts: [
-        { day: 'Mon', date: '20 May', shift: 'Evening Shift', time: '02:00 PM - 11:00 PM', type: 'evening' },
-        { day: 'Tue', date: '21 May', shift: 'Evening Shift', time: '02:00 PM - 11:00 PM', type: 'evening' },
-        { day: 'Wed', date: '22 May', shift: 'Evening Shift', time: '02:00 PM - 11:00 PM', type: 'evening' },
-        { day: 'Thu', date: '23 May', shift: 'Evening Shift', time: '02:00 PM - 11:00 PM', type: 'evening' },
-        { day: 'Fri', date: '24 May', shift: 'Evening Shift', time: '02:00 PM - 11:00 PM', type: 'evening' },
-        { day: 'Sat', date: '25 May', shift: 'Weekly Off', time: '--', type: 'off' },
-        { day: 'Sun', date: '26 May', shift: 'Weekly Off', time: '--', type: 'off' },
-      ]
-    }
-  ];
+  const [rosterData, setRosterData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch('/attendance/roster')
+      .then(data => {
+        if (Array.isArray(data)) {
+          setRosterData(data);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to load shift roster:", err);
+        setLoading(false);
+      });
+  }, []);
 
   return (
     <div className="hrms-content" style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%', minHeight: 'calc(100vh - 120px)' }}>
