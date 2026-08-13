@@ -1,21 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../lib/api';
 import { Search, Plus, Eye, Edit2, Trash2, X } from 'lucide-react';
-
-const INITIAL_CATEGORIES_DATA = [
-  { name: 'IT Support',         desc: 'Issues related to IT, systems, network and devices', total: 482, status: 'Active' },
-  { name: 'HR Support',         desc: 'Human resource related queries and requests',        total: 312, status: 'Active' },
-  { name: 'Payroll',            desc: 'Salary, payslip and payroll related issues',          total: 198, status: 'Active' },
-  { name: 'Leave & Attendance', desc: 'Leave applications and attendance issues',            total: 156, status: 'Active' },
-  { name: 'Training',           desc: 'Training and learning related queries',               total: 64,  status: 'Active' },
-  { name: 'Travel & Expense',   desc: 'Travel bookings and expense reimbursements',          total: 35,  status: 'Active' },
-  { name: 'Assets',             desc: 'Company assets and inventory related issues',         total: 24,  status: 'Active' },
-  { name: 'Others',             desc: 'Other general queries and issues',                    total: 20,  status: 'Active' },
-];
 
 export function Categories() {
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [categoryList, setCategoryList] = useState(INITIAL_CATEGORIES_DATA);
+  const [categoryList, setCategoryList] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch('/tickets/categories')
+      .then(data => {
+        if (Array.isArray(data)) {
+          setCategoryList(data);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to load helpdesk categories:", err);
+        setLoading(false);
+      });
+  }, []);
   const [formData, setFormData] = useState({
     categoryName: '',
     description: '',

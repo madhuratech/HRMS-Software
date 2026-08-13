@@ -21,6 +21,65 @@ exports.getBalances = (req, res) => {
   });
 };
 
+exports.getAllBalances = (req, res) => {
+  const sql = `
+    SELECT 
+      e.id as employee_id,
+      e.name as employee_name,
+      e.profile_photo,
+      COALESCE(d.dept_name, 'General') as dept,
+      COALESCE(SUM(CASE WHEN lt.code = 'CL' THEN lb.days_remaining ELSE 0 END), 0) as cl,
+      COALESCE(SUM(CASE WHEN lt.code = 'SL' THEN lb.days_remaining ELSE 0 END), 0) as sl,
+      COALESCE(SUM(CASE WHEN lt.code IN ('EL', 'PL') THEN lb.days_remaining ELSE 0 END), 0) as el,
+      COALESCE(SUM(CASE WHEN lt.code = 'COMP' THEN lb.days_remaining ELSE 0 END), 0) as comp
+    FROM employees e
+    LEFT JOIN departments d ON e.department_id = d.id
+    LEFT JOIN leave_balances lb ON lb.employee_id = e.id
+    LEFT JOIN leave_types lt ON lb.leave_type_id = lt.id
+    WHERE e.status = 'Active'
+    GROUP BY e.id, e.name, e.profile_photo, d.dept_name
+  `;
+
+  db.query(sql, (err, rows) => {
+    if (err) return res.status(500).json(err);
+
+    let totalCL = 0, totalSL = 0, totalEL = 0, totalComp = 0;
+    const formatted = rows.map(r => {
+      const cl = parseFloat(r.cl) || 0;
+      const sl = parseFloat(r.sl) || 0;
+      const el = parseFloat(r.el) || 0;
+      const comp = parseFloat(r.comp) || 0;
+
+      totalCL += cl;
+      totalSL += sl;
+      totalEL += el;
+      totalComp += comp;
+
+      return {
+        id: r.employee_id,
+        name: r.employee_name,
+        profile_photo: r.profile_photo,
+        dept: r.dept,
+        cl,
+        sl,
+        el,
+        comp,
+        total: cl + sl + el + comp
+      };
+    });
+
+    res.json({
+      summary: {
+        cl: `${totalCL} Days`,
+        sl: `${totalSL} Days`,
+        el: `${totalEL} Days`,
+        comp: `${totalComp} Hours`
+      },
+      records: formatted
+    });
+  });
+};
+
 exports.getApplications = (req, res) => {
   const { employee_id } = req.query;
   let sql = `
@@ -191,4 +250,45 @@ exports.getDashboardStats = async (req, res) => {
     console.error("Failed to load leave dashboard stats:", error);
     return res.status(500).json({ success: false, message: "Internal server error loading dashboard stats" });
   }
+};
+
+exports.getCompOffRequests = (req, res) => {
+  const sql = `
+    SELECT 
+      co.*,
+      COALESCE(e.name, co.employee_name) as employee_name,
+      e.profile_photo as avatar,
+      COALESCE(d.dept_name, 'General') as dept
+    FROM comp_off_requests co
+    LEFT JOIN employees e ON co.employee_id = e.id
+    LEFT JOIN departments d ON e.department_id = d.id
+    ORDER BY co.id DESC
+  `;
+  db.query(sql, (err, rows) => {
+    if (err) return res.status(500).json(err);
+    res.json(rows);
+  });
+};
+
+exports.submitCompOffRequest = (req, res) => {
+  const { employee_id, worked_date, earned_date, expiry_date, total_days, reason, status } = req.body;
+  const sql = `
+    INSERT INTO comp_off_requests (employee_id, employee_name, worked_date, earned_date, expiry_date, overtime_hours, earned_days, reason, status, approved_by, created_at)
+    VALUES (?, (SELECT name FROM employees WHERE id = ?), ?, ?, ?, '8h 00m', ?, ?, ?, '-', NOW())
+  `;
+  const daysStr = `${total_days || 1} Day${(parseFloat(total_days) || 1) > 1 ? 's' : ''}`;
+  db.query(sql, [employee_id || 1, employee_id || 1, worked_date || 'Today', earned_date || 'Today', expiry_date || '90 Days', daysStr, reason || 'Comp off request', status || 'Pending'], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Comp off request created successfully", id: result.insertId });
+  });
+};
+
+exports.updateCompOffStatus = (req, res) => {
+  const { id } = req.params;
+  const { status, approved_by } = req.body;
+  const sql = "UPDATE comp_off_requests SET status = ?, approved_by = ? WHERE id = ?";
+  db.query(sql, [status, approved_by || 'Management', id], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Comp off status updated successfully" });
+  });
 };

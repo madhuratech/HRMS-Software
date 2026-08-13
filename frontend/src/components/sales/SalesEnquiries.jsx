@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Phone, Calendar, MessageCircle, ChevronRight, UserPlus } from 'lucide-react';
-import { MOCK_ENQUIRIES } from '../../lib/mockData';
+import { apiFetch } from '../../lib/api';
 
 import { UpdateFollowupModal } from './UpdateFollowupModal';
 
 import { useToast } from '../ui/Toast';
 
 export function SalesEnquiries() {
-  const [enquiries, setEnquiries] = useState(MOCK_ENQUIRIES);
+  const [enquiries, setEnquiries] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -15,22 +16,42 @@ export function SalesEnquiries() {
 
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
+  const loadEnquiries = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch('/tickets/sales-enquiries');
+      if (Array.isArray(data)) setEnquiries(data);
+    } catch (err) {
+      console.error("Failed to load sales enquiries:", err);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadEnquiries();
+  }, []);
+
   const handleAddLead = (e) => {
     e.preventDefault();
     setIsAddModalOpen(false);
-    // In a real app, this would add the lead to the database
-    const newLead = {
-      id: Math.random(),
-      customerName: "New Customer",
-      phone: "+1 (555) 000-0000",
-      status: "NEW",
-      lastContact: new Date().toISOString().split('T')[0],
-      nextFollowUp: new Date().toISOString().split('T')[0],
-      remarks: [{ date: new Date().toISOString().split('T')[0], text: "Initial enquiry" }],
-      assignedTo: 1
-    };
-    setEnquiries([newLead, ...enquiries]);
-    addToast('New lead added successfully!', 'success');
+    
+    apiFetch('/tickets/sales-enquiries', {
+      method: 'POST',
+      body: JSON.stringify({
+        customerName: "New Customer Lead",
+        phone: "+91 9876543210",
+        status: "NEW",
+        remarks: "Initial enquiry"
+      })
+    })
+    .then(() => {
+      loadEnquiries();
+      addToast('New lead added successfully!', 'success');
+    })
+    .catch(err => {
+      console.error(err);
+      addToast('Failed to add lead', 'error');
+    });
   };
 
   const handleUpdate = (data) => {

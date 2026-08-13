@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Briefcase, CheckCircle2, RefreshCw, DollarSign, FileText, Plus, Check } from 'lucide-react';
 import { useToast } from '../ui/Toast';
+import { getAvatarUrl } from '../../lib/utils';
 import './employee-module.css';
 
 export default function ExitManagement() {
@@ -38,7 +39,7 @@ export default function ExitManagement() {
         setLoading(false);
       });
 
-    fetch("http://localhost:3000/app/employees")
+    fetch("http://localhost:3000/app/employees?status=Active")
       .then(res => res.json())
       .then(data => setEmployees(data))
       .catch(err => console.error(err));
@@ -268,7 +269,7 @@ export default function ExitManagement() {
                     <tr key={exit.id} onClick={() => setSelectedExit(exit)} style={{ cursor: 'pointer' }}>
                       <td style={{ whiteSpace: 'nowrap' }}>
                         <div className="hrms-user-info">
-                          <img src={`https://i.pravatar.cc/150?u=EMP00${exit.employee_id}`} alt={exit.employee_name} className="hrms-avatar" style={{width: '32px', height: '32px'}} />
+                          <img src={getAvatarUrl(exit.profile_photo, exit.employee_name, exit.employee_id)} alt={exit.employee_name} className="hrms-avatar" style={{width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover'}} />
                           <span className="hrms-font-medium" style={{color: '#0f172a'}}>{exit.employee_name}</span>
                         </div>
                       </td>

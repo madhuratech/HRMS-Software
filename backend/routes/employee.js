@@ -387,6 +387,7 @@ router.get("/promotions", (req, res) => {
     SELECT 
       p.*,
       e.name as employee_name,
+      e.profile_photo as profile_photo,
       d1.role_name as old_designation,
       d2.role_name as new_designation,
       approver.name as approved_by_name
@@ -408,21 +409,42 @@ router.get("/promotions", (req, res) => {
  */
 router.post("/promotions", (req, res) => {
   const { employeeId, newDesignationName, effectiveDate } = req.body;
+  if (!employeeId || !newDesignationName) {
+    return res.status(400).json({ error: "employeeId and newDesignationName are required" });
+  }
 
-  const sql = `
-    INSERT INTO promotions (employee_id, old_designation_id, new_designation_id, effective_date, status)
-    VALUES (
-      ?,
-      (SELECT designation_id FROM employees WHERE id = ?),
-      (SELECT id FROM designations WHERE role_name = ? OR role_code = ? LIMIT 1),
-      ?,
-      'Pending'
-    )
-  `;
+  const findDesgSql = "SELECT id FROM designations WHERE role_name = ? OR role_code = ? LIMIT 1";
+  db.query(findDesgSql, [newDesignationName, newDesignationName], (err, rows) => {
+    if (err) return res.status(500).json({ error: "Database error", details: err });
 
-  db.query(sql, [employeeId, employeeId, newDesignationName, newDesignationName, effectiveDate], (err, result) => {
-    if (err) return res.status(500).json({ error: "Failed to submit promotion request", details: err });
-    res.json({ message: "Promotion request submitted successfully", id: result.insertId });
+    const createAndInsert = (newDesgId) => {
+      const getOldDesgSql = "SELECT designation_id FROM employees WHERE id = ?";
+      db.query(getOldDesgSql, [employeeId], (err2, empRows) => {
+        const oldDesgId = (empRows && empRows.length > 0) ? empRows[0].designation_id : null;
+        const insertPromoSql = `
+          INSERT INTO promotions (employee_id, old_designation_id, new_designation_id, effective_date, status)
+          VALUES (?, ?, ?, ?, 'Pending')
+        `;
+        db.query(insertPromoSql, [employeeId, oldDesgId, newDesgId, effectiveDate || new Date().toISOString().split('T')[0]], (err3, result) => {
+          if (err3) return res.status(500).json({ error: "Failed to submit promotion request", details: err3 });
+          res.json({ message: "Promotion request submitted successfully", id: result.insertId });
+        });
+      });
+    };
+
+    if (rows && rows.length > 0) {
+      createAndInsert(rows[0].id);
+    } else {
+      const code = newDesignationName.toUpperCase().replace(/\s+/g, '_');
+      db.query(
+        "INSERT INTO designations (role_code, role_name, status, createdDate) VALUES (?, ?, 'Active', DATE_FORMAT(NOW(), '%d %b %Y'))",
+        [code, newDesignationName],
+        (errIns, resIns) => {
+          if (errIns) return res.status(500).json({ error: "Failed to create designation", details: errIns });
+          createAndInsert(resIns.insertId);
+        }
+      );
+    }
   });
 });
 
@@ -467,6 +489,7 @@ router.get("/transfers", (req, res) => {
     SELECT 
       t.*,
       e.name as employee_name,
+      e.profile_photo as profile_photo,
       approver.name as approved_by_name
     FROM transfers t
     JOIN employees e ON t.employee_id = e.id
@@ -544,7 +567,8 @@ router.get("/exits", (req, res) => {
   const sql = `
     SELECT 
       ex.*,
-      e.name as employee_name
+      e.name as employee_name,
+      e.profile_photo as profile_photo
     FROM exit_management ex
     JOIN employees e ON ex.employee_id = e.id
     ORDER BY ex.created_at DESC

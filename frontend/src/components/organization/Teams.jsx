@@ -1,4 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { apiFetch } from '../../lib/api';
 import {
   Users,
   UserCheck,
@@ -16,6 +17,10 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  Mail,
+  Phone,
+  MapPin,
   Calendar,
   Briefcase,
   Layers,
@@ -25,27 +30,6 @@ import {
   Heart,
   Zap
 } from 'lucide-react';
-
-const INITIAL_TEAMS = [
-  { id: 1, name: 'Frontend Squad', code: 'TM-FE', department: 'Technology', teamLead: 'David Kumar', members: 12, createdDate: '01 Jan 2026', status: 'Active', description: 'Responsible for all user-facing web and mobile applications.' },
-  { id: 2, name: 'Backend Services', code: 'TM-BE', department: 'Technology', teamLead: 'Suresh Reddy', members: 15, createdDate: '02 Jan 2026', status: 'Active', description: 'Handles core APIs, databases, and business logic.' },
-  { id: 3, name: 'DevOps & Cloud', code: 'TM-OPS', department: 'Technology', teamLead: 'Anil Sharma', members: 8, createdDate: '03 Jan 2026', status: 'Active', description: 'Manages infrastructure, CI/CD, and system reliability.' },
-  { id: 4, name: 'QA Engineers', code: 'TM-QA', department: 'Technology', teamLead: 'Priya Sharma', members: 10, createdDate: '04 Jan 2026', status: 'Active', description: 'Ensures software quality through manual and automated testing.' },
-  { id: 5, name: 'Product Design', code: 'TM-DES', department: 'Design', teamLead: 'John Peter', members: 7, createdDate: '05 Jan 2026', status: 'Active', description: 'Creates UI/UX designs, prototypes, and user research.' },
-  { id: 6, name: 'Enterprise Sales', code: 'TM-ENT', department: 'Sales', teamLead: 'Ramesh Kumar', members: 14, createdDate: '06 Jan 2026', status: 'Active', description: 'Focuses on large enterprise clients and strategic accounts.' },
-  { id: 7, name: 'SMB Sales', code: 'TM-SMB', department: 'Sales', teamLead: 'Amit Verma', members: 18, createdDate: '07 Jan 2026', status: 'Active', description: 'Handles small and medium business accounts.' },
-  { id: 8, name: 'Digital Marketing', code: 'TM-DIG', department: 'Marketing', teamLead: 'Rahul Singh', members: 9, createdDate: '08 Jan 2026', status: 'Active', description: 'Runs online campaigns, SEO, and social media.' },
-  { id: 9, name: 'Content Strategy', code: 'TM-CON', department: 'Marketing', teamLead: 'Soumya Das', members: 5, createdDate: '09 Jan 2026', status: 'Active', description: 'Develops content for blogs, whitepapers, and marketing collateral.' },
-  { id: 10, name: 'Talent Acquisition', code: 'TM-REC', department: 'Human Resources', teamLead: 'Sarah Johnson', members: 6, createdDate: '10 Jan 2026', status: 'Active', description: 'Manages recruitment, interviewing, and onboarding.' },
-  { id: 11, name: 'Employee Relations', code: 'TM-ER', department: 'Human Resources', teamLead: 'Deepak Joshi', members: 4, createdDate: '11 Jan 2026', status: 'Active', description: 'Handles employee engagement, disputes, and welfare.' },
-  { id: 12, name: 'Financial Planning', code: 'TM-FP', department: 'Finance', teamLead: 'Michael Lee', members: 5, createdDate: '12 Jan 2026', status: 'Active', description: 'Focuses on budgeting, forecasting, and financial analysis.' },
-  { id: 13, name: 'Accounting & Payroll', code: 'TM-ACC', department: 'Finance', teamLead: 'Priya Nair', members: 6, createdDate: '13 Jan 2026', status: 'Active', description: 'Manages ledger, accounts payable/receivable, and payroll.' },
-  { id: 14, name: 'Customer Support L1', code: 'TM-L1', department: 'Support', teamLead: 'Karthik Raja', members: 20, createdDate: '14 Jan 2026', status: 'Active', description: 'First-line support for customer inquiries and issues.' },
-  { id: 15, name: 'Customer Support L2', code: 'TM-L2', department: 'Support', teamLead: 'Rajesh Kumar', members: 12, createdDate: '15 Jan 2026', status: 'Inactive', description: 'Advanced technical support and escalations.' },
-  { id: 16, name: 'Executive Strategy', code: 'TM-EXEC', department: 'Management', teamLead: 'David Kumar', members: 5, createdDate: '16 Jan 2026', status: 'Active', description: 'Top management team focused on company strategy.' }
-];
-
-const DEPARTMENTS = ['Management', 'Technology', 'Human Resources', 'Finance', 'Sales', 'Marketing', 'Design', 'Support'];
 
 const emptyForm = { name: '', code: '', department: '', teamLead: '', members: '', status: 'Active', description: '' };
 
@@ -88,18 +72,47 @@ const CustomSelect = ({ label, required, value, onChange, options, placeholder }
 
 
 export const Teams = () => {
-  const [teams, setTeams] = useState(INITIAL_TEAMS);
+  const [teams, setTeams] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [deptFilter, setDeptFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
+  const [departmentsList, setDepartmentsList] = useState([]);
   const itemsPerPage = 8;
+
+  const loadTeams = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch('/organization/teams');
+      if (Array.isArray(data)) {
+        setTeams(data);
+      }
+      const depts = await apiFetch('/organization/departments');
+      if (Array.isArray(depts)) {
+        setDepartmentsList(depts.map(d => d.name));
+      }
+    } catch (e) {
+      console.error("Failed to load teams:", e);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadTeams();
+  }, []);
+
+  const departmentOptions = useMemo(() => {
+    const list = new Set([...departmentsList, ...teams.map(t => t.department).filter(Boolean)]);
+    if (list.size === 0) return ['Technology', 'Sales', 'Human Resources', 'Marketing'];
+    return Array.from(list);
+  }, [departmentsList, teams]);
 
   const statistics = useMemo(() => ({
     total: teams.length,
@@ -110,7 +123,7 @@ export const Teams = () => {
 
   const filteredData = useMemo(() => {
     return teams.filter(t => {
-      const matchSearch = t.name.toLowerCase().includes(searchTerm.toLowerCase()) || t.code.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchSearch = (t.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (t.code || '').toLowerCase().includes(searchTerm.toLowerCase());
       const matchStatus = statusFilter === 'All' || t.status === statusFilter;
       const matchDept = deptFilter === 'All' || t.department === deptFilter;
       return matchSearch && matchStatus && matchDept;
@@ -121,20 +134,48 @@ export const Teams = () => {
   const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleAdd = () => { setFormData(emptyForm); setShowAddModal(true); };
-  const handleSaveAdd = () => {
+  const handleSaveAdd = async () => {
     if (!formData.name || !formData.code) return;
-    setTeams(prev => [...prev, { ...formData, id: Date.now(), createdDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) }]);
+    try {
+      await apiFetch('/organization/teams', {
+        method: 'POST',
+        body: JSON.stringify(formData)
+      });
+      await loadTeams();
+    } catch (err) {
+      console.error("Error creating team:", err);
+    }
     setShowAddModal(false);
   };
   const handleOpenEdit = (item) => { setSelectedItem(item); setFormData({ name: item.name, code: item.code, department: item.department, teamLead: item.teamLead, members: item.members, status: item.status, description: item.description }); setShowEditModal(true); };
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!formData.name || !formData.code) return;
-    setTeams(prev => prev.map(t => t.id === selectedItem.id ? { ...t, ...formData } : t));
+    try {
+      await apiFetch(`/organization/teams/${selectedItem.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(formData)
+      });
+      await loadTeams();
+    } catch (err) {
+      console.error("Error updating team:", err);
+    }
     setShowEditModal(false);
   };
   const handleOpenView = (item) => { setSelectedItem(item); setShowViewModal(true); };
   const handleOpenDelete = (item) => { setSelectedItem(item); setShowDeleteModal(true); };
-  const handleConfirmDelete = () => { setTeams(prev => prev.filter(t => t.id !== selectedItem.id)); setShowDeleteModal(false); };
+  const handleConfirmDelete = async () => {
+    if (selectedItem) {
+      try {
+        await apiFetch(`/organization/teams/${selectedItem.id}`, {
+          method: 'DELETE'
+        });
+        await loadTeams();
+      } catch (err) {
+        console.error("Error deleting team:", err);
+      }
+    }
+    setShowDeleteModal(false);
+  };
 
   const renderFormModal = (title, subtitle, show, onClose, onSave, saveLabel) => {
     if (!show) return null;
@@ -159,7 +200,7 @@ export const Teams = () => {
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Team Code <span className="text-red-500">*</span></label>
                 <input type="text" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} placeholder="Enter team code" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
               </div>
-              <CustomSelect label="Department" required value={formData.department} onChange={v => setFormData({ ...formData, department: v })} options={DEPARTMENTS} placeholder="Select department" />
+              <CustomSelect label="Department" required value={formData.department} onChange={v => setFormData({ ...formData, department: v })} options={departmentOptions} placeholder="Select department" />
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Team Lead</label>
                 <input type="text" value={formData.teamLead} onChange={e => setFormData({ ...formData, teamLead: e.target.value })} placeholder="Enter team lead name" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
@@ -246,7 +287,7 @@ export const Teams = () => {
               className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="All">Department: All</option>
-              {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+              {departmentOptions.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
           </div>
         </div>

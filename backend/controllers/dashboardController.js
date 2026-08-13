@@ -43,42 +43,46 @@ exports.getStats = async (req, res) => {
       query(`
         SELECT d.dept_name as dept, COUNT(e.id) as emp 
         FROM departments d 
-        LEFT JOIN employees e ON e.department_id = d.id 
+        LEFT JOIN employees e ON e.department_id = d.id AND e.status = 'Active'
         GROUP BY d.id, d.dept_name
       `),
       query(`
-        SELECT a.punch_type, a.punch_time, e.name as employee_name 
+        SELECT a.punch_type, a.punch_time, e.id as employee_id, e.name as employee_name, e.profile_photo 
         FROM attendance a
         JOIN employees e ON a.employee_id = e.id
+        WHERE e.status = 'Active'
         ORDER BY a.punch_time DESC LIMIT 5
       `),
       query("SELECT holiday_date as date, name FROM holidays WHERE holiday_date >= ? ORDER BY holiday_date ASC LIMIT 4", [today]),
       query(`
-        SELECT name, DATE_FORMAT(dob, '%M %d') as date
-        FROM employees 
-        WHERE dob IS NOT NULL
-        ORDER BY DATE_FORMAT(dob, '%m%d') ASC
+        SELECT e.id, e.name, e.profile_photo, DATE_FORMAT(e.dob, '%M %d') as date
+        FROM employees e
+        WHERE e.status = 'Active' AND e.dob IS NOT NULL
+        ORDER BY DATE_FORMAT(e.dob, '%m%d') ASC
         LIMIT 4
       `),
       query(`
         SELECT 
+          e.id,
           e.name, 
-          d.dept_name as dept, 
-          desg.role_name as designation, 
-          COALESCE(ROUND(AVG(g.completion_percentage)/20, 2), 4.00) as score,
-          CONCAT(COALESCE(ROUND(AVG(g.completion_percentage)), 80), '%') as goals,
-          COALESCE(ROUND(AVG(g.completion_percentage)/20), 4) as stars,
-          '↑ 3.2%' as trend, 
-          1 as isUp 
+          e.profile_photo,
+          COALESCE(d.dept_name, 'General') as dept, 
+          COALESCE(desg.role_name, 'Employee') as designation, 
+          IF(COUNT(g.id) > 0, ROUND(AVG(g.completion_percentage)/20, 2), 0.00) as score,
+          CONCAT(IF(COUNT(g.id) > 0, ROUND(AVG(g.completion_percentage)), 0), '%') as goals,
+          IF(COUNT(g.id) > 0, ROUND(AVG(g.completion_percentage)/20), 0) as stars,
+          IF(COUNT(g.id) > 0, '↑ 5.0%', '0.0%') as trend, 
+          IF(COUNT(g.id) > 0, 1, 0) as isUp 
         FROM employees e 
         LEFT JOIN departments d ON e.department_id = d.id 
         LEFT JOIN designations desg ON e.designation_id = desg.id 
         LEFT JOIN goals g ON e.id = g.employee_id
-        GROUP BY e.id, e.name, d.dept_name, desg.role_name
+        WHERE e.status = 'Active'
+        GROUP BY e.id, e.name, e.profile_photo, d.dept_name, desg.role_name
         LIMIT 5
       `),
       query(`
-        SELECT e.name as employee_name, d.dept_name, lt.name as leave_name, DATEDIFF(la.end_date, la.start_date) + 1 as duration
+        SELECT e.id, e.name as employee_name, e.profile_photo, d.dept_name, lt.name as leave_name, DATEDIFF(la.end_date, la.start_date) + 1 as duration
         FROM leave_applications la
         JOIN employees e ON la.employee_id = e.id
         LEFT JOIN departments d ON e.department_id = d.id
