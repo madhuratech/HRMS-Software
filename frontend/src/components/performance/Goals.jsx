@@ -70,7 +70,7 @@ export default function Goals() {
       }
 
       // Fetch employees
-      const empRes = await fetch('/app/employees', { headers });
+      const empRes = await fetch('/app/employees?status=Active', { headers });
       const empData = await empRes.json();
       if (Array.isArray(empData)) {
         setEmployees(empData);

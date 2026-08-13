@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MoreVertical, ChevronLeft, ChevronRight, Plus, Check } from 'lucide-react';
 import { useToast } from '../ui/Toast';
+import { getAvatarUrl } from '../../lib/utils';
 import './employee-module.css';
 
 export default function PromotionsContent() {
@@ -9,13 +10,14 @@ export default function PromotionsContent() {
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
   const [employees, setEmployees] = useState([]);
+  const [designations, setDesignations] = useState([]);
   
   // Form State
   const [employeeId, setEmployeeId] = useState('');
-  const [newDesignationName, setNewDesignationName] = useState('Branch Manager');
+  const [newDesignationName, setNewDesignationName] = useState('Software Engineer');
   const [effectiveDate, setEffectiveDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Load promotions list and employees dropdown
+  // Load promotions list, employees dropdown, and designations dropdown
   const loadData = () => {
     setLoading(true);
     fetch("http://localhost:3000/app/employees/promotions")
@@ -33,9 +35,16 @@ export default function PromotionsContent() {
         setLoading(false);
       });
 
-    fetch("http://localhost:3000/app/employees")
+    fetch("http://localhost:3000/app/employees?status=Active")
       .then(res => res.json())
       .then(data => setEmployees(data))
+      .catch(err => console.error(err));
+
+    fetch("http://localhost:3000/app/organization/designations")
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setDesignations(data);
+      })
       .catch(err => console.error(err));
   };
 
@@ -129,12 +138,21 @@ export default function PromotionsContent() {
                 value={newDesignationName}
                 onChange={(e) => setNewDesignationName(e.target.value)}
               >
-                <option value="Branch Manager">Branch Manager</option>
-                <option value="Sales Manager">Sales Manager</option>
-                <option value="Software Engineer">Software Engineer</option>
-                <option value="Service Staff">Service Staff</option>
-                <option value="HR Executive">HR Executive</option>
-                <option value="UI/UX Designer">UI/UX Designer</option>
+                {designations.length > 0 ? (
+                  designations.map(d => (
+                    <option key={d.id} value={d.name}>{d.name}</option>
+                  ))
+                ) : (
+                  <>
+                    <option value="Software Engineer">Software Engineer</option>
+                    <option value="Senior Developer">Senior Developer</option>
+                    <option value="Branch Manager">Branch Manager</option>
+                    <option value="Sales Manager">Sales Manager</option>
+                    <option value="Service Staff">Service Staff</option>
+                    <option value="HR Executive">HR Executive</option>
+                    <option value="UI/UX Designer">UI/UX Designer</option>
+                  </>
+                )}
               </select>
             </div>
             <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
@@ -205,7 +223,7 @@ export default function PromotionsContent() {
                   <tr key={promo.id}>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       <div className="hrms-user-info">
-                        <img src={`https://i.pravatar.cc/150?u=EMP00${promo.employee_id}`} alt={promo.employee_name} className="hrms-avatar" style={{width: '32px', height: '32px'}} />
+                        <img src={getAvatarUrl(promo.profile_photo, promo.employee_name, promo.employee_id)} alt={promo.employee_name} className="hrms-avatar" style={{width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover'}} />
                         <span className="hrms-font-medium" style={{color: '#0f172a'}}>{promo.employee_name}</span>
                       </div>
                     </td>

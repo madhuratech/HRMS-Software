@@ -64,7 +64,7 @@ export default function LeaveApplications() {
       if (Array.isArray(apps)) setApplications(apps);
 
       // 2. Load Active Employees
-      const emps = await apiFetch('/employees');
+      const emps = await apiFetch('/employees?status=Active');
       if (Array.isArray(emps)) setEmployees(emps);
 
       // 3. Load Leave Types
@@ -214,51 +214,57 @@ export default function LeaveApplications() {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
-      
-      {/* Header & Toolbar */}
-      <div style={{ display: 'flex', justifyContent: 'flex-start', alignItems: 'flex-start' }}>
-        <button onClick={() => setShowModal(true)} style={{ background: '#2952E3', color: '#fff', border: 'none', padding: '12px 20px', borderRadius: '12px', fontSize: '14px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(41,82,227,0.2)' }}>
-          <Plus size={18} /> Apply Leave
-        </button>
-      </div>
-
       <div style={cardStyle}>
-        
-        {/* Filters */}
-        <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '240px', position: 'relative' }}>
-            <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }} />
-            <input 
-              type="text" 
-              placeholder="Search employee..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ width: '100%', padding: '9px 12px 9px 36px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none' }} 
-            />
+        {/* Filters and Header Toolbar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+          <div style={{ display: 'flex', gap: '12px', flex: 1, minWidth: '280px', flexWrap: 'wrap', alignItems: 'center' }}>
+            <div style={{ flex: 1, minWidth: '220px', position: 'relative' }}>
+              <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }} />
+              <input 
+                type="text" 
+                placeholder="Search employee..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ width: '100%', padding: '9px 12px 9px 36px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none' }} 
+              />
+            </div>
+            <select 
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '130px' }}
+            >
+              <option>All Status</option>
+              <option>Pending</option>
+              <option>Approved</option>
+              <option>Rejected</option>
+            </select>
+            <select 
+              value={deptFilter}
+              onChange={(e) => setDeptFilter(e.target.value)}
+              style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '150px' }}
+            >
+              <option>All Departments</option>
+              <option>Design</option>
+              <option>Engineering</option>
+              <option>HR</option>
+            </select>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', color: '#475569', cursor: 'pointer' }}>
+              <Filter size={14} /> More Filters
+            </div>
           </div>
-          <select 
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '140px' }}
+
+          <button 
+            onClick={() => setShowModal(true)} 
+            style={{ 
+              background: '#2563EB', color: '#fff', border: 'none', 
+              padding: '10px 18px', borderRadius: '8px', fontSize: '13px', 
+              fontWeight: '600', display: 'flex', alignItems: 'center', 
+              gap: '8px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
+              whiteSpace: 'nowrap'
+            }}
           >
-            <option>All Status</option>
-            <option>Pending</option>
-            <option>Approved</option>
-            <option>Rejected</option>
-          </select>
-          <select 
-            value={deptFilter}
-            onChange={(e) => setDeptFilter(e.target.value)}
-            style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '160px' }}
-          >
-            <option>All Departments</option>
-            <option>Design</option>
-            <option>Engineering</option>
-            <option>HR</option>
-          </select>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', color: '#475569', cursor: 'pointer' }}>
-            <Filter size={14} /> More Filters
-          </div>
+            <Plus size={16} /> Apply Leave
+          </button>
         </div>
 
         {/* Table */}

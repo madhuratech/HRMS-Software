@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../lib/api';
 import { Search, Plus, Eye, Edit2, Trash2, ChevronDown, X } from 'lucide-react';
 
 const KB_CATS = [
@@ -12,21 +13,26 @@ const KB_CATS = [
   { id: 'others',     label: 'Others',             count: 4 },
 ];
 
-const INITIAL_ARTICLES_DATA = [
-  { title: 'How to reset login password',     cat: 'IT Support',          views: '1,245', status: 'Published', date: '31 May 2024' },
-  { title: 'How to apply for leave',          cat: 'Leave & Attendance',  views: '987',   status: 'Published', date: '30 May 2024' },
-  { title: 'How to download payslip',         cat: 'Payroll',             views: '856',   status: 'Published', date: '29 May 2024' },
-  { title: 'How to connect to VPN',           cat: 'IT Support',          views: '765',   status: 'Published', date: '28 May 2024' },
-  { title: 'How to request for ID card',      cat: 'HR Support',          views: '654',   status: 'Draft',     date: '27 May 2024' },
-  { title: 'How to claim travel expenses',    cat: 'Travel & Expense',    views: '543',   status: 'Published', date: '26 May 2024' },
-  { title: 'How to raise a ticket',           cat: 'IT Support',          views: '432',   status: 'Published', date: '25 May 2024' },
-];
-
 export function KnowledgeBase() {
   const [selectedCat, setSelectedCat] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [articlesList, setArticlesList] = useState(INITIAL_ARTICLES_DATA);
+  const [articlesList, setArticlesList] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch('/tickets/kb/articles')
+      .then(data => {
+        if (Array.isArray(data)) {
+          setArticlesList(data);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to load KB articles:", err);
+        setLoading(false);
+      });
+  }, []);
   const [formData, setFormData] = useState({
     articleTitle: '',
     category: '',

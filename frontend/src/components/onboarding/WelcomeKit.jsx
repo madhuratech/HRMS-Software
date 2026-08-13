@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../lib/api';
 import { Package, Truck, Clock, Box, Plus, Settings, X } from 'lucide-react';
 
 const kpiData = [
@@ -19,17 +20,24 @@ const kitItemsData = [
   { name: 'Swag Pack', quantity: 1 },
 ];
 
-const INITIAL_DISTRIBUTION_DATA = [
-  { id: 'EMP001', name: 'Rahul Sharma', dept: 'Engineering', date: '20 May 2024' },
-  { id: 'EMP002', name: 'Priya Patel', dept: 'Human Resources', date: '19 May 2024' },
-  { id: 'EMP003', name: 'Amit Kumar', dept: 'Design', date: '18 May 2024' },
-  { id: 'EMP004', name: 'Neha Singh', dept: 'Finance', date: '17 May 2024' },
-  { id: 'EMP005', name: 'Vikas Yadav', dept: 'Marketing', date: '16 May 2024' },
-];
-
 export default function WelcomeKit() {
   const [showAddModal, setShowAddModal] = useState(false);
-  const [distributionList, setDistributionList] = useState(INITIAL_DISTRIBUTION_DATA);
+  const [distributionList, setDistributionList] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch('/tickets/welcome-kits')
+      .then(data => {
+        if (Array.isArray(data)) {
+          setDistributionList(data);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to load welcome kits:", err);
+        setLoading(false);
+      });
+  }, []);
   const [formData, setFormData] = useState({
     employee: '',
     department: '',

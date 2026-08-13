@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Upload, Download, Trash2, FileText, Plus, Eye } from 'lucide-react';
+import { Search, Upload, Download, Trash2, FileText, Plus, Eye, User } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import './employee-module.css';
 
@@ -9,17 +9,32 @@ export default function EmployeeDocuments() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
+  const [allEmployees, setAllEmployees] = useState([]);
   
   // New Doc Form
   const [docType, setDocType] = useState('PAN');
   const [fileName, setFileName] = useState('');
   const [selectedFile, setSelectedFile] = useState(null);
 
-  const empId = localStorage.getItem('selectedEmployeeId') || '1';
+  const [currentEmpId, setCurrentEmpId] = useState(() => localStorage.getItem('selectedEmployeeId') || '1');
+
+  const handleEmployeeSelect = (newId) => {
+    localStorage.setItem('selectedEmployeeId', newId);
+    setCurrentEmpId(newId);
+  };
+
+  useEffect(() => {
+    fetch('http://localhost:3000/app/employees')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setAllEmployees(data);
+      })
+      .catch(err => console.error("Error fetching all employees:", err));
+  }, []);
 
   const loadDocuments = () => {
     setLoading(true);
-    fetch(`http://localhost:3000/app/employees/${empId}/documents`)
+    fetch(`http://localhost:3000/app/employees/${currentEmpId}/documents`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -37,7 +52,7 @@ export default function EmployeeDocuments() {
 
   useEffect(() => {
     loadDocuments();
-  }, [empId]);
+  }, [currentEmpId]);
 
   const handleFileChange = (e) => {
     const file = e.target.files[0];
@@ -58,7 +73,7 @@ export default function EmployeeDocuments() {
     formData.append('document', selectedFile);
     formData.append('docType', docType);
 
-    fetch(`http://localhost:3000/app/employees/${empId}/documents`, {
+    fetch(`http://localhost:3000/app/employees/${currentEmpId}/documents`, {
       method: "POST",
       body: formData
     })
@@ -111,13 +126,43 @@ export default function EmployeeDocuments() {
     <div className="hrms-content">
       <div className="hrms-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1>Employee Documents</h1>
-        <button 
-          className="hrms-primary-btn" 
-          onClick={() => setShowAddForm(!showAddForm)}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-        >
-          <Upload size={16} /> Register Document
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: '8px',
+            padding: '6px 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+          }}>
+            <User size={16} color="#475569" />
+            <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>Select Employee:</span>
+            <select
+              value={currentEmpId}
+              onChange={(e) => handleEmployeeSelect(e.target.value)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 700,
+                color: '#0F172A',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              {allEmployees.map(emp => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.name} ({emp.employeeCode || `EMP00${emp.id}`}) {emp.status === 'Terminated' ? '• Terminated' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button 
+            className="hrms-primary-btn" 
+            onClick={() => setShowAddForm(!showAddForm)}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <Upload size={16} /> Register Document
+          </button>
+        </div>
       </div>
 
       {showAddForm && (

@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, Check, Plus } from 'lucide-react';
+import { MoreVertical, ChevronLeft, ChevronRight, Plus, ArrowRight, Check } from 'lucide-react';
 import { useToast } from '../ui/Toast';
+import { getAvatarUrl } from '../../lib/utils';
 import './employee-module.css';
 
 export default function TransfersContent() {
@@ -37,7 +38,7 @@ export default function TransfersContent() {
         setLoading(false);
       });
 
-    fetch("http://localhost:3000/app/employees")
+    fetch("http://localhost:3000/app/employees?status=Active")
       .then(res => res.json())
       .then(data => setEmployees(data))
       .catch(err => console.error(err));
@@ -216,7 +217,7 @@ export default function TransfersContent() {
                   <div className="hrms-timeline-content" style={{ backgroundColor: 'transparent', padding: '0 0 0 16px' }}>
                     <div className="hrms-flex-between hrms-mb-4">
                       <div className="hrms-user-info">
-                        <img src={`https://i.pravatar.cc/150?u=EMP00${item.employee_id}`} alt={item.employee_name} className="hrms-avatar" style={{width: '32px', height: '32px'}} />
+                        <img src={getAvatarUrl(item.profile_photo, item.employee_name, item.employee_id)} alt={item.employee_name} className="hrms-avatar" style={{width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover'}} />
                         <span className="hrms-font-medium hrms-text-sm" style={{color: '#0f172a'}}>{item.employee_name}</span>
                       </div>
                       <span className="hrms-text-xs hrms-text-muted">{new Date(item.effective_date).toLocaleDateString()}</span>
@@ -239,7 +240,7 @@ export default function TransfersContent() {
             <div style={{ display: 'grid', gridTemplateColumns: '120px 1fr', gap: '16px 24px', alignItems: 'center' }}>
               <span className="hrms-text-sm hrms-text-muted">Employee</span>
               <div className="hrms-user-info">
-                <img src={`https://i.pravatar.cc/150?u=EMP00${selectedTransfer.employee_id}`} alt={selectedTransfer.employee_name} className="hrms-avatar" style={{width: '40px', height: '40px'}} />
+                <img src={getAvatarUrl(selectedTransfer.profile_photo, selectedTransfer.employee_name, selectedTransfer.employee_id)} alt={selectedTransfer.employee_name} className="hrms-avatar" style={{width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover'}} />
                 <div>
                   <span className="hrms-font-medium hrms-text-sm" style={{color: '#0f172a', display: 'block'}}>{selectedTransfer.employee_name}</span>
                   <span className="hrms-text-xs hrms-text-muted">EMP00{selectedTransfer.employee_id}</span>

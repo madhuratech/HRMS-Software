@@ -3,24 +3,31 @@ const router = express.Router();
 const db = require("../config/database");
 
 /**
- * GET ALL DEPARTMENTS
+ * DEPARTMENTS CRUD
  */
 router.get("/departments", (req, res) => {
   const sql = `
     SELECT 
       d.id,
       d.dept_name as name,
-      d.dept_name as code, -- fallback code
-      e.name as headName,
-      d.manager_id,
-      'Active' as status,
-      'hr@hawkeyenest.com' as email,
-      '+91 98765 43210' as phone,
-      '101' as extension,
-      'Building A, 2nd Floor' as location,
-      'Manages department operations.' as description
+      COALESCE(d.code, CONCAT('DEPT-', LPAD(d.id, 2, '0'))) as code,
+      COALESCE(e.name, 'Unassigned') as headName,
+      IF(e.name IS NOT NULL, 'Department Manager', 'Unassigned') as headRole,
+      e.profile_photo as headAvatar,
+      d.branch,
+      (SELECT COUNT(*) FROM employees e2 WHERE e2.department_id = d.id AND e2.status = 'Active') as employees,
+      COALESCE(d.createdDate, DATE_FORMAT(NOW(), '%d %b %Y')) as createdDate,
+      COALESCE(d.createdDate, DATE_FORMAT(NOW(), '%d %b %Y')) as updatedDate,
+      COALESCE(d.status, 'Active') as status,
+      d.email,
+      d.phone,
+      d.extension,
+      d.location,
+      d.parentDepartment,
+      d.description
     FROM departments d
-    LEFT JOIN employees e ON d.manager_id = e.id
+    LEFT JOIN employees e ON d.manager_id = e.id AND e.status = 'Active'
+    ORDER BY d.id ASC
   `;
   db.query(sql, (err, rows) => {
     if (err) return res.status(500).json(err);
@@ -28,34 +35,60 @@ router.get("/departments", (req, res) => {
   });
 });
 
-/**
- * CREATE DEPARTMENT
- */
 router.post("/departments", (req, res) => {
-  const { name, manager_id } = req.body;
-  const sql = "INSERT INTO departments (dept_name, manager_id) VALUES (?, ?)";
-  db.query(sql, [name, manager_id || null], (err, result) => {
+  const { name, code, headName, branch, email, phone, extension, location, parentDepartment, description, status } = req.body;
+  const sql = `
+    INSERT INTO departments (dept_name, code, branch, status, email, phone, extension, location, parentDepartment, description, manager_id, createdDate)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, (SELECT id FROM employees WHERE name = ? LIMIT 1), DATE_FORMAT(NOW(), '%d %b %Y'))
+  `;
+  db.query(sql, [name, code, branch || 'Chennai', status || 'Active', email, phone, extension, location, parentDepartment, description, headName], (err, result) => {
     if (err) return res.status(500).json(err);
     res.json({ message: "Department created successfully", id: result.insertId });
   });
 });
 
+router.put("/departments/:id", (req, res) => {
+  const { id } = req.params;
+  const { name, code, headName, branch, status, email, phone, extension, location, parentDepartment, description } = req.body;
+  const sql = `
+    UPDATE departments
+    SET dept_name = ?, code = ?, branch = ?, status = ?, email = ?, phone = ?, extension = ?, location = ?, parentDepartment = ?, description = ?,
+        manager_id = (SELECT id FROM employees WHERE name = ? LIMIT 1)
+    WHERE id = ?
+  `;
+  db.query(sql, [name, code, branch || 'Chennai', status || 'Active', email, phone, extension, location, parentDepartment, description, headName, id], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Department updated successfully" });
+  });
+});
+
+router.delete("/departments/:id", (req, res) => {
+  const { id } = req.params;
+  db.query("DELETE FROM departments WHERE id = ?", [id], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Department deleted successfully" });
+  });
+});
+
 /**
- * GET ALL DESIGNATIONS
+ * DESIGNATIONS CRUD
  */
 router.get("/designations", (req, res) => {
   const sql = `
     SELECT 
-      id,
-      role_name as name,
-      role_code as code,
-      'Technology' as department,
-      'CEO' as reportsTo,
-      'L3' as grade,
-      'Senior' as level,
-      'Active' as status,
-      'Role definition' as description
-    FROM designations
+      des.id,
+      des.role_name as name,
+      des.role_code as code,
+      des.department,
+      des.reportsTo,
+      des.grade,
+      des.level,
+      (SELECT COUNT(*) FROM employees e WHERE e.designation_id = des.id AND e.status = 'Active') as employees,
+      COALESCE(des.createdDate, DATE_FORMAT(NOW(), '%d %b %Y')) as createdDate,
+      COALESCE(des.status, 'Active') as status,
+      des.description
+    FROM designations des
+    ORDER BY des.id ASC
   `;
   db.query(sql, (err, rows) => {
     if (err) return res.status(500).json(err);
@@ -63,15 +96,37 @@ router.get("/designations", (req, res) => {
   });
 });
 
-/**
- * CREATE DESIGNATION
- */
 router.post("/designations", (req, res) => {
-  const { name, code } = req.body;
-  const sql = "INSERT INTO designations (role_name, role_code) VALUES (?, ?)";
-  db.query(sql, [name, code], (err, result) => {
+  const { name, code, department, reportsTo, grade, level, status, description } = req.body;
+  const sql = `
+    INSERT INTO designations (role_name, role_code, department, reportsTo, grade, level, status, description, createdDate)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, DATE_FORMAT(NOW(), '%d %b %Y'))
+  `;
+  db.query(sql, [name, code, department, reportsTo, grade, level, status || 'Active', description], (err, result) => {
     if (err) return res.status(500).json(err);
     res.json({ message: "Designation created successfully", id: result.insertId });
+  });
+});
+
+router.put("/designations/:id", (req, res) => {
+  const { id } = req.params;
+  const { name, code, department, reportsTo, grade, level, status, description } = req.body;
+  const sql = `
+    UPDATE designations
+    SET role_name = ?, role_code = ?, department = ?, reportsTo = ?, grade = ?, level = ?, status = ?, description = ?
+    WHERE id = ?
+  `;
+  db.query(sql, [name, code, department, reportsTo, grade, level, status, description, id], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Designation updated successfully" });
+  });
+});
+
+router.delete("/designations/:id", (req, res) => {
+  const { id } = req.params;
+  db.query("DELETE FROM designations WHERE id = ?", [id], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Designation deleted successfully" });
   });
 });
 
@@ -437,6 +492,222 @@ router.post("/export-pdf", (req, res) => {
       console.error("PDF Generation failed:", pdfErr);
       res.status(500).json({ error: "Failed to generate PDF document", details: pdfErr.message });
     }
+  });
+});
+
+/**
+ * TEAMS CRUD
+ */
+router.get("/teams", (req, res) => {
+  const sql = `
+    SELECT 
+      t.id,
+      t.name,
+      COALESCE(t.code, CONCAT('TM-', UPPER(SUBSTRING(t.name, 1, 3)))) as code,
+      COALESCE(d.dept_name, t.department, 'General') as department,
+      COALESCE(tl.name, NULLIF(t.teamLead, ''), 'Unassigned') as teamLead,
+      (SELECT COUNT(*) FROM employees e WHERE e.team_id = t.id AND e.status = 'Active') as members,
+      COALESCE(t.status, 'Active') as status,
+      t.description,
+      COALESCE(DATE_FORMAT(t.created_at, '%d %b %Y'), DATE_FORMAT(NOW(), '%d %b %Y')) as createdDate
+    FROM teams t
+    LEFT JOIN departments d ON t.department_id = d.id
+    LEFT JOIN employees tl ON t.team_lead_id = tl.id
+    ORDER BY t.id ASC
+  `;
+  db.query(sql, (err, rows) => {
+    if (err) return res.status(500).json(err);
+    res.json(rows);
+  });
+});
+
+router.post("/teams", (req, res) => {
+  const { name, code, department, teamLead, members, status, description } = req.body;
+  const sql = `
+    INSERT INTO teams (name, code, department, teamLead, members, status, description, createdDate)
+    VALUES (?, ?, ?, ?, ?, ?, ?, DATE_FORMAT(NOW(), '%d %b %Y'))
+  `;
+  db.query(sql, [name, code, department, teamLead, members || 1, status || 'Active', description], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Team created successfully", id: result.insertId });
+  });
+});
+
+router.put("/teams/:id", (req, res) => {
+  const { id } = req.params;
+  const { name, code, department, teamLead, members, status, description } = req.body;
+  const sql = `
+    UPDATE teams
+    SET name = ?, code = ?, department = ?, teamLead = ?, members = ?, status = ?, description = ?
+    WHERE id = ?
+  `;
+  db.query(sql, [name, code, department, teamLead, members, status, description, id], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Team updated successfully" });
+  });
+});
+
+router.delete("/teams/:id", (req, res) => {
+  const { id } = req.params;
+  db.query("DELETE FROM teams WHERE id = ?", [id], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Team deleted successfully" });
+  });
+});
+
+/**
+ * HOLIDAYS CRUD
+ */
+router.get("/holidays", (req, res) => {
+  const sql = `
+    SELECT 
+      id,
+      name,
+      COALESCE(date, DATE_FORMAT(holiday_date, '%d %b %Y')) as date,
+      type,
+      branch,
+      description,
+      COALESCE(status, 'Active') as status
+    FROM holidays
+    ORDER BY id ASC
+  `;
+  db.query(sql, (err, rows) => {
+    if (err) return res.status(500).json(err);
+    res.json(rows);
+  });
+});
+
+router.post("/holidays", (req, res) => {
+  const { name, date, type, branch, description, status } = req.body;
+  const sql = `
+    INSERT INTO holidays (name, date, holiday_date, type, branch, description, status)
+    VALUES (?, ?, CURRENT_DATE(), ?, ?, ?, ?)
+  `;
+  db.query(sql, [name, date, type || 'National', branch || 'All Branches', description, status || 'Active'], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Holiday created successfully", id: result.insertId });
+  });
+});
+
+router.put("/holidays/:id", (req, res) => {
+  const { id } = req.params;
+  const { name, date, type, branch, description, status } = req.body;
+  const sql = `
+    UPDATE holidays
+    SET name = ?, date = ?, type = ?, branch = ?, description = ?, status = ?
+    WHERE id = ?
+  `;
+  db.query(sql, [name, date, type, branch, description, status, id], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Holiday updated successfully" });
+  });
+});
+
+router.delete("/holidays/:id", (req, res) => {
+  const { id } = req.params;
+  db.query("DELETE FROM holidays WHERE id = ?", [id], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Holiday deleted successfully" });
+  });
+});
+
+/**
+ * ORGANIZATION CHART
+ */
+router.get("/org-chart", (req, res) => {
+  const sql = `
+    SELECT 
+      e.id,
+      e.name,
+      des.role_name as title,
+      d.dept_name as department,
+      e.profile_photo as image,
+      e.manager_id
+    FROM employees e
+    LEFT JOIN departments d ON e.department_id = d.id
+    LEFT JOIN designations des ON e.designation_id = des.id
+    WHERE e.status = 'Active'
+  `;
+  db.query(sql, (err, rows) => {
+    if (err) return res.status(500).json(err);
+    if (!rows || rows.length === 0) {
+      return res.json(null);
+    }
+    const map = {};
+    const roots = [];
+    rows.forEach(r => {
+      map[r.id] = { ...r, children: [] };
+    });
+    rows.forEach(r => {
+      if (r.manager_id && map[r.manager_id]) {
+        map[r.manager_id].children.push(map[r.id]);
+      } else {
+        roots.push(map[r.id]);
+      }
+    });
+
+    res.json(roots.length > 0 ? roots[0] : map[rows[0].id]);
+  });
+});
+
+/**
+ * SHIFTS CRUD
+ */
+router.get("/shifts", (req, res) => {
+  const sql = `
+    SELECT 
+      id,
+      name,
+      COALESCE(code, CONCAT('SHT-', UPPER(SUBSTRING(name, 1, 3)))) as code,
+      startTime,
+      endTime,
+      breakTime,
+      graceTime,
+      workingHours,
+      (SELECT COUNT(*) FROM employees e WHERE e.status = 'Active') as employees,
+      COALESCE(status, 'Active') as status,
+      description,
+      COALESCE(createdDate, DATE_FORMAT(NOW(), '%d %b %Y')) as createdDate
+    FROM shifts
+    ORDER BY id ASC
+  `;
+  db.query(sql, (err, rows) => {
+    if (err) return res.status(500).json(err);
+    res.json(rows);
+  });
+});
+
+router.post("/shifts", (req, res) => {
+  const { name, code, startTime, endTime, breakTime, graceTime, workingHours, status, description } = req.body;
+  const sql = `
+    INSERT INTO shifts (name, code, startTime, endTime, breakTime, graceTime, workingHours, employees, status, description, createdDate)
+    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, DATE_FORMAT(NOW(), '%d %b %Y'))
+  `;
+  db.query(sql, [name, code, startTime, endTime, breakTime || '60 mins', graceTime || '15 mins', workingHours || '9 hours', status || 'Active', description], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Shift created successfully", id: result.insertId });
+  });
+});
+
+router.put("/shifts/:id", (req, res) => {
+  const { id } = req.params;
+  const { name, code, startTime, endTime, breakTime, graceTime, workingHours, status, description } = req.body;
+  const sql = `
+    UPDATE shifts
+    SET name = ?, code = ?, startTime = ?, endTime = ?, breakTime = ?, graceTime = ?, workingHours = ?, status = ?, description = ?
+    WHERE id = ?
+  `;
+  db.query(sql, [name, code, startTime, endTime, breakTime, graceTime, workingHours, status, description, id], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Shift updated successfully" });
+  });
+});
+
+router.delete("/shifts/:id", (req, res) => {
+  const { id } = req.params;
+  db.query("DELETE FROM shifts WHERE id = ?", [id], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Shift deleted successfully" });
   });
 });
 

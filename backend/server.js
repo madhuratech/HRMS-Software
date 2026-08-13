@@ -49,6 +49,9 @@ app.use("/app/feedback", require("./routes/feedback"));
 app.use("/app/promotions", require("./routes/promotions"));
 
 app.use("/app/leaves", require("./routes/leaves"));
+app.use("/app/organization", require("./routes/organizationRoute"));
+app.use("/app/payroll", require("./routes/payroll"));
+app.use("/app/tickets", require("./routes/tickets"));
 
 // Projects Management Module
 app.use("/app/projects", require("./routes/projects"));

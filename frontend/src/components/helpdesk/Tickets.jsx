@@ -1,18 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../lib/api';
 import { Search, ChevronDown, Plus, Eye, FileText, Clock, CheckCircle, AlertCircle, ArrowUpRight, ArrowDownRight, X } from 'lucide-react';
-
-const INITIAL_TICKETS_DATA = [
-  { id: 'TKT-1248', subject: 'System not logging in',       cat: 'IT Support',          priority: 'High',   requester: 'Rohit Sharma',  status: 'Resolved',    date: '31 May 2024 10:30 AM' },
-  { id: 'TKT-1247', subject: 'Salary not credited',        cat: 'Payroll',             priority: 'High',   requester: 'Priya Patel',   status: 'Resolved',    date: '31 May 2024 09:15 AM' },
-  { id: 'TKT-1246', subject: 'Leave application issue',    cat: 'Leave & Attendance',  priority: 'Medium', requester: 'Amit Kumar',    status: 'Pending',     date: '31 May 2024 08:45 AM' },
-  { id: 'TKT-1245', subject: 'Email not working',          cat: 'IT Support',          priority: 'Medium', requester: 'Sneha Reddy',   status: 'Resolved',    date: '30 May 2024 06:20 PM' },
-  { id: 'TKT-1244', subject: 'ID card not received',       cat: 'HR Support',          priority: 'Low',    requester: 'Vikram Singh',  status: 'In Progress', date: '30 May 2024 05:10 PM' },
-  { id: 'TKT-1243', subject: 'Printer not working',        cat: 'IT Support',          priority: 'Medium', requester: 'Anjali Mehta',  status: 'Open',        date: '30 May 2024 04:05 PM' },
-  { id: 'TKT-1242', subject: 'PF not updated',             cat: 'Payroll',             priority: 'High',   requester: 'Karan Verma',   status: 'Pending',     date: '29 May 2024 02:40 PM' },
-  { id: 'TKT-1241', subject: 'Training access issue',      cat: 'Training',            priority: 'Low',    requester: 'Neha Singh',    status: 'Resolved',    date: '29 May 2024 01:15 PM' },
-  { id: 'TKT-1240', subject: 'Shift change request',       cat: 'HR Support',          priority: 'Low',    requester: 'Rahul Das',     status: 'Resolved',    date: '29 May 2024 11:30 AM' },
-  { id: 'TKT-1239', subject: 'Software installation',      cat: 'IT Support',          priority: 'Medium', requester: 'Pooja Mehta',   status: 'Open',        date: '29 May 2024 10:15 AM' },
-];
 
 const KpiCard = ({ label, value, subtext, isPositive, iconBg, iconColor, icon: Icon }) => (
   <div style={{
@@ -49,10 +37,11 @@ const KpiCard = ({ label, value, subtext, isPositive, iconBg, iconColor, icon: I
   </div>
 );
 
-export function Tickets() {
+export default function HelpDeskTickets() {
+  const [ticketsList, setTicketsList] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [ticketsList, setTicketsList] = useState(INITIAL_TICKETS_DATA);
   const [formData, setFormData] = useState({
     title: '',
     employee: '',
@@ -65,19 +54,40 @@ export function Tickets() {
     status: 'Open'
   });
 
-  const handleSave = (e) => {
+  const loadTickets = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch('/tickets');
+      if (Array.isArray(data)) {
+        setTicketsList(data);
+      }
+    } catch (e) {
+      console.error("Failed to load tickets:", e);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadTickets();
+  }, []);
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (!formData.title || !formData.employee || !formData.category) return;
-    const newItem = {
-      id: 'TKT-' + String(Math.floor(1000 + Math.random() * 9000)),
-      subject: formData.title,
-      cat: formData.category,
-      priority: formData.priority,
-      requester: formData.employee,
-      status: formData.status,
-      date: new Date().toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-    };
-    setTicketsList([newItem, ...ticketsList]);
+    if (!formData.title || !formData.category) return;
+    try {
+      await apiFetch('/tickets', {
+        method: 'POST',
+        body: JSON.stringify({
+          subject: formData.title,
+          cat: formData.category,
+          priority: formData.priority,
+          requester: formData.employee || 'Admin'
+        })
+      });
+      await loadTickets();
+    } catch (err) {
+      console.error("Failed to create ticket:", err);
+    }
     setShowAddModal(false);
     setFormData({ title: '', employee: '', department: '', category: '', priority: 'Medium', assignedTo: '', description: '', attachment: null, status: 'Open' });
   };
@@ -313,6 +323,4 @@ export function Tickets() {
     </div>
   );
 }
-
-export default Tickets;
 

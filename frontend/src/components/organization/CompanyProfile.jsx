@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
 import {
   Building2,
@@ -232,14 +233,12 @@ export function CompanyProfile() {
   const { addToast } = useToast();
 
   useEffect(() => {
-    fetch("http://localhost:3000/app/organization/profile")
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to fetch profile");
-        return res.json();
-      })
+    apiFetch("/organization/profile")
       .then(data => {
-        setProfile(data);
-        setTempProfile(JSON.parse(JSON.stringify(data)));
+        if (data) {
+          setProfile(data);
+          setTempProfile(JSON.parse(JSON.stringify(data)));
+        }
         setLoading(false);
       })
       .catch(err => {
@@ -258,16 +257,9 @@ export function CompanyProfile() {
 
   const handleSave = (section) => {
     const updatedProfile = { ...profile, [section]: tempProfile[section] };
-    fetch("http://localhost:3000/app/organization/profile", {
+    apiFetch("/organization/profile", {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json"
-      },
       body: JSON.stringify(updatedProfile)
-    })
-    .then(res => {
-      if (!res.ok) throw new Error("Failed to save profile");
-      return res.json();
     })
     .then(() => {
       setProfile(updatedProfile);

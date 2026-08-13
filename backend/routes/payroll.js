@@ -8,5 +8,7 @@ router.get("/components", payrollController.getComponents);
 router.post("/components", payrollController.createComponent);
 router.get("/runs", payrollController.getRuns);
 router.post("/runs", payrollController.initializeRun);
+router.get("/reports", payrollController.getReports);
+router.get("/bonuses", payrollController.getBonuses);
 
 module.exports = router;

@@ -47,8 +47,14 @@ export default function EmployeeProfileContent() {
     teamName: ''
   });
 
-  const empId = localStorage.getItem('selectedEmployeeId') || '1';
+  const [currentEmpId, setCurrentEmpId] = useState(() => localStorage.getItem('selectedEmployeeId') || '1');
+  const [allEmployees, setAllEmployees] = useState([]);
   const photoInputRef = useRef(null);
+
+  const handleEmployeeSelect = (newId) => {
+    localStorage.setItem('selectedEmployeeId', newId);
+    setCurrentEmpId(newId);
+  };
 
   const handlePhotoUpload = (e) => {
     const file = e.target.files[0];
@@ -59,7 +65,7 @@ export default function EmployeeProfileContent() {
     }
     const formData = new FormData();
     formData.append('photo', file);
-    fetch(`/app/employees/${empId}/photo`, {
+    fetch(`/app/employees/${currentEmpId}/photo`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${getAuthToken()}`
@@ -76,7 +82,7 @@ export default function EmployeeProfileContent() {
   };
 
   const handlePhotoRemove = () => {
-    apiFetch(`/employees/${empId}/photo`, { method: 'DELETE' })
+    apiFetch(`/employees/${currentEmpId}/photo`, { method: 'DELETE' })
     .then(() => {
       addToast('Photo removed', 'success');
       loadProfile();
@@ -86,7 +92,7 @@ export default function EmployeeProfileContent() {
 
   const loadProfile = () => {
     setLoading(true);
-    apiFetch(`/employees/${empId}/profile`)
+    apiFetch(`/employees/${currentEmpId}/profile`)
       .then(data => {
         setProfile(data);
         setLoading(false);
@@ -97,12 +103,20 @@ export default function EmployeeProfileContent() {
       });
   };
 
-  // Fetch profile on mount
+  useEffect(() => {
+    apiFetch('/employees')
+      .then(data => {
+        if (Array.isArray(data)) setAllEmployees(data);
+      })
+      .catch(err => console.error("Error fetching all employees:", err));
+  }, []);
+
+  // Fetch profile on mount and when selected employee changes
   useEffect(() => {
     loadProfile();
 
     // Fetch documents
-    apiFetch(`/employees/${empId}/documents`)
+    apiFetch(`/employees/${currentEmpId}/documents`)
       .then(data => {
         if (Array.isArray(data)) {
           setDocuments(data);
@@ -121,7 +135,7 @@ export default function EmployeeProfileContent() {
       .then(data => Array.isArray(data) && setBranches(data)).catch(() => {});
     apiFetch('/employees/lookup/teams')
       .then(data => Array.isArray(data) && setTeams(data)).catch(() => {});
-  }, [empId]);
+  }, [currentEmpId]);
 
   if (loading) {
     return (
@@ -200,7 +214,7 @@ export default function EmployeeProfileContent() {
       teamName: editForm.teamName
     };
 
-    apiFetch(`/employees/${empId}`, {
+    apiFetch(`/employees/${currentEmpId}`, {
       method: "PUT",
       body: JSON.stringify(payload)
     })
@@ -219,9 +233,39 @@ export default function EmployeeProfileContent() {
     <div className="hrms-content">
       {/* Profile Header */}
       <div className="hrms-card hrms-mb-6" style={{ position: 'relative' }}>
-        <button className="hrms-secondary-btn" onClick={handleEditClick} style={{ position: 'absolute', top: '24px', right: '24px' }}>
-          <Edit2 size={16} /> Edit Profile
-        </button>
+        <div style={{ position: 'absolute', top: '24px', right: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: '8px',
+            background: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '8px',
+            padding: '6px 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+          }}>
+            <User size={16} color="#475569" />
+            <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>Select Employee:</span>
+            <select
+              value={currentEmpId}
+              onChange={(e) => handleEmployeeSelect(e.target.value)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                fontSize: '13px',
+                fontWeight: 700,
+                color: '#0F172A',
+                outline: 'none',
+                cursor: 'pointer'
+              }}
+            >
+              {allEmployees.map(emp => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.name} ({emp.employeeCode || `EMP${String(emp.id).padStart(3, '0')}`}) {emp.status === 'Terminated' ? '• Terminated' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button className="hrms-secondary-btn" onClick={handleEditClick}>
+            <Edit2 size={16} /> Edit Profile
+          </button>
+        </div>
 
         <div className="hrms-flex-start" style={{ gap: '32px', marginBottom: '32px' }}>
           <div style={{ position: 'relative', flexShrink: 0 }}>
