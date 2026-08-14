@@ -29,7 +29,8 @@ import {
   Clock,
   CalendarDays,
   TreePine,
-  Bird
+  Bird,
+  Sparkles
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -45,7 +46,7 @@ export function Sidebar({ userRole, onLogout }) {
       try {
         const parsed = JSON.parse(auth);
         if (parsed.user && parsed.user.id) userId = parsed.user.id;
-      } catch (e) {}
+      } catch (e) { }
     }
     localStorage.setItem('selectedEmployeeId', userId);
     navigate('/employees/profile');
@@ -69,6 +70,7 @@ export function Sidebar({ userRole, onLogout }) {
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['ALL'], path: '/dashboard' },
+    { id: 'ai-assistant', label: 'AI Assistant', icon: Sparkles, roles: ['ALL'], path: '/ai-assistant' },
     {
       id: 'organization',
       label: 'Organization',
@@ -359,6 +361,7 @@ export function Sidebar({ userRole, onLogout }) {
         </div>
       );
     }
+    const isAIAssistant = item.id === 'ai-assistant';
 
     return (
       <button
@@ -367,11 +370,11 @@ export function Sidebar({ userRole, onLogout }) {
         className={cn(
           "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm font-medium",
           isActive
-            ? "custom-sidebar-btn-active bg-blue-600 text-white"
+            ? (isAIAssistant ? "bg-violet-600 text-white shadow-lg shadow-violet-600/20" : "custom-sidebar-btn-active bg-blue-600 text-white")
             : "custom-sidebar-btn"
         )}
       >
-        <item.icon size={18} />
+        <item.icon size={18} className={cn(isActive && isAIAssistant ? "text-violet-200" : "")} />
         {item.label}
       </button>
     );
@@ -421,7 +424,7 @@ export function Sidebar({ userRole, onLogout }) {
       {/* User Profile */}
       <div className="p-3 custom-sidebar-border-t">
         <div className="custom-sidebar-profile-bg rounded-lg p-3 flex items-center gap-3">
-          <div 
+          <div
             onClick={handleProfileClick}
             style={{ cursor: 'pointer' }}
             className="flex flex-1 items-center gap-3 min-w-0 hover:opacity-85 transition-opacity"

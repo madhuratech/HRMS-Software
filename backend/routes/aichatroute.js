@@ -1,0 +1,10 @@
+const express = require("express");
+const router = express.Router();
+const { chatwithAI, getConversations, getConversationMessages, getAvailableModules } = require("../controllers/aicontroller");
+const { authenticateJWT } = require("../middlewares/auth");
+
+router.post("/chat", authenticateJWT, chatwithAI);
+router.get("/conversations", authenticateJWT, getConversations);
+router.get("/modules", authenticateJWT, getAvailableModules);
+router.get("/conversations/:id", authenticateJWT, getConversationMessages);
+module.exports = router;

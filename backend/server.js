@@ -63,6 +63,8 @@ app.use("/app/project-team", require("./routes/teamMembers"));
 app.use("/app/reports", require("./routes/reports"));
 app.use("/app/expenses", require("./routes/expenses"));
 app.use("/app/documents", require("./routes/documents"));
+app.use("/app/aichat", require("./routes/aichatroute"));
+app.use("/api/ai", require("./routes/aichatroute"));
 
 app.use((err, req, res, next) => {
   const fs = require('fs');
