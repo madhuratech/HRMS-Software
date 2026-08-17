@@ -70,7 +70,6 @@ export function Sidebar({ userRole, onLogout }) {
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['ALL'], path: '/dashboard' },
-    { id: 'ai-assistant', label: 'AI Assistant', icon: Sparkles, roles: ['ALL'], path: '/ai-assistant' },
     {
       id: 'organization',
       label: 'Organization',
@@ -308,7 +307,9 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'settings-security', label: 'Security', path: '/settings/security' },
         { id: 'settings-system', label: 'System', path: '/settings/system' }
       ]
-    }
+    },
+    { id: 'ai-assistant', label: 'AI Assistant', icon: Sparkles, roles: ['ALL'], path: '/ai-assistant' },
+
   ];
 
   const filteredMenu = menuItems.filter((item) =>
@@ -374,14 +375,31 @@ export function Sidebar({ userRole, onLogout }) {
             : "custom-sidebar-btn"
         )}
       >
-        <item.icon size={18} className={cn(isActive && isAIAssistant ? "text-violet-200" : "")} />
+        <item.icon 
+          size={18} 
+          className={cn(isAIAssistant ? "animate-pulse" : "")} 
+          style={isAIAssistant ? { 
+            stroke: 'url(#ai-spark-gradient)', 
+            filter: 'drop-shadow(0 0 18px rgba(139, 92, 246, 0.35))' 
+          } : {}} 
+        />
         {item.label}
       </button>
     );
   };
 
   return (
-    <div className="w-64 custom-sidebar h-screen flex flex-col fixed left-0 top-0 overflow-y-auto">
+    <>
+      <svg style={{ width: 0, height: 0, position: 'absolute' }}>
+        <defs>
+          <linearGradient id="ai-spark-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#8B5CF6" />
+            <stop offset="50%" stopColor="#6366F1" />
+            <stop offset="100%" stopColor="#3B82F6" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div className="w-64 custom-sidebar h-screen flex flex-col fixed left-0 top-0 overflow-y-auto">
       {/* Logo */}
       <div className="p-5 custom-sidebar-border-b">
         <div className="flex items-center gap-3">
@@ -399,27 +417,6 @@ export function Sidebar({ userRole, onLogout }) {
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {filteredMenu.map(item => renderMenuItem(item))}
       </nav>
-
-      {/* Need Help Support Card */}
-      <div className="p-3">
-        <div style={{ background: '#1E293B', borderRadius: 12, padding: 14, border: '1px solid #334155' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#FFF' }}>Need Help?</span>
-            <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8' }}>
-              🎧
-            </div>
-          </div>
-          <p style={{ fontSize: 11, color: '#94A3B8', margin: '0 0 10px', lineHeight: 1.3 }}>
-            Our support team is ready to help you.
-          </p>
-          <button style={{
-            width: '100%', height: 32, background: '#2952E3', color: '#FFF', border: 'none',
-            borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-          }}>
-            Contact Support
-          </button>
-        </div>
-      </div>
 
       {/* User Profile */}
       <div className="p-3 custom-sidebar-border-t">
@@ -445,6 +442,7 @@ export function Sidebar({ userRole, onLogout }) {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

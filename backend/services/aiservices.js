@@ -1,5 +1,7 @@
 const Openai = require("openai");
 const db = require("../config/database");
+const fs = require("fs");
+const path = require("path");
 
 let openai;
 
@@ -644,13 +646,196 @@ async function executeTool(name, args, userId) {
 }
 
 // Main generation function executing OpenAI tool calling flow with conversation memory
-async function generateResponse(message, conversationId, userId) {
+// AI routing helper using LLM
+async function routeIntent(message, conversationId, dbMessages) {
   const client = getOpenAIClient();
+  
+  // Format recent chat history context for the router
+  let historyContext = "";
+  if (dbMessages && dbMessages.length > 0) {
+    historyContext = dbMessages
+      .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+      .join('\n');
+  }
 
-  // 1. Ensure conversation exists
-  const convs = await queryDB("SELECT id FROM ai_conversations WHERE conversation_id = ?", [conversationId]);
+  const routerPrompt = `You are an AI Routing Assistant for an enterprise HRMS chat assistant.
+Analyze the user's current message and determine the single most appropriate intent.
+If the current message contains references/pronouns (like "his designation", "their leaves", "him", "show it", "what is his casual leave balance?"), resolve who or what is being referred to by looking at the Chat History.
+
+Available intents:
+1. HRMS - Queries requiring specific data from the database/HRMS app (e.g. searching/listing employees, designations, departments, viewing attendance logs, leave balances, leave requests, holiday list, payroll/salary details, recruitment, candidates, schedules, company profile details, projects, tasks, support tickets).
+2. POLICY/RAG - Questions asking about general company policy rules, guidelines, leave policies (e.g., maternity leave, work from home, attendance rules, dress code, leave days provided, or generic policies).
+3. CURRENT_EXTERNAL - Current events, weather, exchange rates, politics, news, latest software releases, or facts that require external/live web search (e.g., current Tamil Nadu CM, current PM, today's news, latest React version, USD to INR rate).
+4. CASUAL - Casual conversations, greetings, small talk, testing, thank you, good morning, check ins (e.g., "Hi", "Hello", "Saptiya?", "How are you?").
+5. GENERAL - Non-current general knowledge, programming theory, education, explanations, math (e.g., "What is Python?", "Explain React", "What is machine learning?", "How does an API work?").
+
+Chat History:
+${historyContext || "None"}
+
+User Message: "${message}"
+
+Respond strictly with a JSON object in this format (no markdown formatting blocks, just raw JSON text):
+{
+  "intent": "HRMS" | "POLICY/RAG" | "CURRENT_EXTERNAL" | "CASUAL" | "GENERAL",
+  "reasoning": "Why this intent was selected based on the message and history context"
+}`;
+
+  try {
+    const response = await client.chat.completions.create({
+      model: process.env.OPENROUTER_MODEL || "openrouter/free",
+      messages: [
+        { role: "system", content: "You are a precise classifier. Return only the JSON object." },
+        { role: "user", content: routerPrompt }
+      ],
+      max_tokens: 200,
+      temperature: 0.0
+    });
+
+    let text = response.choices[0].message.content || '';
+    text = text.replace(/```json/i, '').replace(/```/g, '').trim();
+    const result = JSON.parse(text);
+    console.log(`[AI ROUTER] Classified: "${message}" -> ${result.intent}. Reasoning: ${result.reasoning}`);
+    return result.intent || 'GENERAL';
+  } catch (e) {
+    console.error("Router error, fallback to keyword router:", e);
+    if (isHRMSQuestion(message)) return 'HRMS';
+    if (requiresCurrentInformation(message)) return 'CURRENT_EXTERNAL';
+    if (message.toLowerCase().includes('policy') || message.toLowerCase().includes('maternity') || message.toLowerCase().includes('work-from-home') || message.toLowerCase().includes('wfh')) return 'POLICY/RAG';
+    const m = message.toLowerCase();
+    if (m === 'hi' || m === 'hello' || m.includes('morning') || m.includes('thank') || m.includes('saptiya')) return 'CASUAL';
+    return 'GENERAL';
+  }
+}
+
+// Local RAG retriever
+function retrievePolicyContext(query) {
+  try {
+    const filePath = path.join(__dirname, '../data/policies.json');
+    if (!fs.existsSync(filePath)) {
+      console.warn("policies.json not found at:", filePath);
+      return "";
+    }
+    const policies = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+    const q = query.toLowerCase();
+    let matches = [];
+    for (const policy of policies) {
+      const keywords = policy.title.toLowerCase().split(/\s+/).concat(policy.category.toLowerCase().split(/\s+/));
+      const hasKeyword = keywords.some(kw => kw.length > 3 && q.includes(kw)) || q.includes('policy');
+      if (hasKeyword || q.includes(policy.title.toLowerCase().split(' ')[0])) {
+        matches.push(policy);
+      }
+    }
+    if (matches.length === 0) {
+      matches = policies;
+    }
+    return matches.map(m => `Category: ${m.category}\nTitle: ${m.title}\nContent: ${m.content}`).join('\n\n');
+  } catch (e) {
+    console.error("RAG retrieval error:", e);
+    return "";
+  }
+}
+
+function sanitizeConversationHistory(dbMessages, isToolEnabled) {
+  const messages = [];
+
+  if (!isToolEnabled) {
+    for (const msg of dbMessages) {
+      if ((msg.role === 'user' || msg.role === 'assistant') && !msg.tool_call_id) {
+        messages.push({
+          role: msg.role,
+          content: msg.content
+        });
+      }
+    }
+    return messages;
+  }
+
+  const dbMsgs = [];
+  for (const msg of dbMessages) {
+    if (msg.role === 'assistant' && msg.tool_call_id) {
+      const prev = dbMsgs[dbMsgs.length - 1];
+      if (prev && prev.role === 'assistant' && prev.tool_calls) {
+        prev.tool_calls.push({
+          id: msg.tool_call_id,
+          type: 'function',
+          function: {
+            name: msg.tool_name,
+            arguments: msg.content
+          }
+        });
+      } else {
+        dbMsgs.push({
+          role: 'assistant',
+          content: null,
+          tool_calls: [
+            {
+              id: msg.tool_call_id,
+              type: 'function',
+              function: {
+                name: msg.tool_name,
+                arguments: msg.content
+              }
+            }
+          ]
+        });
+      }
+    } else if (msg.role === 'tool') {
+      dbMsgs.push({
+        role: 'tool',
+        name: msg.tool_name,
+        tool_call_id: msg.tool_call_id,
+        content: msg.content
+      });
+    } else {
+      dbMsgs.push({
+        role: msg.role,
+        content: msg.content
+      });
+    }
+  }
+
+  const pendingToolCalls = new Map();
+  for (const msg of dbMsgs) {
+    if (msg.role === 'user') {
+      pendingToolCalls.clear();
+      messages.push(msg);
+    } else if (msg.role === 'assistant') {
+      if (msg.tool_calls) {
+        const validToolCalls = msg.tool_calls.filter(tc => 
+          tc.id && tc.type === 'function' && tc.function && tc.function.name && tc.function.arguments
+        );
+        if (validToolCalls.length > 0) {
+          const validMsg = { ...msg, tool_calls: validToolCalls };
+          validToolCalls.forEach(tc => pendingToolCalls.set(tc.id, tc));
+          messages.push(validMsg);
+        } else {
+          console.warn("Skipping malformed assistant tool-call message in history.");
+        }
+      } else {
+        pendingToolCalls.clear();
+        messages.push(msg);
+      }
+    } else if (msg.role === 'tool') {
+      if (msg.tool_call_id && pendingToolCalls.has(msg.tool_call_id)) {
+        messages.push(msg);
+        pendingToolCalls.delete(msg.tool_call_id);
+      } else {
+        console.warn(`Skipping orphaned or undefined tool response for call_id: ${msg.tool_call_id}`);
+      }
+    }
+  }
+
+  return messages;
+}
+
+// Main generation function executing OpenAI tool calling flow with conversation memory
+async function generateResponse(message, conversationId, userId) {
+  try {
+    const client = getOpenAIClient();
+
+    // 1. Ensure conversation exists
+    const convs = await queryDB("SELECT id FROM ai_conversations WHERE conversation_id = ?", [conversationId]);
   if (convs.length === 0) {
-    // Generate simple title from user message
     let title = message.trim();
     if (title.length > 50) {
       title = title.substring(0, 47) + "...";
@@ -661,45 +846,149 @@ async function generateResponse(message, conversationId, userId) {
     );
   }
 
-  // 2. Save User Message to DB
+  // 2. Load previous messages from DB (limit 30) for history and context
+  const dbMessages = await queryDB(`
+    SELECT role, content, tool_name, tool_call_id FROM (
+      SELECT * FROM ai_messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 30
+    ) sub ORDER BY id ASC
+  `, [conversationId]);
+
+  // 3. Save User Message to DB
   await queryDB(
     "INSERT INTO ai_messages (conversation_id, role, content) VALUES (?, 'user', ?)",
     [conversationId, message]
   );
 
-  // Helper classifiers for deterministic routing
-  const isHRMS = isHRMSQuestion(message);
-  const isCurrent = requiresCurrentInformation(message);
-  const isMath = isCalculation(message);
+  // 4. Determine user message intent using AI routing layer
+  const intent = await routeIntent(message, conversationId, dbMessages);
 
-  if (isHRMS) {
-    console.log(`[AI ROUTER]\nQuestion: ${message}\nRoute: HRMS_MCP`);
-  } else if (isCurrent) {
-    console.log(`[AI ROUTER]\nQuestion: ${message}\nRoute: WEB_SEARCH`);
-    console.log(`[WEB SEARCH]\nQuery: ${message}`);
+  // 5. Handle intent routing
+  if (intent === 'CASUAL') {
+    console.log('[AI] Route: CASUAL');
+    console.log('[AI] Tools enabled: false');
+    console.log('[AI] Calling OpenRouter without tools');
+    
+    const sysPrompt = `You are a friendly AI HR Assistant. Answer the user's greeting or casual message naturally and concisely. Do NOT call any tools.`;
+    const response = await client.chat.completions.create({
+      model: process.env.OPENROUTER_MODEL || "openrouter/free",
+      messages: [
+        { role: "system", content: sysPrompt },
+        ...sanitizeConversationHistory(dbMessages, false),
+        { role: "user", content: message }
+      ],
+      max_tokens: 1000
+    });
+    console.log('[AI] Response received successfully');
+
+    const replyText = response.choices[0].message.content || '';
+    const { cleanText, suggestions } = parseSuggestionsFromText(replyText);
+
+    await queryDB(
+      "INSERT INTO ai_messages (conversation_id, role, content) VALUES (?, 'assistant', ?)",
+      [conversationId, cleanText]
+    );
+
+    return {
+      text: cleanText,
+      toolUsed: null,
+      structuredData: { type: 'casual' },
+      suggestions: suggestions || []
+    };
+  }
+
+  if (intent === 'GENERAL') {
+    console.log('[AI] Route: GENERAL');
+    console.log('[AI] Tools enabled: false');
+    console.log('[AI] Calling OpenRouter without tools');
+
+    const sysPrompt = `You are the AI HR Assistant. Answer general knowledge or theory questions (e.g. programming, math, tech explanations) naturally and theoretically. Do NOT call HRMS tools or search the web.`;
+    const response = await client.chat.completions.create({
+      model: process.env.OPENROUTER_MODEL || "openrouter/free",
+      messages: [
+        { role: "system", content: sysPrompt },
+        ...sanitizeConversationHistory(dbMessages, false),
+        { role: "user", content: message }
+      ],
+      max_tokens: 2000
+    });
+    console.log('[AI] Response received successfully');
+
+    const replyText = response.choices[0].message.content || '';
+    const { cleanText, suggestions } = parseSuggestionsFromText(replyText);
+
+    await queryDB(
+      "INSERT INTO ai_messages (conversation_id, role, content) VALUES (?, 'assistant', ?)",
+      [conversationId, cleanText]
+    );
+
+    return {
+      text: cleanText,
+      toolUsed: null,
+      structuredData: { type: 'theory' },
+      suggestions: suggestions || []
+    };
+  }
+
+  if (intent === 'POLICY/RAG') {
+    console.log('[AI] Route: POLICY/RAG');
+    console.log('[AI] Tools enabled: false');
+    console.log('[AI] Calling OpenRouter without tools');
+
+    const policyContext = retrievePolicyContext(message);
+    const sysPrompt = `You are the AI HR Assistant. Answer company-specific policy questions strictly using the provided policy documents context below.
+If the provided context does not contain the answer, say "I'm sorry, but that information is unavailable in our company policy documents."
+Do NOT invent or assume any policies.
+
+Company Policy Documents:
+${policyContext || "None available."}`;
+
+    const response = await client.chat.completions.create({
+      model: process.env.OPENROUTER_MODEL || "openrouter/free",
+      messages: [
+        { role: "system", content: sysPrompt },
+        ...sanitizeConversationHistory(dbMessages, false),
+        { role: "user", content: message }
+      ],
+      max_tokens: 2000
+    });
+    console.log('[AI] Response received successfully');
+
+    const replyText = response.choices[0].message.content || '';
+    const { cleanText, suggestions } = parseSuggestionsFromText(replyText);
+
+    await queryDB(
+      "INSERT INTO ai_messages (conversation_id, role, content) VALUES (?, 'assistant', ?)",
+      [conversationId, cleanText]
+    );
+
+    return {
+      text: cleanText,
+      toolUsed: null,
+      structuredData: { type: 'theory' },
+      suggestions: suggestions || []
+    };
+  }
+
+  if (intent === 'CURRENT_EXTERNAL') {
     const searchResults = await performWebSearch(message);
-    console.log(`[WEB SEARCH]\nResults: ${JSON.stringify(searchResults)}`);
-    console.log(`[AI]\nGenerating answer using web results`);
-
-    const systemPrompt = `You are the AI HR Assistant. Answer the user's current/external question using the provided web search results.
-Always prioritize the live web search results over your internal training data.
-If the search results do not contain the answer, say you don't know rather than speculating.
+    const sysPrompt = `You are the AI HR Assistant. Answer current/external questions using the provided web search results.
+Always prioritize search results over training memory. If the search results do not contain the answer, say you don't know rather than speculating.
 Web Search Results:
 ${JSON.stringify(searchResults)}`;
 
     const response = await client.chat.completions.create({
       model: process.env.OPENROUTER_MODEL || "openrouter/free",
       messages: [
-        { role: "system", content: systemPrompt },
+        { role: "system", content: sysPrompt },
+        ...sanitizeConversationHistory(dbMessages, false),
         { role: "user", content: message }
       ],
-      max_tokens: 4096
+      max_tokens: 2000
     });
 
     const replyText = response.choices[0].message.content || '';
     const { cleanText, suggestions } = parseSuggestionsFromText(replyText);
 
-    // Save final response to DB
     await queryDB(
       "INSERT INTO ai_messages (conversation_id, role, content) VALUES (?, 'assistant', ?)",
       [conversationId, cleanText]
@@ -713,125 +1002,34 @@ ${JSON.stringify(searchResults)}`;
         description: `Searched web for "${message}"`
       },
       structuredData: { type: 'web_answer', query: message, results: searchResults },
-      suggestions
+      suggestions: suggestions || []
     };
-  } else if (isMath) {
-    console.log(`[AI ROUTER]\nQuestion: ${message}\nRoute: CALCULATOR`);
-    const expr = message.replace(/calculate/i, '').trim();
-    let val;
-    try {
-      val = Function(`"use strict"; return (${expr})`)();
-      console.log(`[CALCULATOR]\nExpression: ${expr} = ${val}`);
-    } catch (e) {
-      val = `Error: ${e.message}`;
-    }
-
-    const systemPrompt = `You are the AI HR Assistant. Explain this math calculation result to the user:
-Expression: ${expr}
-Result: ${val}`;
-
-    const response = await client.chat.completions.create({
-      model: process.env.OPENROUTER_MODEL || "openrouter/free",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: message }
-      ],
-      max_tokens: 4096
-    });
-
-    const replyText = response.choices[0].message.content || '';
-    const { cleanText, suggestions } = parseSuggestionsFromText(replyText);
-
-    await queryDB(
-      "INSERT INTO ai_messages (conversation_id, role, content) VALUES (?, 'assistant', ?)",
-      [conversationId, cleanText]
-    );
-
-    return {
-      text: cleanText,
-      toolUsed: {
-        name: "Calculator Tool",
-        status: "Success",
-        description: `Calculated ${expr} = ${val}`
-      },
-      structuredData: { type: 'theory', calculation: { expression: expr, result: val } },
-      suggestions
-    };
-  } else {
-    console.log(`[AI ROUTER]\nQuestion: ${message}\nRoute: DIRECT_LLM`);
   }
 
-  // 3. Load previous messages from DB (limit 30)
-  const dbMessages = await queryDB(`
-    SELECT role, content, tool_name, tool_call_id FROM (
-      SELECT * FROM ai_messages WHERE conversation_id = ? ORDER BY created_at DESC LIMIT 30
-    ) sub ORDER BY id ASC
-  `, [conversationId]);
+  console.log('[AI] Route: HRMS');
+  console.log('[AI] Tools enabled: true');
 
-  // 4. Map DB messages to OpenRouter compatible format
   const messages = [
     {
       role: "system",
       content: `You are the AI HR Assistant for a human resource management system (HRMS).
-You answer questions related to employees, leave management, attendance, payroll, departments, designations, holidays, recruitment, projects, and company information, as well as general and external questions.
+You answer questions related to employees, leave management, attendance, payroll, departments, designations, holidays, recruitment, projects, and company information by executing tools.
+Never guess or invent numbers or names.
+Max 5 tool iterations per response.
 
-ROUTING RULES — follow these strictly:
-1. HRMS DATABASE / real data queries ("Who is absent today?", "Show employees", "Super Admin leave balance", "What holidays are available?"):
-   → You MUST use the appropriate HRMS database/MCP tools. Do NOT use web search. Never guess or invent numbers or names.
-2. CURRENT / TIME-SENSITIVE / EXTERNAL queries (any query containing/implying "current", "today", "latest", "now", "present", "this year", "recent", "who is the current", "what is the latest", "today's news", "current CM", "current PM", "current government", "current weather", "latest version", or external facts that can change over time like "Who is the Tamil Nadu CM?"):
-   → You MUST call the "web_search" tool first to get live, up-to-date data. NEVER answer these directly from your training memory.
-3. GENERAL NON-CURRENT / EDUCATIONAL queries ("What is AI?", "What is React?", "What is an API?"):
-   → Answer directly from your knowledge base. Do NOT use web_search.
-4. MATHEMATICAL / CALCULATION queries ("Calculate 125 * 48", "125 * 48"):
-   → Use the "calculator" tool to compute.
-5. CASUAL / CONVERSATIONAL queries ("Saptiya?", "Hi", "How are you?"):
-   → Respond directly in a friendly manner. Do NOT call any tools.
-
-TOOL RULES:
-- You may chain multiple tool calls if needed.
-- Max 5 tool iterations per response.
-- If a query returns no results, state that clearly.
-
-CONVERSATION MEMORY:
-- Use previous messages to interpret follow-ups.
-- Resolve short inputs ("yes", "casual leave", etc.) using context.
+PRONOUN RESOLUTION & HISTORY:
+Always analyze the conversation history to resolve pronouns like "he", "she", "his", "her", "them", "it". For example, if the user previously searched for "Super Admin" or "John Doe" and now asks "What is his designation?", resolve "his" to "Super Admin" or "John Doe", and execute the search_employee tool or appropriate details tool to retrieve the information. Do not ask the user for details that are already present in the chat history.
 
 FOLLOW-UP SUGGESTIONS:
-After answering a DATA or WEB question (when you used a tool), append this JSON suffix to your final text response:
+After answering, append this JSON suffix to your final text response:
 SUGGESTIONS:["suggestion 1","suggestion 2","suggestion 3"]`
+    },
+    ...sanitizeConversationHistory(dbMessages, true),
+    {
+      role: "user",
+      content: message
     }
   ];
-
-  for (const msg of dbMessages) {
-    if (msg.role === 'assistant' && msg.tool_call_id) {
-      messages.push({
-        role: 'assistant',
-        content: null,
-        tool_calls: [
-          {
-            id: msg.tool_call_id,
-            type: 'function',
-            function: {
-              name: msg.tool_name,
-              arguments: msg.content
-            }
-          }
-        ]
-      });
-    } else if (msg.role === 'tool') {
-      messages.push({
-        role: 'tool',
-        name: msg.tool_name,
-        tool_call_id: msg.tool_call_id,
-        content: msg.content
-      });
-    } else {
-      messages.push({
-        role: msg.role,
-        content: msg.content
-      });
-    }
-  }
 
   let toolUsed = null;
   let structuredData = null; // holds typed result for rich frontend rendering
@@ -841,7 +1039,7 @@ SUGGESTIONS:["suggestion 1","suggestion 2","suggestion 3"]`
     const response = await client.chat.completions.create({
       model: process.env.OPENROUTER_MODEL || "openrouter/free",
       messages,
-      tools,
+      tools: tools.filter(t => t.function.name !== 'web_search'),
       tool_choice: "auto",
       max_tokens: 4096
     });
@@ -849,18 +1047,18 @@ SUGGESTIONS:["suggestion 1","suggestion 2","suggestion 3"]`
     const responseMessage = response.choices[0].message;
 
     if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
-      // Save assistant tool call intent to DB
       for (const toolCall of responseMessage.tool_calls) {
+        console.log('[AI] Tool call: ' + toolCall.function.name);
+        console.log('[AI] Tool call ID: ' + toolCall.id);
+
         await queryDB(
           "INSERT INTO ai_messages (conversation_id, role, content, tool_name, tool_call_id) VALUES (?, 'assistant', ?, ?, ?)",
           [conversationId, toolCall.function.arguments, toolCall.function.name, toolCall.id]
         );
       }
 
-      // Add to messages memory
       messages.push(responseMessage);
 
-      // Execute all tool calls
       for (const toolCall of responseMessage.tool_calls) {
         const functionName = toolCall.function.name;
         let functionArgs = {};
@@ -892,12 +1090,13 @@ SUGGESTIONS:["suggestion 1","suggestion 2","suggestion 3"]`
           get_projects: "Project Boards Tool",
           get_tasks: "Sprint Tasks Tool",
           get_support_tickets: "Support Helpdesk Tool",
-          web_search: "Web Search Tool",
           calculator: "Calculator Tool"
         };
 
         try {
           const { result, summary } = await executeTool(functionName, functionArgs, userId);
+
+          console.log('[AI] Tool result received');
 
           toolUsed = {
             name: toolTitles[functionName] || functionName,
@@ -905,13 +1104,11 @@ SUGGESTIONS:["suggestion 1","suggestion 2","suggestion 3"]`
             description: summary
           };
 
-          // ─── Full structured data mapping for all MCP tools ──────────────────
           if (functionName === 'get_employees' && Array.isArray(result)) {
             structuredData = { type: 'employee_list', employees: result };
           } else if (functionName === 'get_employee' && result && !result.error) {
             structuredData = { type: 'employee_profile', employee: result };
           } else if ((functionName === 'search_employee' || functionName === 'get_employee_count') && result && !result.error) {
-            // search_employee may return an array; single result becomes a profile
             if (Array.isArray(result) && result.length === 1) {
               structuredData = { type: 'employee_profile', employee: result[0] };
             } else if (Array.isArray(result) && result.length > 1) {
@@ -951,19 +1148,15 @@ SUGGESTIONS:["suggestion 1","suggestion 2","suggestion 3"]`
             structuredData = { type: 'tasks', tasks: result };
           } else if (functionName === 'get_support_tickets' && Array.isArray(result)) {
             structuredData = { type: 'support_tickets', tickets: result };
-          } else if (functionName === 'web_search' && Array.isArray(result)) {
-            structuredData = { type: 'web_answer', query: functionArgs.query, results: result };
           } else if (functionName === 'calculator' && result) {
             structuredData = { type: 'theory', calculation: result };
           }
 
-          // Save tool result to DB
           await queryDB(
             "INSERT INTO ai_messages (conversation_id, role, content, tool_name, tool_call_id) VALUES (?, 'tool', ?, ?, ?)",
             [conversationId, JSON.stringify(result), functionName, toolCall.id]
           );
 
-          // Add to messages memory
           messages.push({
             role: "tool",
             tool_call_id: toolCall.id,
@@ -979,13 +1172,11 @@ SUGGESTIONS:["suggestion 1","suggestion 2","suggestion 3"]`
             description: `Failed to query: ${toolError.message}`
           };
 
-          // Save failed tool result to DB
           await queryDB(
             "INSERT INTO ai_messages (conversation_id, role, content, tool_name, tool_call_id) VALUES (?, 'tool', ?, ?, ?)",
             [conversationId, JSON.stringify({ error: toolError.message }), functionName, toolCall.id]
           );
 
-          // Add to messages memory
           messages.push({
             role: "tool",
             tool_call_id: toolCall.id,
@@ -995,10 +1186,9 @@ SUGGESTIONS:["suggestion 1","suggestion 2","suggestion 3"]`
         }
       }
     } else {
-      // Parse suggestions from the LLM text if present
+      console.log('[AI] Final response received');
       const { cleanText: rawText, suggestions: rawSugs } = parseSuggestionsFromText(responseMessage.content || '');
 
-      // Save assistant final response to DB (save clean text)
       await queryDB(
         "INSERT INTO ai_messages (conversation_id, role, content) VALUES (?, 'assistant', ?)",
         [conversationId, rawText]
@@ -1013,14 +1203,12 @@ SUGGESTIONS:["suggestion 1","suggestion 2","suggestion 3"]`
     }
   }
 
-  // Fallback if loop ends
   const finalResponse = await client.chat.completions.create({
     model: process.env.OPENROUTER_MODEL || "openrouter/free",
     messages,
     max_tokens: 4096
   });
 
-  // Save final fallback response to DB
   const { cleanText: fbText, suggestions: fbSugs } = parseSuggestionsFromText(finalResponse.choices[0].message.content || '');
   await queryDB(
     "INSERT INTO ai_messages (conversation_id, role, content) VALUES (?, 'assistant', ?)",
@@ -1033,6 +1221,14 @@ SUGGESTIONS:["suggestion 1","suggestion 2","suggestion 3"]`
     structuredData,
     suggestions: fbSugs
   };
+  } catch (err) {
+    console.error("AI Assistant Error details:", {
+      status: err.status || err.statusCode,
+      message: err.message,
+      model: process.env.OPENROUTER_MODEL || "openrouter/free"
+    });
+    throw err;
+  }
 }
 
 // Helper to extract follow-up suggestions from LLM text suffix

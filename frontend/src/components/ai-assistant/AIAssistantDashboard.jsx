@@ -408,6 +408,48 @@ export function AIAssistantDashboard() {
     }
   };
 
+  const deleteChat = async (convId) => {
+    if (!window.confirm("Are you sure you want to delete this conversation?")) return;
+    try {
+      const response = await fetch(`/api/ai/conversations/${convId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`
+        }
+      });
+      if (response.ok) {
+        if (activeChat === convId) {
+          setMessages([]);
+          setActiveChat(null);
+          setConversationId(crypto.randomUUID());
+        }
+        fetchConversations();
+      }
+    } catch (e) {
+      console.error("Error deleting conversation:", e);
+    }
+  };
+
+  const clearAllChats = async () => {
+    if (!window.confirm("Are you sure you want to clear all conversations?")) return;
+    try {
+      const response = await fetch(`/api/ai/conversations`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`
+        }
+      });
+      if (response.ok) {
+        setMessages([]);
+        setActiveChat(null);
+        setConversationId(crypto.randomUUID());
+        fetchConversations();
+      }
+    } catch (e) {
+      console.error("Error clearing all conversations:", e);
+    }
+  };
+
   useEffect(() => {
     fetchConversations();
     fetchModules();
@@ -556,55 +598,123 @@ export function AIAssistantDashboard() {
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.messages) {
-          const loaded = data.messages
-            .map((msg, i, arr) => {
-              if (msg.role === 'assistant') {
-                const nextMsg = arr[i + 1];
-                const hasTool = nextMsg && nextMsg.role === 'tool';
-                let toolData = null;
-                if (hasTool) {
-                  try {
-                    const parsed = JSON.parse(nextMsg.content);
-                    toolData = {
-                      name: nextMsg.tool_name === 'get_employees' ? "Employee List Tool" :
-                        nextMsg.tool_name === 'get_employee_count' ? "Employee Count Tool" :
-                          nextMsg.tool_name === 'get_employee' ? "Employee Detail Tool" :
-                            nextMsg.tool_name === 'search_employee' ? "Employee Search Tool" :
-                              nextMsg.tool_name === 'get_attendance' ? "Attendance Tool" :
-                                nextMsg.tool_name === 'get_employee_attendance' ? "Attendance Detail Tool" :
-                                  nextMsg.tool_name === 'get_leave_balance' ? "Leave Balance Tool" :
-                                    nextMsg.tool_name === 'get_leave_requests' ? "Leave Request Tool" :
-                                      nextMsg.tool_name === 'get_departments' ? "Department Tool" : nextMsg.tool_name,
-                      status: parsed.error ? "Failed" : "Success",
-                      description: parsed.error ? `Failed to query: ${parsed.error}` : `Query executed successfully.`
-                    };
-                  } catch (e) {
-                    toolData = {
-                      name: nextMsg.tool_name,
-                      status: "Success",
-                      description: "Query executed successfully."
-                    };
+          const loaded = [];
+          for (let i = 0; i < data.messages.length; i++) {
+            const msg = data.messages[i];
+            if (msg.role === 'user') {
+              loaded.push({
+                id: i,
+                sender: 'user',
+                text: msg.content,
+                time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+              });
+            } else if (msg.role === 'assistant') {
+              const nextMsg = data.messages[i + 1];
+              const hasTool = nextMsg && nextMsg.role === 'tool';
+              
+              if (hasTool) {
+                let finalText = "Query executed successfully.";
+                for (let j = i + 2; j < data.messages.length; j++) {
+                  if (data.messages[j].role === 'assistant' && !data.messages[j].tool_call_id) {
+                    finalText = data.messages[j].content;
+                    data.messages[j].skip = true;
+                    break;
                   }
                 }
-                return {
+                
+                let toolData = null;
+                let structuredData = null;
+                try {
+                  const parsed = JSON.parse(nextMsg.content);
+                  toolData = {
+                    name: nextMsg.tool_name === 'get_employees' ? "Employee List Tool" :
+                      nextMsg.tool_name === 'get_employee_count' ? "Employee Count Tool" :
+                        nextMsg.tool_name === 'get_employee' ? "Employee Detail Tool" :
+                          nextMsg.tool_name === 'search_employee' ? "Employee Search Tool" :
+                            nextMsg.tool_name === 'get_attendance' ? "Attendance Tool" :
+                              nextMsg.tool_name === 'get_employee_attendance' ? "Attendance Detail Tool" :
+                                nextMsg.tool_name === 'get_leave_balance' ? "Leave Balance Tool" :
+                                  nextMsg.tool_name === 'get_leave_requests' ? "Leave Request Tool" :
+                                    nextMsg.tool_name === 'get_departments' ? "Department Tool" : nextMsg.tool_name,
+                    status: parsed.error ? "Failed" : "Success",
+                    description: parsed.error ? `Failed to query: ${parsed.error}` : `Query executed successfully.`
+                  };
+
+                  const toolName = nextMsg.tool_name;
+                  if (!parsed.error) {
+                    if (toolName === 'get_employees') {
+                      structuredData = { type: 'employee_list', employees: parsed };
+                    } else if (toolName === 'get_employee') {
+                      structuredData = { type: 'employee_profile', employee: parsed };
+                    } else if (toolName === 'search_employee' || toolName === 'get_employee_count') {
+                      if (Array.isArray(parsed) && parsed.length === 1) {
+                        structuredData = { type: 'employee_profile', employee: parsed[0] };
+                      } else if (Array.isArray(parsed) && parsed.length > 1) {
+                        structuredData = { type: 'employee_list', employees: parsed };
+                      }
+                    } else if (toolName === 'get_attendance') {
+                      structuredData = { type: 'attendance_summary', attendance: parsed };
+                    } else if (toolName === 'get_employee_attendance') {
+                      structuredData = { type: 'employee_attendance', attendance: parsed };
+                    } else if (toolName === 'get_leave_balance') {
+                      structuredData = { type: 'leave_balance', balances: parsed };
+                    } else if (toolName === 'get_leave_requests') {
+                      structuredData = { type: 'leave_request_list', requests: parsed };
+                    } else if (toolName === 'get_departments') {
+                      structuredData = { type: 'department_list', departments: parsed };
+                    } else if (toolName === 'get_department_employees') {
+                      structuredData = { type: 'department_employees', employees: parsed };
+                    } else if (toolName === 'get_designations') {
+                      structuredData = { type: 'designation_list', designations: parsed };
+                    } else if (toolName === 'get_holidays') {
+                      structuredData = { type: 'holiday_list', holidays: Array.isArray(parsed) ? parsed : (parsed.holidays || []) };
+                    } else if (toolName === 'get_payroll_summary') {
+                      structuredData = { type: 'payroll_summary', summary: parsed };
+                    } else if (toolName === 'get_employee_payroll') {
+                      structuredData = { type: 'employee_payroll', payroll: parsed };
+                    } else if (toolName === 'get_job_positions') {
+                      structuredData = { type: 'job_positions', positions: parsed };
+                    } else if (toolName === 'get_candidates') {
+                      structuredData = { type: 'candidates', candidates: parsed };
+                    } else if (toolName === 'get_interview_schedules') {
+                      structuredData = { type: 'interview_schedules', schedules: parsed };
+                    } else if (toolName === 'get_company_profile') {
+                      structuredData = { type: 'company_profile', profile: parsed };
+                    } else if (toolName === 'get_projects') {
+                      structuredData = { type: 'projects', projects: parsed };
+                    } else if (toolName === 'get_tasks') {
+                      structuredData = { type: 'tasks', tasks: parsed };
+                    } else if (toolName === 'get_support_tickets') {
+                      structuredData = { type: 'support_tickets', tickets: parsed };
+                    }
+                  }
+                } catch (e) {
+                  toolData = {
+                    name: nextMsg.tool_name,
+                    status: "Success",
+                    description: "Query executed successfully."
+                  };
+                }
+
+                loaded.push({
                   id: i,
                   sender: 'ai',
-                  text: msg.content || "Calling tool...",
+                  text: finalText,
                   time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                   hasTool,
-                  toolData
-                };
-              } else if (msg.role === 'user') {
-                return {
+                  toolData,
+                  structuredData
+                });
+              } else if (!msg.skip) {
+                loaded.push({
                   id: i,
-                  sender: 'user',
+                  sender: 'ai',
                   text: msg.content,
                   time: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                };
+                });
               }
-              return null;
-            })
-            .filter(Boolean);
+            }
+          }
           setMessages(loaded);
         }
       }
@@ -679,6 +789,18 @@ export function AIAssistantDashboard() {
       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
       fontSize: 12, fontWeight: 600, color: '#17213A', fontFamily: 'inherit',
       transition: 'background 0.12s',
+    },
+
+    chatHeader: {
+      height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      padding: '0 24px', borderBottom: '1px solid #E8EAF2', background: '#FFFFFF', flexShrink: 0
+    },
+    chatHeaderTitle: { fontSize: 14, fontWeight: 600, color: '#17213A' },
+    clearChatBtn: {
+      display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px',
+      borderRadius: 8, border: '1px solid #FEE2E2', background: '#FEF2F2',
+      color: '#EF4444', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+      transition: 'background 0.12s', fontFamily: 'inherit'
     },
 
     // MAIN CHAT
@@ -822,18 +944,50 @@ export function AIAssistantDashboard() {
             <>
               <span style={styles.sectionLabel}>Today</span>
               {todayChats.map(chat => (
-                <button key={chat.id} style={styles.chatItem(activeChat === chat.id)} onClick={() => loadChat(chat)}>
-                  <div style={styles.chatIconWrap(activeChat === chat.id)}>
-                    <ChatIcon color={activeChat === chat.id ? '#6847F5' : '#8A98B0'} size={15} />
-                  </div>
-                  <div style={styles.chatItemRight}>
-                    <div style={styles.chatItemTopRow}>
-                      <span style={styles.chatItemTitle}>{chat.title}</span>
-                      <span style={styles.chatItemTime}>{chat.time}</span>
+                <div 
+                  key={chat.id} 
+                  style={{ ...styles.chatItem(activeChat === chat.id), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} 
+                  onClick={() => loadChat(chat)}
+                  role="button"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                    <div style={styles.chatIconWrap(activeChat === chat.id)}>
+                      <ChatIcon color={activeChat === chat.id ? '#6847F5' : '#8A98B0'} size={15} />
                     </div>
-                    <div style={styles.chatItemPreview}>{chat.preview}</div>
+                    <div style={styles.chatItemRight}>
+                      <div style={styles.chatItemTopRow}>
+                        <span style={styles.chatItemTitle}>{chat.title}</span>
+                        <span style={styles.chatItemTime}>{chat.time}</span>
+                      </div>
+                      <div style={styles.chatItemPreview}>{chat.preview}</div>
+                    </div>
                   </div>
-                </button>
+                  {chat.conversation_id && (
+                    <button
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: '#EF4444',
+                        padding: '0 8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: 0.7,
+                        transition: 'opacity 0.12s'
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteChat(chat.conversation_id);
+                      }}
+                      title="Delete Conversation"
+                      onMouseEnter={(e) => e.target.style.opacity = 1}
+                      onMouseLeave={(e) => e.target.style.opacity = 0.7}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                  )}
+                </div>
               ))}
             </>
           )}
@@ -843,18 +997,50 @@ export function AIAssistantDashboard() {
             <>
               <span style={{ ...styles.sectionLabel, marginTop: 12, display: 'block' }}>Yesterday</span>
               {yesterdayChats.map(chat => (
-                <button key={chat.id} style={styles.chatItem(activeChat === chat.id)} onClick={() => loadChat(chat)}>
-                  <div style={styles.chatIconWrap(activeChat === chat.id)}>
-                    <ChatIcon color={activeChat === chat.id ? '#6847F5' : '#8A98B0'} size={15} />
-                  </div>
-                  <div style={styles.chatItemRight}>
-                    <div style={styles.chatItemTopRow}>
-                      <span style={styles.chatItemTitle}>{chat.title}</span>
-                      <span style={styles.chatItemTime}>{chat.time}</span>
+                <div 
+                  key={chat.id} 
+                  style={{ ...styles.chatItem(activeChat === chat.id), display: 'flex', justifyContent: 'space-between', alignItems: 'center' }} 
+                  onClick={() => loadChat(chat)}
+                  role="button"
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
+                    <div style={styles.chatIconWrap(activeChat === chat.id)}>
+                      <ChatIcon color={activeChat === chat.id ? '#6847F5' : '#8A98B0'} size={15} />
                     </div>
-                    <div style={styles.chatItemPreview}>{chat.preview}</div>
+                    <div style={styles.chatItemRight}>
+                      <div style={styles.chatItemTopRow}>
+                        <span style={styles.chatItemTitle}>{chat.title}</span>
+                        <span style={styles.chatItemTime}>{chat.time}</span>
+                      </div>
+                      <div style={styles.chatItemPreview}>{chat.preview}</div>
+                    </div>
                   </div>
-                </button>
+                  {chat.conversation_id && (
+                    <button
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: '#EF4444',
+                        padding: '0 8px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: 0.7,
+                        transition: 'opacity 0.12s'
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        deleteChat(chat.conversation_id);
+                      }}
+                      title="Delete Conversation"
+                      onMouseEnter={(e) => e.target.style.opacity = 1}
+                      onMouseLeave={(e) => e.target.style.opacity = 0.7}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                  )}
+                </div>
               ))}
             </>
           )}
@@ -862,7 +1048,7 @@ export function AIAssistantDashboard() {
 
         {/* View all */}
         <div style={styles.viewAllWrap}>
-          <button style={styles.viewAllBtn}>
+          <button style={styles.viewAllBtn} onClick={() => setSearchQuery("")}>
             <ListIcon />
             View all conversations
           </button>
@@ -871,6 +1057,27 @@ export function AIAssistantDashboard() {
 
       {/* ── MAIN CHAT AREA ──────────────────────────────────────────── */}
       <main style={styles.main}>
+        {/* Chat Header */}
+        <div style={styles.chatHeader}>
+          <span style={styles.chatHeaderTitle}>
+            {activeChat && typeof activeChat === 'string'
+              ? (conversations.find(c => c.conversation_id === activeChat)?.title || "Active Chat")
+              : "New Conversation"}
+          </span>
+          <button 
+            style={styles.clearChatBtn}
+            onClick={() => {
+              if (activeChat && typeof activeChat === 'string') {
+                deleteChat(activeChat);
+              } else {
+                setMessages([]);
+              }
+            }}
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            Clear Conversation
+          </button>
+        </div>
 
         {/* Scrollable message + welcome area */}
         <div style={styles.messageArea}>

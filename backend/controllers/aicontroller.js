@@ -21,8 +21,7 @@ const chatwithAI = async (req, res) => {
     console.error('Error in chatwithAI:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'AI request failed', 
-      error: error.message || String(error)
+      message: 'AI request failed'
     });
   }
 };
@@ -102,4 +101,63 @@ const getAvailableModules = async (req, res) => {
   }
 };
 
-module.exports = { chatwithAI, getConversations, getConversationMessages, getAvailableModules };
+const deleteConversation = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user ? req.user.id : null;
+
+    db.query(
+      "DELETE FROM ai_conversations WHERE conversation_id = ? AND user_id = ?",
+      [id, userId],
+      (err, result) => {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        
+        db.query(
+          "DELETE FROM ai_messages WHERE conversation_id = ?",
+          [id],
+          (err2) => {
+            if (err2) return res.status(500).json({ success: false, error: err2.message });
+            res.json({ success: true, message: "Conversation cleared successfully" });
+          }
+        );
+      }
+    );
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+const clearAllConversations = async (req, res) => {
+  try {
+    const userId = req.user ? req.user.id : null;
+    db.query(
+      "SELECT conversation_id FROM ai_conversations WHERE user_id = ?",
+      [userId],
+      (err, rows) => {
+        if (err) return res.status(500).json({ success: false, error: err.message });
+        const convIds = rows.map(r => r.conversation_id);
+        if (convIds.length === 0) return res.json({ success: true, message: "No conversations to clear" });
+        
+        db.query(
+          "DELETE FROM ai_conversations WHERE user_id = ?",
+          [userId],
+          (err2) => {
+            if (err2) return res.status(500).json({ success: false, error: err2.message });
+            db.query(
+              "DELETE FROM ai_messages WHERE conversation_id IN (?)",
+              [convIds],
+              (err3) => {
+                if (err3) return res.status(500).json({ success: false, error: err3.message });
+                res.json({ success: true, message: "All conversations cleared successfully" });
+              }
+            );
+          }
+        );
+      }
+    );
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+module.exports = { chatwithAI, getConversations, getConversationMessages, getAvailableModules, deleteConversation, clearAllConversations };
