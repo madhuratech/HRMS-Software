@@ -196,36 +196,44 @@ export function Reimbursements() {
               </tr>
             </thead>
             <tbody>
-              {reimbList.map((r, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #F3F4F6', height: 48 }}>
-                  <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>RMB-{r.id}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#111827', whiteSpace: 'nowrap' }}>{r.employee_name}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.department_name || 'Unassigned'}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.claim_title}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{formatDate(r.claim_date)}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>₹ {parseFloat(r.amount).toLocaleString('en-IN')}</td>
-                  <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
-                    <span style={{
-                      display: 'inline-block', padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600,
-                      background: r.status === 'Paid' ? '#ECFDF5' : '#FEF3C7',
-                      color: r.status === 'Paid' ? '#059669' : '#D97706',
-                    }}>
-                      {r.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{r.paid_date ? formatDate(r.paid_date) : '-'}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{r.transaction_id || '-'}</td>
-                  <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
-                    {r.status === 'Pending' && (
-                      <button onClick={() => handlePay(r.id)} style={{
-                        background: '#2563EB', border: 'none', color: '#FFF', padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer'
-                      }}>
-                        Pay Payout
-                      </button>
-                    )}
+              {reimbList.length === 0 ? (
+                <tr>
+                  <td colSpan={10} style={{ padding: 40, textAlign: 'center', color: '#6B7280', fontSize: 13 }}>
+                    No reimbursement records found.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                reimbList.map((r, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #F3F4F6', height: 48 }}>
+                    <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>RMB-{r.id}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#111827', whiteSpace: 'nowrap' }}>{r.employee_name}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.department_name || 'Unassigned'}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.claim_title}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{formatDate(r.claim_date)}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>₹ {parseFloat(r.amount).toLocaleString('en-IN')}</td>
+                    <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
+                      <span style={{
+                        display: 'inline-block', padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600,
+                        background: r.status === 'Paid' ? '#ECFDF5' : '#FEF3C7',
+                        color: r.status === 'Paid' ? '#059669' : '#D97706',
+                      }}>
+                        {r.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{r.paid_date ? formatDate(r.paid_date) : '-'}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{r.transaction_id || '-'}</td>
+                    <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
+                      {r.status === 'Pending' && (
+                        <button onClick={() => handlePay(r.id)} style={{
+                          background: '#2563EB', border: 'none', color: '#FFF', padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer'
+                        }}>
+                          Pay Payout
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

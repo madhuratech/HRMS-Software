@@ -34,6 +34,9 @@ class PromotionService {
     const existing = await this.getById(id);
     if (!existing) throw new Error('Promotion record not found');
 
+    const promotedDept = data.promoted_department !== undefined ? data.promoted_department : existing.promoted_department;
+    const promotedDesig = data.promoted_designation !== undefined ? data.promoted_designation : existing.promoted_designation;
+
     const sql = `
       UPDATE promotions SET
         current_department = ?, current_designation = ?, promoted_department = ?, promoted_designation = ?,
@@ -41,8 +44,14 @@ class PromotionService {
       WHERE id = ?
     `;
     const params = [
-      data.current_department, data.current_designation, data.promoted_department, data.promoted_designation,
-      data.promotion_date, data.effective_date, data.promotion_reason || null, data.status,
+      data.current_department !== undefined ? data.current_department : existing.current_department,
+      data.current_designation !== undefined ? data.current_designation : existing.current_designation,
+      promotedDept,
+      promotedDesig,
+      data.promotion_date !== undefined ? data.promotion_date : existing.promotion_date,
+      data.effective_date !== undefined ? data.effective_date : existing.effective_date,
+      data.promotion_reason !== undefined ? data.promotion_reason : existing.promotion_reason,
+      data.status !== undefined ? data.status : existing.status,
       userId, id
     ];
     await Performance.beginTransaction();
@@ -51,7 +60,7 @@ class PromotionService {
 
       // If status changed to Approved, update employee master
       if (data.status === 'Approved' && existing.status !== 'Approved') {
-        await this.triggerEmployeePromotion(existing.employee_id, data.promoted_department, data.promoted_designation);
+        await this.triggerEmployeePromotion(existing.employee_id, promotedDept, promotedDesig);
       }
 
       await Performance.commit();

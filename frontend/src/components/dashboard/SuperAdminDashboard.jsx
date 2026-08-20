@@ -409,7 +409,12 @@ export function SuperAdminDashboard() {
                   <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9', height: 52 }} className="hover:bg-slate-50 transition-colors">
                     <td style={{ padding: '0 20px', fontSize: 13, color: '#111827', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <img src={row.avatar} alt={row.name} style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }} />
+                        <img
+                          src={row.avatar}
+                          alt={row.name}
+                          style={{ width: 32, height: 32, borderRadius: '50%', objectFit: 'cover' }}
+                          onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(row.name || 'User')}&background=2563EB&color=fff&bold=true`; }}
+                        />
                         <span style={{ fontWeight: 600 }}>{row.name}</span>
                       </div>
                     </td>
@@ -462,7 +467,12 @@ export function SuperAdminDashboard() {
                 : { bg: '#F0FDF4', text: '#16A34A' };
               return (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '10px 20px', borderBottom: i < 4 ? '1px solid #F8FAFC' : 'none', gap: 12 }}>
-                  <img src={emp.avatar} alt={emp.name} style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                  <img
+                    src={emp.avatar}
+                    alt={emp.name}
+                    style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                    onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name || 'User')}&background=2563EB&color=fff&bold=true`; }}
+                  />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 13, fontWeight: 700, color: '#111827', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{emp.name}</div>
                     <div style={{ fontSize: 11, color: '#6B7280', whiteSpace: 'nowrap' }}>{emp.dept} · {emp.days}</div>
@@ -520,7 +530,12 @@ export function SuperAdminDashboard() {
             {birthdayList.map((p, i) => (
               <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
-                  <img src={p.img} alt={p.name} style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                  <img
+                    src={p.img}
+                    alt={p.name}
+                    style={{ width: 34, height: 34, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                    onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name || 'User')}&background=2563EB&color=fff&bold=true`; }}
+                  />
                   <div style={{ minWidth: 0 }}>
                     <div style={{ fontSize: 12, fontWeight: 700, color: '#1E293B', whiteSpace: 'nowrap' }}>{p.name}</div>
                     <div style={{ fontSize: 11, color: '#64748B', whiteSpace: 'nowrap' }}>{p.role}</div>
@@ -546,7 +561,12 @@ export function SuperAdminDashboard() {
                 borderBottom: i < arr.length - 1 ? '1px solid #F1F5F9' : 'none',
               }}>
                 {item.avatar ? (
-                  <img src={item.avatar} alt={item.name} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }} />
+                  <img
+                    src={item.avatar}
+                    alt={item.name}
+                    style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover', flexShrink: 0 }}
+                    onError={(e) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(item.name || 'User')}&background=2563EB&color=fff&bold=true`; }}
+                  />
                 ) : (
                   <div style={{ width: 36, height: 36, borderRadius: '50%', background: item.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
                     {item.icon}

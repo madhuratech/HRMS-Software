@@ -15,11 +15,32 @@ export function ProjectReports() {
     progressList: []
   });
 
+  const generateMonthOptions = () => {
+    const options = [];
+    const currentDate = new Date();
+    for (let i = 0; i < 18; i++) {
+      const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const year = d.getFullYear();
+      const monthIndex = d.getMonth();
+      const shortMonth = d.toLocaleString('en-US', { month: 'short' });
+      const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+      
+      options.push({
+        value: `${year}-${String(monthIndex + 1).padStart(2, '0')}`,
+        label: `${shortMonth} 1 – ${shortMonth} ${lastDay}, ${year}`
+      });
+    }
+    return options;
+  };
+
+  const monthOptions = generateMonthOptions();
+  const [selectedMonth, setSelectedMonth] = useState(monthOptions[0].value);
+
   const fetchData = useCallback(async () => {
     setLoading(true);
     setLoaded(false);
     try {
-      const res = await apiFetch('/reports/project');
+      const res = await apiFetch(`/reports/project?month=${encodeURIComponent(selectedMonth)}`);
       if (res.success && res.data) {
         setData(res.data);
         setTimeout(() => setLoaded(true), 150);
@@ -29,7 +50,7 @@ export function ProjectReports() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedMonth]);
 
   useEffect(() => {
     fetchData();
@@ -43,7 +64,7 @@ export function ProjectReports() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", "project_report.csv");
+    link.setAttribute("download", `project_report_${selectedMonth}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -56,7 +77,7 @@ export function ProjectReports() {
   const KpiCard = ({ label, value, iconBg, iconColor, icon: Icon }) => (
     <div style={{
       background: '#FFFFFF', borderRadius: 14, border: '1px solid #E5E7EB',
-      boxShadow: '0 2px 8px rgba(15,23,42,.05)', padding: '16px 20px', flex: '1 1 0', minWidth: 130,
+      boxShadow: '0 2px 8px rgba(15,23,42,.05)', padding: '16px 20px', flex: '1 1 0', minWidth: 140,
       display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
@@ -86,12 +107,31 @@ export function ProjectReports() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button style={{
-            display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 14px',
-            background: '#FFF', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#374151', cursor: 'pointer',
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 12px',
+            background: '#FFF', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#374151',
           }}>
-            <Calendar size={14} color="#6B7280" /> May 1 – May 31, 2024 <ChevronDown size={14} color="#6B7280" />
-          </button>
+            <Calendar size={14} color="#6B7280" />
+            <select
+              value={selectedMonth}
+              onChange={(e) => setSelectedMonth(e.target.value)}
+              style={{
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                fontSize: 13,
+                fontWeight: 500,
+                color: '#374151',
+                cursor: 'pointer'
+              }}
+            >
+              {monthOptions.map(opt => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <button onClick={handleExport} style={{
             display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px',

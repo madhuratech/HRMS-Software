@@ -95,6 +95,34 @@ export function ExpenseClaims() {
     }
   };
 
+  const getUserRole = () => {
+    try {
+      const auth = JSON.parse(localStorage.getItem('hrms_auth') || '{}');
+      if (auth.user && auth.user.role) return auth.user.role;
+    } catch (e) {}
+    return localStorage.getItem('userRole') || 'SUPER_ADMIN';
+  };
+
+  const currentRole = (getUserRole() || '').toUpperCase();
+  const isSuperAdminOrHR = currentRole.includes('SUPER') || currentRole.includes('ADMIN') || currentRole.includes('HR');
+
+  const handleApprove = async (id, status = 'Approved') => {
+    try {
+      const res = await apiFetch(`/expenses/claims/${id}/approve`, {
+        method: 'PUT',
+        body: JSON.stringify({ status })
+      });
+      if (res.success) {
+        addToast(`Claim ${status.toLowerCase()} successfully`, 'success');
+        fetchData();
+      } else {
+        addToast(res.message || 'Failed to update claim status', 'error');
+      }
+    } catch (err) {
+      addToast('Error connecting to server', 'error');
+    }
+  };
+
   const handleDelete = async (id) => {
     if (!window.confirm('Are you sure you want to delete this claim?')) return;
     try {
@@ -289,7 +317,14 @@ export function ExpenseClaims() {
               </tr>
             </thead>
             <tbody>
-              {claimsList.map((r, i) => (
+              {claimsList.length === 0 ? (
+                <tr>
+                  <td colSpan={9} style={{ padding: 40, textAlign: 'center', color: '#6B7280', fontSize: 13 }}>
+                    No expense claims found.
+                  </td>
+                </tr>
+              ) : (
+                claimsList.map((r, i) => (
                 <tr key={i} style={{ borderBottom: '1px solid #F3F4F6', height: 48 }}>
                   <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>CLM-{r.id}</td>
                   <td style={{ padding: '0 16px', fontSize: 13, color: '#111827', whiteSpace: 'nowrap' }}>{r.employee_name}</td>
@@ -308,12 +343,48 @@ export function ExpenseClaims() {
                     </span>
                   </td>
                   <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
-                    <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
-                      Delete
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {isSuperAdminOrHR && r.status !== 'Approved' && (
+                        <button
+                          onClick={() => handleApprove(r.id, 'Approved')}
+                          style={{
+                            background: '#10B981',
+                            color: '#FFF',
+                            border: 'none',
+                            borderRadius: 6,
+                            padding: '4px 10px',
+                            fontSize: 12,
+                            fontWeight: 600,
+                            cursor: 'pointer'
+                          }}
+                        >
+                          Approve
+                        </button>
+                      )}
+                      {isSuperAdminOrHR && r.status === 'Pending' && (
+                        <button
+                          onClick={() => handleApprove(r.id, 'Rejected')}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#F59E0B',
+                            cursor: 'pointer',
+                            padding: '4px 6px',
+                            fontSize: 12,
+                            fontWeight: 600
+                          }}
+                        >
+                          Reject
+                        </button>
+                      )}
+                      <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
-              ))}
+              ))
+            )}
             </tbody>
           </table>
         </div>

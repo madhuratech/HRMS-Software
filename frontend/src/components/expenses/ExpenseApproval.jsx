@@ -140,30 +140,38 @@ export function ExpenseApproval() {
               </tr>
             </thead>
             <tbody>
-              {claimsList.map((r, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #F3F4F6', height: 48 }}>
-                  <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>CLM-{r.id}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#111827', whiteSpace: 'nowrap' }}>{r.employee_name}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.department_name || 'Unassigned'}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.title}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>₹ {parseFloat(r.amount).toLocaleString('en-IN')}</td>
-                  <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
-                    <div style={{ display: 'flex', gap: 8 }}>
-                      <button onClick={() => handleAction(r.id, 'Approved')} style={{
-                        background: 'none', border: 'none', color: '#16A34A', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                      }}>
-                        Approve
-                      </button>
-                      <button onClick={() => handleAction(r.id, 'Rejected')} style={{
-                        background: 'none', border: 'none', color: '#EF4444', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                      }}>
-                        Reject
-                      </button>
-                    </div>
+              {claimsList.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ padding: 40, textAlign: 'center', color: '#6B7280', fontSize: 13 }}>
+                    No pending expense claims awaiting approval.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                claimsList.map((r, i) => (
+                  <tr key={i} style={{ borderBottom: '1px solid #F3F4F6', height: 48 }}>
+                    <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>CLM-{r.id}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#111827', whiteSpace: 'nowrap' }}>{r.employee_name}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.department_name || 'Unassigned'}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.title}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>₹ {parseFloat(r.amount).toLocaleString('en-IN')}</td>
+                    <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button onClick={() => handleAction(r.id, 'Approved')} style={{
+                          background: '#10B981', border: 'none', color: '#FFF', padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        }}>
+                          Approve
+                        </button>
+                        <button onClick={() => handleAction(r.id, 'Rejected')} style={{
+                          background: 'none', border: 'none', color: '#EF4444', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                        }}>
+                          Reject
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

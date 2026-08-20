@@ -1,21 +1,51 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiFetch } from '../../lib/api';
 import { 
   Users, 
   Building2, 
   Briefcase,
-  ChevronDown
+  ExternalLink
 } from 'lucide-react';
 
 const OrgNode = ({ node }) => {
+  const navigate = useNavigate();
   if (!node) return null;
+
+  const handleCardClick = () => {
+    if (node.id) {
+      localStorage.setItem('selectedEmployeeId', node.id);
+      navigate('/employees/profile');
+    }
+  };
+
+  const getAvatarUrl = () => {
+    if (node.image) return node.image;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(node.name || 'User')}&background=2952E3&color=ffffff&bold=true&size=150`;
+  };
+
   return (
     <div className="flex flex-col items-center">
-      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm w-[280px] flex flex-col items-center relative z-10 hover:shadow-md transition-shadow">
-        <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-white shadow-sm mb-3">
-          <img src={node.image || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150'} alt={node.name} className="w-full h-full object-cover" />
+      <div 
+        onClick={handleCardClick}
+        title={`Click to view ${node.name}'s Profile`}
+        className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm w-[280px] flex flex-col items-center relative z-10 hover:shadow-lg hover:-translate-y-1 transition-all cursor-pointer group"
+      >
+        <div className="w-16 h-16 rounded-full overflow-hidden border-4 border-white shadow-sm mb-3 relative">
+          <img 
+            src={getAvatarUrl()} 
+            alt={node.name} 
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(node.name || 'User')}&background=2952E3&color=ffffff&bold=true&size=150`;
+            }}
+          />
         </div>
-        <h3 className="text-[#0A1629] font-bold text-base mb-1">{node.name}</h3>
+        <h3 className="text-[#0A1629] font-bold text-base mb-1 group-hover:text-blue-600 transition-colors flex items-center gap-1.5">
+          {node.name}
+          <ExternalLink size={13} className="opacity-0 group-hover:opacity-100 transition-opacity text-blue-600" />
+        </h3>
         <p className="text-blue-600 font-medium text-[13px] mb-2">{node.title || 'Team Member'}</p>
         <div className="bg-slate-50 px-3 py-1.5 rounded-full text-slate-600 text-xs font-semibold flex items-center gap-1.5 border border-slate-100">
           <Briefcase size={12} />
@@ -72,7 +102,7 @@ export const OrganizationChart = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#0A1629]">Organization Chart</h1>
-          <p className="text-sm text-slate-500 mt-1">Hierarchical view of company structure.</p>
+          <p className="text-sm text-slate-500 mt-1">Hierarchical view of company structure. Click any profile card to view full employee details.</p>
         </div>
         <div className="flex items-center gap-4 bg-white px-4 py-2 rounded-lg border border-slate-200">
           <div className="flex items-center gap-2">

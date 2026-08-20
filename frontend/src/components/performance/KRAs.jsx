@@ -130,13 +130,16 @@ export default function KRAs() {
 
     setSubmitting(true);
     try {
+      const parsedDept = parseInt(formData.department, 10) || 1;
+
       const payload = {
         kra_title: formData.title.trim(),
-        department_id: parseInt(formData.department),
+        title: formData.title.trim(),
+        department_id: parsedDept,
         role_id: formData.role.trim(),
-        weightage: formData.weightage.trim(),
-        status: formData.status,
-        description: formData.description.trim()
+        weightage: formData.weightage ? formData.weightage.trim() : '',
+        status: formData.status || 'Active',
+        description: formData.description ? formData.description.trim() : ''
       };
 
       const res = await fetch('/app/kras', {
@@ -155,7 +158,7 @@ export default function KRAs() {
         fetchKras();
         fetchDashboardStats();
       } else {
-        addToast(resData.message || 'Failed to save KRA', 'error');
+        addToast(resData.message || (resData.errors ? JSON.stringify(resData.errors) : 'Failed to save KRA'), 'error');
       }
     } catch (err) {
       addToast('Connection error occurred', 'error');

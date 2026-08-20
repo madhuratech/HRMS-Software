@@ -61,7 +61,20 @@ class ReviewService {
 
   static async getById(id) {
     const rows = await Performance.query(
-      `SELECT r.*, e.name as employee_name, d.dept_name as department_name
+      `SELECT r.id,
+              r.employee_id,
+              COALESCE(e.name, 'Employee') as employee_name,
+              COALESCE(d.dept_name, 'General') as department_name,
+              COALESCE(r.review_period, 'Q2 2026') as review_period,
+              COALESCE(r.reviewer_id, 'Manager') as reviewer_id,
+              COALESCE(r.type, 'Manager Review') as type,
+              COALESCE(r.overall_rating, CAST(r.rating AS CHAR), '5') as overall_rating,
+              r.strengths,
+              r.improvement,
+              r.goals,
+              r.comments,
+              COALESCE(r.status, 'In Progress') as status,
+              r.created_at
        FROM reviews r
        LEFT JOIN employees e ON r.employee_id = e.id
        LEFT JOIN departments d ON e.department_id = d.id
@@ -73,7 +86,20 @@ class ReviewService {
 
   static async list(filters, pagination) {
     let sql = `
-      SELECT r.*, e.name as employee_name, d.dept_name as department_name
+      SELECT r.id,
+             r.employee_id,
+             COALESCE(e.name, 'Employee') as employee_name,
+             COALESCE(d.dept_name, 'General') as department_name,
+             COALESCE(r.review_period, 'Q2 2026') as review_period,
+             COALESCE(r.reviewer_id, 'Manager') as reviewer_id,
+             COALESCE(r.type, 'Manager Review') as type,
+             COALESCE(r.overall_rating, CAST(r.rating AS CHAR), '5') as overall_rating,
+             r.strengths,
+             r.improvement,
+             r.goals,
+             r.comments,
+             COALESCE(r.status, 'In Progress') as status,
+             r.created_at
       FROM reviews r
       LEFT JOIN employees e ON r.employee_id = e.id
       LEFT JOIN departments d ON e.department_id = d.id

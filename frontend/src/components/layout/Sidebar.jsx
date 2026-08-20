@@ -35,7 +35,7 @@ import {
 import { cn } from '../../lib/utils';
 
 export function Sidebar({ userRole, onLogout }) {
-  const [expandedGroups, setExpandedGroups] = useState(['organization', 'employees']);
+  const [expandedGroups, setExpandedGroups] = useState([]);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -54,17 +54,23 @@ export function Sidebar({ userRole, onLogout }) {
 
   const toggleGroup = (groupId) => {
     setExpandedGroups(prev =>
-      prev.includes(groupId)
-        ? prev.filter(id => id !== groupId)
-        : [...prev, groupId]
+      prev.includes(groupId) ? [] : [groupId]
     );
   };
 
-  // Automatically expand groups based on current path
+  // Automatically expand ONLY the active module group based on current path and close all others
   useEffect(() => {
     const currentPath = location.pathname;
-    if (currentPath.startsWith('/employees') && !expandedGroups.includes('employees')) {
-      setExpandedGroups(prev => [...prev, 'employees']);
+    
+    const matchingGroup = menuItems.find(item => {
+      if (item.children) {
+        return item.children.some(child => child.path && (currentPath.startsWith(child.path) || currentPath === child.path));
+      }
+      return false;
+    });
+
+    if (matchingGroup) {
+      setExpandedGroups([matchingGroup.id]);
     }
   }, [location.pathname]);
 
@@ -82,7 +88,8 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'teams', label: 'Teams', path: '/teams' },
         { id: 'shift-management', label: 'Shift Management', path: '/shift-management' },
         { id: 'holiday-calendar', label: 'Holiday Calendar', path: '/holiday-calendar' },
-        { id: 'organization-chart', label: 'Organization Chart', path: '/organization-chart' }
+        { id: 'organization-chart', label: 'Organization Chart', path: '/organization-chart' },
+        { id: 'user-roles', label: 'User Roles & Permissions', path: '/user-roles' }
       ]
     },
     {
@@ -100,7 +107,8 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'promotions', label: 'Promotions', path: '/employees/promotions' },
         { id: 'transfers', label: 'Transfers', path: '/employees/transfers' },
         { id: 'exit-management', label: 'Exit Management', path: '/employees/exit' },
-        { id: 'employee-documents', label: 'Employee Documents', path: '/employees/documents' }
+        { id: 'employee-documents', label: 'Employee Documents', path: '/employees/documents' },
+        { id: 'employee-reports-sub', label: 'Employee Reports', path: '/reports/employee' }
       ]
     },
     {
@@ -115,7 +123,7 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'shift-roster', label: 'Shift Roster', path: '/attendance/shift-roster' },
         { id: 'overtime', label: 'Overtime', path: '/attendance/overtime' },
         { id: 'late-arrival', label: 'Late Arrival', path: '/attendance/late-arrival' },
-        { id: 'attendance-reports', label: 'Attendance Reports', path: '/attendance/reports' },
+        { id: 'attendance-reports', label: 'Attendance Reports', path: '/reports/attendance' },
         { id: 'punch-locations', label: 'Punch Locations', path: '/attendance/punch-locations' }
       ]
     },
@@ -131,7 +139,8 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'leave-balance', label: 'Leave Balance', path: '/leave-balance' },
         { id: 'leave-types', label: 'Leave Types', path: '/leave-types' },
         { id: 'holiday-list', label: 'Holiday List', path: '/holiday-list' },
-        { id: 'comp-off', label: 'Comp Off', path: '/comp-off' }
+        { id: 'comp-off', label: 'Comp Off', path: '/comp-off' },
+        { id: 'leave-reports-sub', label: 'Leave Reports', path: '/reports/leave' }
       ]
     },
     {
@@ -148,7 +157,7 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'reimbursements', label: 'Reimbursements', path: '/payroll/reimbursements' },
         { id: 'loans-advances', label: 'Loans & Advances', path: '/payroll/loans' },
         { id: 'tax-management', label: 'Tax Management', path: '/payroll/tax' },
-        { id: 'payroll-reports', label: 'Payroll Reports', path: '/payroll/reports' }
+        { id: 'payroll-reports', label: 'Payroll Reports', path: '/reports/payroll' }
       ]
     },
     {
@@ -162,7 +171,8 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'candidates', label: 'Candidates', path: '/recruitment/candidates' },
         { id: 'interview-schedule', label: 'Interview Schedule', path: '/recruitment/interviews' },
         { id: 'offer-letters', label: 'Offer Letters', path: '/recruitment/offers' },
-        { id: 'hiring-pipeline', label: 'Hiring Pipeline', path: '/recruitment/pipeline' }
+        { id: 'hiring-pipeline', label: 'Hiring Pipeline', path: '/recruitment/pipeline' },
+        { id: 'recruitment-reports-sub', label: 'Recruitment Reports', path: '/reports/recruitment' }
       ]
     },
     {
@@ -191,7 +201,8 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'appraisals', label: 'Appraisals', path: '/performance/appraisals' },
         { id: 'reviews', label: 'Reviews', path: '/performance/reviews' },
         { id: 'feedback', label: 'Feedback', path: '/performance/feedback' },
-        { id: 'promotions-performance', label: 'Promotions', path: '/performance/promotions' }
+        { id: 'promotions-performance', label: 'Promotions', path: '/performance/promotions' },
+        { id: 'performance-reports-sub', label: 'Performance Reports', path: '/reports/performance' }
       ]
     },
     // {
@@ -219,7 +230,8 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'sprint-board', label: 'Sprint Board', path: '/projects/sprint-board' },
         { id: 'timesheets', label: 'Timesheets', path: '/projects/timesheets' },
         { id: 'milestones', label: 'Milestones', path: '/projects/milestones' },
-        { id: 'team-members', label: 'Team Members', path: '/projects/team' }
+        { id: 'team-members', label: 'Team Members', path: '/projects/team' },
+        { id: 'project-reports-sub', label: 'Project Reports', path: '/reports/project' }
       ]
     },
     {

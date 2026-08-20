@@ -39,6 +39,7 @@ import { Teams } from './components/organization/Teams';
 import { ShiftManagement } from './components/organization/ShiftManagement';
 import { HolidayCalendar } from './components/organization/HolidayCalendar';
 import { OrganizationChart } from './components/organization/OrganizationChart';
+import { UserRoles } from './components/organization/UserRoles';
 
 // Employee Module Imports
 import EmployeeDirectory from './components/employee/EmployeeDirectory';
@@ -300,7 +301,7 @@ function App() {
             <Route path="/attendance/shift-roster" element={<ShiftRoster />} />
             <Route path="/attendance/overtime" element={<Overtime />} />
             <Route path="/attendance/late-arrival" element={<LateArrival />} />
-            <Route path="/attendance/reports" element={<AttendanceReports />} />
+            <Route path="/attendance/reports" element={<AttendanceReportsModule />} />
             <Route path="/attendance/punch-locations" element={<PunchLocations />} />
 
             {/* Leave Module */}
@@ -309,6 +310,7 @@ function App() {
             <Route path="/leave-approval" element={<LeaveApproval />} />
             <Route path="/leave-balance" element={<LeaveBalance />} />
             <Route path="/leave-types" element={<LeaveTypes />} />
+            <Route path="/leave/reports" element={<LeaveReports />} />
             <Route path="/holiday-list" element={<HolidayList />} />
             <Route path="/comp-off" element={<CompOff />} />
 
@@ -320,6 +322,7 @@ function App() {
             <Route path="/shift-management" element={<ShiftManagement />} />
             <Route path="/holiday-calendar" element={<HolidayCalendar />} />
             <Route path="/organization-chart" element={<OrganizationChart />} />
+            <Route path="/user-roles" element={<UserRoles />} />
 
             {/* Other Existing Modules */}
             <Route path="/news" element={<NewsFeed />} />
@@ -349,7 +352,7 @@ function App() {
             <Route path="/payroll/reimbursements" element={<Reimbursements />} />
             <Route path="/payroll/loans" element={<LoansAdvances />} />
             <Route path="/payroll/tax" element={<TaxManagement />} />
-            <Route path="/payroll/reports" element={<PayrollReports />} />
+            <Route path="/payroll/reports" element={<PayrollReportsModule />} />
 
             {/* Recruitment Module */}
             <Route path="/recruitment" element={<Navigate to="/recruitment/dashboard" replace />} />
@@ -359,7 +362,7 @@ function App() {
             <Route path="/recruitment/interviews" element={<InterviewSchedule />} />
             <Route path="/recruitment/offers" element={<OfferLetters />} />
             <Route path="/recruitment/pipeline" element={<HiringPipeline />} />
-            <Route path="/recruitment/reports" element={<RecruitmentReports />} />
+            <Route path="/recruitment/reports" element={<RecruitmentReportsModule />} />
 
             {/* Onboarding Module */}
             <Route path="/onboarding" element={<Navigate to="/onboarding/new-joiners" replace />} />
@@ -379,6 +382,7 @@ function App() {
             <Route path="/performance/reviews" element={<Reviews />} />
             <Route path="/performance/feedback" element={<Feedback />} />
             <Route path="/performance/promotions" element={<Promotions />} />
+            <Route path="/performance/reports" element={<PerformanceReports />} />
 
             {/* Project Management Module */}
             <Route path="/projects" element={<Navigate to="/projects/dashboard" replace />} />
@@ -389,6 +393,7 @@ function App() {
             <Route path="/projects/timesheets" element={<Timesheets />} />
             <Route path="/projects/milestones" element={<Milestones />} />
             <Route path="/projects/team" element={<TeamMembers />} />
+            <Route path="/projects/reports" element={<ProjectReports />} />
 
             {/* Expenses Module */}
             <Route path="/expenses" element={<Navigate to="/expenses/claims" replace />} />

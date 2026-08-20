@@ -1,7 +1,26 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
+const fs = require("fs");
 const db = require("./config/database");
+
+// Process-level crash prevention
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('⚠️ Unhandled Promise Rejection:', reason);
+  const logMessage = `[${new Date().toISOString()}] Unhandled Rejection: ${reason?.stack || reason}\n\n`;
+  try {
+    fs.appendFileSync(path.join(__dirname, 'error.log'), logMessage);
+  } catch (e) {}
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('⚠️ Uncaught Exception:', err);
+  const logMessage = `[${new Date().toISOString()}] Uncaught Exception: ${err?.stack || err}\n\n`;
+  try {
+    fs.appendFileSync(path.join(__dirname, 'error.log'), logMessage);
+  } catch (e) {}
+});
 
 // Programmatic Knex Migration Runner on Startup
 const knex = require('knex');
@@ -10,12 +29,12 @@ const knexInstance = knex(knexConfig.development);
 knexInstance.migrate.latest()
   .then(() => {
     console.log('✅ Cloud database schemas/migrations verified and updated.');
+    return knexInstance.destroy();
   })
   .catch(err => {
     console.error('❌ Programmatic Knex migration runner failed:', err);
   });
 
-const path = require("path");
 const app = express();
 
 app.use(cors());
@@ -52,6 +71,7 @@ app.use("/app/leaves", require("./routes/leaves"));
 app.use("/app/organization", require("./routes/organizationRoute"));
 app.use("/app/payroll", require("./routes/payroll"));
 app.use("/app/tickets", require("./routes/tickets"));
+app.use("/app/rbac", require("./routes/rbacRoute"));
 
 // Projects Management Module
 app.use("/app/projects", require("./routes/projects"));
@@ -67,9 +87,7 @@ app.use("/app/aichat", require("./routes/aichatroute"));
 app.use("/api/ai", require("./routes/aichatroute"));
 
 app.use((err, req, res, next) => {
-  const fs = require('fs');
-  const path = require('path');
-  const logMessage = `[${new Date().toISOString()}] Uncaught Error: ${err.stack || err}\n\n`;
+  const logMessage = `[${new Date().toISOString()}] Middleware Error: ${err.stack || err}\n\n`;
   try {
     fs.appendFileSync(path.join(__dirname, 'error.log'), logMessage);
   } catch (e) {
@@ -80,6 +98,9 @@ app.use((err, req, res, next) => {
 
 const PORT = 5001;
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`SERVER IS RUNNING at http://localhost:${PORT}`);
 });
+
+// Ensure Node.js event loop stays active for HTTP server
+setInterval(() => {}, 1000 * 60 * 60);

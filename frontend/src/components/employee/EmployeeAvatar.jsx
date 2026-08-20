@@ -1,4 +1,5 @@
 import React from 'react';
+import { getAvatarUrl } from '../../lib/utils';
 
 /**
  * EmployeeAvatar: Shows uploaded photo if available, otherwise renders initials.
@@ -39,6 +40,7 @@ export default function EmployeeAvatar({ name, photoUrl, size = 40, className = 
   const initials = getInitials(name);
   const bgColor = getColorFromName(name);
   const fontSize = Math.max(12, Math.round(size * 0.38));
+  const resolvedUrl = photoUrl ? getAvatarUrl(photoUrl, name) : null;
 
   const baseStyle = {
     width: `${size}px`,
@@ -53,11 +55,11 @@ export default function EmployeeAvatar({ name, photoUrl, size = 40, className = 
     ...style
   };
 
-  if (photoUrl) {
+  if (resolvedUrl) {
     return (
       <div className={className} style={baseStyle} onClick={onClick}>
         <img
-          src={photoUrl}
+          src={resolvedUrl}
           alt={name}
           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
           onError={(e) => {
