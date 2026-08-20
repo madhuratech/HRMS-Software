@@ -307,7 +307,7 @@ router.put("/profile", (req, res) => {
       language = ?, time_zone = ?, currency = ?, date_format = ?, time_format = ?, password_policy = ?, two_factor_authentication = ?, session_timeout = ?, login_attempts = ?, email_notification = ?, sms_notification = ?, push_notification = ?, smtp = ?, sms_gateway = ?, google_workspace = ?, microsoft_365 = ?, biometric_device = ?
     WHERE id = 1
   `;
-  
+
   const values = [
     p.general?.companyName, p.general?.legalCompanyName, p.general?.companyCode, p.general?.companyType, p.general?.industry, p.general?.businessType, p.general?.yearEstablished, p.general?.numberOfEmployees, p.general?.financialYear,
     p.contact?.officialEmail, p.contact?.hrEmail, p.contact?.supportEmail, p.contact?.website, p.contact?.phoneNumber, p.contact?.mobileNumber, p.contact?.alternateNumber, p.contact?.faxNumber, p.contact?.linkedinUrl, p.contact?.facebookUrl, p.contact?.twitterUrl, p.contact?.instagramUrl,
@@ -340,7 +340,7 @@ router.post("/export-pdf", (req, res) => {
     if (rows.length === 0) return res.status(404).json({ error: "Company profile not found" });
 
     const p = mapRowToProfile(rows[0]);
-    
+
     // Log the activity
     const logSql = "INSERT INTO activity_logs (user_email, action, details) VALUES (?, ?, ?)";
     db.query(logSql, [user, "Company Profile Export", `Company profile PDF report exported by ${user}.`], (logErr) => {
@@ -421,7 +421,7 @@ router.post("/export-pdf", (req, res) => {
           doc.fillColor("#64748b").font("Helvetica-Bold").fontSize(9).text(label2, 300, startY, { width: 110 });
           doc.fillColor("#1e293b").font("Helvetica").fontSize(9).text(val2 || "—", 410, startY, { width: 135 });
         }
-        
+
         const maxY = Math.max(doc.y, startY);
         doc.y = maxY + 8; // Row spacing
       };
@@ -472,8 +472,8 @@ router.post("/export-pdf", (req, res) => {
       drawSectionHeader("Bank Details");
       // Mask bank account number (mask all but last 4 digits)
       const rawAcc = p.banking?.accountNumber || "";
-      const maskedAcc = rawAcc.length > 4 
-        ? rawAcc.slice(-4).padStart(rawAcc.length, "*") 
+      const maskedAcc = rawAcc.length > 4
+        ? rawAcc.slice(-4).padStart(rawAcc.length, "*")
         : rawAcc;
       drawRow("Bank Name", p.banking?.bankName, "Branch Name", p.banking?.branchName);
       drawRow("Account Holder", p.banking?.accountHolderName, "Account Number", maskedAcc);

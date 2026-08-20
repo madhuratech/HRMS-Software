@@ -100,7 +100,7 @@ router.get("/lookup/teams", (req, res) => {
  */
 router.get("/", (req, res) => {
   const { search, department, designation, branch, status, sortBy, sortOrder, page = 1, limit = 100 } = req.query;
-  
+
   let conditions = ["1=1"];
   let params = [];
 
@@ -224,10 +224,10 @@ router.post("/", async (req, res) => {
           }
           return res.status(500).json({ message: "Employee creation failed", details: err });
         }
-        
+
         // Log creation history
         logHistory(result.insertId, "Joining", null, `Joined as ${designation} in ${department}`, joinDate);
-        
+
         res.json({ message: "Employee created successfully", id: result.insertId });
       }
     );
@@ -288,10 +288,10 @@ router.put("/:id", (req, res) => {
       console.error(err);
       return res.status(500).json({ error: "Failed to update employee details", details: err });
     }
-    
+
     // Log history
     logHistory(id, "Profile Update", "Previous values", `Updated profile fields for ${name}`, new Date());
-    
+
     res.json({ message: "Employee updated successfully" });
   });
 });
@@ -593,10 +593,10 @@ router.post("/exits", (req, res) => {
 
   db.query(sql, [employeeId, exitType, noticeDate, exitDate, reason, checklistStr], (err, result) => {
     if (err) return res.status(500).json({ error: "Failed to create exit record", details: err });
-    
+
     // Auto update status in history
     logHistory(employeeId, "Exit Request", null, `${exitType} scheduled on ${exitDate}`, exitDate);
-    
+
     res.json({ message: "Exit record saved successfully", id: result.insertId });
   });
 });
@@ -704,7 +704,7 @@ router.delete("/:id/photo", (req, res) => {
   // Get current photo path to delete file
   db.query("SELECT profile_photo FROM employees WHERE id = ?", [id], (err, rows) => {
     if (err) return res.status(500).json({ error: "Failed" });
-    
+
     if (rows.length > 0 && rows[0].profile_photo) {
       const filePath = path.join(__dirname, '..', rows[0].profile_photo);
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
