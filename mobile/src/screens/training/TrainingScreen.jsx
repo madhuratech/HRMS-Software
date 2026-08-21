@@ -8,7 +8,7 @@ export default function TrainingScreen() {
   const [trainings, setTrainings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [title, setTitle] = useState('');
@@ -85,13 +85,13 @@ export default function TrainingScreen() {
           <Text style={[styles.badgeText, { color: getStatusColor(item.status) }]}>{item.status.toUpperCase()}</Text>
         </View>
       </View>
-      
+
       {item.description ? (
         <Text style={styles.descText} numberOfLines={2}>{item.description}</Text>
       ) : null}
-      
+
       <View style={styles.divider} />
-      
+
       <View style={styles.detailGrid}>
         <View style={styles.detailCol}>
           <User size={14} color="#64748B" style={{marginBottom: 4}} />

@@ -39,7 +39,7 @@ export default function EmployeeDirectoryScreen({ navigation }) {
       // Build query string
       const query = searchTerm ? `?search=${encodeURIComponent(searchTerm)}` : '';
       const response = await apiClient.get(`/employees${query}`);
-      
+
       if (Array.isArray(response.data)) {
         setEmployees(response.data);
       } else {
@@ -89,81 +89,7 @@ export default function EmployeeDirectoryScreen({ navigation }) {
   const activeCount = employees.filter(e => e.status === 'Active').length;
   const adminCount = employees.filter(e => isAdmin(e)).length;
 
-  const renderHeader = () => (
-    <View style={styles.headerContainer}>
-      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.pageHeader}>
-        <View style={styles.headerTextContainer}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 16 }}>
-            <ArrowLeft size={24} color="#0F172A" />
-          </TouchableOpacity>
-          <View>
-            <Text style={styles.pageTitle}>Employee Directory</Text>
-            <Text style={styles.pageSubtitle}>Manage your organization's workforce</Text>
-          </View>
-        </View>
-        <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('AddEmployee')}>
-          <LinearGradient colors={['#4F46E5', '#4338CA']} style={styles.gradientBtn}>
-            <Plus size={18} color="#FFF" />
-            <Text style={styles.addButtonText}>Add User</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </LinearGradient>
-
-      <View style={styles.searchRow}>
-        <View style={styles.searchBox}>
-          <Search size={20} color="#64748B" />
-          <TextInput 
-            style={styles.searchInput} 
-            placeholder="Search by name, email, or ID..." 
-            placeholderTextColor="#94A3B8"
-            value={searchTerm}
-            onChangeText={setSearchTerm}
-          />
-        </View>
-        <TouchableOpacity style={styles.exportBtn}>
-          <Download size={20} color="#475569" />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.statsContainer}>
-        <View style={[styles.statCard, { borderLeftColor: '#4F46E5', borderLeftWidth: 4 }]}>
-          <Text style={styles.statTitle}>Total Staff</Text>
-          <Text style={styles.statValue}>{totalEmployees}</Text>
-          <Text style={styles.statTrend}>System wide</Text>
-        </View>
-        <View style={[styles.statCard, { borderLeftColor: '#10B981', borderLeftWidth: 4 }]}>
-          <Text style={styles.statTitle}>Active</Text>
-          <Text style={[styles.statValue, { color: '#10B981' }]}>{activeCount}</Text>
-          <Text style={styles.statTrend}>
-            {totalEmployees > 0 ? ((activeCount / totalEmployees) * 100).toFixed(0) : 0}% Active
-          </Text>
-        </View>
-        <View style={[styles.statCard, { borderLeftColor: '#F59E0B', borderLeftWidth: 4 }]}>
-          <Text style={styles.statTitle}>Admins</Text>
-          <Text style={[styles.statValue, { color: '#F59E0B' }]}>{adminCount}</Text>
-          <Text style={styles.statTrend}>System roles</Text>
-        </View>
-      </ScrollView>
-
-      {/* Tab Switcher */}
-      <View style={styles.tabContainer}>
-        <TouchableOpacity 
-          style={[styles.tabButton, activeTab === 'ADMINS' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('ADMINS')}
-        >
-          <ShieldCheck size={18} color={activeTab === 'ADMINS' ? '#4F46E5' : '#64748B'} />
-          <Text style={[styles.tabText, activeTab === 'ADMINS' && styles.tabTextActive]}>Admins</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tabButton, activeTab === 'EMPLOYEES' && styles.tabButtonActive]}
-          onPress={() => setActiveTab('EMPLOYEES')}
-        >
-          <User size={18} color={activeTab === 'EMPLOYEES' ? '#4F46E5' : '#64748B'} />
-          <Text style={[styles.tabText, activeTab === 'EMPLOYEES' && styles.tabTextActive]}>Employees</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+  const renderHeader = () => null;
 
   const renderEmployee = ({ item: emp }) => (
     <View style={styles.employeeCard}>
@@ -228,6 +154,18 @@ export default function EmployeeDirectoryScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
+      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.pageHeader}>
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
+            <ArrowLeft size={24} color="#0F172A" />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.pageTitle}>Directory</Text>
+            <Text style={styles.pageSubtitle}>Browse team members</Text>
+          </View>
+        </View>
+      </LinearGradient>
+
       <FlatList
         data={filteredEmployees}
         keyExtractor={item => item.id.toString()}
@@ -262,14 +200,23 @@ const styles = StyleSheet.create({
     paddingBottom: 24,
   },
   headerContainer: { backgroundColor: '#FFF', paddingBottom: 16, marginBottom: 8 },
-  pageHeader: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  headerTextContainer: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  pageHeader: { 
+    padding: 24, 
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
+  },
+  headerTop: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  headerTextContainer: { flex: 1 },
   pageTitle: { fontSize: 28, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
   pageSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
   addButton: { borderRadius: 20, overflow: 'hidden', shadowColor: '#4338CA', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 6 },
   addButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
-  
+
   searchRow: {
     flexDirection: 'row',
     padding: 24,
@@ -286,7 +233,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9',
     shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
   },
-  
+
   statsContainer: {
     flexDirection: 'row',
     paddingHorizontal: 24,
@@ -304,7 +251,7 @@ const styles = StyleSheet.create({
   statTitle: { fontSize: 13, color: '#64748B', fontWeight: '600', marginBottom: 8 },
   statValue: { fontSize: 24, color: '#0F172A', fontWeight: '800', marginBottom: 4 },
   statTrend: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
-  
+
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: '#EEF2FF',
@@ -385,3 +332,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   }
 });
+

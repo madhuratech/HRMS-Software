@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
-import { Calendar, Plus, X, Clock, CalendarDays, CheckCircle } from 'lucide-react-native';
+import { Calendar, Plus, X, Clock, CalendarDays, CheckCircle, ArrowLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
 
-export default function LeaveApplicationsScreen() {
+export default function LeaveApplicationsScreen({ navigation }) {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [modalVisible, setModalVisible] = useState(false);
   const [empId, setEmpId] = useState('');
   const [leaveTypeId, setLeaveTypeId] = useState('');
@@ -100,10 +100,15 @@ export default function LeaveApplicationsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Leave Applications</Text>
-          <Text style={styles.headerSubtitle}>View and manage leave requests</Text>
+      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
+            <ArrowLeft size={24} color="#0F172A" />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Leave Applications</Text>
+            <Text style={styles.headerSubtitle}>View and manage time off</Text>
+          </View>
         </View>
         <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
           <LinearGradient colors={['#3B82F6', '#2563EB']} style={styles.gradientBtn}>
@@ -111,7 +116,7 @@ export default function LeaveApplicationsScreen() {
             <Text style={styles.addButtonText}>Apply</Text>
           </LinearGradient>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       {loading ? (
         <ActivityIndicator size="large" color="#3B82F6" style={{ marginTop: 40 }} />
@@ -145,7 +150,7 @@ export default function LeaveApplicationsScreen() {
               <TextInput style={styles.modalInput} placeholder="e.g. 1" value={empId} onChangeText={setEmpId} keyboardType="numeric" />
               <Text style={styles.inputLabel}>Leave Type ID</Text>
               <TextInput style={styles.modalInput} placeholder="1 (Sick), 2 (Casual)" value={leaveTypeId} onChangeText={setLeaveTypeId} keyboardType="numeric" />
-              
+
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.inputLabel}>Start Date</Text>
@@ -156,10 +161,10 @@ export default function LeaveApplicationsScreen() {
                   <TextInput style={styles.modalInput} placeholder="YYYY-MM-DD" value={endDate} onChangeText={setEndDate} />
                 </View>
               </View>
-              
+
               <Text style={styles.inputLabel}>Reason</Text>
               <TextInput style={[styles.modalInput, { height: 80, textAlignVertical: 'top' }]} placeholder="Sick, Vacation..." value={reason} onChangeText={setReason} multiline />
-              
+
               <TouchableOpacity style={[styles.submitButton, submitting && { opacity: 0.7 }]} onPress={handleApply} disabled={submitting}>
                 <Text style={styles.submitButtonText}>{submitting ? 'Submitting...' : 'Submit Application'}</Text>
               </TouchableOpacity>
@@ -173,7 +178,8 @@ export default function LeaveApplicationsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { padding: 20, backgroundColor: '#FFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  header: { padding: 20, paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  headerTextContainer: { flex: 1 },
   headerTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
   headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
   addButton: { borderRadius: 10, overflow: 'hidden', shadowColor: '#3B82F6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },

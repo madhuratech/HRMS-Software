@@ -11,7 +11,7 @@ export default function DepartmentsScreen() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
-  
+
   // Form State
   const [newDeptName, setNewDeptName] = useState('');
   const [newDeptManagerId, setNewDeptManagerId] = useState('');
@@ -62,7 +62,7 @@ export default function DepartmentsScreen() {
     <View style={styles.container}>
       <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
             <ArrowLeft size={24} color="#0F172A" />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
@@ -173,7 +173,7 @@ export default function DepartmentsScreen() {
                   onChangeText={setNewDeptManagerId}
                 />
               </View>
-              
+
               <TouchableOpacity 
                 style={[styles.submitButton, submitting && { opacity: 0.7 }]} 
                 onPress={handleAddDepartment}
@@ -193,7 +193,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: { 
     padding: 24,
-    paddingTop: 48, 
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
     flexDirection: 'row', 
@@ -240,7 +239,7 @@ const styles = StyleSheet.create({
   avatarText: { color: '#4338CA', fontWeight: '800', fontSize: 16 },
   infoLabel: { fontSize: 13, color: '#64748B', fontWeight: '600', marginBottom: 4 },
   infoValue: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
-  
+
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 50 },

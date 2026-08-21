@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Modal } from 'react-native';
-import { Search, Plus, DoorOpen, X, AlertCircle } from 'lucide-react-native';
+import { Search, Plus, DoorOpen, X, AlertCircle, ArrowLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 import apiClient from '../../api/client';
 
 export default function ExitManagementScreen() {
+  const navigation = useNavigation();
   const [exits, setExits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [empId, setEmpId] = useState('');
@@ -119,14 +121,17 @@ export default function ExitManagementScreen() {
     <View style={styles.container}>
       <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.pageHeader}>
         <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
+            <ArrowLeft size={24} color="#0F172A" />
+          </TouchableOpacity>
           <View style={styles.headerTextContainer}>
-            <Text style={styles.pageTitle}>Exit Management</Text>
-            <Text style={styles.pageSubtitle}>Resignations & terminations process</Text>
+            <Text style={styles.pageTitle}>Exit Records</Text>
+            <Text style={styles.pageSubtitle}>Manage employee departures</Text>
           </View>
           <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
-            <LinearGradient colors={['#EF4444', '#DC2626']} style={styles.gradientBtn}>
-              <Plus size={18} color="#FFF" />
-              <Text style={styles.addButtonText}>Initiate Exit</Text>
+            <LinearGradient colors={['#EF4444', '#B91C1C']} style={styles.gradientBtn}>
+              <Plus size={20} color="#FFF" />
+              <Text style={styles.addButtonText}>New</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -209,7 +214,7 @@ export default function ExitManagementScreen() {
                 onChangeText={setReason}
                 multiline
               />
-              
+
               <TouchableOpacity 
                 style={[styles.submitButton, submitting && { opacity: 0.7 }]} 
                 onPress={handleAddExit}
@@ -228,7 +233,7 @@ export default function ExitManagementScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   pageHeader: { 
-    paddingTop: 24, paddingHorizontal: 24, paddingBottom: 16,
+    paddingHorizontal: 24, paddingBottom: 16,
     borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
   },
@@ -236,11 +241,11 @@ const styles = StyleSheet.create({
   headerTextContainer: { flex: 1 },
   pageTitle: { fontSize: 28, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
   pageSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
-  
+
   addButton: { borderRadius: 16, overflow: 'hidden', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 6 },
   addButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
-  
+
   toolbar: { padding: 24, paddingBottom: 16 },
   searchBox: { 
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', 
@@ -248,10 +253,10 @@ const styles = StyleSheet.create({
     shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
   },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: '#1E293B', fontWeight: '500' },
-  
+
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { paddingHorizontal: 24, paddingBottom: 24 },
-  
+
   card: { 
     backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16,
     borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 6 }, 
@@ -274,7 +279,7 @@ const styles = StyleSheet.create({
   reasonText: { fontSize: 14, color: '#475569', flex: 1, lineHeight: 20, fontWeight: '500' },
   emptyBox: { padding: 40, alignItems: 'center' },
   emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
-  
+
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 40 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },

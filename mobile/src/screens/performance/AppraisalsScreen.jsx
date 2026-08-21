@@ -8,7 +8,7 @@ export default function AppraisalsScreen() {
   const [appraisals, setAppraisals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [employeeId, setEmployeeId] = useState('');
@@ -82,7 +82,7 @@ export default function AppraisalsScreen() {
           <Text style={[styles.badgeText, { color: getStatusColor(item.status) }]}>{item.status.toUpperCase()}</Text>
         </View>
       </View>
-      
+
       <View style={styles.ratingContainer}>
         <Text style={styles.ratingValue}>{item.rating}</Text>
         <Text style={styles.ratingMax}>/ 5.0</Text>
@@ -94,9 +94,9 @@ export default function AppraisalsScreen() {
           <Text style={styles.feedbackText} numberOfLines={2}>{item.feedback}</Text>
         </View>
       ) : null}
-      
+
       <View style={styles.divider} />
-      
+
       <View style={styles.footer}>
         <User size={14} color="#64748B" style={{marginRight: 6}} />
         <Text style={styles.footerText}>{item.first_name ? `${item.first_name} ${item.last_name}` : `Emp #${item.employee_id}`}</Text>

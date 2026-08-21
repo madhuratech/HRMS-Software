@@ -5,7 +5,7 @@ const db = require("../config/database");
 // Get all tasks
 router.get("/", async (req, res) => {
     try {
-        const [rows] = await db.query(`
+        const [rows] = await db.promise().query(`
             SELECT 
                 t.*,
                 e.name as assignee_name
@@ -23,7 +23,7 @@ router.get("/", async (req, res) => {
 // Get task by ID
 router.get("/:id", async (req, res) => {
     try {
-        const [rows] = await db.query(`
+        const [rows] = await db.promise().query(`
             SELECT 
                 t.*,
                 e.name as assignee_name
@@ -43,7 +43,7 @@ router.get("/:id", async (req, res) => {
 router.post("/", async (req, res) => {
     try {
         const { title, description, status, priority, assignee_id, due_date } = req.body;
-        const [result] = await db.query(`
+        const [result] = await db.promise().query(`
             INSERT INTO task_board (title, description, status, priority, assignee_id, due_date)
             VALUES (?, ?, ?, ?, ?, ?)
         `, [title, description, status || 'todo', priority || 'medium', assignee_id, due_date]);
@@ -58,7 +58,7 @@ router.post("/", async (req, res) => {
 router.put("/:id/status", async (req, res) => {
     try {
         const { status } = req.body;
-        await db.query(`UPDATE task_board SET status = ? WHERE id = ?`, [status, req.params.id]);
+        await db.promise().query(`UPDATE task_board SET status = ? WHERE id = ?`, [status, req.params.id]);
         res.json({ message: "Task status updated" });
     } catch (err) {
         console.error(err);

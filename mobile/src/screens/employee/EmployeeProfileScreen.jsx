@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Modal
 } from 'react-native';
 import { 
-  Edit2, Mail, Phone, MapPin, Camera, Trash2, FileText, Briefcase, IndianRupee, ShieldCheck
+  Edit2, Mail, Phone, MapPin, Camera, Trash2, FileText, Briefcase, IndianRupee, ShieldCheck, ArrowLeft
 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SIZES, FONTS } from '../../components/ui/theme';
@@ -25,7 +25,7 @@ export default function EmployeeProfileScreen({ route, navigation }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState([]);
-  
+
   // Editing state (simplified for Phase 1 demo)
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({});
@@ -37,7 +37,7 @@ export default function EmployeeProfileScreen({ route, navigation }) {
         apiClient.get(`/employees/${empId}/profile`),
         apiClient.get(`/employees/${empId}/documents`).catch(() => ({ data: [] }))
       ]);
-      
+
       setProfile(profileRes.data);
       setDocuments(Array.isArray(docsRes.data) ? docsRes.data : []);
     } catch (err) {
@@ -136,7 +136,7 @@ export default function EmployeeProfileScreen({ route, navigation }) {
                 </View>
               </View>
             </HRMSCard>
-            
+
             <HRMSCard style={styles.sectionCard}>
               <Text style={styles.sectionTitle}>Contact Information</Text>
               <View style={styles.contactRow}>
@@ -197,7 +197,7 @@ export default function EmployeeProfileScreen({ route, navigation }) {
               <Text style={styles.label}>Monthly Gross CTC</Text>
               <Text style={styles.salaryValue}>INR {profile.salary ? parseFloat(profile.salary).toLocaleString() : '0'}</Text>
             </HRMSCard>
-            
+
             <HRMSCard style={styles.sectionCard}>
               <Text style={styles.sectionTitle}>Bank Information</Text>
               <View style={styles.gridRow}>
@@ -261,31 +261,37 @@ export default function EmployeeProfileScreen({ route, navigation }) {
   };
 
   return (
-    <ScrollView style={styles.container}>
+    <View style={styles.container}>
       <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.pageHeader}>
         <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 16, padding: 4 }}>
+            <ArrowLeft size={24} color="#0F172A" />
+          </TouchableOpacity>
+          <View style={styles.headerDetails}>
+            <Text style={styles.pageTitle}>Employee Profile</Text>
+            <Text style={styles.pageSubtitle}>{profile.name}</Text>
+          </View>
+        </View>
+      </LinearGradient>
+
+      <ScrollView style={{ flex: 1 }}>
+        <View style={styles.profileHeaderSection}>
           <View style={styles.avatarContainer}>
-            <HRMSAvatar name={profile.name} photoUrl={profile.profilePhoto} size={90} />
+            <HRMSAvatar name={profile.name} imageUrl={profile.profileImage} size={80} />
             <TouchableOpacity style={styles.cameraButton}>
               <Camera size={14} color="#FFF" />
             </TouchableOpacity>
           </View>
-          <View style={styles.headerDetails}>
+          <View style={styles.profileBasicInfo}>
             <View style={styles.nameRow}>
               <Text style={styles.name}>{profile.name}</Text>
               <View style={[styles.badge, { backgroundColor: profile.status === 'Active' ? '#ECFDF5' : '#FEF2F2' }]}>
-                <Text style={[styles.badgeText, { color: profile.status === 'Active' ? '#10B981' : '#EF4444' }]}>{profile.status || 'Active'}</Text>
+                <Text style={[styles.badgeText, { color: profile.status === 'Active' ? '#10B981' : '#EF4444' }]}>
+                  {profile.status}
+                </Text>
               </View>
             </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
-              <Briefcase size={14} color="#64748B" style={{ marginRight: 6 }} />
-              <Text style={styles.subtext}>{profile.roleName || 'Staff'} • EMP00{profile.id}</Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 12 }}>
-              <Mail size={14} color="#64748B" style={{ marginRight: 6 }} />
-              <Text style={styles.subtext}>{profile.email}</Text>
-            </View>
-            
+            <Text style={styles.subtext}>{profile.roleName} • {profile.deptName}</Text>
             <TouchableOpacity style={styles.editButton} onPress={handleEditClick}>
               <Edit2 size={14} color="#3B82F6" />
               <Text style={styles.editButtonText}>Edit Profile</Text>
@@ -294,10 +300,10 @@ export default function EmployeeProfileScreen({ route, navigation }) {
         </View>
 
         <View style={styles.tabsContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16 }}>
             {TABS.map(tab => (
-              <TouchableOpacity 
-                key={tab} 
+              <TouchableOpacity
+                key={tab}
                 style={[styles.tab, activeTab === tab && styles.activeTab]}
                 onPress={() => setActiveTab(tab)}
               >
@@ -308,11 +314,10 @@ export default function EmployeeProfileScreen({ route, navigation }) {
             ))}
           </ScrollView>
         </View>
-      </LinearGradient>
 
-      <View style={styles.contentArea}>
-        {renderTabContent()}
-      </View>
+        <View style={styles.contentArea}>
+          {renderTabContent()}
+        </View>
 
       <Modal visible={isEditing} animationType="slide" transparent={true}>
         <View style={styles.modalOverlay}>
@@ -342,7 +347,8 @@ export default function EmployeeProfileScreen({ route, navigation }) {
           </HRMSCard>
         </View>
       </Modal>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
@@ -363,7 +369,6 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   pageHeader: {
-    paddingTop: 24,
     paddingHorizontal: 24,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
@@ -372,12 +377,39 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
-    marginBottom: 20
+    marginBottom: 0
+  },
+  profileHeaderSection: {
+    flexDirection: 'row',
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9'
+  },
+  profileBasicInfo: {
+    flex: 1,
   },
   headerTop: {
     flexDirection: 'row',
-    marginBottom: 20,
+    paddingVertical: 16,
     alignItems: 'center'
+  },
+  headerDetails: {
+    flex: 1,
+  },
+  pageTitle: { 
+    fontSize: 28, 
+    fontWeight: '900', 
+    color: '#0F172A', 
+    letterSpacing: -1 
+  },
+  pageSubtitle: { 
+    fontSize: 14, 
+    color: '#64748B', 
+    marginTop: 4, 
+    fontWeight: '500' 
   },
   avatarContainer: {
     position: 'relative',

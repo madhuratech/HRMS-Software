@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Modal, ToastAndroid, Platform } from 'react-native';
 import { Search, Plus, MapPin, X, ArrowRightLeft, ArrowLeft } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 import apiClient from '../../api/client';
 
 export default function TransfersScreen() {
@@ -10,7 +10,7 @@ export default function TransfersScreen() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const navigation = useNavigation();
-  
+
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [empId, setEmpId] = useState('');
@@ -55,9 +55,9 @@ export default function TransfersScreen() {
         newValueName: newValue, 
         effectiveDate: effectiveDate || new Date().toISOString().split('T')[0]
       });
-      
+
       showToast('Transfer Requested Successfully!');
-      
+
       setEmpId('');
       setNewValue('');
       setEffectiveDate('');
@@ -117,19 +117,17 @@ export default function TransfersScreen() {
     <View style={styles.container}>
       <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.pageHeader}>
         <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
+            <ArrowLeft size={24} color="#0F172A" />
+          </TouchableOpacity>
           <View style={styles.headerTextContainer}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 16 }}>
-              <ArrowLeft size={24} color="#0F172A" />
-            </TouchableOpacity>
-            <View>
-              <Text style={styles.pageTitle}>Transfers</Text>
-              <Text style={styles.pageSubtitle}>Manage department & location changes</Text>
-            </View>
+            <Text style={styles.pageTitle}>Transfers</Text>
+            <Text style={styles.pageSubtitle}>Manage employee transfers</Text>
           </View>
           <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
             <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.gradientBtn}>
               <Plus size={18} color="#FFF" />
-              <Text style={styles.addButtonText}>Transfer</Text>
+              <Text style={styles.addButtonText}>Request</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -211,7 +209,7 @@ export default function TransfersScreen() {
                 value={effectiveDate}
                 onChangeText={setEffectiveDate}
               />
-              
+
               <TouchableOpacity 
                 style={[styles.submitButton, submitting && { opacity: 0.7 }]} 
                 onPress={handleAddTransfer}
@@ -234,11 +232,11 @@ const styles = StyleSheet.create({
   headerTextContainer: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   pageTitle: { fontSize: 28, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
   pageSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
-  
+
   addButton: { borderRadius: 16, overflow: 'hidden', shadowColor: '#8B5CF6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 6 },
   addButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
-  
+
   toolbar: { padding: 24, paddingBottom: 16 },
   searchBox: { 
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', 
@@ -246,10 +244,10 @@ const styles = StyleSheet.create({
     shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
   },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: '#1E293B', fontWeight: '500' },
-  
+
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { paddingHorizontal: 24, paddingBottom: 24 },
-  
+
   card: { 
     backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16,
     borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 6 }, 
@@ -269,7 +267,7 @@ const styles = StyleSheet.create({
   reasonText: { fontSize: 15, color: '#1E293B', fontWeight: '600' },
   emptyBox: { padding: 40, alignItems: 'center' },
   emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
-  
+
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 40 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },

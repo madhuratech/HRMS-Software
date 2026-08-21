@@ -29,9 +29,9 @@ import { useAuth } from '../../context/AuthContext';
 
 export default function LoginScreen({ navigation }) {
   const { login, getRegisteredUsers } = useAuth();
-  
+
   const [activeTab, setActiveTab] = useState('SUPER_ADMIN'); // 'SUPER_ADMIN', 'ADMIN' or 'EMPLOYEE'
-  
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [employeeId, setEmployeeId] = useState(''); // Only used for EMPLOYEE tab
@@ -74,7 +74,7 @@ export default function LoginScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        
+
         {/* Top Header Section */}
         <View style={styles.headerSection}>
           <View style={styles.headerContent}>

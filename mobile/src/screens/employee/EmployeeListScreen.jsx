@@ -52,7 +52,7 @@ export default function EmployeeListScreen() {
     const now = new Date();
     let years = now.getFullYear() - start.getFullYear();
     let months = now.getMonth() - start.getMonth();
-    
+
     if (months < 0) {
       years--;
       months += 12;
@@ -81,7 +81,7 @@ export default function EmployeeListScreen() {
       <View style={styles.itemDetails}>
         <Text style={styles.itemName}>{item.name}</Text>
         <Text style={styles.itemRole}>{item.role_name || 'Employee'}</Text>
-        
+
         <View style={styles.infoRow}>
           <Calendar size={12} color="#94A3B8" />
           <Text style={styles.itemInfoText}>
@@ -117,23 +117,23 @@ export default function EmployeeListScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTextContainer}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 16 }}>
+      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
             <ArrowLeft size={24} color="#0F172A" />
           </TouchableOpacity>
-          <View>
-            <Text style={styles.headerTitle}>Employee List</Text>
-            <Text style={styles.headerSubtitle}>{employees.length} total employees</Text>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Employees</Text>
+            <Text style={styles.headerSubtitle}>Manage all employee profiles</Text>
           </View>
         </View>
         <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('AddEmployee')}>
-          <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.gradientBtn}>
+          <LinearGradient colors={['#4F46E5', '#4338CA']} style={styles.gradientBtn}>
             <Plus size={18} color="#FFF" />
             <Text style={styles.addButtonText}>Add New</Text>
           </LinearGradient>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       <View style={styles.toolbar}>
         <View style={styles.searchBox}>
@@ -193,17 +193,22 @@ export default function EmployeeListScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: { 
-    padding: 24, backgroundColor: '#FFF', flexDirection: 'row', 
-    justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    padding: 24, 
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
   },
-  headerTextContainer: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  headerTop: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  headerTextContainer: { flex: 1 },
   headerTitle: { fontSize: 28, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
   headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
   addButton: { borderRadius: 16, overflow: 'hidden', shadowColor: '#4338CA', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 6 },
   addButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
-  
+
   toolbar: { paddingHorizontal: 24, paddingVertical: 16, flexDirection: 'row', gap: 12 },
   searchBox: { 
     flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', 
@@ -215,10 +220,10 @@ const styles = StyleSheet.create({
     width: 52, height: 52, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9',
     alignItems: 'center', justifyContent: 'center', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
   },
-  
+
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { paddingHorizontal: 24, paddingBottom: 24 },
-  
+
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -280,11 +285,11 @@ const styles = StyleSheet.create({
   itemRole: { fontSize: 14, color: '#475569', fontWeight: '600', marginBottom: 6 },
   infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2 },
   itemInfoText: { fontSize: 12, color: '#64748B', fontWeight: '500', marginLeft: 6 },
-  
+
   statusBox: { alignItems: 'flex-end', justifyContent: 'center' },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
   statusText: { fontSize: 11, fontWeight: '700' },
-  
+
   emptyBox: { padding: 40, alignItems: 'center' },
   emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
 });

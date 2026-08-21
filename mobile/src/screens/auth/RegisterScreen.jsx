@@ -42,11 +42,11 @@ const ADMIN_ROLES = [
 
 export default function RegisterScreen({ navigation }) {
   const { login, registerUser } = useAuth();
-  
+
   const [step, setStep] = useState(1);
   const [userType, setUserType] = useState('ADMIN'); // 'ADMIN' or 'EMPLOYEE'
   const [adminType, setAdminType] = useState('ADMIN'); // 'SUPER_ADMIN' or 'ADMIN'
-  
+
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -97,14 +97,14 @@ export default function RegisterScreen({ navigation }) {
       Alert.alert('Validation Error', 'Passwords do not match.');
       return;
     }
-    
+
     try {
       if (userType === 'ADMIN') {
         const newId = `EMP-${Math.floor(1000 + Math.random() * 9000)}`;
         const assignedRole = adminType === 'SUPER_ADMIN' 
           ? 'SUPER_ADMIN' 
           : (formData.role === 'OTHER' ? formData.customRole.trim().toUpperCase().replace(/ /g, '_') : formData.role);
-        
+
         const newAdminUser = {
           type: 'ADMIN',
           role: assignedRole || 'HR_MANAGER',
@@ -144,7 +144,6 @@ export default function RegisterScreen({ navigation }) {
       login(registeredAdmin);
     }
   };
-
 
   const renderStep1 = () => (
     <>
@@ -358,7 +357,7 @@ export default function RegisterScreen({ navigation }) {
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        
+
         {/* Top Header Section */}
         <View style={styles.headerSection}>
           <View style={styles.headerContent}>
@@ -398,7 +397,7 @@ export default function RegisterScreen({ navigation }) {
               </TouchableOpacity>
             </View>
           )}
-          
+
           <Text style={styles.footerText}>© 2026 MADHURA HRMS. All rights reserved.</Text>
         </View>
 
@@ -415,7 +414,7 @@ export default function RegisterScreen({ navigation }) {
             <Text style={styles.modalDesc}>
               Your admin account has been successfully created. Here is your auto-generated Employee ID, which you can use for internal systems:
             </Text>
-            
+
             <View style={styles.empIdBox}>
               <Text style={styles.empIdText}>{generatedEmpId}</Text>
             </View>

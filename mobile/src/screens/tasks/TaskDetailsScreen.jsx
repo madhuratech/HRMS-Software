@@ -74,9 +74,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBack} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={24} color="#0F172A" />
-        </TouchableOpacity>
+
         <Text style={styles.headerTitle}>Task Details</Text>
         <View style={{ width: 24 }} />
       </View>
@@ -86,7 +84,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
           <View style={styles.titleRow}>
             <Text style={styles.taskTitle}>{task.title}</Text>
           </View>
-          
+
           <View style={styles.badgesRow}>
             <View style={[styles.badge, { backgroundColor: `${getPriorityColor(task.priority)}15` }]}>
               <Text style={[styles.badgeText, { color: getPriorityColor(task.priority) }]}>
@@ -156,7 +154,7 @@ export default function TaskDetailsScreen({ route, navigation }) {
             <Text style={[styles.statusBtnText, task.status === 'completed' && styles.statusBtnTextActive]}>Completed</Text>
           </TouchableOpacity>
         </View>
-        
+
         <View style={{ height: 40 }} />
       </ScrollView>
     </View>

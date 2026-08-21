@@ -8,7 +8,7 @@ export default function GoalsScreen() {
   const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [employeeId, setEmployeeId] = useState('');
@@ -85,9 +85,9 @@ export default function GoalsScreen() {
           </Text>
         </View>
       </View>
-      
+
       <Text style={styles.descText} numberOfLines={2}>{item.description}</Text>
-      
+
       <View style={styles.progressContainer}>
         <View style={styles.progressHeader}>
           <Text style={styles.progressLabel}>Progress</Text>
@@ -97,9 +97,9 @@ export default function GoalsScreen() {
           <View style={[styles.progressBarFill, { width: `${item.progress}%`, backgroundColor: getStatusColor(item.status) }]} />
         </View>
       </View>
-      
+
       <View style={styles.divider} />
-      
+
       <View style={styles.footer}>
         <View style={styles.footerItem}>
           <User size={14} color="#64748B" style={{marginRight: 6}} />

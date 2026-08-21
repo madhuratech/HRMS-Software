@@ -10,11 +10,6 @@ router.get("/departments", (req, res) => {
     SELECT 
       d.id,
       d.dept_name as name,
-<<<<<<< HEAD
-      d.dept_name as code,
-      e.name as headName,
-      d.manager_id
-=======
       COALESCE(d.code, CONCAT('DEPT-', LPAD(d.id, 2, '0'))) as code,
       COALESCE(e.name, 'Unassigned') as headName,
       IF(e.name IS NOT NULL, 'Department Manager', 'Unassigned') as headRole,
@@ -30,7 +25,6 @@ router.get("/departments", (req, res) => {
       d.location,
       d.parentDepartment,
       d.description
->>>>>>> c2c5811379209cb22da6cd3f0d161d2ff07dfb76
     FROM departments d
     LEFT JOIN employees e ON d.manager_id = e.id AND e.status = 'Active'
     ORDER BY d.id ASC
@@ -82,12 +76,6 @@ router.delete("/departments/:id", (req, res) => {
 router.get("/designations", (req, res) => {
   const sql = `
     SELECT 
-<<<<<<< HEAD
-      id,
-      role_name as name,
-      role_code as code
-    FROM designations
-=======
       des.id,
       des.role_name as name,
       des.role_code as code,
@@ -101,7 +89,6 @@ router.get("/designations", (req, res) => {
       des.description
     FROM designations des
     ORDER BY des.id ASC
->>>>>>> c2c5811379209cb22da6cd3f0d161d2ff07dfb76
   `;
   db.query(sql, (err, rows) => {
     if (err) return res.status(500).json(err);
@@ -509,48 +496,14 @@ router.post("/export-pdf", (req, res) => {
 });
 
 /**
-<<<<<<< HEAD
- * GET ALL TEAMS
-=======
  * TEAMS CRUD
->>>>>>> c2c5811379209cb22da6cd3f0d161d2ff07dfb76
  */
 router.get("/teams", (req, res) => {
   const sql = `
     SELECT 
       t.id,
       t.name,
-<<<<<<< HEAD
-      e.name as lead,
-      t.description,
-      (SELECT COUNT(*) FROM employees WHERE team_id = t.id) as members
-    FROM teams t
-    LEFT JOIN employees e ON t.team_lead_id = e.id
-  `;
-  db.query(sql, (err, rows) => {
-    // If employees table doesn't have team_id yet, we just return 0 members
-    if (err && err.code === 'ER_BAD_FIELD_ERROR') {
-      const fallbackSql = `
-        SELECT 
-          t.id,
-          t.name,
-          e.name as lead,
-          t.description,
-          0 as members
-        FROM teams t
-        LEFT JOIN employees e ON t.team_lead_id = e.id
-      `;
-      db.query(fallbackSql, (fallbackErr, fallbackRows) => {
-        if (fallbackErr) return res.status(500).json(fallbackErr);
-        return res.json(fallbackRows);
-      });
-    } else {
-      if (err) return res.status(500).json(err);
-      res.json(rows);
-    }
-  });
-});
-=======
+
       COALESCE(t.code, CONCAT('TM-', UPPER(SUBSTRING(t.name, 1, 3)))) as code,
       COALESCE(d.dept_name, t.department, 'General') as department,
       COALESCE(tl.name, NULLIF(t.teamLead, ''), 'Unassigned') as teamLead,
@@ -760,7 +713,6 @@ router.delete("/shifts/:id", (req, res) => {
 });
 
 module.exports = router;
->>>>>>> c2c5811379209cb22da6cd3f0d161d2ff07dfb76
 
 /**
  * CREATE TEAM

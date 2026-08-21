@@ -8,7 +8,7 @@ export default function FeedbackScreen() {
   const [feedbacks, setFeedbacks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [employeeId, setEmployeeId] = useState('');
@@ -76,11 +76,11 @@ export default function FeedbackScreen() {
             </Text>
           </View>
         </View>
-        
+
         <Text style={styles.feedbackText}>{item.feedback_text}</Text>
-        
+
         <View style={styles.divider} />
-        
+
         <View style={styles.footer}>
           <User size={14} color="#64748B" style={{marginRight: 6}} />
           <Text style={styles.footerText}>From: {item.prov_first_name ? `${item.prov_first_name} ${item.prov_last_name}` : `Emp #${item.provider_id}`}</Text>
@@ -149,7 +149,7 @@ export default function FeedbackScreen() {
             <View style={styles.modalBody}>
               <TextInput style={styles.modalInput} placeholder="To Employee ID (e.g. 1)" placeholderTextColor="#94A3B8" value={employeeId} onChangeText={setEmployeeId} keyboardType="numeric" />
               <TextInput style={styles.modalInput} placeholder="From Provider ID (e.g. 2)" placeholderTextColor="#94A3B8" value={providerId} onChangeText={setProviderId} keyboardType="numeric" />
-              
+
               <View style={styles.typeSelector}>
                 <TouchableOpacity 
                   style={[styles.typeBtn, feedbackType === 'positive' && styles.typeBtnActivePositive]} 

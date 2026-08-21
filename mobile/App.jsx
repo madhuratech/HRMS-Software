@@ -4,6 +4,8 @@ import DrawerNavigator from './src/navigation/DrawerNavigator';
 import AuthNavigator from './src/navigation/AuthNavigator';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 function RootNavigator() {
   const { user } = useAuth();
   
@@ -16,8 +18,10 @@ function RootNavigator() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <RootNavigator />
-    </AuthProvider>
+    <SafeAreaProvider>
+      <AuthProvider>
+        <RootNavigator />
+      </AuthProvider>
+    </SafeAreaProvider>
   );
 }

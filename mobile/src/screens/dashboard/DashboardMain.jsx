@@ -6,7 +6,7 @@ import EmployeeDashboardScreen from './EmployeeDashboardScreen';
 
 export default function DashboardMain({ navigation }) {
   const { user } = useAuth();
-  
+
   if (user?.type === 'EMPLOYEE') {
     return <EmployeeDashboardScreen navigation={navigation} />;
   }

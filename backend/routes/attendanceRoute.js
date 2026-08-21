@@ -1,97 +1,4 @@
-<<<<<<< HEAD
-const express = require('express');
-const db = require('../config/database');
 
-const router = express.Router();
-
-// Get Daily Attendance
-router.get('/daily', async (req, res) => {
-  try {
-    const [rows] = await db.promise().query(`
-      SELECT a.*, e.name as employee_name, d.dept_name as department, des.role_name as designation 
-      FROM daily_attendance a
-      JOIN employees e ON a.employee_id = e.id
-      LEFT JOIN departments d ON e.department_id = d.id
-      LEFT JOIN designations des ON e.designation_id = des.id
-      ORDER BY a.date DESC
-    `);
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Mark Attendance
-router.post('/mark', async (req, res) => {
-  const { employeeId, date, punchIn, punchOut, status, workHours, workDone } = req.body;
-  try {
-    await db.promise().query(`
-      INSERT INTO daily_attendance (employee_id, date, punch_in, punch_out, status, work_hours, work_done) 
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-      ON DUPLICATE KEY UPDATE 
-      punch_out = VALUES(punch_out), status = VALUES(status), work_hours = VALUES(work_hours), work_done = VALUES(work_done)
-    `, [employeeId, date, punchIn, punchOut, status, workHours, workDone || null]);
-    res.json({ message: 'Attendance marked successfully' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Regularization Requests
-router.get('/regularization', async (req, res) => {
-  try {
-    const [rows] = await db.promise().query(`
-      SELECT r.*, e.name as employee_name 
-      FROM regularization_requests r
-      JOIN employees e ON r.employee_id = e.id
-      ORDER BY r.created_at DESC
-    `);
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.post('/regularization', async (req, res) => {
-  const { employeeId, date, requestedPunchIn, requestedPunchOut, reason } = req.body;
-  try {
-    await db.promise().query(`
-      INSERT INTO regularization_requests (employee_id, date, requested_punch_in, requested_punch_out, reason)
-      VALUES (?, ?, ?, ?, ?)
-    `, [employeeId, date, requestedPunchIn, requestedPunchOut, reason]);
-    res.json({ message: 'Regularization requested successfully' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Shift Roster
-router.get('/roster', async (req, res) => {
-  try {
-    const [rows] = await db.query(`
-      SELECT sr.*, e.name as employee_name, sm.shift_name, sm.start_time, sm.end_time
-      FROM shift_roster sr
-      JOIN employees e ON sr.employee_id = e.id
-      JOIN shift_management sm ON sr.shift_id = sm.id
-    `);
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-router.post('/roster', async (req, res) => {
-  const { employeeId, shiftId, startDate, endDate } = req.body;
-  try {
-    await db.query(`
-      INSERT INTO shift_roster (employee_id, shift_id, start_date, end_date)
-      VALUES (?, ?, ?, ?)
-    `, [employeeId, shiftId, startDate, endDate]);
-    res.json({ message: 'Shift roster updated' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-=======
 const express = require("express");
 const router = express.Router();
 const attendanceController = require("../controllers/attendanceController");
@@ -99,7 +6,26 @@ const { authenticateJWT } = require("../middlewares/auth");
 
 // Standard attendance endpoints
 router.post("/punch", authenticateJWT, attendanceController.punch);
-router.get("/today-status", authenticateJWT, attendanceController.getTodayStatus);
+router.get("/today-status", authenticateJWT, (req, res) => {
+  const db = require("../config/database");
+  const employeeId = req.user ? req.user.id : null;
+  if (!employeeId) return res.status(401).json({ message: "Unauthorized" });
+  const today = new Date().toISOString().split('T')[0];
+  const sql = `
+    SELECT
+      MIN(CASE WHEN punch_type = 'IN' THEN punch_time END) as punch_in,
+      MAX(CASE WHEN punch_type = 'OUT' THEN punch_time END) as punch_out,
+      MAX(CASE WHEN punch_type = 'OUT' THEN work_done END) as work_done,
+      MAX(CASE WHEN punch_type = 'IN' THEN latitude END) as check_in_lat,
+      MAX(CASE WHEN punch_type = 'IN' THEN longitude END) as check_in_lng
+    FROM attendance
+    WHERE employee_id = ? AND DATE(punch_time) = ?
+  `;
+  db.query(sql, [employeeId, today], (err, rows) => {
+    if (err) return res.status(500).json({ message: "Failed", error: err.message });
+    res.json(rows[0] || {});
+  });
+});
 router.get("/recent/:employee_id", authenticateJWT, attendanceController.getRecent);
 router.get("/daily", authenticateJWT, attendanceController.getDailyStats);
 router.get("/gps-feed", authenticateJWT, attendanceController.getGPSFeed);
@@ -129,9 +55,11 @@ router.get("/regularization", authenticateJWT, (req, res) => {
     SELECT 
       ar.*,
       COALESCE(e.name, ar.employee_name) as employee_name,
-      e.profile_photo as profile_photo
+      e.profile_photo as profile_photo,
+      r.name as role
     FROM attendance_regularizations ar
     LEFT JOIN employees e ON ar.employee_id = e.id
+    LEFT JOIN roles r ON e.role_id = r.id
   `;
   const params = [];
   if (status && status !== 'All') {
@@ -223,19 +151,24 @@ router.get("/late-arrivals", authenticateJWT, (req, res) => {
   const db = require("../config/database");
   const sql = `
     SELECT 
-      a.id,
+      g.id,
       e.name as employee,
       e.profile_photo as avatar,
-      DATE_FORMAT(a.date, '%b %d, %Y') as date,
-      '09:00 AM' as expected,
-      COALESCE(TIME_FORMAT(a.punch_in, '%h:%i %p'), '09:30 AM') as checkIn,
-      CONCAT('00h ', COALESCE(TIMESTAMPDIFF(MINUTE, '09:00:00', a.punch_in), 30), 'm') as delay,
-      COALESCE(a.notes, 'Traffic delay') as reason,
-      'Late' as status
-    FROM attendance a
-    JOIN employees e ON a.employee_id = e.id
-    ORDER BY a.id DESC
-    LIMIT 20
+      r.name as role,
+      g.punch_date as date,
+      '09:30 AM' as expected,
+      DATE_FORMAT(g.check_in_time, '%h:%i %p') as checkIn,
+      CONCAT(FLOOR(TIMESTAMPDIFF(MINUTE, CONCAT(g.punch_date, ' 09:30:00'), g.check_in_time) / 60), 'h ',
+             MOD(TIMESTAMPDIFF(MINUTE, CONCAT(g.punch_date, ' 09:30:00'), g.check_in_time), 60), 'm') as delay,
+      'Late Entry' as reason,
+      'Late' as status,
+      g.employee_id
+    FROM GPSAttendance g
+    JOIN employees e ON g.employee_id = e.id
+    LEFT JOIN roles r ON e.role_id = r.id
+    WHERE g.late_entry = 1
+    ORDER BY g.id DESC
+    LIMIT 50
   `;
   db.query(sql, (err, rows) => {
     if (err) return res.status(500).json(err);
@@ -250,8 +183,8 @@ router.get("/roster", authenticateJWT, (req, res) => {
     SELECT 
       e.id,
       e.name as employee,
-      e.profile_photo as avatar,
-      COALESCE(e.employee_code, CONCAT('EMP00', e.id)) as empId
+      NULL as avatar,
+      CONCAT('EMP00', e.id) as empId
     FROM employees e
     WHERE e.status = 'Active'
     LIMIT 10
@@ -276,7 +209,6 @@ router.get("/roster", authenticateJWT, (req, res) => {
     }));
     res.json(roster);
   });
->>>>>>> c2c5811379209cb22da6cd3f0d161d2ff07dfb76
 });
 
 module.exports = router;

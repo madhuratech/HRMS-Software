@@ -1,14 +1,16 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Modal, ScrollView } from 'react-native';
-import { Search, Plus, FileText, X, Download, Trash2, CheckCircle, Circle, Briefcase, GraduationCap } from 'lucide-react-native';
+import { Search, FileText, X, Download, Trash2, CheckCircle, Circle, Briefcase, GraduationCap, ArrowLeft, Plus } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 import apiClient from '../../api/client';
 
 export default function EmployeeDocumentsScreen({ route }) {
+  const navigation = useNavigation();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [docType, setDocType] = useState('Contract');
@@ -133,41 +135,44 @@ export default function EmployeeDocumentsScreen({ route }) {
     <View style={styles.container}>
       <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.pageHeader}>
         <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
+            <ArrowLeft size={24} color="#0F172A" />
+          </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.pageTitle}>Documents</Text>
-            <Text style={styles.pageSubtitle}>Manage employee files & compliance</Text>
+            <Text style={styles.pageSubtitle}>Manage employee documents</Text>
           </View>
           <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
-            <LinearGradient colors={['#4F46E5', '#4338CA']} style={styles.gradientBtn}>
+            <LinearGradient colors={['#4338CA', '#3730A3']} style={styles.gradientBtn}>
               <Plus size={18} color="#FFF" />
               <Text style={styles.addButtonText}>Upload</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
-
-        <View style={styles.tabContainer}>
-          <TouchableOpacity 
-            style={[styles.tabButton, activeTab === 'ALL' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('ALL')}
-          >
-            <Text style={[styles.tabText, activeTab === 'ALL' && styles.tabTextActive]}>All Docs</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tabButton, activeTab === 'FRESHER' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('FRESHER')}
-          >
-            <GraduationCap size={16} color={activeTab === 'FRESHER' ? '#4F46E5' : '#64748B'} />
-            <Text style={[styles.tabText, activeTab === 'FRESHER' && styles.tabTextActive]}>Fresher Checklist</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.tabButton, activeTab === 'EXPERIENCED' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('EXPERIENCED')}
-          >
-            <Briefcase size={16} color={activeTab === 'EXPERIENCED' ? '#4F46E5' : '#64748B'} />
-            <Text style={[styles.tabText, activeTab === 'EXPERIENCED' && styles.tabTextActive]}>Exp. Checklist</Text>
-          </TouchableOpacity>
-        </View>
       </LinearGradient>
+
+      <View style={styles.tabContainer}>
+        <TouchableOpacity 
+          style={[styles.tabButton, activeTab === 'ALL' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('ALL')}
+        >
+          <Text style={[styles.tabText, activeTab === 'ALL' && styles.tabTextActive]}>All Docs</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tabButton, activeTab === 'FRESHER' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('FRESHER')}
+        >
+          <GraduationCap size={16} color={activeTab === 'FRESHER' ? '#4F46E5' : '#64748B'} />
+          <Text style={[styles.tabText, activeTab === 'FRESHER' && styles.tabTextActive]}>Fresher Checklist</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tabButton, activeTab === 'EXPERIENCED' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('EXPERIENCED')}
+        >
+          <Briefcase size={16} color={activeTab === 'EXPERIENCED' ? '#4F46E5' : '#64748B'} />
+          <Text style={[styles.tabText, activeTab === 'EXPERIENCED' && styles.tabTextActive]}>Exp. Checklist</Text>
+        </TouchableOpacity>
+      </View>
 
       {activeTab === 'ALL' && (
         <View style={styles.toolbar}>
@@ -244,13 +249,13 @@ export default function EmployeeDocumentsScreen({ route }) {
                 value={docName}
                 onChangeText={setDocName}
               />
-              
+
               <View style={styles.uploadDropzone}>
                 <FileText size={32} color="#94A3B8" style={{ marginBottom: 10 }} />
                 <Text style={styles.dropzoneText}>Tap to select a file from device</Text>
                 <Text style={styles.dropzoneSubText}>PDF, JPG, PNG (Max 5MB)</Text>
               </View>
-              
+
               <TouchableOpacity 
                 style={[styles.submitButton, submitting && { opacity: 0.7 }]} 
                 onPress={handleUploadDocument}
@@ -269,7 +274,7 @@ export default function EmployeeDocumentsScreen({ route }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   pageHeader: { 
-    paddingTop: 24, paddingHorizontal: 24,
+    paddingHorizontal: 24,
     borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
   },
@@ -277,11 +282,11 @@ const styles = StyleSheet.create({
   headerTextContainer: { flex: 1 },
   pageTitle: { fontSize: 28, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
   pageSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
-  
+
   addButton: { borderRadius: 16, overflow: 'hidden', shadowColor: '#4338CA', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 6 },
   addButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
-  
+
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: '#EEF2FF',
@@ -308,7 +313,7 @@ const styles = StyleSheet.create({
     shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
   },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: '#1E293B', fontWeight: '500' },
-  
+
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { paddingHorizontal: 24, paddingBottom: 24 },
   card: { 
@@ -328,7 +333,7 @@ const styles = StyleSheet.create({
   actionBtn: { padding: 10, backgroundColor: '#F8FAFC', borderRadius: 12 },
   emptyBox: { padding: 40, alignItems: 'center' },
   emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
-  
+
   checklistCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 24, borderWidth: 1, borderColor: '#F1F5F9', marginTop: 16, shadowColor: '#0F172A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 16, elevation: 3 },
   checklistTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A', marginBottom: 16 },
   checklistItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
@@ -337,7 +342,7 @@ const styles = StyleSheet.create({
   checklistTextDone: { color: '#94A3B8', textDecorationLine: 'line-through' },
   uploadMiniBtn: { backgroundColor: '#EEF2FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
   uploadMiniBtnText: { color: '#4F46E5', fontSize: 12, fontWeight: '700' },
-  
+
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 40 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },

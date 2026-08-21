@@ -11,7 +11,7 @@ export default function HolidayCalendarScreen() {
   const [holidays, setHolidays] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [newName, setNewName] = useState('');
@@ -86,7 +86,7 @@ export default function HolidayCalendarScreen() {
     <View style={styles.container}>
       <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
             <ArrowLeft size={24} color="#0F172A" />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
@@ -146,7 +146,7 @@ export default function HolidayCalendarScreen() {
               }}
             />
           </View>
-          
+
           <Text style={styles.sectionTitle}>Upcoming Holidays</Text>
 
           {filtered.length === 0 ? (
@@ -162,17 +162,17 @@ export default function HolidayCalendarScreen() {
                     <Text style={styles.dateDay}>{new Date(holiday.holiday_date).getDate()}</Text>
                   </View>
                 </View>
-                
+
                 <View style={styles.cardRight}>
                   <View style={styles.cardTop}>
                     <Text style={styles.holidayName}>{holiday.holiday_name}</Text>
                   </View>
-                  
+
                   <View style={styles.infoRow}>
                     <CalendarIcon size={14} color="#64748B" />
                     <Text style={styles.infoText}>{formatDay(holiday.holiday_date)}</Text>
                   </View>
-                  
+
                   <View style={styles.badgeRow}>
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>{holiday.holiday_type}</Text>
@@ -231,7 +231,7 @@ export default function HolidayCalendarScreen() {
                   onChangeText={setNewType}
                 />
               </View>
-              
+
               <TouchableOpacity 
                 style={[styles.submitButton, submitting && { opacity: 0.7 }]} 
                 onPress={handleAddHoliday}
@@ -251,7 +251,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: { 
     padding: 24, 
-    paddingTop: 48,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
     flexDirection: 'row', 
@@ -315,7 +314,7 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 12, fontWeight: '700', color: '#475569' },
   locationRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   locationText: { fontSize: 13, color: '#64748B', fontWeight: '600' },
-  
+
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 50 },

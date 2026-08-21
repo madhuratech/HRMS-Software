@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Modal, ToastAndroid, Platform } from 'react-native';
 import { Search, Plus, MoreVertical, Award, X, CheckCircle, TrendingUp, IndianRupee, ArrowLeft } from 'lucide-react-native';
-import { useNavigation } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 import apiClient from '../../api/client';
 
 export default function PromotionsScreen() {
@@ -10,7 +10,7 @@ export default function PromotionsScreen() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const navigation = useNavigation();
-  
+
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [empId, setEmpId] = useState('');
@@ -55,11 +55,11 @@ export default function PromotionsScreen() {
         newSalary: newSalary ? parseFloat(newSalary) : null,
         effectiveDate: effectiveDate || new Date().toISOString().split('T')[0]
       });
-      
+
       // Auto-approve if needed, or if the backend handles it, just show success
       // Let's assume the backend takes care of updating salary and we just show toast
       showToast('Promotion Successful! Salary updated automatically.');
-      
+
       setEmpId('');
       setNewDesignation('');
       setNewSalary('');
@@ -120,7 +120,7 @@ export default function PromotionsScreen() {
             <Text style={[styles.flowValue, { color: '#4F46E5' }]}>{item.new_designation}</Text>
           </View>
         </View>
-        
+
         {item.reason && (
           <Text style={styles.reasonText}>Reason: {item.reason}</Text>
         )}
@@ -139,14 +139,12 @@ export default function PromotionsScreen() {
     <View style={styles.container}>
       <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.pageHeader}>
         <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
+            <ArrowLeft size={24} color="#0F172A" />
+          </TouchableOpacity>
           <View style={styles.headerTextContainer}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 16 }}>
-              <ArrowLeft size={24} color="#0F172A" />
-            </TouchableOpacity>
-            <View>
-              <Text style={styles.pageTitle}>Promotions</Text>
-              <Text style={styles.pageSubtitle}>Manage role and salary advancements</Text>
-            </View>
+            <Text style={styles.pageTitle}>Promotions</Text>
+            <Text style={styles.pageSubtitle}>Manage employee role changes</Text>
           </View>
           <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
             <LinearGradient colors={['#4F46E5', '#4338CA']} style={styles.gradientBtn}>
@@ -234,7 +232,7 @@ export default function PromotionsScreen() {
                 value={effectiveDate}
                 onChangeText={setEffectiveDate}
               />
-              
+
               <TouchableOpacity 
                 style={[styles.submitButton, submitting && { opacity: 0.7 }]} 
                 onPress={handleAddPromotion}
@@ -257,11 +255,11 @@ const styles = StyleSheet.create({
   headerTextContainer: { flex: 1, flexDirection: 'row', alignItems: 'center' },
   pageTitle: { fontSize: 28, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
   pageSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
-  
+
   addButton: { borderRadius: 16, overflow: 'hidden', shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 6 },
   addButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
-  
+
   toolbar: { padding: 24, paddingBottom: 16 },
   searchBox: { 
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', 
@@ -269,10 +267,10 @@ const styles = StyleSheet.create({
     shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
   },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: '#1E293B', fontWeight: '500' },
-  
+
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { paddingHorizontal: 24, paddingBottom: 24 },
-  
+
   card: { 
     backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16,
     borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 6 }, 
@@ -295,7 +293,7 @@ const styles = StyleSheet.create({
   reasonText: { marginTop: 12, fontSize: 13, color: '#475569', fontStyle: 'italic', fontWeight: '500' },
   emptyBox: { padding: 40, alignItems: 'center' },
   emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
-  
+
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 40 },

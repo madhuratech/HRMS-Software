@@ -7,11 +7,14 @@ const PDFDocument = require("pdfkit");
 exports.punch = async (req, res) => {
   try {
     const employeeId = req.user ? req.user.id : req.body.employee_id;
-    const { punch_type, latitude, longitude, device_info, browser, ip_address } = req.body;
+    const { punch_type, latitude, longitude, device_info, browser, ip_address, work_done, location_address } = req.body;
 
     if (!employeeId || !punch_type || latitude === undefined || longitude === undefined) {
       return res.status(400).json({ success: false, message: "Missing required fields (employee_id/token, punch_type, latitude, longitude)" });
     }
+
+    const role = req.user ? req.user.role : '';
+    const skipGeofence = role === 'Super Admin';
 
     const punchData = {
       punchType: punch_type,
@@ -19,7 +22,10 @@ exports.punch = async (req, res) => {
       longitude,
       deviceInfo: device_info || req.headers['user-agent'] || 'Unknown',
       browser: browser || 'Unknown',
-      ipAddress: ip_address || req.ip || 'Unknown'
+      ipAddress: ip_address || req.ip || 'Unknown',
+      workDone: work_done || null,
+      location_address: location_address || null,
+      skipGeofence
     };
 
     const result = await GPSAttendanceService.validateAndRecordPunch(employeeId, punchData);
@@ -54,10 +60,16 @@ exports.getDailyStats = (req, res) => {
     SELECT 
       e.id,
       e.name,
+      r.name as role,
       e.profile_photo as avatar,
       d.dept_name as department,
       MIN(CASE WHEN a.punch_type = 'IN' THEN a.punch_time END) as check_in_time,
       MAX(CASE WHEN a.punch_type = 'OUT' THEN a.punch_time END) as check_out_time,
+      MAX(CASE WHEN a.punch_type = 'OUT' THEN a.work_done END) as work_done,
+      MAX(CASE WHEN a.punch_type = 'IN' THEN a.latitude END) as check_in_lat,
+      MAX(CASE WHEN a.punch_type = 'IN' THEN a.longitude END) as check_in_lng,
+      MAX(CASE WHEN a.punch_type = 'IN' THEN a.location_address END) as check_in_address,
+      MAX(CASE WHEN a.punch_type = 'OUT' THEN a.location_address END) as check_out_address,
       (
         SELECT COUNT(*) 
         FROM leave_applications la 
@@ -68,8 +80,9 @@ exports.getDailyStats = (req, res) => {
     FROM employees e
     LEFT JOIN departments d ON e.department_id = d.id
     LEFT JOIN attendance a ON a.employee_id = e.id AND DATE(a.punch_time) = ?
+    LEFT JOIN roles r ON e.role_id = r.id
     WHERE e.status = 'Active'
-    GROUP BY e.id, e.name, e.profile_photo, d.dept_name
+    GROUP BY e.id, e.name, r.name, e.profile_photo, d.dept_name
   `;
 
   db.query(sql, [targetDate, targetDate, targetDate], (err, rows) => {
@@ -120,6 +133,8 @@ exports.getDailyStats = (req, res) => {
         department: row.department || 'General',
         checkIn,
         checkOut,
+        checkInAddress: row.check_in_address,
+        checkOutAddress: row.check_out_address,
         status,
         workingHours
       };
@@ -308,32 +323,63 @@ exports.exportGPSReportPDF = async (req, res) => {
 
 exports.exportGPSReportExcel = async (req, res) => {
   try {
-    const logs = await GPSAttendanceService.getGPSReportData(req.query);
+    const db = require("../config/database");
+    const { startDate, endDate, roleFilter } = req.query;
+    let sql = `
+      SELECT 
+        a.id,
+        a.employee_id,
+        e.name as employee_name,
+        r.name as role,
+        a.punch_type,
+        a.punch_time,
+        a.latitude,
+        a.longitude,
+        a.work_done
+      FROM attendance a
+      JOIN employees e ON e.id = a.employee_id
+      LEFT JOIN roles r ON e.role_id = r.id
+      WHERE 1=1
+    `;
+    const params = [];
+    if (startDate) {
+      sql += ' AND a.punch_time >= ?';
+      params.push(`${startDate} 00:00:00`);
+    }
+    if (endDate) {
+      sql += ' AND a.punch_time <= ?';
+      params.push(`${endDate} 23:59:59`);
+    }
 
-    // Build CSV content
-    const headers = ["Employee ID", "Employee Name", "Punch Type", "Punch Time", "Latitude", "Longitude", "Location Name", "Distance (m)", "Inside Radius", "Device Info", "Browser", "IP Address", "Status", "Failure Reason"];
-    const rows = logs.map(log => [
-      log.employee_id,
-      `"${log.employee_name.replace(/"/g, '""')}"`,
-      log.punch_type,
-      new Date(log.punch_time).toISOString(),
-      log.latitude,
-      log.longitude,
-      `"${(log.location_name || '').replace(/"/g, '""')}"`,
-      log.distance ? parseFloat(log.distance).toFixed(2) : 0,
-      log.inside_radius,
-      `"${(log.device_info || '').replace(/"/g, '""')}"`,
-      log.browser,
-      log.ip_address,
-      log.status,
-      `"${(log.failure_reason || '').replace(/"/g, '""')}"`
-    ]);
+    db.query(sql, params, (err, logs) => {
+      if (err) return res.status(500).send("DB Error");
 
-    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      if (roleFilter === 'EMPLOYEE') {
+        logs = logs.filter(l => {
+          const r = (l.role || '').toUpperCase();
+          return !r.includes('SUPER') && r !== 'ADMIN' && r !== 'HR';
+        });
+      }
 
-    res.setHeader("Content-Type", "text/csv");
-    res.setHeader("Content-Disposition", `attachment; filename=gps_attendance_report_${Date.now()}.csv`);
-    return res.status(200).send(csvContent);
+      // Build CSV content
+      const headers = ["Employee ID", "Employee Name", "Role", "Punch Type", "Punch Time", "Latitude", "Longitude", "Work Done"];
+      const rows = logs.map(log => [
+        log.employee_id,
+        `"${(log.employee_name || '').replace(/"/g, '""')}"`,
+        `"${(log.role || '').replace(/"/g, '""')}"`,
+        log.punch_type,
+        new Date(log.punch_time).toLocaleString(),
+        log.latitude || '',
+        log.longitude || '',
+        `"${(log.work_done || '').replace(/"/g, '""')}"`
+      ]);
+
+      const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+
+      res.setHeader("Content-Type", "text/csv");
+      res.setHeader("Content-Disposition", `attachment; filename=attendance_report_${Date.now()}.csv`);
+      return res.status(200).send(csvContent);
+    });
   } catch (error) {
     console.error("Excel Export error:", error);
     return res.status(500).send("Failed to export Excel report");

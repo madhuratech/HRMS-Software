@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions, Animated, Easing
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions, Animated, Easing, ActivityIndicator
 } from 'react-native';
 import { 
   DollarSign, Users, Briefcase, CheckCircle2, UserCheck, Calendar, Bell, ChevronRight, Activity, Building2, CalendarOff
@@ -13,7 +13,7 @@ const { width } = Dimensions.get('window');
 
 const KpiCard = ({ label, value, trend, trendLabel, iconBg, iconColor, iconSymbol: IconComponent, gradientColors }) => {
   const scale = useRef(new Animated.Value(1)).current;
-  
+
   const handlePressIn = () => Animated.spring(scale, { toValue: 0.95, useNativeDriver: true }).start();
   const handlePressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
 
@@ -81,7 +81,7 @@ export default function DashboardScreen({ navigation }) {
   const [stats, setStats] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
-  
+
   // Animation values
   const kpiAnim = useRef(new Animated.Value(0)).current;
   const cardsAnim = useRef([
@@ -140,7 +140,7 @@ export default function DashboardScreen({ navigation }) {
   const deptCount = stats?.totalDepartments || 0;
   const branchCount = stats?.totalBranches || 0;
   const leavesCount = stats?.totalLeaves || 0;
-  
+
   const presentToday = stats?.attendanceToday || 0;
   const leaveToday = stats?.totalLeaves || 0;
   const absentToday = Math.max(0, employeeCount - presentToday - leaveToday);
@@ -163,9 +163,17 @@ export default function DashboardScreen({ navigation }) {
     </View>
   );
 
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#2563EB" />
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />}>
-      
+
       {/* 1. KPIs */}
       <Animated.ScrollView 
         horizontal 
@@ -199,8 +207,8 @@ export default function DashboardScreen({ navigation }) {
                       <Text style={{ fontSize: 12, color: '#6B7280' }}>{item.dept}</Text>
                       <Text style={{ fontSize: 12, fontWeight: '600', color: '#111827' }}>{item.emp} ({pct}%)</Text>
                     </View>
-                    <View style={{ height: 8, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' }}>
-                      <View style={{ width: `${pct}%`, height: '100%', backgroundColor: '#4F46E5', borderRadius: 4 }} />
+                    <View style={{ height: 8, backgroundColor: '#F1F5F9', borderRadius: 16, overflow: 'hidden' }}>
+                      <View style={{ width: `${pct}%`, height: '100%', backgroundColor: '#4F46E5', borderRadius: 16 }} />
                     </View>
                   </View>
                 );
@@ -271,10 +279,10 @@ export default function DashboardScreen({ navigation }) {
         <Animated.View style={[styles.card, { opacity: cardsAnim[3], transform: [{ translateY: cardsAnim[3].interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>
           <View style={[styles.cardHeader, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#F59E0B' }} />
+              <View style={{ width: 8, height: 8, borderRadius: 16, backgroundColor: '#F59E0B' }} />
               <Text style={styles.cardTitle}>On Leave Today</Text>
             </View>
-            <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 }}>
+            <View style={{ backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 16 }}>
               <Text style={{ color: '#D97706', fontSize: 10, fontWeight: '700' }}>{leaveToday}</Text>
             </View>
           </View>
@@ -286,7 +294,7 @@ export default function DashboardScreen({ navigation }) {
                   <Text style={styles.perfName}>{emp.name}</Text>
                   <Text style={styles.perfDept}>{emp.dept} • {emp.days}</Text>
                 </View>
-                <View style={{ backgroundColor: isSick ? '#FEF2F2' : '#EFF6FF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 }}>
+                <View style={{ backgroundColor: isSick ? '#FEF2F2' : '#EFF6FF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 16 }}>
                   <Text style={{ fontSize: 10, fontWeight: '700', color: isSick ? '#EF4444' : '#2563EB' }}>{emp.type}</Text>
                 </View>
               </View>
@@ -342,7 +350,7 @@ export default function DashboardScreen({ navigation }) {
                 </Text>
                 <Text style={{ fontSize: 11, color: '#94A3B8', marginTop: 2 }}>{act.time}</Text>
               </View>
-              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: act.dot || '#10B981' }} />
+              <View style={{ width: 8, height: 8, borderRadius: 16, backgroundColor: act.dot || '#10B981' }} />
             </View>
           )) : <EmptyState message="No recent activities" />}
         </Animated.View>
@@ -395,7 +403,7 @@ const styles = StyleSheet.create({
   kpiIconBox: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -416,7 +424,7 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#F1F5F9',
     padding: 24,
@@ -450,14 +458,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     gap: 10,
   },
   attIconBox: {
     width: 28,
     height: 28,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -493,7 +501,7 @@ const styles = StyleSheet.create({
     borderColor: '#A7F3D0',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   perfScore: {
     fontSize: 12,
@@ -513,7 +521,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#F8FAFC',
-    borderRadius: 8,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderStyle: 'dashed',

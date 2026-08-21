@@ -8,7 +8,7 @@ export default function KPIScreen() {
   const [kpis, setKpis] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [employeeId, setEmployeeId] = useState('');
@@ -70,9 +70,9 @@ export default function KPIScreen() {
         </View>
         <Text style={styles.weightageText}>Weight: {item.weightage}</Text>
       </View>
-      
+
       <View style={styles.divider} />
-      
+
       <View style={styles.metricGrid}>
         <View style={styles.metricCol}>
           <Text style={styles.metricLabel}>Target</Text>
@@ -84,7 +84,7 @@ export default function KPIScreen() {
           <Text style={[styles.metricValue, { color: '#10B981' }]}>{item.achieved_value || '0'}</Text>
         </View>
       </View>
-      
+
       <View style={styles.footer}>
         <User size={14} color="#64748B" style={{marginRight: 6}} />
         <Text style={styles.footerText}>{item.first_name ? `${item.first_name} ${item.last_name}` : `Emp #${item.employee_id}`}</Text>

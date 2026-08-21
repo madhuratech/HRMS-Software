@@ -408,34 +408,15 @@ router.get("/promotions", (req, res) => {
  * SUBMIT PROMOTION REQUEST
  */
 router.post("/promotions", (req, res) => {
-<<<<<<< HEAD
-  const { employeeId, newDesignationName, newSalary, effectiveDate } = req.body;
-=======
-  const { employeeId, newDesignationName, effectiveDate } = req.body;
+  const { employeeId, newDesignationName, effectiveDate, newSalary } = req.body;
   if (!employeeId || !newDesignationName) {
     return res.status(400).json({ error: "employeeId and newDesignationName are required" });
   }
->>>>>>> c2c5811379209cb22da6cd3f0d161d2ff07dfb76
 
   const findDesgSql = "SELECT id FROM designations WHERE role_name = ? OR role_code = ? LIMIT 1";
   db.query(findDesgSql, [newDesignationName, newDesignationName], (err, rows) => {
     if (err) return res.status(500).json({ error: "Database error", details: err });
 
-<<<<<<< HEAD
-  db.query(sql, [employeeId, employeeId, newDesignationName, newDesignationName, effectiveDate], (err, result) => {
-    if (err) return res.status(500).json({ error: "Failed to submit promotion request", details: err });
-    
-    // Automatically update salary if provided (as requested by Super Admin/HR)
-    if (newSalary) {
-      db.query("UPDATE employees SET salary = ? WHERE id = ?", [newSalary, employeeId], (empErr) => {
-        if (empErr) console.error("Failed to update salary during promotion:", empErr);
-        // Note: the promotion is still 'Pending' in the promotions table until approved, 
-        // but the salary is updated immediately per requirements.
-      });
-    }
-    
-    res.json({ message: "Promotion request submitted successfully", id: result.insertId });
-=======
     const createAndInsert = (newDesgId) => {
       const getOldDesgSql = "SELECT designation_id FROM employees WHERE id = ?";
       db.query(getOldDesgSql, [employeeId], (err2, empRows) => {
@@ -446,6 +427,13 @@ router.post("/promotions", (req, res) => {
         `;
         db.query(insertPromoSql, [employeeId, oldDesgId, newDesgId, effectiveDate || new Date().toISOString().split('T')[0]], (err3, result) => {
           if (err3) return res.status(500).json({ error: "Failed to submit promotion request", details: err3 });
+          
+          if (newSalary) {
+            db.query("UPDATE employees SET salary = ? WHERE id = ?", [newSalary, employeeId], (empErr) => {
+              if (empErr) console.error("Failed to update salary during promotion:", empErr);
+            });
+          }
+          
           res.json({ message: "Promotion request submitted successfully", id: result.insertId });
         });
       });
@@ -464,7 +452,6 @@ router.post("/promotions", (req, res) => {
         }
       );
     }
->>>>>>> c2c5811379209cb22da6cd3f0d161d2ff07dfb76
   });
 });
 

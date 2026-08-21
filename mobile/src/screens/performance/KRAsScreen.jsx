@@ -8,7 +8,7 @@ export default function KRAsScreen() {
   const [kras, setKras] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [employeeId, setEmployeeId] = useState('');
@@ -68,13 +68,13 @@ export default function KRAsScreen() {
           <Text style={styles.titleText} numberOfLines={1}>{item.title}</Text>
         </View>
       </View>
-      
+
       {item.description ? (
         <Text style={styles.descText} numberOfLines={3}>{item.description}</Text>
       ) : null}
-      
+
       <View style={styles.divider} />
-      
+
       <View style={styles.footer}>
         <User size={14} color="#64748B" style={{marginRight: 6}} />
         <Text style={styles.footerText}>{item.first_name ? `${item.first_name} ${item.last_name}` : `Emp #${item.employee_id}`}</Text>

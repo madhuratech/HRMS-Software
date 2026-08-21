@@ -8,7 +8,7 @@ export default function ReviewsScreen() {
   const [reviews, setReviews] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [employeeId, setEmployeeId] = useState('');
@@ -74,16 +74,16 @@ export default function ReviewsScreen() {
           <Text style={styles.ratingText}>{item.rating}</Text>
         </View>
       </View>
-      
+
       {item.comments ? (
         <View style={styles.commentsBox}>
           <MessageSquare size={14} color="#64748B" style={{marginRight: 6, marginTop: 2}} />
           <Text style={styles.commentsText}>{item.comments}</Text>
         </View>
       ) : null}
-      
+
       <View style={styles.divider} />
-      
+
       <View style={styles.footer}>
         <View style={styles.footerItem}>
           <Text style={styles.footerLabel}>Reviewer:</Text>

@@ -37,7 +37,7 @@ export default function AnalyticsReportsScreen() {
         </View>
 
         <Text style={styles.sectionTitle}>Available Reports</Text>
-        
+
         <TouchableOpacity style={styles.reportItem}>
           <View style={[styles.iconBox, { backgroundColor: '#EFF6FF' }]}>
             <PieChart size={20} color="#3B82F6" />

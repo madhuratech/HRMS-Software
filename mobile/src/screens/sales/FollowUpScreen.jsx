@@ -1,43 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Modal, TextInput, Alert } from 'react-native';
-import { Search, Plus, Calendar as CalendarIcon, Clock, CheckCircle, ArrowLeft, X } from 'lucide-react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, TextInput, Modal, Alert } from 'react-native';
+import { Search, Plus, Calendar, Clock, StickyNote, User, X, CheckCircle, ArrowLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
 
-export default function FollowUpScreen({ route, navigation }) {
-  const { enquiryId } = route.params || {};
-  const [followups, setFollowups] = useState([]);
+export default function FollowUpScreen({ navigation }) {
+  const [followUps, setFollowUps] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Modal State
-  const [modalVisible, setModalVisible] = useState(false);
-  const [newEnquiryId, setNewEnquiryId] = useState(enquiryId ? String(enquiryId) : '');
-  const [followupDate, setFollowupDate] = useState('');
-  const [nextAction, setNextAction] = useState('');
-  const [notes, setNotes] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
-      fetchFollowups();
+      fetchFollowUps();
     });
     return unsubscribe;
   }, [navigation]);
 
   useEffect(() => {
-    fetchFollowups();
+    fetchFollowUps();
   }, []);
 
-  const fetchFollowups = async () => {
+  const fetchFollowUps = async () => {
     try {
       setLoading(true);
       const res = await apiClient.get('/sales/followups');
       if (Array.isArray(res.data)) {
-        if (enquiryId) {
-          setFollowups(res.data.filter(f => f.enquiry_id === enquiryId));
-        } else {
-          setFollowups(res.data);
-        }
+        setFollowUps(res.data);
       }
     } catch (err) {
       console.error('Error fetching followups:', err);
@@ -46,56 +34,88 @@ export default function FollowUpScreen({ route, navigation }) {
     }
   };
 
-  const handleAddFollowup = async () => {
-    // API endpoint doesn't exist yet for POST followups! Oh wait, I didn't add it to salesRoute.js
-    // I need to update the backend route to support it. For now, just simulate it or show error.
-    Alert.alert('Info', 'Add follow up function will be available in next backend update.');
-    setModalVisible(false);
+  const filteredFollowUps = followUps.filter(f => 
+    f.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    f.notes?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'completed': return '#10B981';
+      case 'pending': return '#F59E0B';
+      default: return '#64748B';
+    }
   };
 
-  const renderFollowup = ({ item }) => (
-    <View style={styles.card}>
+  const renderFollowUp = ({ item, i }) => (
+    <View key={item.id || i} style={styles.card}>
       <View style={styles.cardHeader}>
-        <View style={styles.titleRow}>
-          <Clock size={18} color={item.status === 'completed' ? '#10B981' : '#F59E0B'} />
-          <Text style={styles.actionText}>{item.next_action}</Text>
+        <View style={styles.iconBox}>
+          <Clock size={20} color="#F59E0B" />
         </View>
-        <Text style={styles.dateText}>{new Date(item.followup_date).toLocaleDateString()}</Text>
+        <View style={styles.cardTitleCol}>
+          <Text style={styles.customerName} numberOfLines={1}>{item.customer_name || 'Unknown Customer'}</Text>
+          <Text style={styles.dateText}>{new Date(item.followup_date).toLocaleDateString()}</Text>
+        </View>
+        <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(item.status || 'pending')}15` }]}>
+          <Text style={[styles.statusText, { color: getStatusColor(item.status || 'pending') }]}>
+            {(item.status || 'Pending').toUpperCase()}
+          </Text>
+        </View>
       </View>
-      
-      <View style={styles.divider} />
-      
-      <View style={styles.detailRow}>
-        <Text style={styles.detailLabel}>Customer:</Text>
-        <Text style={styles.detailValue}>{item.customer_name || `Enquiry #${item.enquiry_id}`}</Text>
-      </View>
+
       {item.notes ? (
-        <View style={styles.detailRow}>
-          <Text style={styles.detailLabel}>Notes:</Text>
-          <Text style={styles.detailValue}>{item.notes}</Text>
-        </View>
+        <>
+          <View style={styles.divider} />
+          <View style={styles.notesRow}>
+            <StickyNote size={14} color="#64748B" style={{marginRight: 6}} />
+            <Text style={styles.notesText}>{item.notes}</Text>
+          </View>
+        </>
       ) : null}
+      
+      {item.status !== 'completed' && (
+        <View style={styles.actionRow}>
+           <TouchableOpacity 
+             style={styles.completeBtn}
+             onPress={() => {
+                // Future Implementation: Mark as complete API call
+                Alert.alert("Complete", "Mark this follow-up as completed?");
+             }}
+           >
+              <CheckCircle size={16} color="#10B981" />
+              <Text style={styles.completeBtnText}>Mark Completed</Text>
+           </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        {enquiryId ? (
-          <TouchableOpacity style={styles.headerBack} onPress={() => navigation.goBack()}>
+      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
             <ArrowLeft size={24} color="#0F172A" />
           </TouchableOpacity>
-        ) : null}
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>Follow Ups</Text>
-          <Text style={styles.headerSubtitle}>{enquiryId ? `For Enquiry #${enquiryId}` : 'All upcoming follow ups'}</Text>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Follow-ups</Text>
+            <Text style={styles.headerSubtitle}>Keep track of your scheduled check-ins</Text>
+          </View>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
-          <LinearGradient colors={['#F59E0B', '#D97706']} style={styles.gradientBtn}>
-            <Plus size={18} color="#FFF" />
-            <Text style={styles.addButtonText}>New</Text>
-          </LinearGradient>
-        </TouchableOpacity>
+      </LinearGradient>
+
+      <View style={styles.toolbar}>
+        <View style={styles.searchBox}>
+          <Search size={20} color="#64748B" />
+          <TextInput 
+            style={styles.searchInput} 
+            placeholder="Search follow-ups..." 
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
       </View>
 
       {loading ? (
@@ -103,74 +123,17 @@ export default function FollowUpScreen({ route, navigation }) {
           <ActivityIndicator size="large" color="#F59E0B" />
         </View>
       ) : (
-        <FlatList
-          data={followups}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={renderFollowup}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          ListEmptyComponent={
+        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+          {filteredFollowUps.length === 0 ? (
             <View style={styles.emptyBox}>
-              <Text style={styles.emptyText}>No follow ups found</Text>
+              <Text style={styles.emptyText}>No follow-ups scheduled</Text>
             </View>
-          }
-        />
+          ) : (
+            filteredFollowUps.map((item, i) => renderFollowUp({ item, i }))
+          )}
+          <View style={{ height: 24 }} />
+        </ScrollView>
       )}
-
-      {/* Add Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Schedule Follow Up</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalBody}>
-              <TextInput 
-                style={styles.modalInput}
-                placeholder="Enquiry ID (e.g. 1)"
-                placeholderTextColor="#94A3B8"
-                value={newEnquiryId}
-                onChangeText={setNewEnquiryId}
-                keyboardType="numeric"
-              />
-              <TextInput 
-                style={styles.modalInput}
-                placeholder="Date (YYYY-MM-DD)"
-                placeholderTextColor="#94A3B8"
-                value={followupDate}
-                onChangeText={setFollowupDate}
-              />
-              <TextInput 
-                style={styles.modalInput}
-                placeholder="Next Action (e.g. Call Client)"
-                placeholderTextColor="#94A3B8"
-                value={nextAction}
-                onChangeText={setNextAction}
-              />
-              <TextInput 
-                style={[styles.modalInput, { height: 80 }]}
-                placeholder="Notes..."
-                placeholderTextColor="#94A3B8"
-                multiline
-                textAlignVertical="top"
-                value={notes}
-                onChangeText={setNotes}
-              />
-              
-              <TouchableOpacity 
-                style={[styles.submitButton, submitting && { opacity: 0.7 }]} 
-                onPress={handleAddFollowup}
-                disabled={submitting}
-              >
-                <Text style={styles.submitButtonText}>{submitting ? 'Saving...' : 'Save Follow Up'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -178,41 +141,44 @@ export default function FollowUpScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: { 
-    padding: 20, backgroundColor: '#FFF', flexDirection: 'row', 
-    justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    padding: 24, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
   },
-  headerBack: { padding: 4, marginRight: 12 },
+  headerTop: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
+  headerTitle: { fontSize: 24, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
   headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
-  addButton: { borderRadius: 10, overflow: 'hidden' },
-  gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 6 },
-  addButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
-  centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  listContent: { padding: 20, paddingBottom: 40 },
-  emptyBox: { padding: 40, alignItems: 'center' },
-  emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '500' },
-  card: { 
-    backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 16,
-    borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.03, shadowRadius: 8, elevation: 2,
-  },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
-  actionText: { fontSize: 16, fontWeight: '700', color: '#0F172A', flex: 1 },
-  dateText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 },
-  detailRow: { flexDirection: 'row', marginBottom: 8 },
-  detailLabel: { fontSize: 14, color: '#64748B', width: 80, fontWeight: '500' },
-  detailValue: { fontSize: 14, color: '#0F172A', fontWeight: '600', flex: 1 },
   
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#0F172A' },
-  modalBody: { gap: 16 },
-  modalInput: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, fontSize: 16, color: '#1E293B', backgroundColor: '#F8FAFC' },
-  submitButton: { backgroundColor: '#F59E0B', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 10 },
-  submitButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700' }
+  toolbar: { flexDirection: 'row', padding: 24, gap: 12 },
+  searchBox: { 
+    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', 
+    borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 16, paddingHorizontal: 16, height: 52,
+    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
+  },
+  searchInput: { flex: 1, marginLeft: 10, fontSize: 16, color: '#1E293B', fontWeight: '500' },
+  centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  emptyBox: { padding: 40, alignItems: 'center' },
+  emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
+  
+  content: { paddingHorizontal: 24 },
+  card: { 
+    backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9',
+    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.05, shadowRadius: 24, elevation: 4,
+  },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  iconBox: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center' },
+  cardTitleCol: { flex: 1 },
+  customerName: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
+  dateText: { fontSize: 13, fontWeight: '500', color: '#64748B', marginTop: 2 },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  statusText: { fontSize: 12, fontWeight: '700' },
+  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 16 },
+  
+  notesRow: { flexDirection: 'row', alignItems: 'flex-start', flex: 1 },
+  notesText: { fontSize: 14, color: '#475569', flex: 1, lineHeight: 20 },
+  
+  actionRow: { marginTop: 16, flexDirection: 'row', justifyContent: 'flex-end' },
+  completeBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ECFDF5', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, gap: 6 },
+  completeBtnText: { color: '#10B981', fontSize: 13, fontWeight: '700' }
 });

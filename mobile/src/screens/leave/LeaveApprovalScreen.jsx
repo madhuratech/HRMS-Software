@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { CheckCircle, XCircle } from 'lucide-react-native';
+import { CheckCircle, XCircle, ArrowLeft } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
 
-export default function LeaveApprovalScreen() {
+export default function LeaveApprovalScreen({ navigation }) {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   useEffect(() => {
     fetchApplications();
   }, []);
@@ -61,10 +62,17 @@ export default function LeaveApprovalScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Leave Approvals</Text>
-        <Text style={styles.headerSubtitle}>Pending leave requests</Text>
-      </View>
+      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
+            <ArrowLeft size={24} color="#0F172A" />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Leave Approvals</Text>
+            <Text style={styles.headerSubtitle}>Pending leave requests</Text>
+          </View>
+        </View>
+      </LinearGradient>
       {loading ? (
         <ActivityIndicator size="large" color="#3B82F6" style={{ marginTop: 40 }} />
       ) : (
@@ -87,9 +95,10 @@ export default function LeaveApprovalScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { padding: 20, backgroundColor: '#FFF' },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A' },
-  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4 },
+  header: { padding: 20, paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  headerTextContainer: { flex: 1 },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
   listContent: { padding: 20 },
   card: { backgroundColor: '#FFF', borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0', overflow: 'hidden' },
   cardHeader: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },

@@ -5,7 +5,7 @@ const db = require('../config/database');
 // GET all training programs
 router.get('/', async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM training_programs ORDER BY start_date DESC');
+    const [rows] = await db.promise().query('SELECT * FROM training_programs ORDER BY start_date DESC');
     res.json(rows);
   } catch (err) {
     console.error(err);
@@ -17,7 +17,7 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   const { title, description, trainer, start_date, end_date, status } = req.body;
   try {
-    const [result] = await db.query(
+    const [result] = await db.promise().query(
       'INSERT INTO training_programs (title, description, trainer, start_date, end_date, status) VALUES (?, ?, ?, ?, ?, ?)',
       [title, description, trainer, start_date, end_date, status || 'planned']
     );

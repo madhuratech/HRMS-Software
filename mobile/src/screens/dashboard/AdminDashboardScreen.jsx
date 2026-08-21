@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions, Animated, Easing
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions, Animated, Easing, ActivityIndicator
 } from 'react-native';
 import { 
   DollarSign, Users, Briefcase, CheckCircle2, UserCheck, Calendar, Bell, ChevronRight, Activity
@@ -13,7 +13,7 @@ const { width } = Dimensions.get('window');
 
 const KpiCard = ({ label, value, trend, trendLabel, iconBg, iconColor, iconSymbol: IconComponent, gradientColors }) => {
   const scale = useRef(new Animated.Value(1)).current;
-  
+
   const handlePressIn = () => Animated.spring(scale, { toValue: 0.95, useNativeDriver: true }).start();
   const handlePressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true }).start();
 
@@ -81,7 +81,7 @@ export default function DashboardScreen({ navigation }) {
   const [stats, setStats] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
   const [loading, setLoading] = useState(true);
-  
+
   // Animation values
   const kpiAnim = useRef(new Animated.Value(0)).current;
   const cardsAnim = useRef([
@@ -140,7 +140,7 @@ export default function DashboardScreen({ navigation }) {
   const projectCount = stats?.totalProjects || 0;
   const completedProjects = stats?.completedProjects || 0;
   const clientCount = stats?.totalClients || 0;
-  
+
   const presentToday = stats?.attendanceToday || 0;
   const leaveToday = stats?.totalLeaves || 0;
   const absentToday = Math.max(0, employeeCount - presentToday - leaveToday);
@@ -163,9 +163,17 @@ export default function DashboardScreen({ navigation }) {
     </View>
   );
 
+  if (loading) {
+    return (
+      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#2563EB" />
+      </View>
+    );
+  }
+
   return (
     <ScrollView style={styles.container} refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />}>
-      
+
       {/* 1. KPIs */}
       <Animated.ScrollView 
         horizontal 
@@ -182,7 +190,6 @@ export default function DashboardScreen({ navigation }) {
       </Animated.ScrollView>
 
       <View style={{ paddingBottom: 30 }}>
-
 
         {/* 3. Attendance Status */}
         <Animated.View style={[styles.card, { opacity: cardsAnim[1], transform: [{ translateY: cardsAnim[1].interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }] }]}>

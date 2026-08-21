@@ -5,7 +5,7 @@ import { CalendarCheck, CalendarOff, Clock, FileText, ChevronRight } from 'lucid
 export default function EmployeeDashboardScreen() {
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      
+
       {/* Welcome Section */}
       <View style={styles.welcomeSection}>
         <Text style={styles.welcomeTitle}>Welcome back, Sarah!</Text>
@@ -36,7 +36,7 @@ export default function EmployeeDashboardScreen() {
           <Text style={styles.sectionTitle}>Leave Balance</Text>
           <TouchableOpacity><Text style={styles.linkText}>View All</Text></TouchableOpacity>
         </View>
-        
+
         <View style={styles.leaveCards}>
           <View style={[styles.leaveCard, { borderColor: '#E0E7FF' }]}>
             <Text style={styles.leaveType}>Casual Leave</Text>
@@ -80,7 +80,7 @@ export default function EmployeeDashboardScreen() {
           <Text style={styles.actionText}>Apply for Leave</Text>
           <ChevronRight size={20} color="#CBD5E1" />
         </TouchableOpacity>
-        
+
         <TouchableOpacity style={styles.actionItem}>
           <View style={styles.actionIcon}>
             <FileText size={20} color="#475569" />
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
   iconBox: {
     width: 40,
     height: 40,
-    borderRadius: 10,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   dateBox: {
     backgroundColor: '#FEF2F2',
-    borderRadius: 12,
+    borderRadius: 16,
     width: 56,
     height: 56,
     alignItems: 'center',
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFF',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   actionIcon: {
     width: 36,
     height: 36,
-    borderRadius: 8,
+    borderRadius: 16,
     backgroundColor: '#F1F5F9',
     alignItems: 'center',
     justifyContent: 'center',

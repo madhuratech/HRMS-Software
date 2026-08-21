@@ -1,5 +1,7 @@
 import React from 'react';
 import { createDrawerNavigator } from '@react-navigation/drawer';
+import { TouchableOpacity, View, Image, Text } from 'react-native';
+import { Menu, ArrowLeft } from 'lucide-react-native';
 import CustomDrawerContent from './CustomDrawerContent';
 
 // Existing Screens
@@ -18,6 +20,14 @@ import AppraisalsScreen from '../screens/performance/AppraisalsScreen';
 import ReviewsScreen from '../screens/performance/ReviewsScreen';
 import FeedbackScreen from '../screens/performance/FeedbackScreen';
 import EmployeeDashboardScreen from '../screens/dashboard/EmployeeDashboardScreen';
+
+// Expenses Screens
+import ExpenseCategoriesScreen from '../screens/expenses/ExpenseCategoriesScreen';
+import ExpenseClaimsScreen from '../screens/expenses/ExpenseClaimsScreen';
+import ExpenseApprovalScreen from '../screens/expenses/ExpenseApprovalScreen';
+import ReimbursementsScreen from '../screens/expenses/ReimbursementsScreen';
+import ExpenseReportsScreen from '../screens/expenses/ExpenseReportsScreen';
+
 
 // Attendance Screens
 import DailyAttendanceScreen from '../screens/attendance/DailyAttendanceScreen';
@@ -66,18 +76,74 @@ import FollowUpScreen from '../screens/sales/FollowUpScreen';
 
 const Drawer = createDrawerNavigator();
 
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const CustomHeader = ({ navigation, route, insets }) => {
+  const titles = {
+    DashboardMain: 'Dashboard',
+    EmployeeDashboard: 'Employee Dashboard',
+    AttendanceMain: 'Attendance',
+    LeaveMain: 'Leave Management',
+    EmployeeList: 'Employees',
+    AttendanceReportsModule: 'Attendance Reports',
+    PayrollReportsModule: 'Payroll Reports',
+    EmployeeDocumentsModule: 'Employee Documents',
+    KPI: 'KPI',
+    KRAs: 'KRAs',
+  };
+  const title = titles[route.name] || route.name.replace(/([A-Z])/g, ' $1').trim();
+  const isDashboard = route.name === 'DashboardMain' || route.name === 'EmployeeDashboard';
+
+  return (
+    <View style={{ paddingTop: insets.top, backgroundColor: '#F8FAFC' }}>
+      {/* Main App Header */}
+      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', paddingHorizontal: 16, height: 56, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' }}>
+        <TouchableOpacity
+          onPress={() => navigation.openDrawer()}
+          style={{ padding: 8, marginLeft: -8, marginRight: 8 }}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <Menu size={24} color="#0F172A" />
+        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ width: 32, height: 32, backgroundColor: '#FFF', borderRadius: 6, overflow: 'hidden' }}>
+            <Image 
+              source={require('../../assets/logo.png')} 
+              style={{ width: '100%', height: '100%' }} 
+              resizeMode="contain" 
+            />
+          </View>
+          <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A', letterSpacing: 0.5 }}>MADHURA HRMS</Text>
+        </View>
+      </View>
+
+      {/* Inner Screen Header */}
+      {!isDashboard && !['SalesEnquiries', 'SalesEntry', 'CustomerSalesDetails', 'FollowUp', 'ExpenseClaims', 'ExpenseCategories', 'DailyAttendance', 'Regularization', 'Overtime', 'LeaveApplications', 'LeaveApproval', 'LeaveBalance', 'LeaveTypes', 'CompOff', 'ShiftRoster', 'CompanyProfile', 'Departments', 'Designations', 'Teams', 'ShiftManagement', 'HolidayCalendar', 'OrganizationChart', 'EmployeeDirectory', 'EmployeeList', 'AddEmployee', 'EmployeeProfile', 'EmploymentHistory', 'Promotions', 'Transfers', 'ExitManagement', 'EmployeeDocuments'].includes(route.name) && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 16, height: 60, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
+          <TouchableOpacity
+            onPress={() => navigation.navigate('DashboardMain')}
+            style={{ padding: 8, marginLeft: -8, marginRight: 12 }}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <ArrowLeft size={24} color="#0F172A" />
+          </TouchableOpacity>
+          <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A' }}>{title}</Text>
+        </View>
+      )}
+    </View>
+  );
+};
+
 export default function DrawerNavigator() {
+  const insets = useSafeAreaInsets();
+  
   return (
     <Drawer.Navigator
       drawerContent={(props) => <CustomDrawerContent {...props} />}
-      screenOptions={{
-        headerShown: true,
-        headerStyle: { backgroundColor: '#F8FAFC' },
-        headerTintColor: '#0F172A',
-        drawerStyle: {
-          width: 280,
-        },
-      }}
+      screenOptions={({ navigation, route }) => ({
+        drawerStyle: { width: 250 },
+        header: () => <CustomHeader navigation={navigation} route={route} insets={insets} />,
+      })}
     >
       <Drawer.Screen name="DashboardMain" component={DashboardMainWrapper} />
       <Drawer.Screen name="EmployeeDashboard" component={EmployeeDashboardScreen} />
@@ -180,11 +246,11 @@ export default function DrawerNavigator() {
       <Drawer.Screen name="ProjectReports" component={PlaceholderScreen} />
 
       {/* Expenses */}
-      <Drawer.Screen name="ExpenseClaims" component={PlaceholderScreen} />
-      <Drawer.Screen name="ExpenseCategories" component={PlaceholderScreen} />
-      <Drawer.Screen name="ExpenseApproval" component={PlaceholderScreen} />
-      <Drawer.Screen name="ExpenseReimbursements" component={PlaceholderScreen} />
-      <Drawer.Screen name="ExpenseReports" component={PlaceholderScreen} />
+      <Drawer.Screen name="ExpenseClaims" component={ExpenseClaimsScreen} />
+      <Drawer.Screen name="ExpenseCategories" component={ExpenseCategoriesScreen} />
+      <Drawer.Screen name="ExpenseApproval" component={ExpenseApprovalScreen} />
+      <Drawer.Screen name="ExpenseReimbursements" component={ReimbursementsScreen} />
+      <Drawer.Screen name="ExpenseReports" component={ExpenseReportsScreen} />
 
       {/* Documents */}
       <Drawer.Screen name="EmployeeDocumentsModule" component={PlaceholderScreen} />
@@ -223,3 +289,4 @@ export default function DrawerNavigator() {
     </Drawer.Navigator>
   );
 }
+

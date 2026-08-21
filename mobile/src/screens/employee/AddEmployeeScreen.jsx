@@ -4,9 +4,10 @@ import {
   Text, 
   StyleSheet, 
   ScrollView,
-  Alert
+  Alert,
+  TouchableOpacity
 } from 'react-native';
-import { ChevronRight, ChevronLeft, Check, UploadCloud, ShieldCheck, User } from 'lucide-react-native';
+import { ChevronRight, ChevronLeft, Check, UploadCloud, ShieldCheck, User, ArrowLeft } from 'lucide-react-native';
 import { COLORS, SIZES, FONTS } from '../../components/ui/theme';
 import { HRMSCard } from '../../components/ui/HRMSCard';
 import { HRMSButton } from '../../components/ui/HRMSButton';
@@ -27,7 +28,7 @@ const STEPS = [
 
 export default function AddEmployeeScreen({ navigation }) {
   const { user } = useAuth();
-  
+
   // Role checks
   const isSuperAdmin = user?.role === 'SUPER_ADMIN' || user?.role === 'MANAGING_DIRECTOR' || user?.role === 'ADMIN';
   const isHrAdmin = user?.role === 'HR_ADMIN' || user?.role === 'HR_MANAGER';
@@ -50,7 +51,7 @@ export default function AddEmployeeScreen({ navigation }) {
     address: '',
     photo: ''
   });
-  
+
   const [loading, setLoading] = useState(false);
 
   if (!hasAccess) {
@@ -252,9 +253,14 @@ export default function AddEmployeeScreen({ navigation }) {
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.pageHeader}>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.pageTitle}>Add New {activeTab === 'ADMIN' ? 'Admin' : 'Employee'}</Text>
-          <Text style={styles.pageSubtitle}>Fill in the details to onboard a new user</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={() => navigation.navigate('EmployeeList')} style={{ marginRight: 16, padding: 4 }}>
+            <ArrowLeft size={24} color="#0F172A" />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.pageTitle}>Add Employee</Text>
+            <Text style={styles.pageSubtitle}>Create a new employee profile</Text>
+          </View>
         </View>
       </LinearGradient>
 
@@ -339,7 +345,7 @@ const styles = StyleSheet.create({
   headerTextContainer: { flex: 1 },
   pageTitle: { fontSize: 24, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
   pageSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
-  
+
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: '#EEF2FF',

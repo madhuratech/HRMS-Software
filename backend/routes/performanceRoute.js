@@ -5,7 +5,7 @@ const db = require('../config/database');
 // --- GOALS ---
 router.get('/goals', async (req, res) => {
   try {
-    const [rows] = await db.query(`
+    const [rows] = await db.promise().query(`
       SELECT g.*, e.first_name, e.last_name 
       FROM goals g 
       LEFT JOIN employees e ON g.employee_id = e.id 
@@ -21,7 +21,7 @@ router.get('/goals', async (req, res) => {
 router.post('/goals', async (req, res) => {
   const { employee_id, title, description, start_date, due_date, status, progress } = req.body;
   try {
-    const [result] = await db.query(
+    const [result] = await db.promise().query(
       'INSERT INTO goals (employee_id, title, description, start_date, due_date, status, progress) VALUES (?, ?, ?, ?, ?, ?, ?)',
       [employee_id, title, description, start_date, due_date, status || 'pending', progress || 0]
     );
@@ -35,7 +35,7 @@ router.post('/goals', async (req, res) => {
 // --- KPIS ---
 router.get('/kpis', async (req, res) => {
   try {
-    const [rows] = await db.query(`
+    const [rows] = await db.promise().query(`
       SELECT k.*, e.first_name, e.last_name 
       FROM kpis k 
       LEFT JOIN employees e ON k.employee_id = e.id 
@@ -51,7 +51,7 @@ router.get('/kpis', async (req, res) => {
 router.post('/kpis', async (req, res) => {
   const { employee_id, title, target_value, achieved_value, weightage } = req.body;
   try {
-    const [result] = await db.query(
+    const [result] = await db.promise().query(
       'INSERT INTO kpis (employee_id, title, target_value, achieved_value, weightage) VALUES (?, ?, ?, ?, ?)',
       [employee_id, title, target_value, achieved_value, weightage || 100]
     );
@@ -65,7 +65,7 @@ router.post('/kpis', async (req, res) => {
 // --- KRAS ---
 router.get('/kras', async (req, res) => {
   try {
-    const [rows] = await db.query(`
+    const [rows] = await db.promise().query(`
       SELECT k.*, e.first_name, e.last_name 
       FROM kras k 
       LEFT JOIN employees e ON k.employee_id = e.id 
@@ -81,7 +81,7 @@ router.get('/kras', async (req, res) => {
 router.post('/kras', async (req, res) => {
   const { employee_id, title, description } = req.body;
   try {
-    const [result] = await db.query(
+    const [result] = await db.promise().query(
       'INSERT INTO kras (employee_id, title, description) VALUES (?, ?, ?)',
       [employee_id, title, description]
     );
@@ -95,7 +95,7 @@ router.post('/kras', async (req, res) => {
 // --- APPRAISALS ---
 router.get('/appraisals', async (req, res) => {
   try {
-    const [rows] = await db.query(`
+    const [rows] = await db.promise().query(`
       SELECT a.*, e.first_name, e.last_name 
       FROM appraisals a 
       LEFT JOIN employees e ON a.employee_id = e.id 
@@ -111,7 +111,7 @@ router.get('/appraisals', async (req, res) => {
 router.post('/appraisals', async (req, res) => {
   const { employee_id, appraisal_cycle, rating, feedback, status } = req.body;
   try {
-    const [result] = await db.query(
+    const [result] = await db.promise().query(
       'INSERT INTO appraisals (employee_id, appraisal_cycle, rating, feedback, status) VALUES (?, ?, ?, ?, ?)',
       [employee_id, appraisal_cycle, rating, feedback, status || 'draft']
     );
@@ -125,7 +125,7 @@ router.post('/appraisals', async (req, res) => {
 // --- REVIEWS ---
 router.get('/reviews', async (req, res) => {
   try {
-    const [rows] = await db.query(`
+    const [rows] = await db.promise().query(`
       SELECT r.*, 
         e1.first_name AS emp_first_name, e1.last_name AS emp_last_name,
         e2.first_name AS rev_first_name, e2.last_name AS rev_last_name
@@ -144,7 +144,7 @@ router.get('/reviews', async (req, res) => {
 router.post('/reviews', async (req, res) => {
   const { employee_id, reviewer_id, review_date, comments, rating } = req.body;
   try {
-    const [result] = await db.query(
+    const [result] = await db.promise().query(
       'INSERT INTO reviews (employee_id, reviewer_id, review_date, comments, rating) VALUES (?, ?, ?, ?, ?)',
       [employee_id, reviewer_id, review_date, comments, rating]
     );
@@ -158,7 +158,7 @@ router.post('/reviews', async (req, res) => {
 // --- FEEDBACK ---
 router.get('/feedback', async (req, res) => {
   try {
-    const [rows] = await db.query(`
+    const [rows] = await db.promise().query(`
       SELECT f.*, 
         e1.first_name AS emp_first_name, e1.last_name AS emp_last_name,
         e2.first_name AS prov_first_name, e2.last_name AS prov_last_name
@@ -177,7 +177,7 @@ router.get('/feedback', async (req, res) => {
 router.post('/feedback', async (req, res) => {
   const { employee_id, provider_id, feedback_text, feedback_type } = req.body;
   try {
-    const [result] = await db.query(
+    const [result] = await db.promise().query(
       'INSERT INTO feedback (employee_id, provider_id, feedback_text, feedback_type) VALUES (?, ?, ?, ?)',
       [employee_id, provider_id, feedback_text, feedback_type || 'positive']
     );

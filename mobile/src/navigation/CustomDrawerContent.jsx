@@ -222,29 +222,39 @@ export default function CustomDrawerContent(props) {
   
   // Filter menu items based on role
   const getFilteredMenu = () => {
-    if (user?.type === 'EMPLOYEE') {
-      return [
-        { id: 'EmployeeDashboard', label: 'Dashboard', icon: LayoutDashboard, path: 'EmployeeDashboard' },
-        menuItems.find(i => i.id === 'attendance'),
-        menuItems.find(i => i.id === 'leave-management'),
-        {
-          id: 'employees', label: 'My Profile', icon: Users,
-          children: [
-            { id: 'EmployeeProfile', label: 'View Profile', path: 'EmployeeProfile' },
-            { id: 'EmployeeDocuments', label: 'My Documents', path: 'EmployeeDocuments' }
-          ]
-        },
-        menuItems.find(i => i.id === 'settings'),
-      ].filter(Boolean); // removes undefined if not found
-    }
+    // Determine the role, defaulting to empty string if undefined
+    const role = user?.role || user?.role_name || '';
     
-    // For Super Admin
-    if (user?.role === 'SUPER_ADMIN' || user?.type === 'SUPER_ADMIN' || user?.type === 'ADMIN' || !user?.type) {
+    // For Super Admin and Admin, grant full access (Super Admin hides GpsAttendance)
+    if (role === 'SUPER_ADMIN' || role === 'ADMIN') {
+      if (role === 'SUPER_ADMIN') {
+        return menuItems.map(item => {
+          if (item.id === 'attendance') {
+            return {
+              ...item,
+              children: item.children.filter(child => child.id !== 'GpsAttendance')
+            };
+          }
+          return item;
+        });
+      }
       return menuItems;
     }
     
-    // For other Admins (HR, Team Lead, Project Manager), return all or full custom filtering based on role
-    return menuItems;
+    // For Employees, and any other unrecognized roles (Default fallback)
+    return [
+      { id: 'EmployeeDashboard', label: 'Dashboard', icon: LayoutDashboard, path: 'EmployeeDashboard' },
+      menuItems.find(i => i.id === 'attendance'),
+      menuItems.find(i => i.id === 'leave-management'),
+      {
+        id: 'employees', label: 'My Profile', icon: Users,
+        children: [
+          { id: 'EmployeeProfile', label: 'View Profile', path: 'EmployeeProfile' },
+          { id: 'EmployeeDocuments', label: 'My Documents', path: 'EmployeeDocuments' }
+        ]
+      },
+      menuItems.find(i => i.id === 'settings'),
+    ].filter(Boolean); // removes undefined if not found
   };
 
   const filteredMenuItems = getFilteredMenu();

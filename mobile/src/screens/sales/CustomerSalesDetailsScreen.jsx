@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Building2, Mail, Phone, Calendar as CalendarIcon, FileText, ArrowLeft, ChevronRight } from 'lucide-react-native';
+import { Building2, Mail, Phone, Calendar as CalendarIcon, FileText, ArrowLeft, ChevronRight, DollarSign, Clock, StickyNote, Plus } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
 
 export default function CustomerSalesDetailsScreen({ route, navigation }) {
@@ -22,13 +23,13 @@ export default function CustomerSalesDetailsScreen({ route, navigation }) {
       // Fetch enquiry
       const enqRes = await apiClient.get('/sales/enquiries');
       const enquiry = enqRes.data.find(e => e.id === enquiryId);
-      
+
       if (!enquiry) {
         setLoading(false);
         return;
       }
 
-      // Fetch related entries and followups (inefficient but works for now)
+      // Fetch related entries and followups
       const [entriesRes, followupsRes] = await Promise.all([
         apiClient.get('/sales/entries'),
         apiClient.get('/sales/followups')
@@ -50,17 +51,29 @@ export default function CustomerSalesDetailsScreen({ route, navigation }) {
     }
   };
 
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'new': return '#3B82F6';
+      case 'contacted': return '#F59E0B';
+      case 'qualified': return '#8B5CF6';
+      case 'proposal_sent': return '#6366F1';
+      case 'won': return '#10B981';
+      case 'lost': return '#EF4444';
+      default: return '#64748B';
+    }
+  };
+
   if (loading) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
-        <ActivityIndicator size="large" color="#2563EB" />
+      <View style={[styles.container, styles.centerBox]}>
+        <ActivityIndicator size="large" color="#4F46E5" />
       </View>
     );
   }
 
   if (!details || !details.enquiry) {
     return (
-      <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+      <View style={[styles.container, styles.centerBox]}>
         <Text style={styles.emptyText}>Details not found</Text>
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Text style={styles.backBtnText}>Go Back</Text>
@@ -73,71 +86,135 @@ export default function CustomerSalesDetailsScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.headerBack} onPress={() => navigation.goBack()}>
-          <ArrowLeft size={24} color="#0F172A" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Customer Details</Text>
-        <View style={{ width: 24 }} />
-      </View>
+      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
+        <View style={styles.headerTop}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backArrow}>
+            <ArrowLeft size={24} color="#0F172A" />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Customer Profile</Text>
+            <Text style={styles.headerSubtitle}>Lead details and history</Text>
+          </View>
+        </View>
+      </LinearGradient>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Enquiry Details Card */}
-        <View style={styles.card}>
-          <View style={styles.titleRow}>
-            <Building2 size={24} color="#2563EB" />
-            <Text style={styles.customerName}>{enquiry.customer_name}</Text>
+        
+        {/* Enquiry Profile Card */}
+        <View style={styles.profileCard}>
+          <View style={styles.profileHeader}>
+            <View style={styles.profileIconBox}>
+              <Building2 size={28} color="#4F46E5" />
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>{enquiry.customer_name}</Text>
+              <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(enquiry.status)}15` }]}>
+                <Text style={[styles.statusText, { color: getStatusColor(enquiry.status) }]}>
+                  {enquiry.status?.replace('_', ' ').toUpperCase() || 'NEW'}
+                </Text>
+              </View>
+            </View>
           </View>
           
           <View style={styles.divider} />
-          
-          <View style={styles.detailRow}>
-            <Mail size={16} color="#64748B" />
-            <Text style={styles.detailText}>{enquiry.contact_email || 'N/A'}</Text>
+
+          <View style={styles.contactList}>
+            <View style={styles.contactItem}>
+              <View style={styles.contactIconBg}>
+                <Mail size={16} color="#64748B" />
+              </View>
+              <Text style={styles.contactValue}>{enquiry.contact_email || 'No email provided'}</Text>
+            </View>
+            <View style={styles.contactItem}>
+              <View style={styles.contactIconBg}>
+                <Phone size={16} color="#64748B" />
+              </View>
+              <Text style={styles.contactValue}>{enquiry.contact_phone || 'No phone provided'}</Text>
+            </View>
           </View>
-          <View style={styles.detailRow}>
-            <Phone size={16} color="#64748B" />
-            <Text style={styles.detailText}>{enquiry.contact_phone || 'N/A'}</Text>
+        </View>
+
+        {/* Enquiry Details */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeader}>
+            <FileText size={20} color="#4F46E5" />
+            <Text style={styles.sectionTitle}>Enquiry Requirements</Text>
           </View>
-          
-          <Text style={styles.sectionTitle}>Enquiry Details</Text>
+          <View style={styles.divider} />
           <Text style={styles.descText}>{enquiry.enquiry_details}</Text>
         </View>
 
-        {/* Sales Entries */}
-        <Text style={styles.sectionHeader}>Sales History</Text>
+        {/* Sales History */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderTitle}>Sales Log</Text>
+          <TouchableOpacity 
+            style={styles.addSmallBtn} 
+            onPress={() => navigation.navigate('SalesEntry')}
+          >
+            <Plus size={14} color="#10B981" />
+            <Text style={[styles.addSmallBtnText, { color: '#10B981' }]}>Log Sale</Text>
+          </TouchableOpacity>
+        </View>
+
         {entries.length === 0 ? (
-          <Text style={styles.emptySubText}>No sales recorded yet.</Text>
+          <View style={styles.emptySubBox}>
+            <Text style={styles.emptySubText}>No sales recorded for this customer.</Text>
+          </View>
         ) : (
           entries.map((entry, index) => (
-            <View key={index} style={styles.listCard}>
-              <View style={styles.listCardRow}>
-                <Text style={styles.amountText}>${parseFloat(entry.amount).toFixed(2)}</Text>
-                <Text style={styles.dateText}>{new Date(entry.sale_date).toLocaleDateString()}</Text>
+            <View key={index} style={styles.historyCard}>
+              <View style={styles.historyRow}>
+                <View style={styles.historyIconBox}>
+                  <DollarSign size={18} color="#10B981" />
+                </View>
+                <View style={styles.historyCol}>
+                  <Text style={styles.historyAmount}>₹{parseFloat(entry.amount).toLocaleString('en-IN')}</Text>
+                  <Text style={styles.historyDate}>{new Date(entry.sale_date).toLocaleDateString()}</Text>
+                </View>
               </View>
-              {entry.notes ? <Text style={styles.notesText}>{entry.notes}</Text> : null}
+              {entry.notes ? (
+                <View style={styles.historyNotesRow}>
+                  <StickyNote size={14} color="#94A3B8" style={{marginRight: 8, marginTop: 2}} />
+                  <Text style={styles.historyNotesText}>{entry.notes}</Text>
+                </View>
+              ) : null}
             </View>
           ))
         )}
 
         {/* Follow Ups */}
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 }}>
-          <Text style={styles.sectionHeader}>Follow-Ups</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('FollowUp', { enquiryId })}>
-            <Text style={styles.linkText}>View All</Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeaderTitle}>Recent Follow-ups</Text>
+          <TouchableOpacity 
+            style={styles.addSmallBtn} 
+            onPress={() => navigation.navigate('FollowUp')}
+          >
+            <Text style={[styles.addSmallBtnText, { color: '#F59E0B' }]}>View All</Text>
           </TouchableOpacity>
         </View>
-        
+
         {followups.length === 0 ? (
-          <Text style={styles.emptySubText}>No follow-ups scheduled.</Text>
+          <View style={styles.emptySubBox}>
+            <Text style={styles.emptySubText}>No follow-ups scheduled.</Text>
+          </View>
         ) : (
           followups.slice(0, 3).map((fup, index) => (
-            <View key={index} style={styles.listCard}>
-              <View style={styles.listCardRow}>
-                <Text style={styles.fupAction}>{fup.next_action}</Text>
-                <Text style={styles.dateText}>{new Date(fup.followup_date).toLocaleDateString()}</Text>
+            <View key={index} style={styles.historyCard}>
+              <View style={styles.historyRow}>
+                <View style={[styles.historyIconBox, { backgroundColor: '#FEF3C7' }]}>
+                  <Clock size={18} color="#F59E0B" />
+                </View>
+                <View style={styles.historyCol}>
+                  <Text style={styles.historyAmount}>{fup.next_action || 'Follow Up'}</Text>
+                  <Text style={styles.historyDate}>{new Date(fup.followup_date).toLocaleDateString()}</Text>
+                </View>
               </View>
-              <Text style={styles.notesText}>{fup.notes}</Text>
+              {fup.notes ? (
+                <View style={styles.historyNotesRow}>
+                  <StickyNote size={14} color="#94A3B8" style={{marginRight: 8, marginTop: 2}} />
+                  <Text style={styles.historyNotesText}>{fup.notes}</Text>
+                </View>
+              ) : null}
             </View>
           ))
         )}
@@ -151,34 +228,61 @@ export default function CustomerSalesDetailsScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: { 
-    padding: 20, backgroundColor: '#FFF', flexDirection: 'row', 
-    justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    padding: 24, paddingTop: 20, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
   },
-  headerBack: { padding: 4, marginLeft: -4 },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
-  content: { padding: 20 },
-  card: { 
-    backgroundColor: '#FFF', borderRadius: 16, padding: 20, marginBottom: 24,
-    borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.03, shadowRadius: 8, elevation: 2,
+  headerTop: { flexDirection: 'row', alignItems: 'center' },
+  backArrow: { marginRight: 16, padding: 4 },
+  headerTextContainer: { flex: 1 },
+  headerTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 2, fontWeight: '500' },
+  
+  centerBox: { justifyContent: 'center', alignItems: 'center' },
+  emptyText: { color: '#64748B', fontSize: 16, fontWeight: '600', marginBottom: 16 },
+  backBtn: { backgroundColor: '#4F46E5', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
+  backBtnText: { color: '#FFF', fontWeight: '700' },
+
+  content: { paddingHorizontal: 20, paddingTop: 20 },
+  
+  profileCard: { 
+    backgroundColor: '#FFF', borderRadius: 24, padding: 24, marginBottom: 20, borderWidth: 1, borderColor: '#F1F5F9',
+    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.03, shadowRadius: 16, elevation: 2
   },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  customerName: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 16 },
-  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
-  detailText: { fontSize: 15, color: '#475569' },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A', marginTop: 8, marginBottom: 8 },
-  descText: { fontSize: 14, color: '#64748B', lineHeight: 22 },
-  sectionHeader: { fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 12 },
-  listCard: { backgroundColor: '#FFF', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E2E8F0' },
-  listCardRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
-  amountText: { fontSize: 16, fontWeight: '700', color: '#10B981' },
-  dateText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
-  notesText: { fontSize: 14, color: '#475569' },
-  fupAction: { fontSize: 15, fontWeight: '600', color: '#0F172A' },
-  emptySubText: { color: '#94A3B8', fontSize: 14, fontStyle: 'italic', marginBottom: 20 },
-  emptyText: { fontSize: 16, color: '#64748B', marginBottom: 16 },
-  backBtn: { backgroundColor: '#2563EB', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
-  backBtnText: { color: '#FFF', fontWeight: '600' },
-  linkText: { color: '#2563EB', fontWeight: '600', fontSize: 14 }
+  profileHeader: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  profileIconBox: { width: 64, height: 64, borderRadius: 20, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
+  profileInfo: { flex: 1, alignItems: 'flex-start' },
+  profileName: { fontSize: 22, fontWeight: '800', color: '#0F172A', marginBottom: 8 },
+  statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+  statusText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
+  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 20 },
+  
+  contactList: { gap: 12 },
+  contactItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  contactIconBg: { width: 32, height: 32, borderRadius: 10, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center' },
+  contactValue: { fontSize: 15, color: '#334155', fontWeight: '500' },
+
+  sectionCard: { 
+    backgroundColor: '#FFF', borderRadius: 24, padding: 24, marginBottom: 24, borderWidth: 1, borderColor: '#F1F5F9',
+    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.03, shadowRadius: 16, elevation: 2
+  },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
+  descText: { fontSize: 15, color: '#475569', lineHeight: 24 },
+
+  sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, marginTop: 8 },
+  sectionHeaderTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B' },
+  addSmallBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, gap: 4, borderWidth: 1, borderColor: '#F1F5F9' },
+  addSmallBtnText: { fontSize: 13, fontWeight: '700' },
+
+  emptySubBox: { backgroundColor: '#F8FAFC', borderRadius: 16, padding: 20, alignItems: 'center', marginBottom: 24, borderWidth: 1, borderColor: '#F1F5F9' },
+  emptySubText: { color: '#94A3B8', fontSize: 14, fontWeight: '500' },
+
+  historyCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+  historyRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  historyIconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center' },
+  historyCol: { flex: 1 },
+  historyAmount: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+  historyDate: { fontSize: 13, color: '#64748B', marginTop: 2, fontWeight: '500' },
+  historyNotesRow: { flexDirection: 'row', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F8FAFC' },
+  historyNotesText: { fontSize: 14, color: '#64748B', flex: 1, lineHeight: 20 }
 });

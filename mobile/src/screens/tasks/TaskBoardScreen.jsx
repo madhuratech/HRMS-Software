@@ -8,7 +8,7 @@ export default function TaskBoardScreen({ navigation }) {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -105,11 +105,11 @@ export default function TaskBoardScreen({ navigation }) {
           </Text>
         </View>
       </View>
-      
+
       <Text style={styles.taskDesc} numberOfLines={2}>{item.description}</Text>
-      
+
       <View style={styles.divider} />
-      
+
       <View style={styles.cardFooter}>
         <View style={styles.footerInfo}>
           <Text style={styles.statusLabel}>{formatStatus(item.status)}</Text>
@@ -201,7 +201,7 @@ export default function TaskBoardScreen({ navigation }) {
                 value={newTaskDesc}
                 onChangeText={setNewTaskDesc}
               />
-              
+
               <TouchableOpacity 
                 style={[styles.submitButton, submitting && { opacity: 0.7 }]} 
                 onPress={handleAddTask}
@@ -256,7 +256,7 @@ const styles = StyleSheet.create({
   footerInfo: { flexDirection: 'row', alignItems: 'center' },
   statusLabel: { fontSize: 13, fontWeight: '600', color: '#64748B' },
   dateLabel: { fontSize: 13, fontWeight: '500', color: '#64748B' },
-  
+
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },

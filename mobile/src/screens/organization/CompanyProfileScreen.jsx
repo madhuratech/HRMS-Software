@@ -90,14 +90,14 @@ export default function CompanyProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.pageHeader}>
-        <View style={styles.headerTextContainer}>
-          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16 }}>
+      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
             <ArrowLeft size={24} color="#0F172A" />
           </TouchableOpacity>
-          <View>
-            <Text style={styles.pageTitle}>Company Profile</Text>
-            <Text style={styles.pageSubtitle}>Manage your organization's core details and settings</Text>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Company Profile</Text>
+            <Text style={styles.headerSubtitle}>Manage organizational details</Text>
           </View>
         </View>
       </LinearGradient>
@@ -121,7 +121,7 @@ export default function CompanyProfileScreen() {
       </View>
 
       <ScrollView style={styles.contentContainer} showsVerticalScrollIndicator={false}>
-        
+
         <LinearGradient colors={['#1E1B4B', '#312E81']} style={styles.bannerCard}>
           <View style={styles.bannerTop}>
             <View style={styles.logoBox}>
@@ -233,10 +233,10 @@ export default function CompanyProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  pageHeader: { paddingHorizontal: 24, paddingTop: 24, paddingBottom: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  headerTextContainer: { flex: 1, flexDirection: 'row', alignItems: 'center' },
-  pageTitle: { fontSize: 28, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
-  pageSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
+  header: { padding: 20, paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  headerTextContainer: { flex: 1 },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
   tabsWrapper: { backgroundColor: '#FFF', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   tabsContainer: { paddingHorizontal: 24, gap: 12 },
   tabButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#F1F5F9' },

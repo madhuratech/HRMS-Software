@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
-import { Search, Plus, MoreVertical, Briefcase, Calendar, CheckCircle2, Clock } from 'lucide-react-native';
+import { Search, Plus, MoreVertical, Briefcase, Calendar, CheckCircle2, Clock, ArrowLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
 
-export default function EmploymentHistoryScreen({ route }) {
+export default function EmploymentHistoryScreen({ route, navigation }) {
   const [history, setHistory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('EXPERIENCE');
-  
+
   // Use passed employee ID or fallback to 1 for demo purposes
   const empId = route?.params?.id || 1;
 
@@ -59,14 +59,14 @@ export default function EmploymentHistoryScreen({ route }) {
             {formatDate(item.start_date || item.effective_date)} - {formatDate(item.end_date)}
           </Text>
         </View>
-        
+
         {item.old_value && item.new_value && (
           <View style={styles.changeBox}>
             <Text style={styles.changeLabel}>Change:</Text>
             <Text style={styles.changeText}>{item.old_value} → {item.new_value}</Text>
           </View>
         )}
-        
+
         {item.responsibilities && (
           <Text style={styles.responsibilities}>{item.responsibilities}</Text>
         )}
@@ -121,9 +121,14 @@ export default function EmploymentHistoryScreen({ route }) {
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.pageHeader}>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.pageTitle}>Employee History</Text>
-          <Text style={styles.pageSubtitle}>Activity, attendance and experience</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 16, padding: 4 }}>
+            <ArrowLeft size={24} color="#0F172A" />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.pageTitle}>Employment History</Text>
+            <Text style={styles.pageSubtitle}>View employee work timeline</Text>
+          </View>
         </View>
       </LinearGradient>
 
@@ -189,7 +194,7 @@ const styles = StyleSheet.create({
   headerTextContainer: { flex: 1 },
   pageTitle: { fontSize: 24, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
   pageSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
-  
+
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: '#EEF2FF',
@@ -209,7 +214,7 @@ const styles = StyleSheet.create({
   },
   tabText: { fontSize: 13, fontWeight: '700', color: '#64748B' },
   tabTextActive: { color: '#4F46E5' },
-  
+
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { paddingHorizontal: 24, paddingBottom: 24 },
   card: { 

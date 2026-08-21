@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
-import { Clock, CalendarDays, Search, Plus, X, Users } from 'lucide-react-native';
+import { Clock, CalendarDays, Search, Plus, X, Users, ArrowLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
 
-export default function ShiftRosterScreen() {
+export default function ShiftRosterScreen({ navigation }) {
   const [rosters, setRosters] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   const [modalVisible, setModalVisible] = useState(false);
   const [empId, setEmpId] = useState('');
   const [shiftId, setShiftId] = useState('');
@@ -85,18 +85,23 @@ export default function ShiftRosterScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Shift Roster</Text>
-          <Text style={styles.headerSubtitle}>Manage employee shifts</Text>
+      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
+            <ArrowLeft size={24} color="#0F172A" />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Shift Roster</Text>
+            <Text style={styles.headerSubtitle}>Manage employee shifts</Text>
+          </View>
         </View>
         <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
           <LinearGradient colors={['#8B5CF6', '#6D28D9']} style={styles.gradientBtn}>
             <Plus size={18} color="#FFF" />
-            <Text style={styles.addButtonText}>Assign Shift</Text>
+            <Text style={styles.addButtonText}>Assign</Text>
           </LinearGradient>
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       {loading ? (
         <ActivityIndicator size="large" color="#8B5CF6" style={{ marginTop: 40 }} />
@@ -130,7 +135,7 @@ export default function ShiftRosterScreen() {
               <TextInput style={styles.modalInput} placeholder="e.g. 1" value={empId} onChangeText={setEmpId} keyboardType="numeric" />
               <Text style={styles.inputLabel}>Shift ID</Text>
               <TextInput style={styles.modalInput} placeholder="e.g. 1 (Regular)" value={shiftId} onChangeText={setShiftId} keyboardType="numeric" />
-              
+
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.inputLabel}>Start Date</Text>
@@ -141,7 +146,7 @@ export default function ShiftRosterScreen() {
                   <TextInput style={styles.modalInput} placeholder="YYYY-MM-DD" value={endDate} onChangeText={setEndDate} />
                 </View>
               </View>
-              
+
               <TouchableOpacity style={[styles.submitButton, submitting && { opacity: 0.7 }]} onPress={handleAdd} disabled={submitting}>
                 <Text style={styles.submitButtonText}>{submitting ? 'Assigning...' : 'Assign Shift'}</Text>
               </TouchableOpacity>
@@ -155,7 +160,8 @@ export default function ShiftRosterScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { padding: 20, backgroundColor: '#FFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  header: { padding: 20, paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  headerTextContainer: { flex: 1 },
   headerTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
   headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
   addButton: { borderRadius: 10, overflow: 'hidden', shadowColor: '#8B5CF6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },

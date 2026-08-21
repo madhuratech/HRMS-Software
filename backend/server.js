@@ -28,12 +28,9 @@ app.get("/", (req, res) => {
 
 app.use("/api/attendance", require("./routes/attendanceRoute"));
 app.use("/app/attendance", require("./routes/attendanceRoute"));
-<<<<<<< HEAD
 app.use("/app/leaves", require("./routes/leaveRoute"));
 app.use("/app/payroll", require("./routes/payroll"));
 app.use("/app/projects", require("./routes/projects"));
-=======
->>>>>>> c2c5811379209cb22da6cd3f0d161d2ff07dfb76
 app.use("/app/dashboard", require("./routes/dashboard"));
 app.use("/app/employees", require("./routes/employee"));
 app.use("/app/requirements", require("./routes/requirements"));
@@ -50,16 +47,13 @@ app.use("/app/goals", require("./routes/goals"));
 app.use("/app/kpis", require("./routes/kpis"));
 app.use("/app/kras", require("./routes/kras"));
 app.use("/app/appraisals", require("./routes/appraisals"));
-<<<<<<< HEAD
 app.use("/app/tasks", require("./routes/taskRoute"));
 app.use("/app/sales", require("./routes/salesRoute"));
 app.use("/app/training", require("./routes/trainingRoute"));
 app.use("/app/performance", require("./routes/performanceRoute"));
-=======
 app.use("/app/reviews", require("./routes/reviews"));
 app.use("/app/feedback", require("./routes/feedback"));
 app.use("/app/promotions", require("./routes/promotions"));
->>>>>>> c2c5811379209cb22da6cd3f0d161d2ff07dfb76
 
 app.use("/app/leaves", require("./routes/leaves"));
 app.use("/app/organization", require("./routes/organizationRoute"));
@@ -91,6 +85,6 @@ app.use((err, req, res, next) => {
 
 const PORT = 5001;
 
-app.listen(PORT, () => {
-    console.log(`SERVER IS RUNNING at http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`SERVER IS RUNNING at http://0.0.0.0:${PORT}`);
 });

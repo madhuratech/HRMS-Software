@@ -5,7 +5,7 @@ const db = require("../config/database");
 // Get all sales enquiries
 router.get("/enquiries", async (req, res) => {
     try {
-        const [rows] = await db.query(`
+        const [rows] = await db.promise().query(`
             SELECT 
                 se.*,
                 e.name as assigned_name
@@ -24,7 +24,7 @@ router.get("/enquiries", async (req, res) => {
 router.post("/enquiries", async (req, res) => {
     try {
         const { customer_name, contact_email, contact_phone, enquiry_details, status, assigned_to } = req.body;
-        const [result] = await db.query(`
+        const [result] = await db.promise().query(`
             INSERT INTO sales_enquiries (customer_name, contact_email, contact_phone, enquiry_details, status, assigned_to)
             VALUES (?, ?, ?, ?, ?, ?)
         `, [customer_name, contact_email, contact_phone, enquiry_details, status || 'new', assigned_to]);
@@ -38,7 +38,7 @@ router.post("/enquiries", async (req, res) => {
 // Get sales entries
 router.get("/entries", async (req, res) => {
     try {
-        const [rows] = await db.query(`
+        const [rows] = await db.promise().query(`
             SELECT 
                 se.*,
                 enq.customer_name
@@ -57,7 +57,7 @@ router.get("/entries", async (req, res) => {
 router.post("/entries", async (req, res) => {
     try {
         const { enquiry_id, amount, sale_date, notes } = req.body;
-        const [result] = await db.query(`
+        const [result] = await db.promise().query(`
             INSERT INTO sales_entries (enquiry_id, amount, sale_date, notes)
             VALUES (?, ?, ?, ?)
         `, [enquiry_id, amount, sale_date, notes]);
@@ -71,7 +71,7 @@ router.post("/entries", async (req, res) => {
 // Get follow-ups
 router.get("/followups", async (req, res) => {
     try {
-        const [rows] = await db.query(`
+        const [rows] = await db.promise().query(`
             SELECT 
                 sf.*,
                 enq.customer_name

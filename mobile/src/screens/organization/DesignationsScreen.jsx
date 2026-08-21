@@ -10,7 +10,7 @@ export default function DesignationsScreen() {
   const [designations, setDesignations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   // Modal State
   const [modalVisible, setModalVisible] = useState(false);
   const [newName, setNewName] = useState('');
@@ -59,7 +59,7 @@ export default function DesignationsScreen() {
     <View style={styles.container}>
       <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
         <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
             <ArrowLeft size={24} color="#0F172A" />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
@@ -150,7 +150,7 @@ export default function DesignationsScreen() {
                   onChangeText={setNewCode}
                 />
               </View>
-              
+
               <TouchableOpacity 
                 style={[styles.submitButton, submitting && { opacity: 0.7 }]} 
                 onPress={handleAddDesignation}
@@ -170,7 +170,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: { 
     padding: 24, 
-    paddingTop: 48,
     borderBottomWidth: 1,
     borderBottomColor: '#F1F5F9',
     flexDirection: 'row', 
@@ -207,7 +206,7 @@ const styles = StyleSheet.create({
   iconBox: { width: 52, height: 52, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   desigName: { fontSize: 20, fontWeight: '800', color: '#0F172A', marginBottom: 4 },
   deptName: { fontSize: 14, color: '#64748B', fontWeight: '600' },
-  
+
   // Modal
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 50 },

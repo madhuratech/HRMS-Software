@@ -36,7 +36,8 @@ const db = {
   },
   connect: (callback) => {
     if (typeof callback === 'function') callback(null);
-  }
+  },
+  promise: () => pool.promise()
 };
 
 module.exports = db;
