@@ -261,6 +261,7 @@ export function CompanyProfile() {
       method: "PUT",
       body: JSON.stringify(updatedProfile)
     })
+<<<<<<< HEAD
     .then(() => {
       setProfile(updatedProfile);
       setIsEditing(false);
@@ -272,6 +273,19 @@ export function CompanyProfile() {
       console.error(err);
       addToast("Failed to save changes to database", "error");
     });
+=======
+      .then(() => {
+        setProfile(updatedProfile);
+        setIsEditing(false);
+        setShowSuccess(true);
+        addToast("Company profile updated successfully!", "success");
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      })
+      .catch(err => {
+        console.error(err);
+        addToast("Failed to save changes to database", "error");
+      });
+>>>>>>> origin/main
   };
 
   const handleCancel = (section) => {
@@ -356,6 +370,7 @@ export function CompanyProfile() {
         generatedBy: "John Doe"
       })
     })
+<<<<<<< HEAD
     .then(res => {
       if (!res.ok) throw new Error("Failed to export PDF");
       return res.blob();
@@ -377,6 +392,29 @@ export function CompanyProfile() {
       setExporting(false);
       addToast("Failed to export company profile PDF", "error");
     });
+=======
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to export PDF");
+        return res.blob();
+      })
+      .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${profile.general.companyName.replace(/\s+/g, '_')}_profile.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        setExporting(false);
+        addToast("Company profile exported successfully!", "success");
+      })
+      .catch(err => {
+        console.error(err);
+        setExporting(false);
+        addToast("Failed to export company profile PDF", "error");
+      });
+>>>>>>> origin/main
   };
 
   const formatValue = (val) => {
@@ -401,7 +439,11 @@ export function CompanyProfile() {
   };
 
   const renderEmptyState = (label, onAdd) => (
+<<<<<<< HEAD
     <div className="flex flex-col items-center justify-center py-16 px-4 text-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
+=======
+    <div className="flex flex-col items-center justify-center p-8 sm:p-12 text-center border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50 my-4 w-full">
+>>>>>>> origin/main
       <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-4">
         <Building2 size={24} />
       </div>
@@ -409,7 +451,11 @@ export function CompanyProfile() {
       <p className="text-sm text-slate-500 max-w-sm mb-6">You haven't added {label.toLowerCase()} information yet.</p>
       <button
         onClick={onAdd}
+<<<<<<< HEAD
         className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2"
+=======
+        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm hover:shadow"
+>>>>>>> origin/main
       >
         <Plus size={16} /> Add {label}
       </button>
@@ -440,7 +486,11 @@ export function CompanyProfile() {
           <p className="text-sm text-slate-500 mt-1">View and manage your organization information</p>
         </div>
         <div className="flex items-center gap-3">
+<<<<<<< HEAD
           <button 
+=======
+          <button
+>>>>>>> origin/main
             onClick={handleDownloadPDF}
             disabled={exporting}
             className={`px-5 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center gap-2 ${exporting ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -521,17 +571,28 @@ export function CompanyProfile() {
 
       {/* Content Area */}
       <div className="w-full">
+<<<<<<< HEAD
         
         {/* Tab Content Card */}
         <div className="custom-info-card flex flex-col justify-between w-full">
           
+=======
+
+        {/* Tab Content Card */}
+        <div className="custom-info-card flex flex-col justify-between w-full">
+
+>>>>>>> origin/main
           {/* Inline Edit Form View */}
           {isEditing ? (
             <div className="max-w-2xl mx-auto w-full space-y-6 py-4">
               <h3 className="text-lg font-bold text-slate-800 border-b border-slate-100 pb-3">
                 Edit {TABS.find(t => t.id === activeTab)?.label}
               </h3>
+<<<<<<< HEAD
               
+=======
+
+>>>>>>> origin/main
               {/* Company Details Form */}
               {activeTab === 'company-details' && (
                 <div className="form-grid-2col">
@@ -976,15 +1037,25 @@ export function CompanyProfile() {
               )}
 
               <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 rounded-xl mt-6">
+<<<<<<< HEAD
                 <button 
                   type="button" 
+=======
+                <button
+                  type="button"
+>>>>>>> origin/main
                   onClick={() => handleCancel(getSectionKey(activeTab))}
                   className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors"
                 >
                   Cancel
                 </button>
+<<<<<<< HEAD
                 <button 
                   type="button" 
+=======
+                <button
+                  type="button"
+>>>>>>> origin/main
                   onClick={() => handleSave(getSectionKey(activeTab))}
                   className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
                 >
@@ -1001,7 +1072,11 @@ export function CompanyProfile() {
                 <div className="space-y-6">
                   <h3 className="general-info-title">General Information</h3>
                   <div className="general-info-rows-container">
+<<<<<<< HEAD
                     
+=======
+
+>>>>>>> origin/main
                     {/* Row 1 */}
                     <div className="general-info-grid-row">
                       <div>
@@ -1114,7 +1189,11 @@ export function CompanyProfile() {
                   <div className="space-y-6">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                       <h3 className="text-lg font-bold text-slate-800">Company Details</h3>
+<<<<<<< HEAD
                       <button 
+=======
+                      <button
+>>>>>>> origin/main
                         onClick={() => setIsEditing(true)}
                         className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
                       >
@@ -1167,7 +1246,11 @@ export function CompanyProfile() {
                   <div className="space-y-6">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                       <h3 className="text-lg font-bold text-slate-800">Contact Details</h3>
+<<<<<<< HEAD
                       <button 
+=======
+                      <button
+>>>>>>> origin/main
                         onClick={() => setIsEditing(true)}
                         className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
                       >
@@ -1212,7 +1295,11 @@ export function CompanyProfile() {
                   <div className="space-y-6">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                       <h3 className="text-lg font-bold text-slate-800">Address Details</h3>
+<<<<<<< HEAD
                       <button 
+=======
+                      <button
+>>>>>>> origin/main
                         onClick={() => setIsEditing(true)}
                         className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
                       >
@@ -1257,7 +1344,11 @@ export function CompanyProfile() {
                   <div className="space-y-6">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                       <h3 className="text-lg font-bold text-slate-800">Business Details</h3>
+<<<<<<< HEAD
                       <button 
+=======
+                      <button
+>>>>>>> origin/main
                         onClick={() => setIsEditing(true)}
                         className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
                       >
@@ -1299,7 +1390,11 @@ export function CompanyProfile() {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                     <h3 className="text-lg font-bold text-slate-800">HR Settings</h3>
+<<<<<<< HEAD
                     <button 
+=======
+                    <button
+>>>>>>> origin/main
                       onClick={() => setIsEditing(true)}
                       className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
                     >
@@ -1332,7 +1427,11 @@ export function CompanyProfile() {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                     <h3 className="text-lg font-bold text-slate-800">Payroll</h3>
+<<<<<<< HEAD
                     <button 
+=======
+                    <button
+>>>>>>> origin/main
                       onClick={() => setIsEditing(true)}
                       className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
                     >
@@ -1361,7 +1460,11 @@ export function CompanyProfile() {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                     <h3 className="text-lg font-bold text-slate-800">Banking</h3>
+<<<<<<< HEAD
                     <button 
+=======
+                    <button
+>>>>>>> origin/main
                       onClick={() => setIsEditing(true)}
                       className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
                     >
@@ -1390,7 +1493,11 @@ export function CompanyProfile() {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                     <h3 className="text-lg font-bold text-slate-800">Branding</h3>
+<<<<<<< HEAD
                     <button 
+=======
+                    <button
+>>>>>>> origin/main
                       onClick={() => setIsEditing(true)}
                       className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
                     >
@@ -1465,19 +1572,31 @@ export function CompanyProfile() {
                                 <div className="flex justify-end gap-2">
                                   {docObj ? (
                                     <>
+<<<<<<< HEAD
                                       <button 
+=======
+                                      <button
+>>>>>>> origin/main
                                         className="btn-doc-action btn-doc-view flex items-center gap-1"
                                         onClick={() => alert(`Viewing file: ${docObj.name}`)}
                                       >
                                         <Eye size={12} /> View
                                       </button>
+<<<<<<< HEAD
                                       <button 
+=======
+                                      <button
+>>>>>>> origin/main
                                         className="btn-doc-action btn-doc-download flex items-center gap-1"
                                         onClick={() => alert(`Downloading file: ${docObj.name}`)}
                                       >
                                         <Download size={12} /> Download
                                       </button>
+<<<<<<< HEAD
                                       <button 
+=======
+                                      <button
+>>>>>>> origin/main
                                         className="btn-doc-action btn-doc-delete flex items-center gap-1"
                                         onClick={() => handleDocDelete(docKey)}
                                       >
@@ -1492,7 +1611,11 @@ export function CompanyProfile() {
                                         className="hidden"
                                         onChange={(e) => handleDocUpload(docKey, e)}
                                       />
+<<<<<<< HEAD
                                       <label 
+=======
+                                      <label
+>>>>>>> origin/main
                                         htmlFor={`upload-${docKey}`}
                                         className="btn-doc-action btn-doc-upload flex items-center gap-1 cursor-pointer"
                                       >
@@ -1516,7 +1639,11 @@ export function CompanyProfile() {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                     <h3 className="text-lg font-bold text-slate-800">System Settings</h3>
+<<<<<<< HEAD
                     <button 
+=======
+                    <button
+>>>>>>> origin/main
                       onClick={() => setIsEditing(true)}
                       className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
                     >

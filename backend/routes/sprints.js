@@ -18,4 +18,8 @@ router.put('/:id', authenticateJWT, checkRole(writeRoles), validationMiddleware(
 router.put('/:id/status', authenticateJWT, checkRole(writeRoles), SprintController.updateStatus);
 router.delete('/:id', authenticateJWT, checkRole(writeRoles), SprintController.delete);
 
+<<<<<<< HEAD
 module.exports = router;
+=======
+module.exports = router;
+>>>>>>> origin/main

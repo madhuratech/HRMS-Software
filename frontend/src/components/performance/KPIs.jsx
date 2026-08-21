@@ -130,6 +130,7 @@ export default function KPIs() {
 
     setSubmitting(true);
     try {
+<<<<<<< HEAD
       const payload = {
         kpi_name: formData.kpiName.trim(),
         department_id: parseInt(formData.department),
@@ -137,6 +138,20 @@ export default function KPIs() {
         target_value: formData.targetValue.trim(),
         description: formData.description.trim(),
         status: formData.status
+=======
+      const rawWeight = formData.weightage ? String(formData.weightage).replace('%', '').trim() : '';
+      const parsedWeight = rawWeight ? parseInt(rawWeight, 10) : null;
+      const parsedDept = parseInt(formData.department, 10) || 1;
+
+      const payload = {
+        kpi_name: formData.kpiName.trim(),
+        title: formData.kpiName.trim(),
+        department_id: parsedDept,
+        weightage: isNaN(parsedWeight) ? null : parsedWeight,
+        target_value: formData.targetValue.trim(),
+        description: formData.description ? formData.description.trim() : '',
+        status: formData.status || 'Active'
+>>>>>>> origin/main
       };
 
       const res = await fetch('/app/kpis', {
@@ -155,7 +170,11 @@ export default function KPIs() {
         fetchKpis();
         fetchDashboardStats();
       } else {
+<<<<<<< HEAD
         addToast(resData.message || 'Failed to save KPI', 'error');
+=======
+        addToast(resData.message || (resData.errors ? JSON.stringify(resData.errors) : 'Failed to save KPI'), 'error');
+>>>>>>> origin/main
       }
     } catch (err) {
       addToast('Connection error occurred', 'error');

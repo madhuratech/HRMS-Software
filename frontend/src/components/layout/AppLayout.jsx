@@ -5,15 +5,25 @@ import { Header } from './Header';
 
 export function AppLayout({ userRole, onLogout }) {
   const location = useLocation();
+<<<<<<< HEAD
   
+=======
+
+>>>>>>> origin/main
   // Extract the current view from the path to pass to Header
   // e.g. /dashboard -> dashboard, /employees/list -> employees-list
   const currentView = location.pathname.substring(1).replace(/\//g, '-') || 'dashboard';
 
+<<<<<<< HEAD
+=======
+  const isAIAssistant = location.pathname === '/ai-assistant';
+
+>>>>>>> origin/main
   return (
     <div className="flex h-screen font-sans bg-slate-50 text-slate-900">
       <Sidebar
         userRole={userRole}
+<<<<<<< HEAD
         onLogout={onLogout} 
       />
       
@@ -21,6 +31,15 @@ export function AppLayout({ userRole, onLogout }) {
         <Header title={currentView} userRole={userRole} currentView={currentView} />
         
         <main className="flex-1 overflow-y-auto bg-slate-50" style={{ padding: '24px' }}>
+=======
+        onLogout={onLogout}
+      />
+
+      <div className="flex-1 ml-64 flex flex-col h-screen overflow-hidden">
+        <Header title={currentView} userRole={userRole} currentView={currentView} />
+
+        <main className={`flex-1 bg-slate-50 ${isAIAssistant ? 'overflow-hidden' : 'overflow-y-auto'}`} style={{ padding: isAIAssistant ? '0px' : '24px' }}>
+>>>>>>> origin/main
           <Outlet />
         </main>
       </div>

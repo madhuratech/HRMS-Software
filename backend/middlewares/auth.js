@@ -49,10 +49,17 @@ const checkRole = (allowedRoles) => {
       return response(res, false, 401, 'Unauthorized');
     }
 
+<<<<<<< HEAD
     const userRole = req.user.role; // e.g., 'Super Admin', 'HR Admin', etc.
     const isAllowed = allowedRoles.some(role => role.toLowerCase() === userRole.toLowerCase());
 
     if (isAllowed) {
+=======
+    const userRole = req.user.role || 'Super Admin';
+    const isAllowed = allowedRoles.some(role => role.toLowerCase() === userRole.toLowerCase());
+
+    if (isAllowed || userRole.toLowerCase() === 'super admin') {
+>>>>>>> origin/main
       next();
     } else {
       return response(res, false, 403, 'Forbidden: Insufficient permissions');
@@ -60,7 +67,42 @@ const checkRole = (allowedRoles) => {
   };
 };
 
+<<<<<<< HEAD
 module.exports = {
   authenticateJWT,
   checkRole
+=======
+const checkPermission = (moduleKey, action = 'view') => {
+  return async (req, res, next) => {
+    if (!req.user) {
+      return response(res, false, 401, 'Unauthorized');
+    }
+
+    const userRole = req.user.role || 'Super Admin';
+    if (userRole.toLowerCase() === 'super admin') {
+      return next();
+    }
+
+    try {
+      const RbacService = require('../services/RbacService');
+      const perms = await RbacService.getUserPermissions(userRole);
+      const modPerms = perms[moduleKey] || { view: false, create: false, edit: false, delete: false };
+
+      const actionKey = action.toLowerCase();
+      if (modPerms[actionKey]) {
+        next();
+      } else {
+        return response(res, false, 403, `Forbidden: You do not have permission to ${action} ${moduleKey}`);
+      }
+    } catch (err) {
+      next();
+    }
+  };
+};
+
+module.exports = {
+  authenticateJWT,
+  checkRole,
+  checkPermission
+>>>>>>> origin/main
 };

@@ -39,6 +39,10 @@ import { Teams } from './components/organization/Teams';
 import { ShiftManagement } from './components/organization/ShiftManagement';
 import { HolidayCalendar } from './components/organization/HolidayCalendar';
 import { OrganizationChart } from './components/organization/OrganizationChart';
+<<<<<<< HEAD
+=======
+import { UserRoles } from './components/organization/UserRoles';
+>>>>>>> origin/main
 
 // Employee Module Imports
 import EmployeeDirectory from './components/employee/EmployeeDirectory';
@@ -138,6 +142,10 @@ import SettingsCommunication from './components/settings/SettingsCommunication';
 import SettingsIntegrations from './components/settings/SettingsIntegrations';
 import SettingsSecurity from './components/settings/SettingsSecurity';
 import SettingsSystem from './components/settings/SettingsSystem';
+<<<<<<< HEAD
+=======
+import { AIAssistantDashboard } from './components/ai-assistant/AIAssistantDashboard';
+>>>>>>> origin/main
 
 import { ToastProvider } from './components/ui/Toast';
 import { CustomCursor } from './components/ui/CustomCursor';
@@ -234,7 +242,11 @@ function App() {
   const LegacyViewManager = () => {
     const location = useLocation();
     const currentView = location.pathname.substring(1) || 'dashboard'; // remove leading slash
+<<<<<<< HEAD
     
+=======
+
+>>>>>>> origin/main
     switch (currentView) {
       case 'dashboard':
         if (userRole === 'SERVICE_STAFF' || userRole === 'SALES_MANAGER') {
@@ -272,11 +284,21 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
+<<<<<<< HEAD
           
+=======
+
+>>>>>>> origin/main
           <Route element={<AppLayout userRole={userRole} onLogout={handleLogout} />}>
             {/* Dashboard Route */}
             <Route path="/dashboard" element={userRole === 'SERVICE_STAFF' || userRole === 'SALES_MANAGER' ? <StaffDashboard /> : <SuperAdminDashboard />} />
 
+<<<<<<< HEAD
+=======
+            {/* AI Assistant Route */}
+            <Route path="/ai-assistant" element={<AIAssistantDashboard />} />
+
+>>>>>>> origin/main
             {/* Employee Routes - explicitly rendering their own components */}
             <Route path="/employees/dashboard" element={<StaffDashboard />} />
             <Route path="/employees" element={<EmployeeDirectory />} />
@@ -288,7 +310,11 @@ function App() {
             <Route path="/employees/transfers" element={<TransfersContent />} />
             <Route path="/employees/exit" element={<ExitManagement />} />
             <Route path="/employees/documents" element={<EmployeeDocuments />} />
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> origin/main
             {/* Attendance Routes */}
             <Route path="/attendance/daily" element={<DailyAttendance />} />
             <Route path="/attendance/gps" element={<GPSAttendance />} />
@@ -296,18 +322,31 @@ function App() {
             <Route path="/attendance/shift-roster" element={<ShiftRoster />} />
             <Route path="/attendance/overtime" element={<Overtime />} />
             <Route path="/attendance/late-arrival" element={<LateArrival />} />
+<<<<<<< HEAD
             <Route path="/attendance/reports" element={<AttendanceReports />} />
             <Route path="/attendance/punch-locations" element={<PunchLocations />} />
             
+=======
+            <Route path="/attendance/reports" element={<AttendanceReportsModule />} />
+            <Route path="/attendance/punch-locations" element={<PunchLocations />} />
+
+>>>>>>> origin/main
             {/* Leave Module */}
             <Route path="/leave-dashboard" element={<LeaveDashboard />} />
             <Route path="/leave-applications" element={<LeaveApplications />} />
             <Route path="/leave-approval" element={<LeaveApproval />} />
             <Route path="/leave-balance" element={<LeaveBalance />} />
             <Route path="/leave-types" element={<LeaveTypes />} />
+<<<<<<< HEAD
             <Route path="/holiday-list" element={<HolidayList />} />
             <Route path="/comp-off" element={<CompOff />} />
             
+=======
+            <Route path="/leave/reports" element={<LeaveReports />} />
+            <Route path="/holiday-list" element={<HolidayList />} />
+            <Route path="/comp-off" element={<CompOff />} />
+
+>>>>>>> origin/main
             {/* Organization Module */}
             <Route path="/company-profile" element={<CompanyProfile />} />
             <Route path="/departments" element={<Departments />} />
@@ -316,7 +355,12 @@ function App() {
             <Route path="/shift-management" element={<ShiftManagement />} />
             <Route path="/holiday-calendar" element={<HolidayCalendar />} />
             <Route path="/organization-chart" element={<OrganizationChart />} />
+<<<<<<< HEAD
             
+=======
+            <Route path="/user-roles" element={<UserRoles />} />
+
+>>>>>>> origin/main
             {/* Other Existing Modules */}
             <Route path="/news" element={<NewsFeed />} />
             <Route path="/schedule" element={<ShiftScheduler />} />
@@ -334,7 +378,11 @@ function App() {
             <Route path="/reports/recruitment" element={<RecruitmentReportsModule />} />
             <Route path="/reports/performance" element={<PerformanceReports />} />
             <Route path="/reports/project" element={<ProjectReports />} />
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> origin/main
             {/* Payroll Module */}
             <Route path="/payroll" element={<Navigate to="/payroll/salary-structure" replace />} />
             <Route path="/payroll/salary-structure" element={<SalaryStructure />} />
@@ -345,8 +393,13 @@ function App() {
             <Route path="/payroll/reimbursements" element={<Reimbursements />} />
             <Route path="/payroll/loans" element={<LoansAdvances />} />
             <Route path="/payroll/tax" element={<TaxManagement />} />
+<<<<<<< HEAD
             <Route path="/payroll/reports" element={<PayrollReports />} />
             
+=======
+            <Route path="/payroll/reports" element={<PayrollReportsModule />} />
+
+>>>>>>> origin/main
             {/* Recruitment Module */}
             <Route path="/recruitment" element={<Navigate to="/recruitment/dashboard" replace />} />
             <Route path="/recruitment/dashboard" element={<RecruitmentDashboard />} />
@@ -355,8 +408,13 @@ function App() {
             <Route path="/recruitment/interviews" element={<InterviewSchedule />} />
             <Route path="/recruitment/offers" element={<OfferLetters />} />
             <Route path="/recruitment/pipeline" element={<HiringPipeline />} />
+<<<<<<< HEAD
             <Route path="/recruitment/reports" element={<RecruitmentReports />} />
             
+=======
+            <Route path="/recruitment/reports" element={<RecruitmentReportsModule />} />
+
+>>>>>>> origin/main
             {/* Onboarding Module */}
             <Route path="/onboarding" element={<Navigate to="/onboarding/new-joiners" replace />} />
             <Route path="/onboarding/new-joiners" element={<NewJoiners />} />
@@ -365,7 +423,11 @@ function App() {
             <Route path="/onboarding/welcome-kit" element={<WelcomeKit />} />
             <Route path="/onboarding/orientation" element={<Orientation />} />
             <Route path="/onboarding/probation" element={<Probation />} />
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> origin/main
             {/* Performance Module */}
             <Route path="/performance" element={<Navigate to="/performance/goals" replace />} />
             <Route path="/performance/goals" element={<Goals />} />
@@ -375,6 +437,10 @@ function App() {
             <Route path="/performance/reviews" element={<Reviews />} />
             <Route path="/performance/feedback" element={<Feedback />} />
             <Route path="/performance/promotions" element={<Promotions />} />
+<<<<<<< HEAD
+=======
+            <Route path="/performance/reports" element={<PerformanceReports />} />
+>>>>>>> origin/main
 
             {/* Project Management Module */}
             <Route path="/projects" element={<Navigate to="/projects/dashboard" replace />} />
@@ -385,6 +451,10 @@ function App() {
             <Route path="/projects/timesheets" element={<Timesheets />} />
             <Route path="/projects/milestones" element={<Milestones />} />
             <Route path="/projects/team" element={<TeamMembers />} />
+<<<<<<< HEAD
+=======
+            <Route path="/projects/reports" element={<ProjectReports />} />
+>>>>>>> origin/main
 
             {/* Expenses Module */}
             <Route path="/expenses" element={<Navigate to="/expenses/claims" replace />} />

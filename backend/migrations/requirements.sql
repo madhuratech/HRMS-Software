@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 -- CREATE requirements table
 CREATE TABLE IF NOT EXISTS `requirements` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
@@ -37,6 +38,8 @@ CREATE TABLE IF NOT EXISTS `requirements` (
   `deleted_at` TIMESTAMP NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+=======
+>>>>>>> origin/main
 -- CREATE requirement_audit_logs table to track changes
 CREATE TABLE IF NOT EXISTS `requirement_audit_logs` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,

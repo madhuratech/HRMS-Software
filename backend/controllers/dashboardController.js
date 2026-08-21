@@ -68,9 +68,15 @@ exports.getStats = async (req, res) => {
           e.profile_photo,
           COALESCE(d.dept_name, 'General') as dept, 
           COALESCE(desg.role_name, 'Employee') as designation, 
+<<<<<<< HEAD
           IF(COUNT(g.id) > 0, ROUND(AVG(g.completion_percentage)/20, 2), 0.00) as score,
           CONCAT(IF(COUNT(g.id) > 0, ROUND(AVG(g.completion_percentage)), 0), '%') as goals,
           IF(COUNT(g.id) > 0, ROUND(AVG(g.completion_percentage)/20), 0) as stars,
+=======
+          IF(COUNT(g.id) > 0, ROUND(AVG(g.progress)/20, 2), 0.00) as score,
+          CONCAT(IF(COUNT(g.id) > 0, ROUND(AVG(g.progress)), 0), '%') as goals,
+          IF(COUNT(g.id) > 0, ROUND(AVG(g.progress)/20), 0) as stars,
+>>>>>>> origin/main
           IF(COUNT(g.id) > 0, '↑ 5.0%', '0.0%') as trend, 
           IF(COUNT(g.id) > 0, 1, 0) as isUp 
         FROM employees e 

@@ -255,7 +255,17 @@ export default function InterviewSchedule() {
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
           <button
+<<<<<<< HEAD
             onClick={() => setShowFeedbackModal(true)}
+=======
+            onClick={() => {
+              setFeedbackForm({
+                schedule_id: '', candidate: '', interviewRound: 'Technical Round', interviewer: '', rating: '5',
+                strengths: '', weaknesses: '', recommendation: 'Hire', comments: '', status: 'Completed'
+              });
+              setShowFeedbackModal(true);
+            }}
+>>>>>>> origin/main
             style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}
           >
             <MessageSquare size={16} /> Interview Feedback
@@ -470,6 +480,7 @@ export default function InterviewSchedule() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Candidate <span className="text-red-500">*</span></label>
+<<<<<<< HEAD
                   <input type="text" readOnly value={feedbackForm.candidate} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-slate-50 outline-none" />
                 </div>
                 <div>
@@ -479,6 +490,45 @@ export default function InterviewSchedule() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Interviewer <span className="text-red-500">*</span></label>
                   <input type="text" readOnly value={feedbackForm.interviewer} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-slate-50 outline-none" />
+=======
+                  {feedbackForm.schedule_id ? (
+                    <input type="text" readOnly value={feedbackForm.candidate || ''} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-slate-50 outline-none" />
+                  ) : (
+                    <select
+                      value={feedbackForm.schedule_id || ''}
+                      onChange={e => {
+                        const schedId = e.target.value;
+                        const allInterviews = scheduleList.flatMap(d => d.interviews || []);
+                        const selected = allInterviews.find(i => String(i.id) === String(schedId));
+                        if (selected) {
+                          setFeedbackForm({
+                            ...feedbackForm,
+                            schedule_id: selected.id,
+                            candidate: selected.name,
+                            interviewer: selected.interviewer || 'Super Admin',
+                            interviewRound: selected.round || 'Technical Round'
+                          });
+                        } else {
+                          setFeedbackForm({ ...feedbackForm, schedule_id: '', candidate: '', interviewer: '', interviewRound: 'Technical Round' });
+                        }
+                      }}
+                      className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white cursor-pointer"
+                    >
+                      <option value="">Select Candidate Interview</option>
+                      {scheduleList.flatMap(d => d.interviews || []).map(i => (
+                        <option key={i.id} value={i.id}>{i.name} - {i.job} ({i.round})</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Interview Round <span className="text-red-500">*</span></label>
+                  <input type="text" readOnly value={feedbackForm.interviewRound || 'Technical Round'} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-slate-50 outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Interviewer <span className="text-red-500">*</span></label>
+                  <input type="text" readOnly value={feedbackForm.interviewer || 'Super Admin'} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-slate-50 outline-none" />
+>>>>>>> origin/main
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Rating <span className="text-red-500">*</span></label>

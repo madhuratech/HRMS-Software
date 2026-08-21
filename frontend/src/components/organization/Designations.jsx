@@ -337,11 +337,26 @@ export const Designations = () => {
       {/* Table */}
       <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-x-auto">
         {paginatedData.length === 0 ? (
+<<<<<<< HEAD
           <div className="flex flex-col items-center justify-center py-20">
             <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4"><Award size={24} className="text-slate-400" /></div>
             <h3 className="text-lg font-semibold text-slate-700">No Designations Found</h3>
             <p className="text-sm text-slate-500 mt-1">Create your first designation.</p>
             <button onClick={handleAdd} className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"><Plus size={16} /> Add Designation</button>
+=======
+          <div className="flex flex-col items-center justify-center p-8 py-16 text-center">
+            <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-slate-400">
+              <Award size={24} />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-700">No Designations Found</h3>
+            <p className="text-sm text-slate-500 mt-1 mb-6">Create your first designation.</p>
+            <button
+              onClick={handleAdd}
+              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm mb-4"
+            >
+              <Plus size={16} /> Add Designation
+            </button>
+>>>>>>> origin/main
           </div>
         ) : (
           <table className="w-full">

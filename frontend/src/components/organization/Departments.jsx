@@ -215,6 +215,23 @@ export function Departments() {
     return { total, active, employees, heads };
   }, [departments]);
 
+<<<<<<< HEAD
+=======
+  const getHeadAvatarUrl = (dept) => {
+    if (!dept || !dept.headName || dept.headName === 'Unassigned') return null;
+    const emp = employeesList.find(e => e.name?.toLowerCase() === dept.headName?.toLowerCase());
+    const photo = emp?.profile_photo || emp?.avatar || emp?.photo || dept.headAvatar;
+    if (photo && photo.trim() !== '' && !photo.includes('undefined')) return photo;
+    return `https://ui-avatars.com/api/?name=${encodeURIComponent(dept.headName)}&background=2563eb&color=fff&bold=true`;
+  };
+
+  const getHeadRole = (dept) => {
+    if (!dept || !dept.headName || dept.headName === 'Unassigned') return 'Unassigned';
+    const emp = employeesList.find(e => e.name?.toLowerCase() === dept.headName?.toLowerCase());
+    return emp?.designation || emp?.role || emp?.jobTitle || dept.headRole || 'Department Manager';
+  };
+
+>>>>>>> origin/main
   // Filters & Search
   const filteredDepartments = useMemo(() => {
     return departments.filter(dept => {
@@ -514,6 +531,7 @@ export function Departments() {
                     </td>
                     <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">{dept.code}</td>
                     <td className="py-4 px-4">
+<<<<<<< HEAD
                       {dept.headName ? (
                         <div className="flex items-center gap-3">
                           <img src={dept.headAvatar} alt={dept.headName} className="w-8 h-8 rounded-full object-cover flex-shrink-0" style={{ minWidth: '32px', minHeight: '32px' }} />
@@ -523,6 +541,36 @@ export function Departments() {
                           </div>
                         </div>
                       ) : '—'}
+=======
+                      {dept.headName && dept.headName !== 'Unassigned' ? (
+                        <div className="flex items-center gap-3">
+                          <img
+                            src={getHeadAvatarUrl(dept)}
+                            alt={dept.headName}
+                            className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-slate-200"
+                            style={{ minWidth: '32px', minHeight: '32px' }}
+                            onError={(e) => {
+                              e.target.onerror = null;
+                              e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(dept.headName)}&background=2563eb&color=fff&bold=true`;
+                            }}
+                          />
+                          <div>
+                            <p className="text-sm font-semibold text-[#101828] leading-none whitespace-nowrap">{dept.headName}</p>
+                            <p className="text-xs text-slate-400 mt-1 leading-none whitespace-nowrap">{getHeadRole(dept)}</p>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-semibold flex-shrink-0">
+                            <Users size={14} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium text-slate-500 leading-none">Unassigned</p>
+                            <p className="text-xs text-slate-400 mt-1 leading-none">No Head</p>
+                          </div>
+                        </div>
+                      )}
+>>>>>>> origin/main
                     </td>
                     <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">
                       <div className="flex items-center gap-1.5">
@@ -662,7 +710,20 @@ export function Departments() {
                 placeholder="Select Employee"
                 options={['Unassigned', ...employeesList.map(emp => emp.name)]}
                 error={formErrors.headName}
+<<<<<<< HEAD
                 onChange={(val) => handleFormChange('headName', val === 'Unassigned' ? '' : val)}
+=======
+                onChange={(val) => {
+                  const isUnassigned = val === 'Unassigned' || !val;
+                  const selectedEmp = employeesList.find(e => e.name === val);
+                  setFormData(prev => ({
+                    ...prev,
+                    headName: isUnassigned ? '' : val,
+                    headAvatar: isUnassigned ? '' : (selectedEmp?.profile_photo || selectedEmp?.avatar || selectedEmp?.photo || ''),
+                    headRole: isUnassigned ? '' : (selectedEmp?.designation || selectedEmp?.role || selectedEmp?.jobTitle || 'Department Manager')
+                  }));
+                }}
+>>>>>>> origin/main
               />
 
               <CustomSelect
@@ -764,6 +825,7 @@ export function Departments() {
                 </div>
                 <div>
                   <p className="text-slate-400 font-medium">Department Head</p>
+<<<<<<< HEAD
                   <div className="flex items-center gap-2 mt-1">
                     <img src={selectedDept.headAvatar} alt={selectedDept.headName} className="w-7 h-7 rounded-full object-cover" />
                     <div>
@@ -771,6 +833,27 @@ export function Departments() {
                       <p className="text-xs text-slate-400">{selectedDept.headRole}</p>
                     </div>
                   </div>
+=======
+                  {selectedDept.headName && selectedDept.headName !== 'Unassigned' ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      <img
+                        src={getHeadAvatarUrl(selectedDept)}
+                        alt={selectedDept.headName}
+                        className="w-7 h-7 rounded-full object-cover border border-slate-200"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedDept.headName)}&background=2563eb&color=fff&bold=true`;
+                        }}
+                      />
+                      <div>
+                        <p className="text-slate-800 font-semibold leading-tight">{selectedDept.headName}</p>
+                        <p className="text-xs text-slate-400">{getHeadRole(selectedDept)}</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-slate-800 font-semibold mt-1 text-slate-500">Unassigned</p>
+                  )}
+>>>>>>> origin/main
                 </div>
                 <div>
                   <p className="text-slate-400 font-medium">Branch</p>

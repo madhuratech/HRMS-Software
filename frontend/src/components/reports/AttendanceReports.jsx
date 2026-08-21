@@ -18,10 +18,38 @@ export function AttendanceReports() {
     topAbsentees: []
   });
 
+<<<<<<< HEAD
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const res = await apiFetch('/reports/attendance');
+=======
+  const generateMonthOptions = () => {
+    const options = [];
+    const currentDate = new Date();
+    for (let i = 0; i < 18; i++) {
+      const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+      const year = d.getFullYear();
+      const monthIndex = d.getMonth();
+      const shortMonth = d.toLocaleString('en-US', { month: 'short' });
+      const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+      
+      options.push({
+        value: `${year}-${String(monthIndex + 1).padStart(2, '0')}`,
+        label: `${shortMonth} 1 – ${shortMonth} ${lastDay}, ${year}`
+      });
+    }
+    return options;
+  };
+
+  const monthOptions = generateMonthOptions();
+  const [selectedMonth, setSelectedMonth] = useState(monthOptions[0].value);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await apiFetch(`/reports/attendance?month=${encodeURIComponent(selectedMonth)}`);
+>>>>>>> origin/main
       if (res.success && res.data) {
         setData(res.data);
       }
@@ -30,7 +58,11 @@ export function AttendanceReports() {
     } finally {
       setLoading(false);
     }
+<<<<<<< HEAD
   }, []);
+=======
+  }, [selectedMonth]);
+>>>>>>> origin/main
 
   useEffect(() => {
     fetchData();
@@ -44,7 +76,11 @@ export function AttendanceReports() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
+<<<<<<< HEAD
     link.setAttribute("download", "attendance_report.csv");
+=======
+    link.setAttribute("download", `attendance_report_${selectedMonth}.csv`);
+>>>>>>> origin/main
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

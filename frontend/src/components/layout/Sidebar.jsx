@@ -29,12 +29,21 @@ import {
   Clock,
   CalendarDays,
   TreePine,
+<<<<<<< HEAD
   Bird
+=======
+  Bird,
+  Sparkles
+>>>>>>> origin/main
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export function Sidebar({ userRole, onLogout }) {
+<<<<<<< HEAD
   const [expandedGroups, setExpandedGroups] = useState(['organization', 'employees']);
+=======
+  const [expandedGroups, setExpandedGroups] = useState([]);
+>>>>>>> origin/main
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -45,7 +54,11 @@ export function Sidebar({ userRole, onLogout }) {
       try {
         const parsed = JSON.parse(auth);
         if (parsed.user && parsed.user.id) userId = parsed.user.id;
+<<<<<<< HEAD
       } catch (e) {}
+=======
+      } catch (e) { }
+>>>>>>> origin/main
     }
     localStorage.setItem('selectedEmployeeId', userId);
     navigate('/employees/profile');
@@ -53,6 +66,7 @@ export function Sidebar({ userRole, onLogout }) {
 
   const toggleGroup = (groupId) => {
     setExpandedGroups(prev =>
+<<<<<<< HEAD
       prev.includes(groupId)
         ? prev.filter(id => id !== groupId)
         : [...prev, groupId]
@@ -64,6 +78,25 @@ export function Sidebar({ userRole, onLogout }) {
     const currentPath = location.pathname;
     if (currentPath.startsWith('/employees') && !expandedGroups.includes('employees')) {
       setExpandedGroups(prev => [...prev, 'employees']);
+=======
+      prev.includes(groupId) ? [] : [groupId]
+    );
+  };
+
+  // Automatically expand ONLY the active module group based on current path and close all others
+  useEffect(() => {
+    const currentPath = location.pathname;
+    
+    const matchingGroup = menuItems.find(item => {
+      if (item.children) {
+        return item.children.some(child => child.path && (currentPath.startsWith(child.path) || currentPath === child.path));
+      }
+      return false;
+    });
+
+    if (matchingGroup) {
+      setExpandedGroups([matchingGroup.id]);
+>>>>>>> origin/main
     }
   }, [location.pathname]);
 
@@ -81,7 +114,12 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'teams', label: 'Teams', path: '/teams' },
         { id: 'shift-management', label: 'Shift Management', path: '/shift-management' },
         { id: 'holiday-calendar', label: 'Holiday Calendar', path: '/holiday-calendar' },
+<<<<<<< HEAD
         { id: 'organization-chart', label: 'Organization Chart', path: '/organization-chart' }
+=======
+        { id: 'organization-chart', label: 'Organization Chart', path: '/organization-chart' },
+        { id: 'user-roles', label: 'User Roles & Permissions', path: '/user-roles' }
+>>>>>>> origin/main
       ]
     },
     {
@@ -99,7 +137,12 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'promotions', label: 'Promotions', path: '/employees/promotions' },
         { id: 'transfers', label: 'Transfers', path: '/employees/transfers' },
         { id: 'exit-management', label: 'Exit Management', path: '/employees/exit' },
+<<<<<<< HEAD
         { id: 'employee-documents', label: 'Employee Documents', path: '/employees/documents' }
+=======
+        { id: 'employee-documents', label: 'Employee Documents', path: '/employees/documents' },
+        { id: 'employee-reports-sub', label: 'Employee Reports', path: '/reports/employee' }
+>>>>>>> origin/main
       ]
     },
     {
@@ -114,7 +157,11 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'shift-roster', label: 'Shift Roster', path: '/attendance/shift-roster' },
         { id: 'overtime', label: 'Overtime', path: '/attendance/overtime' },
         { id: 'late-arrival', label: 'Late Arrival', path: '/attendance/late-arrival' },
+<<<<<<< HEAD
         { id: 'attendance-reports', label: 'Attendance Reports', path: '/attendance/reports' },
+=======
+        { id: 'attendance-reports', label: 'Attendance Reports', path: '/reports/attendance' },
+>>>>>>> origin/main
         { id: 'punch-locations', label: 'Punch Locations', path: '/attendance/punch-locations' }
       ]
     },
@@ -130,7 +177,12 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'leave-balance', label: 'Leave Balance', path: '/leave-balance' },
         { id: 'leave-types', label: 'Leave Types', path: '/leave-types' },
         { id: 'holiday-list', label: 'Holiday List', path: '/holiday-list' },
+<<<<<<< HEAD
         { id: 'comp-off', label: 'Comp Off', path: '/comp-off' }
+=======
+        { id: 'comp-off', label: 'Comp Off', path: '/comp-off' },
+        { id: 'leave-reports-sub', label: 'Leave Reports', path: '/reports/leave' }
+>>>>>>> origin/main
       ]
     },
     {
@@ -147,7 +199,11 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'reimbursements', label: 'Reimbursements', path: '/payroll/reimbursements' },
         { id: 'loans-advances', label: 'Loans & Advances', path: '/payroll/loans' },
         { id: 'tax-management', label: 'Tax Management', path: '/payroll/tax' },
+<<<<<<< HEAD
         { id: 'payroll-reports', label: 'Payroll Reports', path: '/payroll/reports' }
+=======
+        { id: 'payroll-reports', label: 'Payroll Reports', path: '/reports/payroll' }
+>>>>>>> origin/main
       ]
     },
     {
@@ -161,7 +217,12 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'candidates', label: 'Candidates', path: '/recruitment/candidates' },
         { id: 'interview-schedule', label: 'Interview Schedule', path: '/recruitment/interviews' },
         { id: 'offer-letters', label: 'Offer Letters', path: '/recruitment/offers' },
+<<<<<<< HEAD
         { id: 'hiring-pipeline', label: 'Hiring Pipeline', path: '/recruitment/pipeline' }
+=======
+        { id: 'hiring-pipeline', label: 'Hiring Pipeline', path: '/recruitment/pipeline' },
+        { id: 'recruitment-reports-sub', label: 'Recruitment Reports', path: '/reports/recruitment' }
+>>>>>>> origin/main
       ]
     },
     {
@@ -190,7 +251,12 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'appraisals', label: 'Appraisals', path: '/performance/appraisals' },
         { id: 'reviews', label: 'Reviews', path: '/performance/reviews' },
         { id: 'feedback', label: 'Feedback', path: '/performance/feedback' },
+<<<<<<< HEAD
         { id: 'promotions-performance', label: 'Promotions', path: '/performance/promotions' }
+=======
+        { id: 'promotions-performance', label: 'Promotions', path: '/performance/promotions' },
+        { id: 'performance-reports-sub', label: 'Performance Reports', path: '/reports/performance' }
+>>>>>>> origin/main
       ]
     },
     // {
@@ -218,7 +284,12 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'sprint-board', label: 'Sprint Board', path: '/projects/sprint-board' },
         { id: 'timesheets', label: 'Timesheets', path: '/projects/timesheets' },
         { id: 'milestones', label: 'Milestones', path: '/projects/milestones' },
+<<<<<<< HEAD
         { id: 'team-members', label: 'Team Members', path: '/projects/team' }
+=======
+        { id: 'team-members', label: 'Team Members', path: '/projects/team' },
+        { id: 'project-reports-sub', label: 'Project Reports', path: '/reports/project' }
+>>>>>>> origin/main
       ]
     },
     {
@@ -306,7 +377,13 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'settings-security', label: 'Security', path: '/settings/security' },
         { id: 'settings-system', label: 'System', path: '/settings/system' }
       ]
+<<<<<<< HEAD
     }
+=======
+    },
+    { id: 'ai-assistant', label: 'AI Assistant', icon: Sparkles, roles: ['ALL'], path: '/ai-assistant' },
+
+>>>>>>> origin/main
   ];
 
   const filteredMenu = menuItems.filter((item) =>
@@ -359,6 +436,10 @@ export function Sidebar({ userRole, onLogout }) {
         </div>
       );
     }
+<<<<<<< HEAD
+=======
+    const isAIAssistant = item.id === 'ai-assistant';
+>>>>>>> origin/main
 
     return (
       <button
@@ -367,18 +448,47 @@ export function Sidebar({ userRole, onLogout }) {
         className={cn(
           "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm font-medium",
           isActive
+<<<<<<< HEAD
             ? "custom-sidebar-btn-active bg-blue-600 text-white"
             : "custom-sidebar-btn"
         )}
       >
         <item.icon size={18} />
+=======
+            ? (isAIAssistant ? "bg-violet-600 text-white shadow-lg shadow-violet-600/20" : "custom-sidebar-btn-active bg-blue-600 text-white")
+            : "custom-sidebar-btn"
+        )}
+      >
+        <item.icon 
+          size={18} 
+          className={cn(isAIAssistant ? "animate-pulse" : "")} 
+          style={isAIAssistant ? { 
+            stroke: 'url(#ai-spark-gradient)', 
+            filter: 'drop-shadow(0 0 18px rgba(139, 92, 246, 0.35))' 
+          } : {}} 
+        />
+>>>>>>> origin/main
         {item.label}
       </button>
     );
   };
 
   return (
+<<<<<<< HEAD
     <div className="w-64 custom-sidebar h-screen flex flex-col fixed left-0 top-0 overflow-y-auto">
+=======
+    <>
+      <svg style={{ width: 0, height: 0, position: 'absolute' }}>
+        <defs>
+          <linearGradient id="ai-spark-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#8B5CF6" />
+            <stop offset="50%" stopColor="#6366F1" />
+            <stop offset="100%" stopColor="#3B82F6" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div className="w-64 custom-sidebar h-screen flex flex-col fixed left-0 top-0 overflow-y-auto">
+>>>>>>> origin/main
       {/* Logo */}
       <div className="p-5 custom-sidebar-border-b">
         <div className="flex items-center gap-3">
@@ -397,6 +507,7 @@ export function Sidebar({ userRole, onLogout }) {
         {filteredMenu.map(item => renderMenuItem(item))}
       </nav>
 
+<<<<<<< HEAD
       {/* Need Help Support Card */}
       <div className="p-3">
         <div style={{ background: '#1E293B', borderRadius: 12, padding: 14, border: '1px solid #334155' }}>
@@ -422,6 +533,12 @@ export function Sidebar({ userRole, onLogout }) {
       <div className="p-3 custom-sidebar-border-t">
         <div className="custom-sidebar-profile-bg rounded-lg p-3 flex items-center gap-3">
           <div 
+=======
+      {/* User Profile */}
+      <div className="p-3 custom-sidebar-border-t">
+        <div className="custom-sidebar-profile-bg rounded-lg p-3 flex items-center gap-3">
+          <div
+>>>>>>> origin/main
             onClick={handleProfileClick}
             style={{ cursor: 'pointer' }}
             className="flex flex-1 items-center gap-3 min-w-0 hover:opacity-85 transition-opacity"
@@ -442,6 +559,11 @@ export function Sidebar({ userRole, onLogout }) {
           </button>
         </div>
       </div>
+<<<<<<< HEAD
     </div>
+=======
+      </div>
+    </>
+>>>>>>> origin/main
   );
 }

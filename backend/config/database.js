@@ -3,6 +3,10 @@ require("dotenv").config();
 
 const pool = mysql.createPool({
     host: process.env.DB_HOST,
+<<<<<<< HEAD
+=======
+    port: parseInt(process.env.DB_PORT) || 3306,
+>>>>>>> origin/main
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
@@ -10,7 +14,17 @@ const pool = mysql.createPool({
     connectionLimit: 10,
     queueLimit: 0,
     enableKeepAlive: true,
+<<<<<<< HEAD
     keepAliveInitialDelay: 10000
+=======
+    keepAliveInitialDelay: 10000,
+    connectTimeout: 20000,
+    idleTimeout: 60000
+});
+
+pool.on('error', (err) => {
+  console.error('MySQL Pool Error:', err.message || err);
+>>>>>>> origin/main
 });
 
 // Export a wrapper that mimics the single connection interface but uses the pool
@@ -36,8 +50,12 @@ const db = {
   },
   connect: (callback) => {
     if (typeof callback === 'function') callback(null);
+<<<<<<< HEAD
   },
   promise: () => pool.promise()
+=======
+  }
+>>>>>>> origin/main
 };
 
 module.exports = db;

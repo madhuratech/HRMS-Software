@@ -146,6 +146,7 @@ export default function Reviews() {
     setSubmitting(true);
     try {
       const payload = {
+<<<<<<< HEAD
         employee_id: parseInt(formData.employee),
         review_period: formData.reviewPeriod,
         reviewer_id: formData.reviewer.trim(),
@@ -156,6 +157,18 @@ export default function Reviews() {
         goals: formData.goals.trim(),
         comments: formData.comments.trim(),
         status: formData.status
+=======
+        employee_id: parseInt(formData.employee, 10) || 1,
+        review_period: formData.reviewPeriod ? formData.reviewPeriod.trim() : 'Q2 2026',
+        reviewer_id: formData.reviewer ? formData.reviewer.trim() : 'Manager',
+        type: formData.type || 'Manager Review',
+        overall_rating: formData.overallRating || '5',
+        strengths: formData.strengths ? formData.strengths.trim() : '',
+        improvement: formData.improvement ? formData.improvement.trim() : '',
+        goals: formData.goals ? formData.goals.trim() : '',
+        comments: formData.comments ? formData.comments.trim() : '',
+        status: formData.status || 'In Progress'
+>>>>>>> origin/main
       };
 
       const res = await fetch('/app/reviews', {
@@ -170,11 +183,19 @@ export default function Reviews() {
       if (resData.success) {
         addToast('Review submitted successfully!', 'success');
         setShowAddModal(false);
+<<<<<<< HEAD
         setFormData({ employee: '', reviewPeriod: 'Q2 2024', reviewer: '', type: 'Manager Review', overallRating: '5', strengths: '', improvement: '', goals: '', comments: '', status: 'In Progress' });
         fetchReviews();
         fetchDashboardStats();
       } else {
         addToast(resData.message || 'Failed to submit review', 'error');
+=======
+        setFormData({ employee: '', reviewPeriod: 'Q2 2026', reviewer: '', type: 'Manager Review', overallRating: '5', strengths: '', improvement: '', goals: '', comments: '', status: 'In Progress' });
+        fetchReviews();
+        fetchDashboardStats();
+      } else {
+        addToast(resData.message || (resData.errors ? JSON.stringify(resData.errors) : 'Failed to submit review'), 'error');
+>>>>>>> origin/main
       }
     } catch (err) {
       addToast('Connection error occurred', 'error');

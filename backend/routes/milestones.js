@@ -17,4 +17,8 @@ router.put('/:id', authenticateJWT, checkRole(writeRoles), validationMiddleware(
 router.put('/:id/complete', authenticateJWT, checkRole(writeRoles), MilestoneController.complete);
 router.delete('/:id', authenticateJWT, checkRole(writeRoles), MilestoneController.delete);
 
+<<<<<<< HEAD
 module.exports = router;
+=======
+module.exports = router;
+>>>>>>> origin/main

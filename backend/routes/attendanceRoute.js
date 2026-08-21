@@ -1,4 +1,7 @@
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/main
 const express = require("express");
 const router = express.Router();
 const attendanceController = require("../controllers/attendanceController");
@@ -6,6 +9,7 @@ const { authenticateJWT } = require("../middlewares/auth");
 
 // Standard attendance endpoints
 router.post("/punch", authenticateJWT, attendanceController.punch);
+<<<<<<< HEAD
 router.get("/today-status", authenticateJWT, (req, res) => {
   const db = require("../config/database");
   const employeeId = req.user ? req.user.id : null;
@@ -26,6 +30,9 @@ router.get("/today-status", authenticateJWT, (req, res) => {
     res.json(rows[0] || {});
   });
 });
+=======
+router.get("/today-status", authenticateJWT, attendanceController.getTodayStatus);
+>>>>>>> origin/main
 router.get("/recent/:employee_id", authenticateJWT, attendanceController.getRecent);
 router.get("/daily", authenticateJWT, attendanceController.getDailyStats);
 router.get("/gps-feed", authenticateJWT, attendanceController.getGPSFeed);
@@ -55,11 +62,17 @@ router.get("/regularization", authenticateJWT, (req, res) => {
     SELECT 
       ar.*,
       COALESCE(e.name, ar.employee_name) as employee_name,
+<<<<<<< HEAD
       e.profile_photo as profile_photo,
       r.name as role
     FROM attendance_regularizations ar
     LEFT JOIN employees e ON ar.employee_id = e.id
     LEFT JOIN roles r ON e.role_id = r.id
+=======
+      e.profile_photo as profile_photo
+    FROM attendance_regularizations ar
+    LEFT JOIN employees e ON ar.employee_id = e.id
+>>>>>>> origin/main
   `;
   const params = [];
   if (status && status !== 'All') {
@@ -151,6 +164,7 @@ router.get("/late-arrivals", authenticateJWT, (req, res) => {
   const db = require("../config/database");
   const sql = `
     SELECT 
+<<<<<<< HEAD
       g.id,
       e.name as employee,
       e.profile_photo as avatar,
@@ -169,6 +183,21 @@ router.get("/late-arrivals", authenticateJWT, (req, res) => {
     WHERE g.late_entry = 1
     ORDER BY g.id DESC
     LIMIT 50
+=======
+      a.id,
+      e.name as employee,
+      e.profile_photo as avatar,
+      DATE_FORMAT(a.date, '%b %d, %Y') as date,
+      '09:00 AM' as expected,
+      COALESCE(TIME_FORMAT(a.punch_in, '%h:%i %p'), '09:30 AM') as checkIn,
+      CONCAT('00h ', COALESCE(TIMESTAMPDIFF(MINUTE, '09:00:00', a.punch_in), 30), 'm') as delay,
+      COALESCE(a.notes, 'Traffic delay') as reason,
+      'Late' as status
+    FROM attendance a
+    JOIN employees e ON a.employee_id = e.id
+    ORDER BY a.id DESC
+    LIMIT 20
+>>>>>>> origin/main
   `;
   db.query(sql, (err, rows) => {
     if (err) return res.status(500).json(err);
@@ -183,8 +212,13 @@ router.get("/roster", authenticateJWT, (req, res) => {
     SELECT 
       e.id,
       e.name as employee,
+<<<<<<< HEAD
       NULL as avatar,
       CONCAT('EMP00', e.id) as empId
+=======
+      e.profile_photo as avatar,
+      COALESCE(e.employee_code, CONCAT('EMP00', e.id)) as empId
+>>>>>>> origin/main
     FROM employees e
     WHERE e.status = 'Active'
     LIMIT 10

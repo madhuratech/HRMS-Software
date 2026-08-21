@@ -65,6 +65,7 @@ export default function AddEmployeeForm() {
 
   useEffect(() => {
     fetch('http://localhost:3000/app/employees/lookup/designations')
+<<<<<<< HEAD
       .then(res => res.json()).then(data => { if (Array.isArray(data)) { setDesignations(data); if (data.length > 0 && !formData.designation) setFormData(prev => ({...prev, designation: data[0].role_name})); } }).catch(() => {});
     fetch('http://localhost:3000/app/employees/lookup/departments')
       .then(res => res.json()).then(data => { if (Array.isArray(data)) { setDepartments(data); if (data.length > 0 && !formData.department) setFormData(prev => ({...prev, department: data[0].dept_name})); } }).catch(() => {});
@@ -72,6 +73,15 @@ export default function AddEmployeeForm() {
       .then(res => res.json()).then(data => { if (Array.isArray(data)) { setBranches(data); if (data.length > 0 && !formData.branch) setFormData(prev => ({...prev, branch: data[0].branch_name})); } }).catch(() => {});
     fetch('http://localhost:3000/app/employees/lookup/teams')
       .then(res => res.json()).then(data => { if (Array.isArray(data)) { setTeams(data); if (data.length > 0 && !formData.teamName) setFormData(prev => ({...prev, teamName: data[0].name})); } }).catch(() => {});
+=======
+      .then(res => res.json()).then(data => { if (Array.isArray(data)) { setDesignations(data); if (data.length > 0 && !formData.designation) setFormData(prev => ({ ...prev, designation: data[0].role_name })); } }).catch(() => { });
+    fetch('http://localhost:3000/app/employees/lookup/departments')
+      .then(res => res.json()).then(data => { if (Array.isArray(data)) { setDepartments(data); if (data.length > 0 && !formData.department) setFormData(prev => ({ ...prev, department: data[0].dept_name })); } }).catch(() => { });
+    fetch('http://localhost:3000/app/employees/lookup/branches')
+      .then(res => res.json()).then(data => { if (Array.isArray(data)) { setBranches(data); if (data.length > 0 && !formData.branch) setFormData(prev => ({ ...prev, branch: data[0].branch_name })); } }).catch(() => { });
+    fetch('http://localhost:3000/app/employees/lookup/teams')
+      .then(res => res.json()).then(data => { if (Array.isArray(data)) { setTeams(data); if (data.length > 0 && !formData.teamName) setFormData(prev => ({ ...prev, teamName: data[0].name })); } }).catch(() => { });
+>>>>>>> origin/main
   }, []);
 
   const handleChange = (e) => {
@@ -119,6 +129,7 @@ export default function AddEmployeeForm() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
     })
+<<<<<<< HEAD
     .then(res => {
       if (!res.ok) throw new Error("Failed to create employee");
       return res.json();
@@ -131,6 +142,20 @@ export default function AddEmployeeForm() {
       console.error(err);
       addToast("Failed to save employee to database", "error");
     });
+=======
+      .then(res => {
+        if (!res.ok) throw new Error("Failed to create employee");
+        return res.json();
+      })
+      .then(() => {
+        addToast("Employee created successfully!", "success");
+        navigate("/employees/list");
+      })
+      .catch(err => {
+        console.error(err);
+        addToast("Failed to save employee to database", "error");
+      });
+>>>>>>> origin/main
   };
 
   return (
@@ -144,7 +169,11 @@ export default function AddEmployeeForm() {
         <div className="hrms-steps">
           <div style={{ position: 'absolute', top: '16px', left: '0', right: '0', height: '2px', backgroundColor: '#e2e8f0', zIndex: 0 }} />
           <div style={{ position: 'absolute', top: '16px', left: '0', width: `${((activeStep - 1) / (steps.length - 1)) * 100}%`, height: '2px', backgroundColor: '#2952E3', zIndex: 0, transition: 'width 0.3s ease' }} />
+<<<<<<< HEAD
           
+=======
+
+>>>>>>> origin/main
           {steps.map((step) => (
             <div key={step.id} className={`hrms-step ${activeStep >= step.id ? 'active' : ''}`}>
               <div className="hrms-step-circle">
@@ -325,6 +354,7 @@ export default function AddEmployeeForm() {
               </>
             )}
           </div>
+<<<<<<< HEAD
           
           {/* Profile Photo upload placeholder */}
           <div>
@@ -333,11 +363,22 @@ export default function AddEmployeeForm() {
               borderLeft: '1px solid #f1f5f9', 
               display: 'flex', 
               flexDirection: 'column', 
+=======
+
+          {/* Profile Photo upload placeholder */}
+          <div>
+            <div style={{
+              padding: '24px',
+              borderLeft: '1px solid #f1f5f9',
+              display: 'flex',
+              flexDirection: 'column',
+>>>>>>> origin/main
               alignItems: 'center',
               backgroundColor: '#f8fafc',
               height: '100%'
             }}>
               <h3 className="hrms-label hrms-mb-4" style={{ alignSelf: 'flex-start' }}>Profile Photo</h3>
+<<<<<<< HEAD
               
               <div style={{ marginBottom: '24px' }}>
                 <EmployeeAvatar 
@@ -347,6 +388,17 @@ export default function AddEmployeeForm() {
                 />
               </div>
               
+=======
+
+              <div style={{ marginBottom: '24px' }}>
+                <EmployeeAvatar
+                  name={`${formData.firstName} ${formData.lastName}`.trim() || 'New Employee'}
+                  photoUrl={photoPreview || formData.photo}
+                  size={120}
+                />
+              </div>
+
+>>>>>>> origin/main
               <input
                 type="file"
                 ref={photoInputRef}
@@ -354,9 +406,15 @@ export default function AddEmployeeForm() {
                 accept="image/jpeg,image/png,image/webp"
                 style={{ display: 'none' }}
               />
+<<<<<<< HEAD
               
               <button 
                 className="hrms-secondary-btn hrms-text-primary" 
+=======
+
+              <button
+                className="hrms-secondary-btn hrms-text-primary"
+>>>>>>> origin/main
                 style={{ border: 'none', backgroundColor: '#eff6ff', marginBottom: '8px' }}
                 onClick={() => photoInputRef.current?.click()}
               >

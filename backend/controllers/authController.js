@@ -61,6 +61,7 @@ exports.register = async (req, res) => {
 
   try {
     const password_hash = await bcrypt.hash(password, 10);
+<<<<<<< HEAD
     const assignedRole = role || 'SERVICE_STAFF';
 
     // First ensure the role exists
@@ -84,6 +85,23 @@ exports.register = async (req, res) => {
         }
         res.json({ message: "User registered successfully" });
       });
+=======
+
+    const sql = `
+      INSERT INTO employees (name, email, password_hash, phone, role_id)
+      VALUES (?, ?, ?, ?, (SELECT id FROM roles WHERE name = ?))
+    `;
+
+    db.query(sql, [name, email, password_hash, phone, role || 'SERVICE_STAFF'], (err, result) => {
+      if (err) {
+        console.error(err);
+        if (err.code === 'ER_DUP_ENTRY') {
+          return res.status(400).json({ message: "Email already exists" });
+        }
+        return res.status(500).json({ message: "Registration failed" });
+      }
+      res.json({ message: "User registered successfully" });
+>>>>>>> origin/main
     });
   } catch (error) {
     res.status(500).json({ message: "Server error" });
