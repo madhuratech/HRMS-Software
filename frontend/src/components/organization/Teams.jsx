@@ -85,119 +85,160 @@ const CustomSelect = ({ label, required, value, onChange, options, placeholder }
   );
 };
 
-/* Searchable Single-Select for Team Lead (Only Eligible Team Leaders) */
-function TeamLeadSelect({ value, selectedId, onChange, employees, loading }) {
+/* Searchable Single-Select for Team Lead (Shows Only Team Leaders for Selected Department) */
+function TeamLeadSelect({ selectedDepartment, value, selectedId, onChange, employees, loading }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
 
-  // Filter ONLY employees whose role/designation indicates leadership (Team Leader, Lead, Manager, Head, etc.)
-  const eligibleLeads = useMemo(() => {
+  // Active employees in selected department
+  const departmentEmployees = useMemo(() => {
+    if (!selectedDepartment) return [];
     const activeEmps = employees.filter(emp => emp.status === 'Active');
-    const leadsOnly = activeEmps.filter(emp => {
-      const role = (emp.role_name || emp.designation || emp.jobTitle || '').toLowerCase().trim();
+    const deptNorm = selectedDepartment.toLowerCase().trim();
+    const matched = activeEmps.filter(emp => {
+      const empDept = (emp.dept_name || emp.department || emp.department_name || '').toLowerCase().trim();
+      return empDept === deptNorm;
+    });
+    return matched.length > 0 ? matched : activeEmps;
+  }, [employees, selectedDepartment]);
+
+  // Filter ONLY employees in selected department with Team Leader / Lead / Manager designations
+  const teamLeadersOnly = useMemo(() => {
+    if (!selectedDepartment) return [];
+    const leadsOnly = departmentEmployees.filter(emp => {
+      const role = (emp.role_name || emp.designation || emp.designation_name || emp.jobTitle || '').toLowerCase().trim();
       return (
         role.includes('leader') ||
         role.includes('lead') ||
         role.includes('manager') ||
         role.includes('head') ||
-        role.includes('admin') ||
-        role.includes('director') ||
         role.includes('supervisor') ||
-        role.includes('chief')
+        role.includes('director') ||
+        role.includes('chief') ||
+        role.includes('admin')
       );
     });
-    return leadsOnly.length > 0 ? leadsOnly : activeEmps;
-  }, [employees]);
+    return leadsOnly.length > 0 ? leadsOnly : departmentEmployees;
+  }, [departmentEmployees, selectedDepartment]);
 
   const filteredLeads = useMemo(() => {
-    if (!search.trim()) return eligibleLeads;
+    if (!search.trim()) return teamLeadersOnly;
     const q = search.toLowerCase();
-    return eligibleLeads.filter(emp => {
+    return teamLeadersOnly.filter(emp => {
       const empIdCode = `emp00${emp.id}`.toLowerCase();
       const empName = (emp.name || '').toLowerCase();
-      const empRole = (emp.role_name || emp.designation || '').toLowerCase();
+      const empRole = (emp.role_name || emp.designation || emp.designation_name || '').toLowerCase();
       return empName.includes(q) || empRole.includes(q) || empIdCode.includes(q) || String(emp.id).includes(q);
     });
-  }, [eligibleLeads, search]);
+  }, [teamLeadersOnly, search]);
 
   const selectedEmp = useMemo(() => {
-    if (selectedId) return employees.find(e => e.id === selectedId);
-    if (value) return employees.find(e => e.name?.toLowerCase() === value.toLowerCase());
+    if (selectedId !== null && selectedId !== undefined) {
+      const match = employees.find(e => String(e.id) === String(selectedId));
+      if (match) return match;
+    }
+    if (value) {
+      return employees.find(e => (e.name || '').toLowerCase().trim() === (value || '').toLowerCase().trim());
+    }
     return null;
   }, [selectedId, value, employees]);
 
+  const handleSelect = (emp) => {
+    onChange(emp);
+    setIsOpen(false);
+  };
+
   return (
-    <div className="relative">
-      <label className="block text-sm font-semibold text-slate-700 mb-2">Team Lead</label>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full h-12 flex items-center justify-between px-4 border border-slate-200 rounded-xl text-sm bg-white hover:border-slate-300 transition-colors text-left"
-      >
-        {selectedEmp ? (
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center text-xs flex-shrink-0">
-              {selectedEmp.name ? selectedEmp.name[0].toUpperCase() : '👤'}
-            </div>
-            <span className="text-slate-900 font-semibold truncate">{selectedEmp.name}</span>
-          </div>
-        ) : value ? (
-          <span className="text-slate-900 font-semibold">{value}</span>
-        ) : (
-          <span className="text-slate-400">Search team lead...</span>
-        )}
-        <ChevronDown size={16} className={`text-slate-400 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
+    <div className="space-y-2">
+      <label className="block text-sm font-semibold text-slate-700">Team Lead</label>
 
-      {isOpen && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-20 max-h-72 overflow-hidden flex flex-col">
-            <div className="p-2 border-b border-slate-100 bg-slate-50">
-              <div className="relative flex items-center">
-                <Search size={14} className="absolute left-3.5 text-slate-400 pointer-events-none z-10" />
-                <input
-                  type="text"
-                  placeholder="Search employee..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+      {/* Accordion / Inline Single-Select Container */}
+      <div className="border border-slate-200 rounded-xl bg-white overflow-hidden shadow-sm transition-all">
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full h-12 flex items-center justify-between px-4 text-sm bg-white hover:bg-slate-50 transition-colors text-left"
+        >
+          {selectedEmp ? (
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="w-6 h-6 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center text-xs flex-shrink-0">
+                {selectedEmp.name ? selectedEmp.name[0].toUpperCase() : '👤'}
               </div>
+              <span className="text-slate-900 font-semibold truncate">{selectedEmp.name}</span>
+              <span className="text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full font-medium ml-1">
+                {selectedEmp.role_name || selectedEmp.designation || selectedEmp.designation_name || 'Team Leader'}
+              </span>
             </div>
+          ) : value ? (
+            <span className="text-slate-900 font-semibold">{value}</span>
+          ) : !selectedDepartment ? (
+            <span className="text-slate-400 font-medium">Select department first</span>
+          ) : (
+            <span className="text-slate-400">Search team lead...</span>
+          )}
+          <ChevronDown size={16} className={`text-slate-400 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
 
-            <div className="overflow-y-auto max-h-56 p-1">
-              {loading ? (
-                <div className="p-4 text-center text-xs text-slate-400 italic">Loading team leaders...</div>
-              ) : filteredLeads.length === 0 ? (
-                <div className="p-4 text-center text-xs text-slate-400 italic">No team leaders found</div>
-              ) : (
-                filteredLeads.map((emp) => (
-                  <button
-                    key={emp.id}
-                    type="button"
-                    onClick={() => {
-                      onChange(emp);
-                      setIsOpen(false);
-                    }}
-                    className={`w-full text-left p-2.5 rounded-lg flex items-center gap-3 hover:bg-slate-50 transition-colors ${
-                      (selectedId === emp.id || value === emp.name) ? 'bg-blue-50/70 border border-blue-100' : ''
-                    }`}
-                  >
-                    <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-xs flex-shrink-0">
-                      {emp.name ? emp.name[0].toUpperCase() : '👤'}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-semibold text-slate-800 truncate">{emp.name}</p>
-                      <p className="text-xs text-blue-600 font-medium truncate">{emp.role_name || emp.designation || 'Team Leader'}</p>
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
+        {isOpen && (
+          <div className="border-t border-slate-100 bg-slate-50/50 p-3 space-y-3">
+            {!selectedDepartment ? (
+              <div className="p-3.5 text-center text-xs text-amber-800 bg-amber-50 rounded-lg font-medium border border-amber-200/80">
+                ⚠️ Please select a department first to choose a team lead.
+              </div>
+            ) : (
+              <>
+                {/* Search Input */}
+                <div className="relative flex items-center">
+                  <Search size={14} className="absolute left-3 text-slate-400 pointer-events-none z-10" />
+                  <input
+                    type="text"
+                    placeholder={`Search team lead in ${selectedDepartment}...`}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* Employee List */}
+                <div className="max-h-52 overflow-y-auto space-y-1.5 p-1 bg-white border border-slate-200/80 rounded-lg">
+                  {loading ? (
+                    <div className="p-4 text-center text-xs text-slate-400 italic">Loading team leaders...</div>
+                  ) : filteredLeads.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400 italic">No team leaders found in {selectedDepartment}</div>
+                  ) : (
+                    filteredLeads.map((emp) => {
+                      const isSelected = selectedEmp && String(selectedEmp.id) === String(emp.id);
+                      const designationText = emp.role_name || emp.designation || emp.designation_name || 'Team Leader';
+                      return (
+                        <div
+                          key={emp.id}
+                          onClick={() => handleSelect(emp)}
+                          className={`w-full text-left p-2.5 rounded-lg flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition-colors ${
+                            isSelected ? 'bg-blue-50/80 border border-blue-100' : 'border border-transparent'
+                          }`}
+                        >
+                          <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
+                            {emp.name ? emp.name[0].toUpperCase() : '👤'}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-semibold text-slate-800 truncate">{emp.name}</p>
+                            <p className="text-[11px] text-blue-600 font-medium truncate">
+                              {designationText} • {emp.dept_name || emp.department || selectedDepartment}
+                            </p>
+                          </div>
+                          {isSelected && (
+                            <CheckCircle2 size={16} className="text-blue-600 flex-shrink-0" />
+                          )}
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </>
+            )}
           </div>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -231,48 +272,55 @@ function TeamMembersSelect({ selectedDepartment, selectedMemberIds, onChange, em
     });
   }, [departmentEmployees, search]);
 
+  const isMemberSelected = (empId) => {
+    return (selectedMemberIds || []).some(id => String(id) === String(empId));
+  };
+
   const selectedMemberEmps = useMemo(() => {
-    return employees.filter(e => (selectedMemberIds || []).includes(e.id));
+    return employees.filter(e => isMemberSelected(e.id));
   }, [employees, selectedMemberIds]);
 
   const toggleMember = (empId) => {
     let nextIds;
-    if (selectedMemberIds.includes(empId)) {
-      nextIds = selectedMemberIds.filter(id => id !== empId);
+    if (isMemberSelected(empId)) {
+      nextIds = (selectedMemberIds || []).filter(id => String(id) !== String(empId));
     } else {
-      nextIds = [...selectedMemberIds, empId];
+      nextIds = [...(selectedMemberIds || []), empId];
     }
-    const selectedEmps = employees.filter(e => nextIds.includes(e.id));
+    const selectedEmps = employees.filter(e => nextIds.some(id => String(id) === String(e.id)));
     onChange(nextIds, selectedEmps);
   };
 
   const removeMember = (empId) => {
-    const nextIds = selectedMemberIds.filter(id => id !== empId);
-    const selectedEmps = employees.filter(e => nextIds.includes(e.id));
+    const nextIds = (selectedMemberIds || []).filter(id => String(id) !== String(empId));
+    const selectedEmps = employees.filter(e => nextIds.some(id => String(id) === String(e.id)));
     onChange(nextIds, selectedEmps);
   };
 
   return (
-    <div className="relative">
-      <div className="flex items-center justify-between mb-2">
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
         <label className="block text-sm font-semibold text-slate-700">Team Members</label>
-        <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+        <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-0.5 rounded-full border border-blue-100">
           {(selectedMemberIds || []).length} {(selectedMemberIds || []).length === 1 ? 'Member' : 'Members'}
         </span>
       </div>
 
-      {/* Selected Chips */}
+      {/* Selected Member Chips */}
       {selectedMemberEmps.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-2 max-h-24 overflow-y-auto p-1 border border-slate-100 rounded-lg bg-slate-50/50">
+        <div className="flex flex-wrap gap-1.5 p-2 border border-slate-200 rounded-xl bg-slate-50/50 max-h-28 overflow-y-auto">
           {selectedMemberEmps.map((emp) => (
             <span
               key={emp.id}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-blue-200 text-blue-700 text-xs font-medium rounded-lg shadow-sm"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-blue-200 text-blue-700 text-xs font-semibold rounded-lg shadow-sm"
             >
               <span>{emp.name}</span>
               <button
                 type="button"
-                onClick={() => removeMember(emp.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  removeMember(emp.id);
+                }}
                 className="hover:bg-blue-100 rounded p-0.5 transition-colors text-blue-500 hover:text-blue-800"
               >
                 <X size={12} />
@@ -282,37 +330,37 @@ function TeamMembersSelect({ selectedDepartment, selectedMemberIds, onChange, em
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full h-12 flex items-center justify-between px-4 border border-slate-200 rounded-xl text-sm bg-white hover:border-slate-300 transition-colors text-left"
-      >
-        <span className="text-slate-400">
-          {(selectedMemberIds || []).length === 0
-            ? 'Select team members...'
-            : `${(selectedMemberIds || []).length} team members selected`}
-        </span>
-        <ChevronDown size={16} className={`text-slate-400 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
-      </button>
+      {/* Accordion / Inline Multi-Select Card */}
+      <div className="border border-slate-200 rounded-xl bg-white overflow-hidden shadow-sm transition-all">
+        <button
+          type="button"
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full h-12 flex items-center justify-between px-4 text-sm bg-white hover:bg-slate-50 transition-colors text-left"
+        >
+          <span className={(selectedMemberIds || []).length === 0 ? "text-slate-400" : "text-slate-900 font-semibold"}>
+            {(selectedMemberIds || []).length === 0
+              ? 'Select team members...'
+              : `${(selectedMemberIds || []).length} team members selected`}
+          </span>
+          <ChevronDown size={16} className={`text-slate-400 transition-transform flex-shrink-0 ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
 
-      {isOpen && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-          <div className="absolute left-0 right-0 bottom-full mb-1.5 bg-white border border-slate-200 rounded-xl shadow-2xl z-30 max-h-64 flex flex-col">
-            <div className="p-2 border-b border-slate-100 bg-slate-50">
-              <div className="relative flex items-center">
-                <Search size={14} className="absolute left-3.5 text-slate-400 pointer-events-none z-10" />
-                <input
-                  type="text"
-                  placeholder="Search employees..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full pl-10 pr-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+        {isOpen && (
+          <div className="border-t border-slate-100 bg-slate-50/50 p-3 space-y-3">
+            {/* Search Input */}
+            <div className="relative flex items-center">
+              <Search size={14} className="absolute left-3 text-slate-400 pointer-events-none z-10" />
+              <input
+                type="text"
+                placeholder="Search employees..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
             </div>
 
-            <div className="overflow-y-auto max-h-56 p-1">
+            {/* Employee Checkbox List */}
+            <div className="max-h-52 overflow-y-auto space-y-1.5 p-1 bg-white border border-slate-200/80 rounded-lg">
               {loading ? (
                 <div className="p-4 text-center text-xs text-slate-400 italic">Loading department employees...</div>
               ) : filteredEmployees.length === 0 ? (
@@ -321,35 +369,38 @@ function TeamMembersSelect({ selectedDepartment, selectedMemberIds, onChange, em
                 </div>
               ) : (
                 filteredEmployees.map((emp) => {
-                  const isChecked = (selectedMemberIds || []).includes(emp.id);
+                  const isChecked = isMemberSelected(emp.id);
                   return (
-                    <label
+                    <div
                       key={emp.id}
+                      onClick={() => toggleMember(emp.id)}
                       className={`w-full text-left p-2.5 rounded-lg flex items-center gap-3 cursor-pointer hover:bg-slate-50 transition-colors ${
-                        isChecked ? 'bg-blue-50/50' : ''
+                        isChecked ? 'bg-blue-50/80 border border-blue-100/80' : 'border border-transparent'
                       }`}
                     >
                       <input
                         type="checkbox"
                         checked={isChecked}
-                        onChange={() => toggleMember(emp.id)}
-                        className="w-4 h-4 text-blue-600 rounded cursor-pointer"
+                        onChange={() => {}}
+                        className="w-4 h-4 text-blue-600 rounded cursor-pointer pointer-events-none"
                       />
-                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-xs flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs flex-shrink-0">
                         {emp.name ? emp.name[0].toUpperCase() : '👤'}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-slate-800 truncate">{emp.name}</p>
-                        <p className="text-xs text-slate-400 truncate">{emp.role_name || emp.designation || 'Employee'} • {emp.dept_name || emp.department || 'General'}</p>
+                        <p className="text-xs font-semibold text-slate-800 truncate">{emp.name}</p>
+                        <p className="text-[11px] text-slate-500 truncate">
+                          {emp.role_name || emp.designation || 'Employee'} • {emp.dept_name || emp.department || 'General'}
+                        </p>
                       </div>
-                    </label>
+                    </div>
                   );
                 })
               )}
             </div>
           </div>
-        </>
-      )}
+        )}
+      </div>
     </div>
   );
 }
@@ -438,8 +489,13 @@ export const Teams = () => {
     const deptObj = allDepartments.find(d => (d.name || d.dept_name) === newDept);
     const deptNorm = (newDept || '').toLowerCase().trim();
 
+    // Check if current team lead belongs to new department
+    const currentLead = allEmployees.find(e => String(e.id) === String(formData.teamLeadId) || (e.name || '').toLowerCase().trim() === (formData.teamLead || '').toLowerCase().trim());
+    const leadDeptNorm = (currentLead?.dept_name || currentLead?.department || currentLead?.department_name || '').toLowerCase().trim();
+    const keepLead = currentLead && (leadDeptNorm === deptNorm || !newDept);
+
     const validMemberEmps = allEmployees.filter(emp => {
-      const isSelected = (formData.teamMemberIds || []).includes(emp.id);
+      const isSelected = (formData.teamMemberIds || []).some(id => String(id) === String(emp.id));
       const empDept = (emp.dept_name || emp.department || emp.department_name || '').toLowerCase().trim();
       return isSelected && emp.status === 'Active' && (empDept === deptNorm || !newDept);
     });
@@ -449,6 +505,8 @@ export const Teams = () => {
       ...prev,
       department: newDept,
       departmentId: deptObj ? deptObj.id : prev.departmentId,
+      teamLead: keepLead ? prev.teamLead : '',
+      teamLeadId: keepLead ? prev.teamLeadId : null,
       teamMemberIds: validIds,
       teamMemberNames: validMemberEmps.map(e => e.name),
       members: validIds.length
@@ -488,21 +546,28 @@ export const Teams = () => {
   const handleOpenEdit = (item) => {
     setSelectedItem(item);
 
-    const leadEmp = allEmployees.find(e => e.name?.toLowerCase() === item.teamLead?.toLowerCase());
-    const deptNorm = (item.department || '').toLowerCase().trim();
-    const deptEmps = allEmployees.filter(e => (e.dept_name || e.department || e.department_name || '').toLowerCase().trim() === deptNorm);
-    const initialMemberIds = deptEmps.map(e => e.id);
+    const leadEmp = allEmployees.find(e => String(e.id) === String(item.team_lead_id) || (e.name || '').toLowerCase().trim() === (item.teamLead || '').toLowerCase().trim());
+    const deptObj = allDepartments.find(d => (d.name || d.dept_name) === item.department || String(d.id) === String(item.department_id));
+
+    let initialMemberIds = item.teamMemberIds || [];
+    if (!initialMemberIds || initialMemberIds.length === 0) {
+      const deptNorm = (item.department || '').toLowerCase().trim();
+      const deptEmps = allEmployees.filter(e => (e.dept_name || e.department || e.department_name || '').toLowerCase().trim() === deptNorm);
+      initialMemberIds = deptEmps.map(e => e.id);
+    }
+
+    const memberEmps = allEmployees.filter(e => initialMemberIds.some(id => String(id) === String(e.id)));
 
     setFormData({
       name: item.name || '',
       code: item.code || '',
       department: item.department || '',
-      departmentId: null,
-      teamLead: item.teamLead || '',
-      teamLeadId: leadEmp ? leadEmp.id : null,
+      departmentId: deptObj ? deptObj.id : item.department_id || null,
+      teamLead: item.teamLead || (leadEmp ? leadEmp.name : ''),
+      teamLeadId: leadEmp ? leadEmp.id : item.team_lead_id || null,
       teamMemberIds: initialMemberIds,
-      teamMemberNames: deptEmps.map(e => e.name),
-      members: item.members || initialMemberIds.length,
+      teamMemberNames: memberEmps.map(e => e.name),
+      members: initialMemberIds.length,
       status: item.status || 'Active',
       description: item.description || ''
     });
@@ -586,6 +651,7 @@ export const Teams = () => {
 
               {/* Dynamic Searchable Team Lead Selection */}
               <TeamLeadSelect
+                selectedDepartment={formData.department}
                 value={formData.teamLead}
                 selectedId={formData.teamLeadId}
                 employees={allEmployees}
@@ -668,13 +734,13 @@ export const Teams = () => {
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={16} />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" size={16} />
             <input
               type="text"
               placeholder="Search Team..."
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-slate-50/50"
+              className="w-full h-10 pl-10 pr-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white hover:border-slate-300 transition-colors shadow-sm text-slate-900 placeholder:text-slate-400"
             />
           </div>
 
@@ -682,7 +748,7 @@ export const Teams = () => {
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-              className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="h-10 px-4 border border-slate-200 rounded-xl text-sm bg-white text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors shadow-sm font-medium cursor-pointer"
             >
               <option value="All">Status: All</option>
               <option value="Active">Active</option>
@@ -692,7 +758,7 @@ export const Teams = () => {
             <select
               value={deptFilter}
               onChange={(e) => { setDeptFilter(e.target.value); setCurrentPage(1); }}
-              className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="h-10 px-4 border border-slate-200 rounded-xl text-sm bg-white text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors shadow-sm font-medium cursor-pointer"
             >
               <option value="All">Department: All</option>
               {departmentOptions.map(d => <option key={d} value={d}>{d}</option>)}

@@ -498,6 +498,9 @@ router.post("/export-pdf", (req, res) => {
 /**
  * TEAMS CRUD
  */
+/**
+ * TEAMS CRUD
+ */
 router.get("/teams", (req, res) => {
   const sql = `
     SELECT 
@@ -505,7 +508,9 @@ router.get("/teams", (req, res) => {
       t.name,
       COALESCE(t.code, CONCAT('TM-', UPPER(SUBSTRING(t.name, 1, 3)))) as code,
       COALESCE(d.dept_name, t.department, 'General') as department,
+      t.department_id,
       COALESCE(tl.name, NULLIF(t.teamLead, ''), 'Unassigned') as teamLead,
+      t.team_lead_id,
       (SELECT COUNT(*) FROM employees e WHERE e.team_id = t.id AND e.status = 'Active') as members,
       COALESCE(t.status, 'Active') as status,
       t.description,
@@ -515,43 +520,103 @@ router.get("/teams", (req, res) => {
     LEFT JOIN employees tl ON t.team_lead_id = tl.id
     ORDER BY t.id ASC
   `;
-  db.query(sql, (err, rows) => {
+  db.query(sql, async (err, rows) => {
     if (err) return res.status(500).json(err);
-    res.json(rows);
+    try {
+      const teamsWithMembers = await Promise.all(rows.map(async (team) => {
+        const emps = await new Promise(r => db.query("SELECT id FROM employees WHERE team_id = ?", [team.id], (e, res) => r(res || [])));
+        return {
+          ...team,
+          teamMemberIds: emps.map(e => e.id)
+        };
+      }));
+      res.json(teamsWithMembers);
+    } catch (e) {
+      res.json(rows);
+    }
   });
 });
 
-router.post("/teams", (req, res) => {
-  const { name, code, department, teamLead, members, status, description } = req.body;
+router.post("/teams", async (req, res) => {
+  const { name, code, department, departmentId, teamLead, teamLeadId, members, status, description, teamMemberIds } = req.body;
+  
+  let deptId = departmentId;
+  if (!deptId && department) {
+    const deptRows = await new Promise(r => db.query("SELECT id FROM departments WHERE dept_name = ? LIMIT 1", [department], (e, res) => r(res)));
+    if (deptRows && deptRows.length > 0) deptId = deptRows[0].id;
+  }
+
+  let leadId = teamLeadId;
+  if (!leadId && teamLead) {
+    const leadRows = await new Promise(r => db.query("SELECT id FROM employees WHERE name = ? LIMIT 1", [teamLead], (e, res) => r(res)));
+    if (leadRows && leadRows.length > 0) leadId = leadRows[0].id;
+  }
+
+  const memberCount = Array.isArray(teamMemberIds) && teamMemberIds.length > 0 ? teamMemberIds.length : (parseInt(members) || 1);
+
   const sql = `
-    INSERT INTO teams (name, code, department, teamLead, members, status, description, createdDate)
-    VALUES (?, ?, ?, ?, ?, ?, ?, DATE_FORMAT(NOW(), '%d %b %Y'))
+    INSERT INTO teams (name, code, department, department_id, teamLead, team_lead_id, members, status, description, createdDate)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_FORMAT(NOW(), '%d %b %Y'))
   `;
-  db.query(sql, [name, code, department, teamLead, members || 1, status || 'Active', description], (err, result) => {
+  db.query(sql, [name, code, department, deptId, teamLead, leadId, memberCount, status || 'Active', description], (err, result) => {
     if (err) return res.status(500).json(err);
-    res.json({ message: "Team created successfully", id: result.insertId });
+    const teamId = result.insertId;
+
+    if (Array.isArray(teamMemberIds) && teamMemberIds.length > 0) {
+      db.query("UPDATE employees SET team_id = ? WHERE id IN (?)", [teamId, teamMemberIds], (e) => {
+        if (e) console.error("Error updating team_id for employees:", e);
+      });
+    }
+
+    res.json({ message: "Team created successfully", id: teamId });
   });
 });
 
-router.put("/teams/:id", (req, res) => {
+router.put("/teams/:id", async (req, res) => {
   const { id } = req.params;
-  const { name, code, department, teamLead, members, status, description } = req.body;
+  const { name, code, department, departmentId, teamLead, teamLeadId, members, status, description, teamMemberIds } = req.body;
+
+  let deptId = departmentId;
+  if (!deptId && department) {
+    const deptRows = await new Promise(r => db.query("SELECT id FROM departments WHERE dept_name = ? LIMIT 1", [department], (e, res) => r(res)));
+    if (deptRows && deptRows.length > 0) deptId = deptRows[0].id;
+  }
+
+  let leadId = teamLeadId;
+  if (!leadId && teamLead) {
+    const leadRows = await new Promise(r => db.query("SELECT id FROM employees WHERE name = ? LIMIT 1", [teamLead], (e, res) => r(res)));
+    if (leadRows && leadRows.length > 0) leadId = leadRows[0].id;
+  }
+
+  const memberCount = Array.isArray(teamMemberIds) && teamMemberIds.length > 0 ? teamMemberIds.length : (parseInt(members) || 1);
+
   const sql = `
     UPDATE teams
-    SET name = ?, code = ?, department = ?, teamLead = ?, members = ?, status = ?, description = ?
+    SET name = ?, code = ?, department = ?, department_id = ?, teamLead = ?, team_lead_id = ?, members = ?, status = ?, description = ?
     WHERE id = ?
   `;
-  db.query(sql, [name, code, department, teamLead, members, status, description, id], (err, result) => {
+  db.query(sql, [name, code, department, deptId, teamLead, leadId, memberCount, status, description, id], (err, result) => {
     if (err) return res.status(500).json(err);
+
+    if (Array.isArray(teamMemberIds)) {
+      db.query("UPDATE employees SET team_id = NULL WHERE team_id = ?", [id], () => {
+        if (teamMemberIds.length > 0) {
+          db.query("UPDATE employees SET team_id = ? WHERE id IN (?)", [id, teamMemberIds]);
+        }
+      });
+    }
+
     res.json({ message: "Team updated successfully" });
   });
 });
 
 router.delete("/teams/:id", (req, res) => {
   const { id } = req.params;
-  db.query("DELETE FROM teams WHERE id = ?", [id], (err, result) => {
-    if (err) return res.status(500).json(err);
-    res.json({ message: "Team deleted successfully" });
+  db.query("UPDATE employees SET team_id = NULL WHERE team_id = ?", [id], () => {
+    db.query("DELETE FROM teams WHERE id = ?", [id], (err, result) => {
+      if (err) return res.status(500).json(err);
+      res.json({ message: "Team deleted successfully" });
+    });
   });
 });
 
