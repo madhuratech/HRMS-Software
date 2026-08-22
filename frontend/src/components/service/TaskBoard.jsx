@@ -1,34 +1,16 @@
-import React, { useState, useEffect } from 'react';
-import { apiFetch } from '../../lib/api';
+import React, { useState } from 'react';
 import { MoreHorizontal, Plus, Filter, Clock } from 'lucide-react';
+import { MOCK_TASKS } from '../../lib/mockData';
 import { cn } from '../../lib/utils';
 import { NewJobModal } from './NewJobModal';
 import { TaskDetailsModal } from './TaskDetailsModal';
 import { useToast } from '../ui/Toast';
 
 export function TaskBoard() {
-  const [tasks, setTasks] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [tasks, setTasks] = useState(MOCK_TASKS);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const { addToast } = useToast();
-
-  const loadTasks = async () => {
-    setLoading(true);
-    try {
-      const data = await apiFetch('/tickets/service-tasks');
-      if (Array.isArray(data)) {
-        setTasks(data);
-      }
-    } catch (e) {
-      console.error("Failed to load service tasks:", e);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadTasks();
-  }, []);
 
   const handleUpdateTask = (updatedTask) => {
     setTasks(tasks.map((t) => t.id === updatedTask.id ? updatedTask : t));
@@ -37,18 +19,18 @@ export function TaskBoard() {
   };
 
   const handleNewJob = (data) => {
-    apiFetch('/tickets/service-tasks', {
-      method: 'POST',
-      body: JSON.stringify(data)
-    })
-    .then(() => {
-      loadTasks();
-      addToast('New job card created successfully', 'success');
-    })
-    .catch(err => {
-      console.error(err);
-      addToast('Failed to create job card', 'error');
-    });
+    const newTask = {
+      id: Math.random().toString(36).substr(2, 6),
+      customerName: data.customerName,
+      vehicleModel: data.vehicleModel,
+      issue: data.issue,
+      status: 'PENDING',
+      assignedTo: data.assignedTo,
+      date: data.date
+    };
+    // @ts-ignore
+    setTasks([newTask, ...tasks]);
+    addToast('New job card created', 'success');
 
     // Create a notification for the assigned staff
     if (data.assignedTo && data.assignedTo !== 'unassigned') {

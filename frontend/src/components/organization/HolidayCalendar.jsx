@@ -1,5 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { apiFetch } from '../../lib/api';
+import React, { useState, useMemo } from 'react';
 import {
   CalendarDays,
   CalendarHeart,
@@ -21,7 +20,22 @@ import {
   Sparkles
 } from 'lucide-react';
 
-const INITIAL_HOLIDAYS = [];
+const INITIAL_HOLIDAYS = [
+  { id: 1, name: 'New Year\'s Day', date: '01 Jan 2026', type: 'National', branch: 'All Branches', description: 'New Year celebration.', status: 'Active' },
+  { id: 2, name: 'Republic Day', date: '26 Jan 2026', type: 'National', branch: 'All Branches', description: 'Anniversary of the Constitution of India.', status: 'Active' },
+  { id: 3, name: 'Maha Shivaratri', date: '15 Feb 2026', type: 'Regional', branch: 'All Branches', description: 'Hindu festival celebrated annually in honour of the god Shiva.', status: 'Active' },
+  { id: 4, name: 'Holi', date: '04 Mar 2026', type: 'Regional', branch: 'North India Branches', description: 'Festival of Colors.', status: 'Active' },
+  { id: 5, name: 'Good Friday', date: '03 Apr 2026', type: 'National', branch: 'All Branches', description: 'Christian holiday commemorating the crucifixion of Jesus.', status: 'Active' },
+  { id: 6, name: 'Eid al-Fitr', date: '12 Apr 2026', type: 'Regional', branch: 'All Branches', description: 'Festival of Breaking the Fast.', status: 'Active' },
+  { id: 7, name: 'Labor Day', date: '01 May 2026', type: 'National', branch: 'All Branches', description: 'International Workers\' Day.', status: 'Active' },
+  { id: 8, name: 'Independence Day', date: '15 Aug 2026', type: 'National', branch: 'All Branches', description: 'Anniversary of national independence.', status: 'Active' },
+  { id: 9, name: 'Ganesh Chaturthi', date: '12 Sep 2026', type: 'Regional', branch: 'Maharashtra, Karnataka', description: 'Hindu festival celebrating the birth of Ganesha.', status: 'Active' },
+  { id: 10, name: 'Gandhi Jayanti', date: '02 Oct 2026', type: 'National', branch: 'All Branches', description: 'Birthday of Mahatma Gandhi.', status: 'Active' },
+  { id: 11, name: 'Dussehra', date: '15 Oct 2026', type: 'Regional', branch: 'All Branches', description: 'Major Hindu festival celebrated at the end of Navaratri.', status: 'Active' },
+  { id: 12, name: 'Diwali', date: '04 Nov 2026', type: 'National', branch: 'All Branches', description: 'Festival of Lights.', status: 'Active' },
+  { id: 13, name: 'Christmas Day', date: '25 Dec 2026', type: 'National', branch: 'All Branches', description: 'Christmas celebration.', status: 'Active' },
+  { id: 14, name: 'Pongal', date: '14 Jan 2026', type: 'Regional', branch: 'Tamil Nadu', description: 'Tamil harvest festival.', status: 'Inactive' }
+];
 
 const HOLIDAY_TYPES = ['National', 'Regional', 'Optional', 'Restricted'];
 const BRANCHES = ['All Branches', 'Chennai Head Office', 'Bangalore Tech Park', 'Mumbai Office', 'Hyderabad Center', 'Delhi NCR Office', 'Pune Development Hub', 'Kolkata Office', 'Coimbatore Branch', 'North India Branches', 'South India Branches'];
@@ -58,11 +72,10 @@ const CustomSelect = ({ label, required, value, onChange, options, placeholder }
 };
 
 export const HolidayCalendar = () => {
-  const [holidays, setHolidays] = useState([]);
+  const [holidays, setHolidays] = useState(INITIAL_HOLIDAYS);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
-  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -70,23 +83,6 @@ export const HolidayCalendar = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
   const itemsPerPage = 8;
-
-  const loadHolidays = async () => {
-    setLoading(true);
-    try {
-      const data = await apiFetch('/organization/holidays');
-      if (Array.isArray(data)) {
-        setHolidays(data);
-      }
-    } catch (e) {
-      console.error("Failed to load holidays:", e);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadHolidays();
-  }, []);
 
   const statistics = useMemo(() => {
     const today = new Date();
@@ -105,7 +101,7 @@ export const HolidayCalendar = () => {
 
   const filteredData = useMemo(() => {
     return holidays.filter(h => {
-      const matchSearch = (h.name || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const matchSearch = h.name.toLowerCase().includes(searchTerm.toLowerCase());
       const matchType = typeFilter === 'All' || h.type === typeFilter;
       return matchSearch && matchType;
     });
@@ -115,48 +111,20 @@ export const HolidayCalendar = () => {
   const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleAdd = () => { setFormData(emptyForm); setShowAddModal(true); };
-  const handleSaveAdd = async () => {
+  const handleSaveAdd = () => {
     if (!formData.name || !formData.date || !formData.type) return;
-    try {
-      await apiFetch('/organization/holidays', {
-        method: 'POST',
-        body: JSON.stringify(formData)
-      });
-      await loadHolidays();
-    } catch (err) {
-      console.error("Error creating holiday:", err);
-    }
+    setHolidays(prev => [...prev, { ...formData, id: Date.now() }]);
     setShowAddModal(false);
   };
   const handleOpenEdit = (item) => { setSelectedItem(item); setFormData({ name: item.name, date: item.date, type: item.type, description: item.description, status: item.status }); setShowEditModal(true); };
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = () => {
     if (!formData.name || !formData.date || !formData.type) return;
-    try {
-      await apiFetch(`/organization/holidays/${selectedItem.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(formData)
-      });
-      await loadHolidays();
-    } catch (err) {
-      console.error("Error updating holiday:", err);
-    }
+    setHolidays(prev => prev.map(h => h.id === selectedItem.id ? { ...h, ...formData } : h));
     setShowEditModal(false);
   };
   const handleOpenView = (item) => { setSelectedItem(item); setShowViewModal(true); };
   const handleOpenDelete = (item) => { setSelectedItem(item); setShowDeleteModal(true); };
-  const handleConfirmDelete = async () => {
-    if (selectedItem) {
-      try {
-        await apiFetch(`/organization/holidays/${selectedItem.id}`, {
-          method: 'DELETE'
-        });
-        await loadHolidays();
-      } catch (err) {
-        console.error("Error deleting holiday:", err);
-      }
-    }
-    setShowDeleteModal(false);
-  };
+  const handleConfirmDelete = () => { setHolidays(prev => prev.filter(h => h.id !== selectedItem.id)); setShowDeleteModal(false); };
 
   const renderFormModal = (title, subtitle, show, onClose, onSave, saveLabel) => {
     if (!show) return null;

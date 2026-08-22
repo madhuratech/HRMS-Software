@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { apiFetch } from '../../lib/api';
+import React, { useState } from 'react';
 import {
   LifeBuoy,
   MessageSquare,
@@ -18,38 +17,50 @@ import { format } from 'date-fns';
 import { useToast } from '../ui/Toast';
 import { TicketDetailsModal } from './TicketDetailsModal';
 
+// Mock Data
+const MOCK_TICKETS = [
+{
+  id: 'T-1001',
+  type: 'COMPLAINT',
+  subject: 'AC not working in Westside Branch',
+  description: 'The air conditioning in the main sales floor has been down for 2 days.',
+  priority: 'HIGH',
+  status: 'OPEN',
+  requester: 'Mike Chen',
+  role: 'Sales Manager',
+  date: '2026-02-01T10:30:00'
+},
+{
+  id: 'T-1002',
+  type: 'SALARY_SLIP',
+  subject: 'Request for Jan 2026 Salary Slip',
+  description: 'I need my salary slip for loan application purposes.',
+  priority: 'MEDIUM',
+  status: 'IN_PROGRESS',
+  requester: 'Sarah Wilson',
+  role: 'Branch Manager',
+  date: '2026-01-28T14:15:00'
+},
+{
+  id: 'T-1003',
+  type: 'COMPLAINT',
+  subject: 'System login issues',
+  description: 'Unable to login to the inventory module intermittently.',
+  priority: 'CRITICAL',
+  status: 'RESOLVED',
+  requester: 'David Kim',
+  role: 'Service Staff',
+  date: '2026-01-25T09:00:00'
+}];
+
+
 export function SupportTickets() {
-  const [tickets, setTickets] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [tickets, setTickets] = useState(MOCK_TICKETS);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const { addToast } = useToast();
-
-  useEffect(() => {
-    apiFetch('/tickets')
-      .then(data => {
-        if (Array.isArray(data)) {
-          setTickets(data.map(t => ({
-            id: t.id,
-            type: t.cat || 'COMPLAINT',
-            subject: t.subject,
-            description: t.subject,
-            priority: (t.priority || 'MEDIUM').toUpperCase(),
-            status: (t.status || 'OPEN').toUpperCase(),
-            requester: t.requester,
-            role: 'Employee',
-            date: t.date || new Date().toISOString()
-          })));
-        }
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to load tickets:", err);
-        setLoading(false);
-      });
-  }, []);
   const [newTicket, setNewTicket] = useState({
     type: 'COMPLAINT',
     subject: '',

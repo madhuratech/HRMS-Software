@@ -16,7 +16,7 @@ const employees = [
 export default function GeneratePayslips() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '0' }}>
-
+      
       {/* Top Toolbar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '16px', flex: 1 }}>
@@ -36,9 +36,9 @@ export default function GeneratePayslips() {
 
           <div style={{ position: 'relative', width: '300px' }}>
             <Search size={18} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-            <input
-              type="text"
-              placeholder="Search employee..."
+            <input 
+              type="text" 
+              placeholder="Search employee..." 
               style={{ width: '100%', padding: '10px 10px 10px 40px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', color: '#334155' }}
             />
           </div>
@@ -83,13 +83,13 @@ export default function GeneratePayslips() {
                   <td style={{ padding: '16px 24px', whiteSpace: 'nowrap', fontSize: '14px', color: '#475569', fontWeight: '500' }}>{emp.net}</td>
                   <td style={{ padding: '16px 24px', whiteSpace: 'nowrap', fontSize: '14px', color: '#475569', fontWeight: '500' }}>{emp.paymentMode}</td>
                   <td style={{ padding: '16px 24px', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                    <span style={{
-                      padding: '4px 10px',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      backgroundColor: '#ECFDF5',
-                      color: '#10B981'
+                    <span style={{ 
+                      padding: '4px 10px', 
+                      borderRadius: '4px', 
+                      fontSize: '12px', 
+                      fontWeight: '600', 
+                      backgroundColor: '#ECFDF5', 
+                      color: '#10B981' 
                     }}>
                       {emp.status}
                     </span>
@@ -116,7 +116,7 @@ export default function GeneratePayslips() {
           <button style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: 'pointer', color: '#64748B' }}>
             <ChevronLeft size={16} />
           </button>
-
+          
           <button style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2952E3', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#FFF', fontSize: '14px', fontWeight: '500' }}>
             1
           </button>
@@ -132,13 +132,13 @@ export default function GeneratePayslips() {
           <button style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: 'pointer', color: '#64748B', fontSize: '14px', fontWeight: '500' }}>
             5
           </button>
-
+          
           <span style={{ color: '#64748B', margin: '0 4px', fontSize: '14px' }}>...</span>
-
+          
           <button style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: 'pointer', color: '#64748B', fontSize: '14px', fontWeight: '500' }}>
             31
           </button>
-
+          
           <button style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: 'pointer', color: '#64748B' }}>
             <ChevronRight size={16} />
           </button>

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useForm } from 'react-hook-form';
 import { X, Wrench, User, Calendar, FileText, Car } from 'lucide-react';
-import { apiFetch } from '../../lib/api';
+import { MOCK_EMPLOYEES } from '../../lib/mockData';
 
 
 
@@ -11,17 +11,6 @@ import { apiFetch } from '../../lib/api';
 
 export function NewJobModal({ isOpen, onClose, onSubmit }) {
   const { register, handleSubmit, formState: { errors }, reset } = useForm();
-  const [employees, setEmployees] = useState([]);
-
-  useEffect(() => {
-    if (isOpen) {
-      apiFetch('/employees')
-        .then(data => {
-          if (Array.isArray(data)) setEmployees(data);
-        })
-        .catch(err => console.error("Failed to load employees for job modal", err));
-    }
-  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -31,7 +20,8 @@ export function NewJobModal({ isOpen, onClose, onSubmit }) {
     onClose();
   };
 
-  const serviceStaff = employees;
+  // Filter only service staff for assignment
+  const serviceStaff = MOCK_EMPLOYEES.filter((e) => e.role === 'SERVICE_STAFF');
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-in fade-in duration-200">

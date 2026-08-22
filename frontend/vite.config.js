@@ -55,23 +55,6 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    open: true,
-    proxy: {
-      '/app': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-        secure: false
-      },
-      '/api': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-        secure: false
-      },
-      '/uploads': {
-        target: 'http://localhost:5001',
-        changeOrigin: true,
-        secure: false
-      }
-    }
+    open: true
   }
 });

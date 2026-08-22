@@ -29,44 +29,17 @@ import {
   Clock,
   CalendarDays,
   TreePine,
-<<<<<<< HEAD
   Bird
-=======
-  Bird,
-  Sparkles
->>>>>>> origin/main
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export function Sidebar({ userRole, onLogout }) {
-<<<<<<< HEAD
   const [expandedGroups, setExpandedGroups] = useState(['organization', 'employees']);
-=======
-  const [expandedGroups, setExpandedGroups] = useState([]);
->>>>>>> origin/main
   const location = useLocation();
   const navigate = useNavigate();
 
-  const handleProfileClick = () => {
-    let userId = 1;
-    const auth = localStorage.getItem('hrms_auth');
-    if (auth) {
-      try {
-        const parsed = JSON.parse(auth);
-        if (parsed.user && parsed.user.id) userId = parsed.user.id;
-<<<<<<< HEAD
-      } catch (e) {}
-=======
-      } catch (e) { }
->>>>>>> origin/main
-    }
-    localStorage.setItem('selectedEmployeeId', userId);
-    navigate('/employees/profile');
-  };
-
   const toggleGroup = (groupId) => {
     setExpandedGroups(prev =>
-<<<<<<< HEAD
       prev.includes(groupId)
         ? prev.filter(id => id !== groupId)
         : [...prev, groupId]
@@ -78,25 +51,6 @@ export function Sidebar({ userRole, onLogout }) {
     const currentPath = location.pathname;
     if (currentPath.startsWith('/employees') && !expandedGroups.includes('employees')) {
       setExpandedGroups(prev => [...prev, 'employees']);
-=======
-      prev.includes(groupId) ? [] : [groupId]
-    );
-  };
-
-  // Automatically expand ONLY the active module group based on current path and close all others
-  useEffect(() => {
-    const currentPath = location.pathname;
-    
-    const matchingGroup = menuItems.find(item => {
-      if (item.children) {
-        return item.children.some(child => child.path && (currentPath.startsWith(child.path) || currentPath === child.path));
-      }
-      return false;
-    });
-
-    if (matchingGroup) {
-      setExpandedGroups([matchingGroup.id]);
->>>>>>> origin/main
     }
   }, [location.pathname]);
 
@@ -114,12 +68,7 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'teams', label: 'Teams', path: '/teams' },
         { id: 'shift-management', label: 'Shift Management', path: '/shift-management' },
         { id: 'holiday-calendar', label: 'Holiday Calendar', path: '/holiday-calendar' },
-<<<<<<< HEAD
         { id: 'organization-chart', label: 'Organization Chart', path: '/organization-chart' }
-=======
-        { id: 'organization-chart', label: 'Organization Chart', path: '/organization-chart' },
-        { id: 'user-roles', label: 'User Roles & Permissions', path: '/user-roles' }
->>>>>>> origin/main
       ]
     },
     {
@@ -128,7 +77,6 @@ export function Sidebar({ userRole, onLogout }) {
       icon: Users,
       roles: ['ALL'],
       children: [
-        { id: 'employee-dashboard', label: 'Employee Dashboard', path: '/employees/dashboard' },
         { id: 'employee-directory', label: 'Employee Directory', path: '/employees' },
         { id: 'employee-list', label: 'Employee List', path: '/employees/list' },
         { id: 'add-employee', label: 'Add Employee', path: '/employees/add' },
@@ -137,12 +85,7 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'promotions', label: 'Promotions', path: '/employees/promotions' },
         { id: 'transfers', label: 'Transfers', path: '/employees/transfers' },
         { id: 'exit-management', label: 'Exit Management', path: '/employees/exit' },
-<<<<<<< HEAD
         { id: 'employee-documents', label: 'Employee Documents', path: '/employees/documents' }
-=======
-        { id: 'employee-documents', label: 'Employee Documents', path: '/employees/documents' },
-        { id: 'employee-reports-sub', label: 'Employee Reports', path: '/reports/employee' }
->>>>>>> origin/main
       ]
     },
     {
@@ -152,17 +95,12 @@ export function Sidebar({ userRole, onLogout }) {
       roles: ['ALL'],
       children: [
         { id: 'daily-attendance', label: 'Daily Attendance', path: '/attendance/daily' },
-        { id: 'gps-attendance', label: 'GPS Attendance', path: '/attendance/gps' },
+        { id: 'biometric-attendance', label: 'Biometric Attendance', path: '/attendance/biometric' },
         { id: 'regularization', label: 'Regularization', path: '/attendance/regularization' },
         { id: 'shift-roster', label: 'Shift Roster', path: '/attendance/shift-roster' },
         { id: 'overtime', label: 'Overtime', path: '/attendance/overtime' },
         { id: 'late-arrival', label: 'Late Arrival', path: '/attendance/late-arrival' },
-<<<<<<< HEAD
-        { id: 'attendance-reports', label: 'Attendance Reports', path: '/attendance/reports' },
-=======
-        { id: 'attendance-reports', label: 'Attendance Reports', path: '/reports/attendance' },
->>>>>>> origin/main
-        { id: 'punch-locations', label: 'Punch Locations', path: '/attendance/punch-locations' }
+        { id: 'attendance-reports', label: 'Attendance Reports', path: '/attendance/reports' }
       ]
     },
     {
@@ -177,12 +115,7 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'leave-balance', label: 'Leave Balance', path: '/leave-balance' },
         { id: 'leave-types', label: 'Leave Types', path: '/leave-types' },
         { id: 'holiday-list', label: 'Holiday List', path: '/holiday-list' },
-<<<<<<< HEAD
         { id: 'comp-off', label: 'Comp Off', path: '/comp-off' }
-=======
-        { id: 'comp-off', label: 'Comp Off', path: '/comp-off' },
-        { id: 'leave-reports-sub', label: 'Leave Reports', path: '/reports/leave' }
->>>>>>> origin/main
       ]
     },
     {
@@ -199,11 +132,7 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'reimbursements', label: 'Reimbursements', path: '/payroll/reimbursements' },
         { id: 'loans-advances', label: 'Loans & Advances', path: '/payroll/loans' },
         { id: 'tax-management', label: 'Tax Management', path: '/payroll/tax' },
-<<<<<<< HEAD
         { id: 'payroll-reports', label: 'Payroll Reports', path: '/payroll/reports' }
-=======
-        { id: 'payroll-reports', label: 'Payroll Reports', path: '/reports/payroll' }
->>>>>>> origin/main
       ]
     },
     {
@@ -217,12 +146,7 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'candidates', label: 'Candidates', path: '/recruitment/candidates' },
         { id: 'interview-schedule', label: 'Interview Schedule', path: '/recruitment/interviews' },
         { id: 'offer-letters', label: 'Offer Letters', path: '/recruitment/offers' },
-<<<<<<< HEAD
         { id: 'hiring-pipeline', label: 'Hiring Pipeline', path: '/recruitment/pipeline' }
-=======
-        { id: 'hiring-pipeline', label: 'Hiring Pipeline', path: '/recruitment/pipeline' },
-        { id: 'recruitment-reports-sub', label: 'Recruitment Reports', path: '/reports/recruitment' }
->>>>>>> origin/main
       ]
     },
     {
@@ -251,27 +175,22 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'appraisals', label: 'Appraisals', path: '/performance/appraisals' },
         { id: 'reviews', label: 'Reviews', path: '/performance/reviews' },
         { id: 'feedback', label: 'Feedback', path: '/performance/feedback' },
-<<<<<<< HEAD
         { id: 'promotions-performance', label: 'Promotions', path: '/performance/promotions' }
-=======
-        { id: 'promotions-performance', label: 'Promotions', path: '/performance/promotions' },
-        { id: 'performance-reports-sub', label: 'Performance Reports', path: '/reports/performance' }
->>>>>>> origin/main
       ]
     },
-    // {
-    //   id: 'training',
-    //   label: 'Training',
-    //   icon: GraduationCap,
-    //   roles: ['ALL'],
-    //   children: [
-    //     { id: 'training-programs', label: 'Training Programs' },
-    //     { id: 'learning-portal', label: 'Learning Portal' },
-    //     { id: 'trainers', label: 'Trainers' },
-    //     { id: 'assessments', label: 'Assessments' },
-    //     { id: 'certificates', label: 'Certificates' }
-    //   ]
-    // },
+    {
+      id: 'training',
+      label: 'Training',
+      icon: GraduationCap,
+      roles: ['ALL'],
+      children: [
+        { id: 'training-programs', label: 'Training Programs' },
+        { id: 'learning-portal', label: 'Learning Portal' },
+        { id: 'trainers', label: 'Trainers' },
+        { id: 'assessments', label: 'Assessments' },
+        { id: 'certificates', label: 'Certificates' }
+      ]
+    },
     {
       id: 'projects',
       label: 'Projects',
@@ -284,12 +203,7 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'sprint-board', label: 'Sprint Board', path: '/projects/sprint-board' },
         { id: 'timesheets', label: 'Timesheets', path: '/projects/timesheets' },
         { id: 'milestones', label: 'Milestones', path: '/projects/milestones' },
-<<<<<<< HEAD
         { id: 'team-members', label: 'Team Members', path: '/projects/team' }
-=======
-        { id: 'team-members', label: 'Team Members', path: '/projects/team' },
-        { id: 'project-reports-sub', label: 'Project Reports', path: '/reports/project' }
->>>>>>> origin/main
       ]
     },
     {
@@ -307,20 +221,20 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'project-reports', label: 'Project Reports', path: '/reports/project' }
       ]
     },
-    // {
-    //   id: 'assets',
-    //   label: 'Assets',
-    //   icon: Package,
-    //   roles: ['ALL'],
-    //   children: [
-    //     { id: 'asset-categories', label: 'Asset Categories' },
-    //     { id: 'asset-inventory', label: 'Asset Inventory' },
-    //     { id: 'asset-allocation-module', label: 'Asset Allocation' },
-    //     { id: 'asset-return', label: 'Asset Return' },
-    //     { id: 'maintenance', label: 'Maintenance' },
-    //     { id: 'asset-reports', label: 'Asset Reports' }
-    //   ]
-    // },
+    {
+      id: 'assets',
+      label: 'Assets',
+      icon: Package,
+      roles: ['ALL'],
+      children: [
+        { id: 'asset-categories', label: 'Asset Categories' },
+        { id: 'asset-inventory', label: 'Asset Inventory' },
+        { id: 'asset-allocation-module', label: 'Asset Allocation' },
+        { id: 'asset-return', label: 'Asset Return' },
+        { id: 'maintenance', label: 'Maintenance' },
+        { id: 'asset-reports', label: 'Asset Reports' }
+      ]
+    },
     {
       id: 'expenses',
       label: 'Expenses',
@@ -377,13 +291,7 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'settings-security', label: 'Security', path: '/settings/security' },
         { id: 'settings-system', label: 'System', path: '/settings/system' }
       ]
-<<<<<<< HEAD
     }
-=======
-    },
-    { id: 'ai-assistant', label: 'AI Assistant', icon: Sparkles, roles: ['ALL'], path: '/ai-assistant' },
-
->>>>>>> origin/main
   ];
 
   const filteredMenu = menuItems.filter((item) =>
@@ -393,7 +301,7 @@ export function Sidebar({ userRole, onLogout }) {
   const renderMenuItem = (item) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedGroups.includes(item.id);
-
+    
     // Check if any child's path matches the current location exactly, or if the item's path matches
     const isActive = item.path === location.pathname || (hasChildren && item.children.some(child => child.path === location.pathname));
 
@@ -436,10 +344,6 @@ export function Sidebar({ userRole, onLogout }) {
         </div>
       );
     }
-<<<<<<< HEAD
-=======
-    const isAIAssistant = item.id === 'ai-assistant';
->>>>>>> origin/main
 
     return (
       <button
@@ -448,47 +352,18 @@ export function Sidebar({ userRole, onLogout }) {
         className={cn(
           "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm font-medium",
           isActive
-<<<<<<< HEAD
             ? "custom-sidebar-btn-active bg-blue-600 text-white"
             : "custom-sidebar-btn"
         )}
       >
         <item.icon size={18} />
-=======
-            ? (isAIAssistant ? "bg-violet-600 text-white shadow-lg shadow-violet-600/20" : "custom-sidebar-btn-active bg-blue-600 text-white")
-            : "custom-sidebar-btn"
-        )}
-      >
-        <item.icon 
-          size={18} 
-          className={cn(isAIAssistant ? "animate-pulse" : "")} 
-          style={isAIAssistant ? { 
-            stroke: 'url(#ai-spark-gradient)', 
-            filter: 'drop-shadow(0 0 18px rgba(139, 92, 246, 0.35))' 
-          } : {}} 
-        />
->>>>>>> origin/main
         {item.label}
       </button>
     );
   };
 
   return (
-<<<<<<< HEAD
     <div className="w-64 custom-sidebar h-screen flex flex-col fixed left-0 top-0 overflow-y-auto">
-=======
-    <>
-      <svg style={{ width: 0, height: 0, position: 'absolute' }}>
-        <defs>
-          <linearGradient id="ai-spark-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#8B5CF6" />
-            <stop offset="50%" stopColor="#6366F1" />
-            <stop offset="100%" stopColor="#3B82F6" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <div className="w-64 custom-sidebar h-screen flex flex-col fixed left-0 top-0 overflow-y-auto">
->>>>>>> origin/main
       {/* Logo */}
       <div className="p-5 custom-sidebar-border-b">
         <div className="flex items-center gap-3">
@@ -507,7 +382,6 @@ export function Sidebar({ userRole, onLogout }) {
         {filteredMenu.map(item => renderMenuItem(item))}
       </nav>
 
-<<<<<<< HEAD
       {/* Need Help Support Card */}
       <div className="p-3">
         <div style={{ background: '#1E293B', borderRadius: 12, padding: 14, border: '1px solid #334155' }}>
@@ -532,38 +406,21 @@ export function Sidebar({ userRole, onLogout }) {
       {/* User Profile */}
       <div className="p-3 custom-sidebar-border-t">
         <div className="custom-sidebar-profile-bg rounded-lg p-3 flex items-center gap-3">
-          <div 
-=======
-      {/* User Profile */}
-      <div className="p-3 custom-sidebar-border-t">
-        <div className="custom-sidebar-profile-bg rounded-lg p-3 flex items-center gap-3">
-          <div
->>>>>>> origin/main
-            onClick={handleProfileClick}
-            style={{ cursor: 'pointer' }}
-            className="flex flex-1 items-center gap-3 min-w-0 hover:opacity-85 transition-opacity"
-          >
-            <div className="w-9 h-9 rounded-full custom-sidebar-profile-avatar-bg flex items-center justify-center text-xs font-bold flex-shrink-0">
-              {(localStorage.getItem('userName') || 'John Doe').split(' ').map(n => n[0]).join('')}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{localStorage.getItem('userName') || 'John Doe'}</p>
-              <p className="text-xs text-slate-400 truncate">{localStorage.getItem('userRole') || 'Super Admin'}</p>
-            </div>
+          <div className="w-9 h-9 rounded-full custom-sidebar-profile-avatar-bg flex items-center justify-center text-xs font-bold">
+            JD
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-white truncate">John Doe</p>
+            <p className="text-xs text-slate-400 truncate">Super Admin</p>
           </div>
           <button
             onClick={onLogout}
-            className="text-slate-400 hover:text-red-400 transition-colors p-1 flex-shrink-0"
+            className="text-slate-400 hover:text-red-400 transition-colors p-1"
           >
             <LogOut size={16} />
           </button>
         </div>
       </div>
-<<<<<<< HEAD
     </div>
-=======
-      </div>
-    </>
->>>>>>> origin/main
   );
 }

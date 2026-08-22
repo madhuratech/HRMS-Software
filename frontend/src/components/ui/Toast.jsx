@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import React, { createContext, useContext, useState } from 'react';
 import { CheckCircle, AlertCircle, X, Info } from 'lucide-react';
 
@@ -14,47 +13,23 @@ import { CheckCircle, AlertCircle, X, Info } from 'lucide-react';
 
 
 
-=======
-import React, { createContext, useContext, useState, useCallback } from 'react';
-import { CheckCircle, AlertCircle, X, Info } from 'lucide-react';
-
->>>>>>> origin/main
 const ToastContext = createContext(undefined);
 
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
 
-<<<<<<< HEAD
   const addToast = (message, type = 'success') => {
     const id = Math.random().toString(36).substr(2, 9);
     setToasts((prev) => [...prev, { id, message, type }]);
-=======
-  const removeToast = useCallback((id) => {
-    setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  }, []);
-
-  const addToast = useCallback((message, type = 'success') => {
-    const id = Math.random().toString(36).substr(2, 9);
-    setToasts((prev) => {
-      if (prev.some((t) => t.message === message)) {
-        return prev;
-      }
-      return [...prev, { id, message, type }];
-    });
->>>>>>> origin/main
 
     setTimeout(() => {
       removeToast(id);
     }, 3000);
-<<<<<<< HEAD
   };
 
   const removeToast = (id) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
   };
-=======
-  }, [removeToast]);
->>>>>>> origin/main
 
   return (
     <ToastContext.Provider value={{ addToast }}>

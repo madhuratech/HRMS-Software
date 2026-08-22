@@ -39,10 +39,6 @@ import { Teams } from './components/organization/Teams';
 import { ShiftManagement } from './components/organization/ShiftManagement';
 import { HolidayCalendar } from './components/organization/HolidayCalendar';
 import { OrganizationChart } from './components/organization/OrganizationChart';
-<<<<<<< HEAD
-=======
-import { UserRoles } from './components/organization/UserRoles';
->>>>>>> origin/main
 
 // Employee Module Imports
 import EmployeeDirectory from './components/employee/EmployeeDirectory';
@@ -58,13 +54,12 @@ import { AppLayout } from './components/layout/AppLayout';
 
 // Attendance Module Imports
 import DailyAttendance from './components/attendance/DailyAttendance';
-import GPSAttendance from './components/attendance/GPSAttendance';
+import BiometricAttendance from './components/attendance/BiometricAttendance';
 import Regularization from './components/attendance/Regularization';
 import ShiftRoster from './components/attendance/ShiftRoster';
 import Overtime from './components/attendance/Overtime';
 import LateArrival from './components/attendance/LateArrival';
 import AttendanceReports from './components/attendance/AttendanceReports';
-import PunchLocations from './components/attendance/PunchLocations';
 
 // Leave Module Imports
 import LeaveDashboard from './components/leave/LeaveDashboard';
@@ -142,10 +137,6 @@ import SettingsCommunication from './components/settings/SettingsCommunication';
 import SettingsIntegrations from './components/settings/SettingsIntegrations';
 import SettingsSecurity from './components/settings/SettingsSecurity';
 import SettingsSystem from './components/settings/SettingsSystem';
-<<<<<<< HEAD
-=======
-import { AIAssistantDashboard } from './components/ai-assistant/AIAssistantDashboard';
->>>>>>> origin/main
 
 import { ToastProvider } from './components/ui/Toast';
 import { CustomCursor } from './components/ui/CustomCursor';
@@ -154,72 +145,18 @@ import { Agentation } from 'agentation';
 function App() {
   const [authView, setAuthView] = useState('login');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(true);
   const [currentView, setCurrentView] = useState('dashboard');
   const [userRole, setUserRole] = useState('SUPER_ADMIN');
-  const [userName, setUserName] = useState('');
-
-  // On mount: restore auth state from localStorage
-  React.useEffect(() => {
-    try {
-      const storedAuth = localStorage.getItem('hrms_auth');
-      if (storedAuth) {
-        const { role, name, loggedIn } = JSON.parse(storedAuth);
-        if (loggedIn && role) {
-          setUserRole(role);
-          setUserName(name || '');
-          setIsLoggedIn(true);
-        }
-      }
-    } catch (err) {
-      // Corrupted storage — clear it and stay on login
-      localStorage.removeItem('hrms_auth');
-    } finally {
-      setIsInitializing(false);
-    }
-  }, []);
 
   const handleLogin = (role, name) => {
     setUserRole(role);
-    setUserName(name || '');
     setIsLoggedIn(true);
-    // Persist auth to localStorage so refresh doesn't log out the user
-    localStorage.setItem('hrms_auth', JSON.stringify({ role, name, loggedIn: true }));
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
-    setUserName('');
     setAuthView('login');
-    // Clear persisted auth on explicit logout
-    localStorage.removeItem('hrms_auth');
   };
-
-  // Show a full-screen loading spinner while restoring auth state
-  if (isInitializing) {
-    return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)',
-        gap: 20,
-      }}>
-        <div style={{
-          width: 56, height: 56, borderRadius: '50%',
-          border: '4px solid rgba(255,255,255,0.15)',
-          borderTopColor: '#3b82f6',
-          animation: 'spin 0.85s linear infinite',
-        }} />
-        <p style={{ color: '#94a3b8', fontSize: 15, fontWeight: 500, letterSpacing: '0.02em' }}>
-          Loading HRMS…
-        </p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
 
   if (!isLoggedIn) {
     if (authView === 'register') {
@@ -242,11 +179,7 @@ function App() {
   const LegacyViewManager = () => {
     const location = useLocation();
     const currentView = location.pathname.substring(1) || 'dashboard'; // remove leading slash
-<<<<<<< HEAD
     
-=======
-
->>>>>>> origin/main
     switch (currentView) {
       case 'dashboard':
         if (userRole === 'SERVICE_STAFF' || userRole === 'SALES_MANAGER') {
@@ -284,23 +217,12 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-<<<<<<< HEAD
           
-=======
-
->>>>>>> origin/main
           <Route element={<AppLayout userRole={userRole} onLogout={handleLogout} />}>
             {/* Dashboard Route */}
             <Route path="/dashboard" element={userRole === 'SERVICE_STAFF' || userRole === 'SALES_MANAGER' ? <StaffDashboard /> : <SuperAdminDashboard />} />
 
-<<<<<<< HEAD
-=======
-            {/* AI Assistant Route */}
-            <Route path="/ai-assistant" element={<AIAssistantDashboard />} />
-
->>>>>>> origin/main
             {/* Employee Routes - explicitly rendering their own components */}
-            <Route path="/employees/dashboard" element={<StaffDashboard />} />
             <Route path="/employees" element={<EmployeeDirectory />} />
             <Route path="/employees/list" element={<EmployeeListContent />} />
             <Route path="/employees/add" element={<AddEmployeeForm />} />
@@ -310,43 +232,25 @@ function App() {
             <Route path="/employees/transfers" element={<TransfersContent />} />
             <Route path="/employees/exit" element={<ExitManagement />} />
             <Route path="/employees/documents" element={<EmployeeDocuments />} />
-<<<<<<< HEAD
             
-=======
-
->>>>>>> origin/main
             {/* Attendance Routes */}
             <Route path="/attendance/daily" element={<DailyAttendance />} />
-            <Route path="/attendance/gps" element={<GPSAttendance />} />
+            <Route path="/attendance/biometric" element={<BiometricAttendance />} />
             <Route path="/attendance/regularization" element={<Regularization />} />
             <Route path="/attendance/shift-roster" element={<ShiftRoster />} />
             <Route path="/attendance/overtime" element={<Overtime />} />
             <Route path="/attendance/late-arrival" element={<LateArrival />} />
-<<<<<<< HEAD
             <Route path="/attendance/reports" element={<AttendanceReports />} />
-            <Route path="/attendance/punch-locations" element={<PunchLocations />} />
             
-=======
-            <Route path="/attendance/reports" element={<AttendanceReportsModule />} />
-            <Route path="/attendance/punch-locations" element={<PunchLocations />} />
-
->>>>>>> origin/main
             {/* Leave Module */}
             <Route path="/leave-dashboard" element={<LeaveDashboard />} />
             <Route path="/leave-applications" element={<LeaveApplications />} />
             <Route path="/leave-approval" element={<LeaveApproval />} />
             <Route path="/leave-balance" element={<LeaveBalance />} />
             <Route path="/leave-types" element={<LeaveTypes />} />
-<<<<<<< HEAD
             <Route path="/holiday-list" element={<HolidayList />} />
             <Route path="/comp-off" element={<CompOff />} />
             
-=======
-            <Route path="/leave/reports" element={<LeaveReports />} />
-            <Route path="/holiday-list" element={<HolidayList />} />
-            <Route path="/comp-off" element={<CompOff />} />
-
->>>>>>> origin/main
             {/* Organization Module */}
             <Route path="/company-profile" element={<CompanyProfile />} />
             <Route path="/departments" element={<Departments />} />
@@ -355,12 +259,7 @@ function App() {
             <Route path="/shift-management" element={<ShiftManagement />} />
             <Route path="/holiday-calendar" element={<HolidayCalendar />} />
             <Route path="/organization-chart" element={<OrganizationChart />} />
-<<<<<<< HEAD
             
-=======
-            <Route path="/user-roles" element={<UserRoles />} />
-
->>>>>>> origin/main
             {/* Other Existing Modules */}
             <Route path="/news" element={<NewsFeed />} />
             <Route path="/schedule" element={<ShiftScheduler />} />
@@ -378,11 +277,7 @@ function App() {
             <Route path="/reports/recruitment" element={<RecruitmentReportsModule />} />
             <Route path="/reports/performance" element={<PerformanceReports />} />
             <Route path="/reports/project" element={<ProjectReports />} />
-<<<<<<< HEAD
             
-=======
-
->>>>>>> origin/main
             {/* Payroll Module */}
             <Route path="/payroll" element={<Navigate to="/payroll/salary-structure" replace />} />
             <Route path="/payroll/salary-structure" element={<SalaryStructure />} />
@@ -393,13 +288,8 @@ function App() {
             <Route path="/payroll/reimbursements" element={<Reimbursements />} />
             <Route path="/payroll/loans" element={<LoansAdvances />} />
             <Route path="/payroll/tax" element={<TaxManagement />} />
-<<<<<<< HEAD
             <Route path="/payroll/reports" element={<PayrollReports />} />
             
-=======
-            <Route path="/payroll/reports" element={<PayrollReportsModule />} />
-
->>>>>>> origin/main
             {/* Recruitment Module */}
             <Route path="/recruitment" element={<Navigate to="/recruitment/dashboard" replace />} />
             <Route path="/recruitment/dashboard" element={<RecruitmentDashboard />} />
@@ -408,13 +298,8 @@ function App() {
             <Route path="/recruitment/interviews" element={<InterviewSchedule />} />
             <Route path="/recruitment/offers" element={<OfferLetters />} />
             <Route path="/recruitment/pipeline" element={<HiringPipeline />} />
-<<<<<<< HEAD
             <Route path="/recruitment/reports" element={<RecruitmentReports />} />
             
-=======
-            <Route path="/recruitment/reports" element={<RecruitmentReportsModule />} />
-
->>>>>>> origin/main
             {/* Onboarding Module */}
             <Route path="/onboarding" element={<Navigate to="/onboarding/new-joiners" replace />} />
             <Route path="/onboarding/new-joiners" element={<NewJoiners />} />
@@ -423,11 +308,7 @@ function App() {
             <Route path="/onboarding/welcome-kit" element={<WelcomeKit />} />
             <Route path="/onboarding/orientation" element={<Orientation />} />
             <Route path="/onboarding/probation" element={<Probation />} />
-<<<<<<< HEAD
             
-=======
-
->>>>>>> origin/main
             {/* Performance Module */}
             <Route path="/performance" element={<Navigate to="/performance/goals" replace />} />
             <Route path="/performance/goals" element={<Goals />} />
@@ -437,10 +318,6 @@ function App() {
             <Route path="/performance/reviews" element={<Reviews />} />
             <Route path="/performance/feedback" element={<Feedback />} />
             <Route path="/performance/promotions" element={<Promotions />} />
-<<<<<<< HEAD
-=======
-            <Route path="/performance/reports" element={<PerformanceReports />} />
->>>>>>> origin/main
 
             {/* Project Management Module */}
             <Route path="/projects" element={<Navigate to="/projects/dashboard" replace />} />
@@ -451,10 +328,6 @@ function App() {
             <Route path="/projects/timesheets" element={<Timesheets />} />
             <Route path="/projects/milestones" element={<Milestones />} />
             <Route path="/projects/team" element={<TeamMembers />} />
-<<<<<<< HEAD
-=======
-            <Route path="/projects/reports" element={<ProjectReports />} />
->>>>>>> origin/main
 
             {/* Expenses Module */}
             <Route path="/expenses" element={<Navigate to="/expenses/claims" replace />} />

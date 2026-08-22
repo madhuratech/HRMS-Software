@@ -1,418 +1,295 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, Plus, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts';
-import { useToast } from '../ui/Toast';
+import React, { useState, useEffect } from 'react';
+import { ChevronDown, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
-export default function Feedback() {
-  const { addToast } = useToast();
-  const [feedbackList, setFeedbackList] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
+/* ─────────────────── DATA ─────────────────── */
+const PIE_DATA = [
+  { name: 'Positive',    value: 168, percent: '58.5%', color: '#2563EB' },
+  { name: 'Improvement', value: 76,  percent: '27.2%', color: '#10B981' },
+  { name: 'Neutral',     value: 53,  percent: '13.8%', color: '#F59E0B' },
+];
 
-  // Pagination & Filters
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const limit = 10;
-  const [search, setSearch] = useState('');
-  const [filterDept, setFilterDept] = useState('All Departments');
+const TABLE_DATA = [
+  { from: 'Amit Mehta',    fromI: 'AM', to: 'Rahul Sharma',  feedback: 'Great leadership and problem solving skills.', type: 'Positive',    date: '22 May 2024' },
+  { from: 'Neha Kapoor',   fromI: 'NK', to: 'Priya Patel',   feedback: 'Excellent communication and teamwork.',        type: 'Positive',    date: '21 May 2024' },
+  { from: 'Rohan Verma',   fromI: 'RV', to: 'Vikram Singh',  feedback: 'Good effort in meeting targets.',              type: 'Positive',    date: '20 May 2024' },
+  { from: 'Pooja Joshi',   fromI: 'PJ', to: 'Sneha Reddy',   feedback: 'Needs improvement in documentation.',          type: 'Improvement', date: '19 May 2024' },
+  { from: 'Karan Malhotra',fromI: 'KM', to: 'Amit Kumar',    feedback: 'Very proactive and supportive.',               type: 'Positive',    date: '18 May 2024' },
+];
 
-  // KPI Dashboard Stats
-  const [kpiData, setKpiData] = useState({
-    total: 0,
-    positive: 0,
-    negative: 0,
-    neutral: 0,
-    rate: '0%',
-    chartData: [
-      { name: 'Positive', value: 0, color: '#10B981' },
-      { name: 'Neutral', value: 0, color: '#F59E0B' },
-      { name: 'Improvement', value: 0, color: '#EF4444' }
-    ]
-  });
+const TYPE_STYLE = {
+  'Positive':    { color: '#15803D' },
+  'Improvement': { color: '#D97706' },
+  'Neutral':     { color: '#6B7280' },
+};
 
-  const [formData, setFormData] = useState({
-    recipient: '',
-    department: '',
-    type: 'Recognition',
-    rating: '5',
-    subject: '',
-    comments: ''
-  });
+const TOP_GIVERS = [
+  { name: 'Amit Mehta',  initials: 'AM', count: 45 },
+  { name: 'Neha Kapoor', initials: 'NK', count: 38 },
+  { name: 'Rohan Verma', initials: 'RV', count: 32 },
+];
 
-  const getAuthToken = () => {
-    const auth = localStorage.getItem('hrms_auth');
-    if (auth) {
-      try {
-        const parsed = JSON.parse(auth);
-        return parsed.token || 'mock_jwt_token';
-      } catch (e) {
-        return 'mock_jwt_token';
-      }
-    }
-    return 'mock_jwt_token';
-  };
+const AVATAR_COLORS = [
+  { bg: '#DBEAFE', color: '#1D4ED8' },
+  { bg: '#FCE7F3', color: '#9D174D' },
+  { bg: '#D1FAE5', color: '#065F46' },
+  { bg: '#FEF3C7', color: '#92400E' },
+  { bg: '#EDE9FE', color: '#5B21B6' },
+];
 
-  const fetchMeta = async () => {
-    try {
-      const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
-      
-      // Fetch departments
-      const deptRes = await fetch('/app/requirements/meta/all', { headers });
-      const deptData = await deptRes.json();
-      if (deptData && deptData.departments) {
-        setDepartments(deptData.departments);
-      }
-
-      // Fetch employees
-      const empRes = await fetch('/app/employees?status=Active', { headers });
-      const empData = await empRes.json();
-      if (Array.isArray(empData)) {
-        setEmployees(empData);
-      }
-    } catch (err) {
-      console.error('Failed to load feedback metadata:', err);
-    }
-  };
-
-  const fetchDashboardStats = useCallback(async () => {
-    try {
-      const res = await fetch('/app/feedback/dashboard', {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const resData = await res.json();
-      if (resData.success && resData.data) {
-        setKpiData(resData.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch feedback stats:', err);
-    }
-  }, []);
-
-  const fetchFeedback = useCallback(async () => {
-    setLoading(true);
-    try {
-      let url = `/app/feedback?page=${page}&limit=${limit}`;
-      if (search) {
-        url += `&search=${encodeURIComponent(search)}`;
-      }
-      if (filterDept && filterDept !== 'All Departments') {
-        url += `&department_id=${encodeURIComponent(filterDept)}`;
-      }
-
-      const res = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const resData = await res.json();
-      if (resData.success && resData.data) {
-        setFeedbackList(resData.data.feedbacks || []);
-        setTotal(resData.data.total || 0);
-      } else {
-        addToast(resData.message || 'Failed to fetch feedback', 'error');
-      }
-    } catch (err) {
-      addToast('Error connecting to backend server', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search, filterDept, addToast]);
-
-  useEffect(() => {
-    fetchMeta();
-  }, []);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, filterDept]);
-
-  useEffect(() => {
-    fetchFeedback();
-    fetchDashboardStats();
-  }, [page, fetchFeedback, fetchDashboardStats]);
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!formData.recipient || !formData.department || !formData.comments) {
-      addToast('Please fill in all required fields.', 'error');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const payload = {
-        employee_id: parseInt(formData.recipient),
-        department_id: parseInt(formData.department),
-        feedback_type: formData.type,
-        rating: parseInt(formData.rating),
-        subject: formData.subject.trim(),
-        comments: formData.comments.trim()
-      };
-
-      const res = await fetch('/app/feedback', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
-        body: JSON.stringify(payload)
-      });
-      const resData = await res.json();
-      if (resData.success) {
-        addToast('Feedback saved successfully!', 'success');
-        setShowAddModal(false);
-        setFormData({ recipient: '', department: '', type: 'Recognition', rating: '5', subject: '', comments: '' });
-        fetchFeedback();
-        fetchDashboardStats();
-      } else {
-        addToast(resData.message || 'Failed to save feedback', 'error');
-      }
-    } catch (err) {
-      addToast('Connection error occurred', 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const getFeedbackTypeStyle = (type) => {
-    switch (type) {
-      case 'Recognition': return { bg: '#ECFDF5', color: '#10B981' };
-      case 'Constructive': return { bg: '#FEF2F2', color: '#EF4444' };
-      default: return { bg: '#EFF6FF', color: '#2952E3' };
-    }
-  };
-
-  const cardStyle = {
-    background: '#FFFFFF',
-    borderRadius: '16px',
-    padding: '24px',
-    boxShadow: '0 8px 24px rgba(15,23,42,0.08)',
-  };
-
-  const totalPages = Math.ceil(total / limit) || 1;
-
+/* ─────────────────── COMPONENT ─────────────────── */
+const Feedback = () => {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: '"Inter", sans-serif', paddingBottom: '24px' }}>
-      
-      {/* Add Feedback Modal */}
-      {showAddModal && (
-        <>
-          <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
-          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
-            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-[#0A1629]">Give Performance Feedback</h2>
-                <p className="text-sm text-slate-500 mt-1">Provide constructive feedback, praise, or peer recognition.</p>
-              </div>
-              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <X size={20} className="text-slate-400" />
-              </button>
-            </div>
-            <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Recipient Employee <span className="text-red-500">*</span></label>
-                  <select 
-                    required 
-                    value={formData.recipient} 
-                    onChange={e => setFormData({ ...formData, recipient: e.target.value })} 
-                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
-                  >
-                    <option value="">Select Employee</option>
-                    {employees.map(e => (
-                      <option key={e.id} value={e.id}>{e.name} (EMP{String(e.id).padStart(3, '0')})</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Department <span className="text-red-500">*</span></label>
-                  <select required value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Department</option>
-                    {departments.map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Feedback Type</label>
-                  <select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Recognition">Recognition & Praise</option>
-                    <option value="Constructive">Constructive Guidance</option>
-                    <option value="General">General Feedback</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Rating (1 to 5 Stars)</label>
-                  <select value={formData.rating} onChange={e => setFormData({ ...formData, rating: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="5">5 - Excellent</option>
-                    <option value="4">4 - Good</option>
-                    <option value="3">3 - Satisfactory</option>
-                    <option value="2">2 - Needs Improvement</option>
-                    <option value="1">1 - Unsatisfactory</option>
-                  </select>
-                </div>
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Subject</label>
-                  <input type="text" value={formData.subject} onChange={e => setFormData({ ...formData, subject: e.target.value })} placeholder="e.g. Exceptional teamwork during deployment" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Feedback / Comments <span className="text-red-500">*</span></label>
-                  <textarea required value={formData.comments} onChange={e => setFormData({ ...formData, comments: e.target.value })} placeholder="Detailed remarks or guidance comments..." style={{ height: '80px' }} className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50">
-                  {submitting ? 'Saving...' : 'Save Feedback'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </>
-      )}
+    <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box' }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* ── HEADER ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Feedback</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Track and manage feedback logs</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280', fontWeight: 400 }}>Continuous feedback and recognition</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <select 
-            value={filterDept} 
-            onChange={e => setFilterDept(e.target.value)} 
-            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '13px', color: '#334155', cursor: 'pointer' }}
-          >
-            <option value="All Departments">All Departments</option>
-            {departments.map(d => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
-          <button onClick={() => setShowAddModal(true)} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
-            <Plus size={16} /> Add Feedback
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ position: 'relative' }}>
+            <select style={{
+              appearance: 'none', WebkitAppearance: 'none',
+              height: 42, paddingLeft: 14, paddingRight: 36,
+              background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8,
+              fontSize: 13, fontWeight: 500, color: '#111827',
+              boxShadow: '0 1px 3px rgba(0,0,0,.06)', cursor: 'pointer', outline: 'none',
+            }}>
+              <option>All Departments</option>
+            </select>
+            <ChevronDown size={15} color="#6B7280" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+          </div>
+          <button style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            height: 42, paddingLeft: 16, paddingRight: 16,
+            background: '#2563EB', color: '#fff', border: 'none', borderRadius: 8,
+            fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            boxShadow: '0 1px 3px rgba(37,99,235,.3)',
+          }}>
+            <Plus size={15} /> Give Feedback
           </button>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+      {/* ── KPI CARDS ── */}
+      <div style={{ display: 'flex', gap: 20, marginBottom: 20, flexWrap: 'wrap' }}>
         {[
-          { title: 'Total Feedbacks', value: kpiData.total, icon: <ChevronDown size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
-          { title: 'Positive Reviews', value: kpiData.positive, icon: <ChevronDown size={20} color="#10B981" />, bgColor: '#ECFDF5' },
-          { title: 'Positive Rate', value: kpiData.rate, icon: <ChevronDown size={20} color="#8B5CF6" />, bgColor: '#F5F3FF' },
-          { title: 'Constructive Logs', value: kpiData.negative, icon: <ChevronDown size={20} color="#EF4444" />, bgColor: '#FEF2F2' },
-        ].map((kpi, idx) => (
-          <div key={idx} style={{ ...cardStyle, display: 'flex', gap: '16px', padding: '20px', alignItems: 'center' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: kpi.bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              {kpi.icon}
-            </div>
+          { label: 'Feedback Given',    value: 342, iconBg: '#DBEAFE', iconColor: '#2563EB', icon: '💬' },
+          { label: 'Feedback Received', value: 287, iconBg: '#DCFCE7', iconColor: '#16A34A', icon: '📨' },
+          { label: 'Recognitions',      value: 156, iconBg: '#FEF3C7', iconColor: '#D97706', icon: '🏆' },
+          { label: 'Improvement Areas', value: 78,  iconBg: '#FEE2E2', iconColor: '#DC2626', icon: '📈' },
+        ].map((card, idx) => (
+          <div key={idx} style={{
+            background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
+            boxShadow: '0 2px 8px rgba(15,23,42,.05)',
+            padding: '18px 22px', flex: '1 1 0', minWidth: 130,
+            display: 'flex', alignItems: 'flex-start', gap: 14,
+          }}>
+            <span style={{
+              width: 34, height: 34, borderRadius: 10,
+              background: card.iconBg, color: card.iconColor,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 15, flexShrink: 0,
+            }}>
+              {card.icon}
+            </span>
             <div>
-              <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '500', marginBottom: '4px' }}>{kpi.title}</div>
-              <div style={{ fontSize: '24px', color: '#1E293B', fontWeight: '700' }}>{kpi.value}</div>
+              <div style={{ fontSize: 12, fontWeight: 500, color: '#6B7280', marginBottom: 4 }}>{card.label}</div>
+              <div style={{ fontSize: 26, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{card.value}</div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Main Content Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: '24px' }}>
-        
-        {/* Table */}
-        <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Feedback Tracker</h3>
-            <input 
-              type="text" 
-              placeholder="Search..." 
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '13px' }}
-            />
+      {/* ── MAIN LAYOUT ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 20 }}>
+
+        {/* LEFT: Recent Feedback Table */}
+        <div style={{
+          background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
+          boxShadow: '0 2px 8px rgba(15,23,42,.05)', overflow: 'hidden',
+        }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid #E5E7EB' }}>
+            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#111827' }}>Recent Feedback</h3>
           </div>
 
           <div style={{ overflowX: 'auto' }}>
-            {loading ? (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>Loading feedbacks...</div>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ background: '#F8FAFC' }}>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Recipient Employee</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Department</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Subject</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Feedback type</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Rating</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {feedbackList.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No feedback logs available</td>
-                    </tr>
-                  ) : (
-                    feedbackList.map((row, idx) => (
-                      <tr key={row.id} style={{ borderBottom: idx === feedbackList.length - 1 ? 'none' : '1px solid #F8FAFC' }}>
-                        <td style={{ padding: '16px 24px', whiteSpace: 'nowrap' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600', color: '#475569' }}>
-                              {row.employee_name ? row.employee_name.split(' ').map(n => n[0]).join('') : 'FB'}
-                            </div>
-                            <div style={{ fontSize: '13px', fontWeight: '600', color: '#1E293B' }}>{row.employee_name}</div>
-                          </div>
-                        </td>
-                        <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.department_name}</td>
-                        <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.subject || '-'}</td>
-                        <td style={{ padding: '16px 24px', fontSize: '13px' }}>
-                          <span style={{ 
-                            padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600',
-                            backgroundColor: getFeedbackTypeStyle(row.feedback_type).bg, color: getFeedbackTypeStyle(row.feedback_type).color
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
+                  {['From', 'To', 'Feedback', 'Type', 'Date'].map(h => (
+                    <th key={h} style={{
+                      padding: '11px 16px', textAlign: 'left',
+                      fontSize: 12, fontWeight: 500, color: '#6B7280',
+                      whiteSpace: 'nowrap', background: '#fff',
+                    }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {TABLE_DATA.map((row, idx) => {
+                  const av = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+                  const ts = TYPE_STYLE[row.type];
+                  return (
+                    <tr key={idx} style={{ height: 54, borderBottom: '1px solid #F3F4F6' }}>
+                      {/* From */}
+                      <td style={{ padding: '0 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{
+                            width: 30, height: 30, borderRadius: '50%',
+                            background: av.bg, color: av.color,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 10, fontWeight: 700, flexShrink: 0,
                           }}>
-                            {row.feedback_type}
-                          </span>
-                        </td>
-                        <td style={{ padding: '16px 24px', fontSize: '13px', color: '#1E293B', fontWeight: '600', textAlign: 'center' }}>{row.rating} ★</td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            )}
+                            {row.fromI}
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>{row.from}</span>
+                        </div>
+                      </td>
+                      {/* To */}
+                      <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{row.to}</td>
+                      {/* Feedback text */}
+                      <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', maxWidth: 260 }}>
+                        <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {row.feedback}
+                        </div>
+                      </td>
+                      {/* Type */}
+                      <td style={{ padding: '0 16px' }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: ts.color }}>{row.type}</span>
+                      </td>
+                      {/* Date */}
+                      <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{row.date}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderTop: '1px solid #F1F5F9' }}>
-            <div style={{ fontSize: '13px', color: '#64748B' }}>
-              Showing {total === 0 ? 0 : (page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} entries
-            </div>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button disabled={page === 1} onClick={() => setPage(prev => prev - 1)} style={{ padding: '4px 8px', border: '1px solid #E2E8F0', borderRadius: '6px', background: '#FFF', cursor: page === 1 ? 'not-allowed' : 'pointer' }}><ChevronLeft size={16} /></button>
-              <button disabled={page === totalPages} onClick={() => setPage(prev => prev + 1)} style={{ padding: '4px 8px', border: '1px solid #E2E8F0', borderRadius: '6px', background: '#FFF', cursor: page === totalPages ? 'not-allowed' : 'pointer' }}><ChevronRight size={16} /></button>
+          {/* Pagination */}
+          <div style={{
+            padding: '14px 20px', borderTop: '1px solid #E5E7EB',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
+          }}>
+            <span style={{ fontSize: 13, color: '#6B7280' }}>Showing 1 to 5 of 287 entries</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {[null, 1, 2, 3, '...', 58, null].map((pg, i) => {
+                if (pg === null) {
+                  const isLeft = i === 0;
+                  return (
+                    <button key={i} style={{
+                      width: 30, height: 30, borderRadius: 6,
+                      border: '1px solid #E5E7EB', background: '#fff',
+                      color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {isLeft ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}
+                    </button>
+                  );
+                }
+                if (pg === '...') return <span key={i} style={{ width: 30, textAlign: 'center', color: '#6B7280', fontSize: 13 }}>...</span>;
+                const isActive = pg === 1;
+                return (
+                  <button key={i} style={{
+                    width: 30, height: 30, borderRadius: 6,
+                    border: isActive ? 'none' : '1px solid #E5E7EB',
+                    background: isActive ? '#2563EB' : '#fff',
+                    color: isActive ? '#fff' : '#374151',
+                    fontWeight: isActive ? 600 : 500,
+                    fontSize: 13, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {pg}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
 
-        {/* Right Side: Charts */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div style={cardStyle}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Feedback Distribution</h3>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '140px' }}>
+        {/* RIGHT SIDEBAR */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          {/* Feedback Distribution */}
+          <div style={{
+            background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
+            boxShadow: '0 2px 8px rgba(15,23,42,.05)', padding: 20,
+          }}>
+            <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 600, color: '#111827' }}>Feedback Distribution</h3>
+
+            {/* Donut */}
+            <div style={{ width: '100%', height: 160, position: 'relative' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={kpiData.chartData} innerRadius={40} outerRadius={55} paddingAngle={2} dataKey="value" cx="50%" cy="50%" stroke="none">
-                    {kpiData.chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                    <Label value={kpiData.total} position="center" fill="#1E293B" style={{ fontSize: '24px', fontWeight: '700' }} />
+                  <Pie data={PIE_DATA} cx="50%" cy="50%" innerRadius={52} outerRadius={70}
+                    paddingAngle={2} dataKey="value" stroke="none">
+                    {PIE_DATA.map((e, i) => <Cell key={i} fill={e.color} />)}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,.1)' }} />
                 </PieChart>
               </ResponsiveContainer>
+              <div style={{
+                position: 'absolute', inset: 0,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                pointerEvents: 'none',
+              }}>
+                <span style={{ fontSize: 22, fontWeight: 700, color: '#111827', lineHeight: 1 }}>287</span>
+                <span style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>Total</span>
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+              {PIE_DATA.map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, color: '#374151', fontWeight: 500 }}>{item.name}</span>
+                  </div>
+                  <span style={{ fontSize: 12, color: '#6B7280' }}>
+                    {item.value} <span style={{ color: '#9CA3AF' }}>({item.percent})</span>
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
 
+          {/* Top Feedback Givers */}
+          <div style={{
+            background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
+            boxShadow: '0 2px 8px rgba(15,23,42,.05)', padding: 20, flex: 1,
+          }}>
+            <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 600, color: '#111827' }}>Top Feedback Givers</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+              {TOP_GIVERS.map((person, idx) => {
+                const av = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+                return (
+                  <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <div style={{
+                        width: 30, height: 30, borderRadius: '50%',
+                        background: av.bg, color: av.color,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: 10, fontWeight: 700, flexShrink: 0,
+                      }}>
+                        {person.initials}
+                      </div>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: '#111827' }}>{person.name}</span>
+                    </div>
+                    <span style={{ fontSize: 14, fontWeight: 700, color: '#2563EB' }}>{person.count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+        </div>
       </div>
 
     </div>
   );
-}
+};
+
+export default Feedback;

@@ -1,38 +1,57 @@
-import React, { useState, useEffect } from 'react';
-import { apiFetch } from '../../lib/api';
+import React, { useState } from 'react';
 import { Check, X, Calendar } from 'lucide-react';
 
+
+const MOCK_REQUESTS = [
+{
+  id: 'lr_1',
+  employeeId: 'emp_002',
+  employeeName: 'Sarah Jenkins',
+  type: 'Sick',
+  startDate: '2023-11-20',
+  endDate: '2023-11-21',
+  days: 2,
+  reason: 'High fever and flu symptoms',
+  status: 'Pending',
+  appliedOn: '2023-11-19'
+},
+{
+  id: 'lr_2',
+  employeeId: 'emp_005',
+  employeeName: 'Mike Ross',
+  type: 'Casual',
+  startDate: '2023-11-25',
+  endDate: '2023-11-25',
+  days: 1,
+  reason: 'Personal family matter',
+  status: 'Pending',
+  appliedOn: '2023-11-18'
+},
+{
+  id: 'lr_3',
+  employeeId: 'emp_008',
+  employeeName: 'David Kim',
+  type: 'Privilege',
+  startDate: '2023-12-01',
+  endDate: '2023-12-05',
+  days: 5,
+  reason: 'Annual vacation',
+  status: 'Pending',
+  appliedOn: '2023-11-15'
+}];
+
+
+
+
+
+
+
 export function LeaveApprovals({ limit, compact = false }) {
-  const [requests, setRequests] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [requests, setRequests] = useState(MOCK_REQUESTS);
 
-  const loadRequests = async () => {
-    setLoading(true);
-    try {
-      const data = await apiFetch('/leaves/requests');
-      if (Array.isArray(data)) {
-        setRequests(data);
-      }
-    } catch (e) {
-      console.error("Failed to load leave requests:", e);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadRequests();
-  }, []);
-
-  const handleAction = async (id, status) => {
-    try {
-      await apiFetch(`/leaves/requests/${id}/status`, {
-        method: 'PUT',
-        body: JSON.stringify({ status })
-      });
-      await loadRequests();
-    } catch (e) {
-      console.error(e);
-    }
+  const handleAction = (id, action) => {
+    setRequests(requests.filter((req) => req.id !== id));
+    // In a real app, update backend
   };
 
   const displayRequests = limit ? requests.slice(0, limit) : requests;
@@ -88,6 +107,5 @@ export function LeaveApprovals({ limit, compact = false }) {
         </div>
       )}
     </div>);
-}
 
-export default LeaveApprovals;
+}

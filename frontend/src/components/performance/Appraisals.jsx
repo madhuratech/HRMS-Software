@@ -1,442 +1,345 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { ChevronDown, Plus, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts';
-import { useToast } from '../ui/Toast';
+import React, { useState, useEffect } from 'react';
+import { ChevronDown, Plus, Edit2, Link2, Star, ChevronLeft, ChevronRight } from 'lucide-react';
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
-export default function Appraisals() {
-  const { addToast } = useToast();
-  const [appraisalsList, setAppraisalsList] = useState([]);
-  const [employees, setEmployees] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
+/* ─────────────────── DATA ─────────────────── */
+const RATING_PIE = [
+  { name: 'Excellent',  value: 25, percent: '10.2%', color: '#2563EB' },
+  { name: 'Very Good',  value: 75, percent: '30.6%', color: '#10B981' },
+  { name: 'Good',       value: 89, percent: '36.3%', color: '#F59E0B' },
+  { name: 'Average',    value: 42, percent: '18.4%', color: '#9CA3AF' },
+  { name: 'Poor',       value: 13, percent: '5.3%',  color: '#EF4444' },
+];
 
-  // Pagination & Filters
-  const [page, setPage] = useState(1);
-  const [total, setTotal] = useState(0);
-  const limit = 10;
-  const [search, setSearch] = useState('');
-  const [filterDept, setFilterDept] = useState('All Departments');
+// Completion donut: 40% complete, 60% remaining
+const COMPLETION_PIE = [
+  { name: 'Completed', value: 40, color: '#10B981' },
+  { name: 'Remaining', value: 60, color: '#E5E7EB' },
+];
 
-  // KPI Dashboard Stats
-  const [kpiData, setKpiData] = useState({
-    total: 0,
-    approved: 0,
-    pending: 0,
-    rejected: 0,
-    rate: '0%',
-    chartData: [
-      { name: 'Approved', value: 0, color: '#10B981' },
-      { name: 'Pending', value: 0, color: '#F59E0B' },
-      { name: 'Rejected', value: 0, color: '#EF4444' }
-    ]
-  });
+const TABLE_DATA = [
+  { name: 'Rahul Sharma',  initials: 'RS', dept: 'Engineering',   appraiser: 'Amit Mehta',      date: '30 Jun 2024', status: 'Completed',   stars: 4 },
+  { name: 'Priya Patel',   initials: 'PP', dept: 'Marketing',     appraiser: 'Karan Malhotra',  date: '30 Jun 2024', status: 'Completed',   stars: 5 },
+  { name: 'Vikram Singh',  initials: 'VS', dept: 'Sales',         appraiser: 'Rohan Verma',     date: '30 Jun 2024', status: 'In Progress', stars: 3 },
+  { name: 'Sneha Reddy',   initials: 'SR', dept: 'Human Resources',appraiser: 'Pooja Joshi',    date: '30 Jun 2024', status: 'In Progress', stars: 0 },
+  { name: 'Amit Kumar',    initials: 'AK', dept: 'Engineering',   appraiser: 'Amit Mehta',      date: '30 Jun 2024', status: 'Pending',     stars: 0 },
+  { name: 'Neha Singh',    initials: 'NS', dept: 'Finance',       appraiser: 'Karan Malhotra',  date: '30 Jun 2024', status: 'Pending',     stars: 0 },
+  { name: 'Arjun Mehta',   initials: 'AM', dept: 'Operations',    appraiser: 'Rohan Verma',     date: '30 Jun 2024', status: 'Pending',     stars: 0 },
+];
 
-  const [formData, setFormData] = useState({
-    employee: '',
-    currentSalary: '',
-    proposedSalary: '',
-    effectiveDate: '',
-    appraisalPercentage: '',
-    remarks: ''
-  });
+const STATUS_STYLE = {
+  'Completed':   { bg: '#DCFCE7', color: '#15803D' },
+  'In Progress': { bg: '#DBEAFE', color: '#1D4ED8' },
+  'Pending':     { bg: '#FEF3C7', color: '#D97706' },
+};
 
-  const getAuthToken = () => {
-    const auth = localStorage.getItem('hrms_auth');
-    if (auth) {
-      try {
-        const parsed = JSON.parse(auth);
-        return parsed.token || 'mock_jwt_token';
-      } catch (e) {
-        return 'mock_jwt_token';
-      }
-    }
-    return 'mock_jwt_token';
-  };
+const AVATAR_COLORS = [
+  { bg: '#DBEAFE', color: '#1D4ED8' },
+  { bg: '#FCE7F3', color: '#9D174D' },
+  { bg: '#D1FAE5', color: '#065F46' },
+  { bg: '#FEF3C7', color: '#92400E' },
+  { bg: '#EDE9FE', color: '#5B21B6' },
+  { bg: '#FEE2E2', color: '#991B1B' },
+  { bg: '#E0E7FF', color: '#3730A3' },
+];
 
-  const fetchMeta = async () => {
-    try {
-      const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
-      
-      // Fetch departments
-      const deptRes = await fetch('/app/requirements/meta/all', { headers });
-      const deptData = await deptRes.json();
-      if (deptData && deptData.departments) {
-        setDepartments(deptData.departments);
-      }
+/* ─────────────────── STAR RATING ─────────────────── */
+const StarRating = ({ count }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+    {[1,2,3,4,5].map(i => (
+      <Star key={i} size={13} style={{
+        color: i <= count ? '#F59E0B' : '#D1D5DB',
+        fill:  i <= count ? '#F59E0B' : 'none',
+      }} />
+    ))}
+  </div>
+);
 
-      // Fetch employees
-      const empRes = await fetch('/app/employees?status=Active', { headers });
-      const empData = await empRes.json();
-      if (Array.isArray(empData)) {
-        setEmployees(empData);
-      }
-    } catch (err) {
-      console.error('Failed to load appraisal metadata:', err);
-    }
-  };
-
-  const fetchDashboardStats = useCallback(async () => {
-    try {
-      const res = await fetch('/app/appraisals/dashboard', {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const resData = await res.json();
-      if (resData.success && resData.data) {
-        setKpiData(resData.data);
-      }
-    } catch (err) {
-      console.error('Failed to fetch appraisal stats:', err);
-    }
+/* ─────────────────── COMPONENT ─────────────────── */
+const Appraisals = () => {
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setLoaded(true), 120);
+    return () => clearTimeout(t);
   }, []);
-
-  const fetchAppraisals = useCallback(async () => {
-    setLoading(true);
-    try {
-      let url = `/app/appraisals?page=${page}&limit=${limit}`;
-      if (search) {
-        url += `&search=${encodeURIComponent(search)}`;
-      }
-      if (filterDept && filterDept !== 'All Departments') {
-        url += `&department_id=${encodeURIComponent(filterDept)}`;
-      }
-
-      const res = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const resData = await res.json();
-      if (resData.success && resData.data) {
-        setAppraisalsList(resData.data.appraisals || []);
-        setTotal(resData.data.total || 0);
-      } else {
-        addToast(resData.message || 'Failed to fetch appraisals', 'error');
-      }
-    } catch (err) {
-      addToast('Error connecting to backend server', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search, filterDept, addToast]);
-
-  useEffect(() => {
-    fetchMeta();
-  }, []);
-
-  useEffect(() => {
-    setPage(1);
-  }, [search, filterDept]);
-
-  useEffect(() => {
-    fetchAppraisals();
-    fetchDashboardStats();
-  }, [page, fetchAppraisals, fetchDashboardStats]);
-
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!formData.employee || !formData.currentSalary || !formData.proposedSalary || !formData.effectiveDate) {
-      addToast('Please fill in all required fields.', 'error');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const payload = {
-        employee_id: parseInt(formData.employee),
-        current_salary: parseFloat(formData.currentSalary),
-        proposed_salary: parseFloat(formData.proposedSalary),
-        effective_date: formData.effectiveDate,
-        appraisal_percentage: parseFloat(formData.appraisalPercentage) || 0,
-        remarks: formData.remarks.trim(),
-        status: 'In Progress'
-      };
-
-      const res = await fetch('/app/appraisals', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
-        body: JSON.stringify(payload)
-      });
-      const resData = await res.json();
-      if (resData.success) {
-        addToast('Appraisal requested successfully!', 'success');
-        setShowAddModal(false);
-        setFormData({ employee: '', currentSalary: '', proposedSalary: '', effectiveDate: '', appraisalPercentage: '', remarks: '' });
-        fetchAppraisals();
-        fetchDashboardStats();
-      } else {
-        addToast(resData.message || 'Failed to request appraisal', 'error');
-      }
-    } catch (err) {
-      addToast('Connection error occurred', 'error');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleApprove = async (appraisalId) => {
-    try {
-      const res = await fetch(`/app/appraisals/${appraisalId}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
-        body: JSON.stringify({ status: 'Approved' })
-      });
-      const resData = await res.json();
-      if (resData.success) {
-        addToast('Appraisal request approved!', 'success');
-        fetchAppraisals();
-        fetchDashboardStats();
-      } else {
-        addToast(resData.message || 'Failed to approve appraisal', 'error');
-      }
-    } catch (err) {
-      addToast('Connection error occurred', 'error');
-    }
-  };
-
-  const getStatusStyle = (status) => {
-    switch (status) {
-      case 'Approved': return { bg: '#ECFDF5', color: '#10B981' };
-      case 'In Progress': return { bg: '#FFFBEB', color: '#F59E0B' };
-      case 'Rejected': return { bg: '#FEF2F2', color: '#EF4444' };
-      default: return { bg: '#F1F5F9', color: '#64748B' };
-    }
-  };
-
-  const cardStyle = {
-    background: '#FFFFFF',
-    borderRadius: '16px',
-    padding: '24px',
-    boxShadow: '0 8px 24px rgba(15,23,42,0.08)',
-  };
-
-  const totalPages = Math.ceil(total / limit) || 1;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: '"Inter", sans-serif', paddingBottom: '24px' }}>
-      
-      {/* Add Appraisal Modal */}
-      {showAddModal && (
-        <>
-          <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
-          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
-            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-[#0A1629]">Add Appraisal Request</h2>
-                <p className="text-sm text-slate-500 mt-1">Submit employee salary hike and performance appraisal requests.</p>
-              </div>
-              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <X size={20} className="text-slate-400" />
-              </button>
-            </div>
-            <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Employee <span className="text-red-500">*</span></label>
-                  <select 
-                    required 
-                    value={formData.employee} 
-                    onChange={e => setFormData({ ...formData, employee: e.target.value })} 
-                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
-                  >
-                    <option value="">Select Employee</option>
-                    {employees.map(e => (
-                      <option key={e.id} value={e.id}>{e.name} (EMP{String(e.id).padStart(3, '0')})</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Current Salary <span className="text-red-500">*</span></label>
-                  <input type="number" required value={formData.currentSalary} onChange={e => setFormData({ ...formData, currentSalary: e.target.value })} placeholder="e.g. 50000" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Proposed Salary <span className="text-red-500">*</span></label>
-                  <input type="number" required value={formData.proposedSalary} onChange={e => setFormData({ ...formData, proposedSalary: e.target.value })} placeholder="e.g. 60000" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Appraisal Percentage (%)</label>
-                  <input type="number" value={formData.appraisalPercentage} onChange={e => setFormData({ ...formData, appraisalPercentage: e.target.value })} placeholder="e.g. 20" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Effective Date <span className="text-red-500">*</span></label>
-                  <input type="date" required value={formData.effectiveDate} onChange={e => setFormData({ ...formData, effectiveDate: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Remarks</label>
-                  <textarea value={formData.remarks} onChange={e => setFormData({ ...formData, remarks: e.target.value })} placeholder="Key justification, evaluation comments..." style={{ height: '80px' }} className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50">
-                  {submitting ? 'Saving...' : 'Save Appraisal'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </>
-      )}
+    <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box' }}>
 
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      {/* ── HEADER ── */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Appraisals</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Track and manage appraisals</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280', fontWeight: 400 }}>Manage employee performance appraisals</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <select 
-            value={filterDept} 
-            onChange={e => setFilterDept(e.target.value)} 
-            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '13px', color: '#334155', cursor: 'pointer' }}
-          >
-            <option value="All Departments">All Departments</option>
-            {departments.map(d => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
-          <button onClick={() => setShowAddModal(true)} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
-            <Plus size={16} /> Add Appraisal
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div style={{ position: 'relative' }}>
+            <select style={{
+              appearance: 'none', WebkitAppearance: 'none',
+              height: 42, paddingLeft: 14, paddingRight: 36,
+              background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8,
+              fontSize: 13, fontWeight: 500, color: '#111827',
+              boxShadow: '0 1px 3px rgba(0,0,0,.06)', cursor: 'pointer', outline: 'none',
+            }}>
+              <option>2024 Appraisal Cycle</option>
+              <option>2023 Appraisal Cycle</option>
+            </select>
+            <ChevronDown size={15} color="#6B7280" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+          </div>
+          <button style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            height: 42, paddingLeft: 16, paddingRight: 16,
+            background: '#2563EB', color: '#fff', border: 'none', borderRadius: 8,
+            fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            boxShadow: '0 1px 3px rgba(37,99,235,.3)',
+          }}>
+            <Plus size={15} /> Create Appraisal
           </button>
         </div>
       </div>
 
-      {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
+      {/* ── KPI CARDS (5 cards) ── */}
+      <div style={{ display: 'flex', gap: 16, marginBottom: 20, flexWrap: 'wrap' }}>
         {[
-          { title: 'Total Appraisals', value: kpiData.total, icon: <ChevronDown size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
-          { title: 'Approved Appraisals', value: kpiData.approved, icon: <ChevronDown size={20} color="#10B981" />, bgColor: '#ECFDF5' },
-          { title: 'Approved Rate', value: kpiData.rate, icon: <ChevronDown size={20} color="#8B5CF6" />, bgColor: '#F5F3FF' },
-          { title: 'Pending Appraisals', value: kpiData.pending, icon: <ChevronDown size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
-        ].map((kpi, idx) => (
-          <div key={idx} style={{ ...cardStyle, display: 'flex', gap: '16px', padding: '20px', alignItems: 'center' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: kpi.bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              {kpi.icon}
-            </div>
+          { label: 'Total Appraisals', value: 245, iconBg: '#DBEAFE', iconColor: '#2563EB', icon: '📄' },
+          { label: 'Completed',        value: 39,  iconBg: '#DCFCE7', iconColor: '#16A34A', icon: '✓'  },
+          { label: 'In Progress',      value: 112, iconBg: '#DBEAFE', iconColor: '#2563EB', icon: '↻'  },
+          { label: 'Pending',          value: 113, iconBg: '#FEF3C7', iconColor: '#D97706', icon: '⏱' },
+          { label: 'Pending',          value: 35,  iconBg: '#FEE2E2', iconColor: '#DC2626', icon: '!'  },
+        ].map((card, idx) => (
+          <div key={idx} style={{
+            background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
+            boxShadow: '0 2px 8px rgba(15,23,42,.05)',
+            padding: '16px 20px', flex: '1 1 0', minWidth: 120,
+            display: 'flex', alignItems: 'center', gap: 14,
+          }}>
+            <span style={{
+              width: 34, height: 34, borderRadius: 10,
+              background: card.iconBg, color: card.iconColor,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 15, flexShrink: 0,
+            }}>
+              {card.icon}
+            </span>
             <div>
-              <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '500', marginBottom: '4px' }}>{kpi.title}</div>
-              <div style={{ fontSize: '24px', color: '#1E293B', fontWeight: '700' }}>{kpi.value}</div>
+              <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', marginBottom: 2 }}>{card.label}</div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{card.value}</div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Main Content Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: '24px' }}>
-        
-        {/* Table */}
-        <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Appraisal Tracker</h3>
-            <input 
-              type="text" 
-              placeholder="Search..." 
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '13px' }}
-            />
-          </div>
+      {/* ── MAIN LAYOUT ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 20 }}>
 
+        {/* LEFT: Table */}
+        <div style={{
+          background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
+          boxShadow: '0 2px 8px rgba(15,23,42,.05)', overflow: 'hidden',
+        }}>
           <div style={{ overflowX: 'auto' }}>
-            {loading ? (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>Loading appraisals...</div>
-            ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead>
-                  <tr style={{ background: '#F8FAFC' }}>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Employee</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Department</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Appraisal %</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Effective Date</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Status</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {appraisalsList.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No appraisals submitted</td>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
+                  {['Employee', 'Department', 'Appraiser', 'Due Date', 'Status', 'Rating', 'Actions'].map(h => (
+                    <th key={h} style={{
+                      padding: '12px 16px 12px 16px', textAlign: 'left',
+                      fontSize: 12, fontWeight: 500, color: '#6B7280',
+                      whiteSpace: 'nowrap', background: '#fff',
+                    }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {TABLE_DATA.map((row, idx) => {
+                  const s = STATUS_STYLE[row.status];
+                  const av = AVATAR_COLORS[idx % AVATAR_COLORS.length];
+                  return (
+                    <tr key={idx} style={{ height: 56, borderBottom: '1px solid #F3F4F6' }}>
+                      {/* Employee */}
+                      <td style={{ padding: '0 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{
+                            width: 30, height: 30, borderRadius: '50%',
+                            background: av.bg, color: av.color,
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            fontSize: 11, fontWeight: 700, flexShrink: 0,
+                          }}>
+                            {row.initials}
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{row.name}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '0 16px', fontSize: 13, color: '#374151' }}>{row.dept}</td>
+                      <td style={{ padding: '0 16px', fontSize: 13, color: '#374151' }}>{row.appraiser}</td>
+                      <td style={{ padding: '0 16px', fontSize: 13, color: '#374151' }}>{row.date}</td>
+                      <td style={{ padding: '0 16px' }}>
+                        <span style={{
+                          display: 'inline-block', padding: '3px 10px', borderRadius: 999,
+                          background: s.bg, color: s.color,
+                          fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
+                        }}>
+                          {row.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0 16px' }}>
+                        {row.stars > 0
+                          ? <StarRating count={row.stars} />
+                          : <span style={{ color: '#9CA3AF', fontSize: 13 }}>—</span>
+                        }
+                      </td>
+                      <td style={{ padding: '0 16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <button style={{
+                            width: 28, height: 28, borderRadius: 6, border: 'none',
+                            background: 'transparent', color: '#2563EB', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          ><Edit2 size={13} /></button>
+                          <button style={{
+                            width: 28, height: 28, borderRadius: 6, border: 'none',
+                            background: 'transparent', color: '#2563EB', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          ><Link2 size={13} /></button>
+                        </div>
+                      </td>
                     </tr>
-                  ) : (
-                    appraisalsList.map((row, idx) => {
-                      const effDateStr = row.effective_date ? new Date(row.effective_date).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
-                      return (
-                        <tr key={row.id} style={{ borderBottom: idx === appraisalsList.length - 1 ? 'none' : '1px solid #F8FAFC' }}>
-                          <td style={{ padding: '16px 24px', whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600', color: '#475569' }}>
-                                {row.employee_name ? row.employee_name.split(' ').map(n => n[0]).join('') : 'AP'}
-                              </div>
-                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#1E293B' }}>{row.employee_name}</div>
-                            </div>
-                          </td>
-                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.department_name}</td>
-                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.appraisal_percentage}%</td>
-                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{effDateStr}</td>
-                          <td style={{ padding: '16px 24px', textAlign: 'center' }}>
-                            <span style={{ 
-                              padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600',
-                              backgroundColor: getStatusStyle(row.status).bg, color: getStatusStyle(row.status).color
-                            }}>
-                              {row.status}
-                            </span>
-                          </td>
-                          <td style={{ padding: '16px 24px', textAlign: 'center' }}>
-                            {row.status === 'In Progress' && (
-                              <button 
-                                onClick={() => handleApprove(row.id)}
-                                style={{ background: '#ECFDF5', border: '1px solid #10B981', color: '#10B981', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}
-                              >
-                                Approve
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
-                </tbody>
-              </table>
-            )}
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderTop: '1px solid #F1F5F9' }}>
-            <div style={{ fontSize: '13px', color: '#64748B' }}>
-              Showing {total === 0 ? 0 : (page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} entries
-            </div>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <button disabled={page === 1} onClick={() => setPage(prev => prev - 1)} style={{ padding: '4px 8px', border: '1px solid #E2E8F0', borderRadius: '6px', background: '#FFF', cursor: page === 1 ? 'not-allowed' : 'pointer' }}><ChevronLeft size={16} /></button>
-              <button disabled={page === totalPages} onClick={() => setPage(prev => prev + 1)} style={{ padding: '4px 8px', border: '1px solid #E2E8F0', borderRadius: '6px', background: '#FFF', cursor: page === totalPages ? 'not-allowed' : 'pointer' }}><ChevronRight size={16} /></button>
+          {/* Pagination */}
+          <div style={{
+            padding: '14px 20px', borderTop: '1px solid #E5E7EB',
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
+          }}>
+            <span style={{ fontSize: 13, color: '#6B7280' }}>Showing 1 to 7 of 245 entries</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              {[null, 1, 2, 3, '...', 35, null].map((pg, i) => {
+                if (pg === null) {
+                  const isLeft = i === 0;
+                  return (
+                    <button key={i} style={{
+                      width: 30, height: 30, borderRadius: 6,
+                      border: '1px solid #E5E7EB', background: '#fff',
+                      color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {isLeft ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}
+                    </button>
+                  );
+                }
+                if (pg === '...') return <span key={i} style={{ width: 30, textAlign: 'center', color: '#6B7280', fontSize: 13 }}>...</span>;
+                const isActive = pg === 1;
+                return (
+                  <button key={i} style={{
+                    width: 30, height: 30, borderRadius: 6,
+                    border: isActive ? 'none' : '1px solid #E5E7EB',
+                    background: isActive ? '#2563EB' : '#fff',
+                    color: isActive ? '#fff' : '#374151',
+                    fontWeight: isActive ? 600 : 500,
+                    fontSize: 13, cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    {pg}
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
 
-        {/* Right Side: Charts */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div style={cardStyle}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Appraisal Cycle status</h3>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '140px' }}>
+        {/* RIGHT SIDEBAR */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          {/* Rating Distribution */}
+          <div style={{
+            background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
+            boxShadow: '0 2px 8px rgba(15,23,42,.05)', padding: 20,
+          }}>
+            <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 600, color: '#111827' }}>Rating Distribution</h3>
+
+            {/* Donut */}
+            <div style={{ width: '100%', height: 160, position: 'relative' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={kpiData.chartData} innerRadius={40} outerRadius={55} paddingAngle={2} dataKey="value" cx="50%" cy="50%" stroke="none">
-                    {kpiData.chartData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
-                    <Label value={kpiData.total} position="center" fill="#1E293B" style={{ fontSize: '24px', fontWeight: '700' }} />
+                  <Pie data={RATING_PIE} cx="50%" cy="50%" innerRadius={52} outerRadius={72}
+                    paddingAngle={2} dataKey="value" stroke="none">
+                    {RATING_PIE.map((e, i) => <Cell key={i} fill={e.color} />)}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,.1)' }} />
                 </PieChart>
               </ResponsiveContainer>
+              <div style={{
+                position: 'absolute', inset: 0,
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                pointerEvents: 'none',
+              }}>
+                <span style={{ fontSize: 22, fontWeight: 700, color: '#111827', lineHeight: 1 }}>245</span>
+                <span style={{ fontSize: 11, color: '#6B7280', marginTop: 2 }}>Total</span>
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+              {RATING_PIE.map((item, i) => (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span style={{ width: 9, height: 9, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, color: '#374151', fontWeight: 500 }}>{item.name}</span>
+                  </div>
+                  <span style={{ fontSize: 12, color: '#6B7280' }}>
+                    {item.value} <span style={{ color: '#9CA3AF' }}>({item.percent})</span>
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
-        </div>
 
+          {/* Appraisal Completion Rate */}
+          <div style={{
+            background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
+            boxShadow: '0 2px 8px rgba(15,23,42,.05)', padding: 20,
+          }}>
+            <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 600, color: '#111827' }}>Appraisal Completion Rate</h3>
+
+            {/* Half donut */}
+            <div style={{ width: '100%', height: 120, position: 'relative' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={COMPLETION_PIE}
+                    cx="50%" cy="90%"
+                    startAngle={180} endAngle={0}
+                    innerRadius={56} outerRadius={76}
+                    paddingAngle={0} dataKey="value" stroke="none"
+                  >
+                    {COMPLETION_PIE.map((e, i) => <Cell key={i} fill={e.color} />)}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{
+                position: 'absolute', bottom: 0, left: 0, right: 0,
+                display: 'flex', flexDirection: 'column', alignItems: 'center',
+                pointerEvents: 'none',
+              }}>
+                <span style={{ fontSize: 28, fontWeight: 700, color: '#111827', lineHeight: 1 }}>40%</span>
+                <span style={{ fontSize: 11, color: '#6B7280', marginTop: 3 }}>86 of 245 Completed</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
       </div>
 
     </div>
   );
-}
+};
+
+export default Appraisals;

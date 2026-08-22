@@ -1,6 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { apiFetch } from '../../lib/api';
-import { Package, Truck, Clock, Box, Plus, Settings, X } from 'lucide-react';
+import React from 'react';
+import { Package, Truck, Clock, Box, Plus, Settings } from 'lucide-react';
 
 const kpiData = [
   { title: 'Total Kits', value: '45', icon: <Package size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
@@ -20,33 +19,15 @@ const kitItemsData = [
   { name: 'Swag Pack', quantity: 1 },
 ];
 
+const distributionData = [
+  { id: 'EMP001', name: 'Rahul Sharma', dept: 'Engineering', date: '20 May 2024' },
+  { id: 'EMP002', name: 'Priya Patel', dept: 'Human Resources', date: '19 May 2024' },
+  { id: 'EMP003', name: 'Amit Kumar', dept: 'Design', date: '18 May 2024' },
+  { id: 'EMP004', name: 'Neha Singh', dept: 'Finance', date: '17 May 2024' },
+  { id: 'EMP005', name: 'Vikas Yadav', dept: 'Marketing', date: '16 May 2024' },
+];
+
 export default function WelcomeKit() {
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [distributionList, setDistributionList] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    apiFetch('/tickets/welcome-kits')
-      .then(data => {
-        if (Array.isArray(data)) {
-          setDistributionList(data);
-        }
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to load welcome kits:", err);
-        setLoading(false);
-      });
-  }, []);
-  const [formData, setFormData] = useState({
-    employee: '',
-    department: '',
-    kitName: 'Standard Executive Welcome Kit',
-    status: 'Dispatched',
-    dispatchDate: '',
-    notes: ''
-  });
-
   const cardStyle = {
     background: '#FFFFFF',
     borderRadius: '16px',
@@ -54,88 +35,9 @@ export default function WelcomeKit() {
     boxShadow: '0 8px 24px rgba(15,23,42,0.08)',
   };
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!formData.employee) return;
-    const newItem = {
-      id: 'EMP00' + (distributionList.length + 1),
-      name: formData.employee,
-      dept: formData.department || 'Engineering',
-      date: formData.dispatchDate || new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-    };
-    setDistributionList([newItem, ...distributionList]);
-    setShowAddModal(false);
-    setFormData({ employee: '', department: '', kitName: 'Standard Executive Welcome Kit', status: 'Dispatched', dispatchDate: '', notes: '' });
-  };
-
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: '"Inter", sans-serif', paddingBottom: '24px' }}>
       
-      {/* Manage Welcome Kit Modal (1100px Standard) */}
-      {showAddModal && (
-        <>
-          <div className="modal-backdrop-blur" style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', background: 'rgba(0,0,0,0.4)', zIndex: 1000 }} onClick={() => setShowAddModal(false)} />
-          <div className="modal-centered-content" style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '1100px', maxWidth: '90vw', maxHeight: '90vh', background: 'white', borderRadius: '16px', zIndex: 1001, display: 'flex', flexDirection: 'column' }}>
-            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-[#0A1629]">Manage Welcome Kit Allocation</h2>
-                <p className="text-sm text-slate-500 mt-1">Assign and record welcome kit distribution for new joiners.</p>
-              </div>
-              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <X size={20} className="text-slate-400" />
-              </button>
-            </div>
-            <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Employee Name <span className="text-red-500">*</span></label>
-                  <input type="text" required value={formData.employee} onChange={e => setFormData({ ...formData, employee: e.target.value })} placeholder="e.g. Rahul Sharma" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Department <span className="text-red-500">*</span></label>
-                  <select required value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Department</option>
-                    <option value="Engineering">Engineering</option>
-                    <option value="Human Resources">Human Resources</option>
-                    <option value="Design">Design</option>
-                    <option value="Finance">Finance</option>
-                    <option value="Marketing">Marketing</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Welcome Kit Bundle <span className="text-red-500">*</span></label>
-                  <select value={formData.kitName} onChange={e => setFormData({ ...formData, kitName: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Standard Executive Welcome Kit">Standard Executive Welcome Kit</option>
-                    <option value="Engineering Swag & Tech Kit">Engineering Swag & Tech Kit</option>
-                    <option value="Leadership Onboarding Kit">Leadership Onboarding Kit</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Dispatch Date <span className="text-red-500">*</span></label>
-                  <input type="date" required value={formData.dispatchDate} onChange={e => setFormData({ ...formData, dispatchDate: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Dispatched">Dispatched</option>
-                    <option value="Delivered">Delivered</option>
-                    <option value="Pending">Pending</option>
-                  </select>
-                </div>
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Notes / Tracking Number</label>
-                  <textarea value={formData.notes} onChange={e => setFormData({ ...formData, notes: e.target.value })} placeholder="Courier tracking ID, shirt size, special items included..." style={{ height: '80px' }} className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-                <button type="submit" className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">Save Kit Allocation</button>
-              </div>
-            </form>
-          </div>
-        </>
-      )}
-
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
@@ -143,7 +45,7 @@ export default function WelcomeKit() {
           <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Manage welcome kits for new employees</p>
         </div>
         <div>
-          <button onClick={() => setShowAddModal(true)} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+          <button style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
             <Plus size={18} /> Manage Kit
           </button>
         </div>
@@ -220,7 +122,7 @@ export default function WelcomeKit() {
               <span>Distributed On</span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {distributionList.map((row, idx) => (
+              {distributionData.map((row, idx) => (
                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600', color: '#475569' }}>

@@ -1,50 +1,21 @@
 const mysql = require("mysql2");
 require("dotenv").config();
 
-const pool = mysql.createPool({
-    host: process.env.DB_HOST,
-    port: parseInt(process.env.DB_PORT) || 3306,
-    user: process.env.DB_USER,
+const db = mysql.createConnection({
+    host:process.env.DB_HOST,
+    user:process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    waitForConnections: true,
-    connectionLimit: 10,
-    queueLimit: 0,
-    enableKeepAlive: true,
-    keepAliveInitialDelay: 10000,
-    connectTimeout: 20000,
-    idleTimeout: 60000
+    database:process.env.DB_NAME,
+
 });
 
-pool.on('error', (err) => {
-  console.error('MySQL Pool Error:', err.message || err);
-});
-
-// Export a wrapper that mimics the single connection interface but uses the pool
-const db = {
-  query: (sql, params, callback) => {
-    if (typeof params === 'function') {
-      callback = params;
-      params = [];
+db.connect((err)=>{
+    if(err){
+        console.log("mysql Connection Failed", err);
+    }else{
+        console.log("mysql Connected");
     }
-    return pool.query(sql, params, callback);
-  },
-  beginTransaction: (callback) => {
-    if (typeof callback === 'function') callback(null);
-    return Promise.resolve();
-  },
-  commit: (callback) => {
-    if (typeof callback === 'function') callback(null);
-    return Promise.resolve();
-  },
-  rollback: (callback) => {
-    if (typeof callback === 'function') callback();
-    return Promise.resolve();
-  },
-  connect: (callback) => {
-    if (typeof callback === 'function') callback(null);
-  },
-  promise: () => pool.promise()
-};
 
-module.exports = db;
+});
+
+module.exports=db;

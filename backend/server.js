@@ -1,140 +1,21 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const path = require("path");
-const fs = require("fs");
-const db = require("./config/database");
-
-// Process-level crash prevention
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('⚠️ Unhandled Promise Rejection:', reason);
-  const logMessage = `[${new Date().toISOString()}] Unhandled Rejection: ${reason?.stack || reason}\n\n`;
-  try {
-    fs.appendFileSync(path.join(__dirname, 'error.log'), logMessage);
-  } catch (e) {}
-});
-
-process.on('uncaughtException', (err) => {
-  console.error('⚠️ Uncaught Exception:', err);
-  const logMessage = `[${new Date().toISOString()}] Uncaught Exception: ${err?.stack || err}\n\n`;
-  try {
-    fs.appendFileSync(path.join(__dirname, 'error.log'), logMessage);
-  } catch (e) {}
-});
-
-// Programmatic Knex Migration Runner on Startup
-const knex = require('knex');
-const knexConfig = require('./knexfile');
-const knexInstance = knex(knexConfig.development);
-knexInstance.migrate.latest()
-  .then(() => {
-    console.log('✅ Cloud database schemas/migrations verified and updated.');
-    return knexInstance.destroy();
-  })
-  .catch(err => {
-    console.error('❌ Programmatic Knex migration runner failed:', err);
-  });
+const db= require("./config/database");
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-app.get("/", (req, res) => {
+app.get("/", (req,res) =>{
     res.send("HRM Backend Running");
 });
 
-app.use("/api/attendance", require("./routes/attendanceRoute"));
-app.use("/app/attendance", require("./routes/attendanceRoute"));
-app.use("/app/leaves", require("./routes/leaveRoute"));
-app.use("/app/payroll", require("./routes/payroll"));
-app.use("/app/projects", require("./routes/projects"));
-
-app.use("/app/dashboard", require("./routes/dashboard"));
 app.use("/app/employees", require("./routes/employee"));
-app.use("/app/requirements", require("./routes/requirements"));
-app.use("/app/candidates", require("./routes/candidates"));
-app.use("/app/interviews", require("./routes/interviews"));
-app.use("/app/offers", require("./routes/offerLetters"));
-app.use("/app/pipeline", require("./routes/pipeline"));
-app.use("/app/joiners", require("./routes/newJoiners"));
-app.use("/app/verifications", require("./routes/verifications"));
-app.use("/app/assets", require("./routes/assets"));
-app.use("/app/orientations", require("./routes/orientations"));
-app.use("/app/probations", require("./routes/probations"));
-app.use("/app/goals", require("./routes/goals"));
-app.use("/app/kpis", require("./routes/kpis"));
-app.use("/app/kras", require("./routes/kras"));
-app.use("/app/appraisals", require("./routes/appraisals"));
 
-app.use("/app/tasks", require("./routes/taskRoute"));
-app.use("/app/sales", require("./routes/salesRoute"));
-app.use("/app/training", require("./routes/trainingRoute"));
-app.use("/app/performance", require("./routes/performanceRoute"));
-app.use("/app/reviews", require("./routes/reviews"));
-app.use("/app/feedback", require("./routes/feedback"));
-app.use("/app/promotions", require("./routes/promotions"));
+const PORT = process.env.PORT || 3000;
 
-app.use("/app/leaves", require("./routes/leaves"));
-app.use("/app/organization", require("./routes/organizationRoute"));
-app.use("/app/tickets", require("./routes/tickets"));
-app.use("/app/rbac", require("./routes/rbacRoute"));
-
-// Projects Management Module
-app.use("/app/tasks", require("./routes/tasks"));
-app.use("/app/sprints", require("./routes/sprints"));
-app.use("/app/timesheets", require("./routes/timesheets"));
-app.use("/app/milestones", require("./routes/milestones"));
-app.use("/app/project-team", require("./routes/teamMembers"));
-app.use("/app/reports", require("./routes/reports"));
-app.use("/app/expenses", require("./routes/expenses"));
-app.use("/app/documents", require("./routes/documents"));
-
-app.use("/app/aichat", require("./routes/aichatroute"));
-app.use("/api/ai", require("./routes/aichatroute"));
-
-app.use((err, req, res, next) => {
-  const logMessage = `[${new Date().toISOString()}] Middleware Error: ${err.stack || err}\n\n`;
-  try {
-    fs.appendFileSync(path.join(__dirname, 'error.log'), logMessage);
-  } catch (e) {
-    console.error('Failed to write to error.log', e);
-  }
-  res.status(500).json({ success: false, message: err.message || 'Internal Server Error' });
+app.listen(PORT,()=>{
+    console.log(`SERVER IS RUNNING at http://localhost:${PORT}`);
 });
-
-const PORT = 5001;
-
-const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`SERVER IS RUNNING at http://0.0.0.0:${PORT}`);
-});
-
-// Setup Socket.IO
-const { Server } = require("socket.io");
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST", "PUT", "DELETE"]
-  }
-});
-
-// Expose io object to all routes
-app.set("io", io);
-
-io.on("connection", (socket) => {
-  console.log("Client connected:", socket.id);
-  
-  // Clients will emit 'join' with their user ID so they can receive personal events
-  socket.on("join", (userId) => {
-    socket.join(`user_${userId}`);
-    console.log(`Socket ${socket.id} joined room user_${userId}`);
-  });
-
-  socket.on("disconnect", () => {
-    console.log("Client disconnected:", socket.id);
-  });
-});
-
-// Ensure Node.js event loop stays active for HTTP server
-setInterval(() => {}, 1000 * 60 * 60);

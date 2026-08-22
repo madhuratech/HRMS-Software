@@ -1,46 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Search, Plus, Clock } from 'lucide-react';
-import { apiFetch } from '../../lib/api';
-import { getAvatarUrl } from '../../lib/utils';
+import { MOCK_EMPLOYEES } from '../../lib/mockData';
 import { AddEmployeeModal } from './AddEmployeeModal';
 import { EmployeeProfile } from './EmployeeProfile';
 
 export function EmployeeList() {
   const [searchTerm, setSearchTerm] = useState('');
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [employees, setEmployees] = useState(MOCK_EMPLOYEES);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
 
   const [roleFilter, setRoleFilter] = useState('ALL');
   const [branchFilter, setBranchFilter] = useState('ALL');
-
-  const loadEmployees = async () => {
-    setLoading(true);
-    try {
-      const data = await apiFetch('/employees');
-      if (Array.isArray(data)) {
-        setEmployees(data.map(e => ({
-          id: String(e.id),
-          name: e.name,
-          email: e.email,
-          phone: e.phone || '+91 9876543210',
-          branch: e.branch_name || 'Main Branch',
-          role: e.role_code || e.designation_name || 'STAFF',
-          department: e.dept_name || 'General',
-          joinDate: e.date_of_joining ? String(e.date_of_joining).split('T')[0] : '2024-01-01',
-          avatar: getAvatarUrl(e.profile_photo, e.name, e.id)
-        })));
-      }
-    } catch (err) {
-      console.error("Failed to load employees:", err);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadEmployees();
-  }, []);
 
   // Helper to determine today's shift allocation for visual reference
   const getTodayShift = (employeeId) => {

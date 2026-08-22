@@ -1,77 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Search, Check, X, Eye, ChevronLeft, ChevronRight, AlertCircle, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { apiFetch } from '../../lib/api';
-import { useToast } from '../ui/Toast';
+
+const approvalData = [
+  { id: 'EMP001', name: 'Priya Nair', dept: 'Design', type: 'CL', duration: '2 Days', applied: '18 May 2024', manager: 'Rahul Kapoor', priority: 'Normal', status: 'Pending' },
+  { id: 'EMP042', name: 'Rohan Mehta', dept: 'Engineering', type: 'SL', duration: '1 Day', applied: '17 May 2024', manager: 'Rahul Kapoor', priority: 'High', status: 'Pending' },
+  { id: 'EMP023', name: 'Neha Patel', dept: 'HR', type: 'PL', duration: '3 Days', applied: '10 May 2024', manager: 'Anita Desai', priority: 'Normal', status: 'Approved' },
+  { id: 'EMP015', name: 'Aarav Sharma', dept: 'Design', type: 'EL', duration: '5 Days', applied: '01 May 2024', manager: 'Rahul Kapoor', priority: 'Normal', status: 'Pending' },
+  { id: 'EMP088', name: 'Karan Verma', dept: 'Marketing', type: 'SL', duration: '1 Day', applied: '07 May 2024', manager: 'Sneha Rao', priority: 'High', status: 'Rejected' },
+];
 
 export default function LeaveApproval() {
-  const { addToast } = useToast();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [deptFilter, setDeptFilter] = useState('All Departments');
-  const [applications, setApplications] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // Statistics KPI
-  const [stats, setStats] = useState({
-    pending: 0,
-    approved: 0,
-    rejected: 0
-  });
-
-  const loadApplications = async () => {
-    setLoading(true);
-    try {
-      const data = await apiFetch('/leaves/applications');
-      if (Array.isArray(data)) {
-        setApplications(data);
-        
-        // Calculate status counts
-        const pending = data.filter(a => a.status === 'Pending').length;
-        const approved = data.filter(a => a.status === 'Approved').length;
-        const rejected = data.filter(a => a.status === 'Rejected').length;
-        setStats({ pending, approved, rejected });
-      }
-    } catch (e) {
-      console.error(e);
-      addToast("Failed to load approval requests", "error");
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadApplications();
-  }, []);
-
-  const handleAction = async (id, newStatus) => {
-    const auth = localStorage.getItem('hrms_auth');
-    let managerId = 1;
-    if (auth) {
-      try {
-        const parsed = JSON.parse(auth);
-        if (parsed.user && parsed.user.id) managerId = parsed.user.id;
-      } catch (e) {}
-    }
-
-    try {
-      const res = await apiFetch(`/leaves/applications/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          status: newStatus,
-          approved_by: managerId
-        })
-      });
-
-      if (res.message) {
-        addToast(`Leave application ${newStatus.toLowerCase()} successfully!`, "success");
-        loadApplications();
-      } else {
-        addToast(res.message || "Failed to update application status", "error");
-      }
-    } catch (err) {
-      console.error(err);
-      addToast("Failed to update application status", "error");
-    }
-  };
-
   const cardStyle = {
     background: '#FFFFFF',
     borderRadius: '16px',
@@ -80,26 +18,30 @@ export default function LeaveApproval() {
     border: '1px solid #E5E7EB',
   };
 
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case 'Approved': return { bg: '#ecfdf5', color: '#10b981' };
+      case 'Pending': return { bg: '#fffbeb', color: '#f59e0b' };
+      case 'Rejected': return { bg: '#fef2f2', color: '#ef4444' };
+      default: return { bg: '#f1f5f9', color: '#64748b' };
+    }
+  };
+
   const getPriorityStyle = (priority) => {
     return priority === 'High' ? { color: '#ef4444', bg: '#fef2f2' } : { color: '#64748b', bg: '#f1f5f9' };
   };
 
-  // Only show pending for approval actions
-  const pendingRequests = applications.filter(app => {
-    const matchName = app.employee_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                      `EMP${String(app.employee_id).padStart(3,'0')}`.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchName && app.status === 'Pending';
-  });
-
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
       
+      {/* Content */}
+
       {/* KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '24px' }}>
         {[
-          { title: 'Pending Approval', value: stats.pending, icon: <Clock size={20} color="#F59E0B" />, bg: '#FFFBEB' },
-          { title: 'Approved Total', value: stats.approved, icon: <CheckCircle size={20} color="#10B981" />, bg: '#ECFDF5' },
-          { title: 'Rejected Total', value: stats.rejected, icon: <XCircle size={20} color="#EF4444" />, bg: '#FEF2F2' },
+          { title: 'Pending Approval', value: '12', icon: <Clock size={20} color="#F59E0B" />, bg: '#FFFBEB' },
+          { title: 'Approved Today', value: '4', icon: <CheckCircle size={20} color="#10B981" />, bg: '#ECFDF5' },
+          { title: 'Rejected', value: '2', icon: <XCircle size={20} color="#EF4444" />, bg: '#FEF2F2' },
           { title: 'Escalated Requests', value: '1', icon: <AlertCircle size={20} color="#8B5CF6" />, bg: '#F5F3FF' }
         ].map((kpi, idx) => (
           <div key={idx} style={{ ...cardStyle, padding: '20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -121,24 +63,14 @@ export default function LeaveApproval() {
           
           <div style={{ padding: '24px', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: '16px' }}>
-              <select 
-                value={deptFilter}
-                onChange={(e) => setDeptFilter(e.target.value)}
-                style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '160px' }}
-              >
+              <select style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '160px' }}>
                 <option>All Departments</option>
                 <option>Design</option>
                 <option>Engineering</option>
               </select>
               <div style={{ position: 'relative', width: '240px' }}>
                 <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }} />
-                <input 
-                  type="text" 
-                  placeholder="Search employee..." 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  style={{ width: '100%', padding: '9px 12px 9px 36px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none' }} 
-                />
+                <input type="text" placeholder="Search employee..." style={{ width: '100%', padding: '9px 12px 9px 36px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none' }} />
               </div>
             </div>
           </div>
@@ -156,65 +88,48 @@ export default function LeaveApproval() {
                 </tr>
               </thead>
               <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan="6" style={{ textAlign: 'center', padding: '24px' }}>Loading approvals...</td>
-                  </tr>
-                ) : pendingRequests.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" style={{ textAlign: 'center', padding: '24px' }}>No pending approval requests.</td>
-                  </tr>
-                ) : (
-                  pendingRequests.map((app) => {
-                    const s = new Date(app.start_date);
-                    const e = new Date(app.end_date);
-                    const days = isNaN(s) || isNaN(e) ? 1 : Math.ceil(Math.abs(e - s) / (1000 * 60 * 60 * 24)) + 1;
-                    const duration = `${days} Day${days > 1 ? 's' : ''}`;
-                    const pStyle = getPriorityStyle(app.priority || 'Normal');
-                    
-                    return (
-                      <tr key={app.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                        <td style={{ padding: '16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(app.employee_name)}&background=f1f5f9&color=64748b`} alt={app.employee_name} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
-                            <div>
-                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#1e293b' }}>{app.employee_name}</div>
-                              <div style={{ fontSize: '11px', color: '#94a3b8' }}>EMP{String(app.employee_id).padStart(3,'0')}</div>
-                            </div>
+                {approvalData.map((app, idx) => {
+                  const pStyle = getPriorityStyle(app.priority);
+                  return (
+                    <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '16px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(app.name)}&background=f1f5f9&color=64748b`} alt={app.name} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+                          <div>
+                            <div style={{ fontSize: '13px', fontWeight: '600', color: '#1e293b' }}>{app.name}</div>
+                            <div style={{ fontSize: '11px', color: '#94a3b8' }}>{app.dept}</div>
                           </div>
-                        </td>
-                        <td style={{ padding: '16px', fontSize: '13px', color: '#475569', fontWeight: '500' }}>{app.leave_code}</td>
-                        <td style={{ padding: '16px', fontSize: '13px', color: '#475569' }}>{duration}</td>
-                        <td style={{ padding: '16px', fontSize: '13px', color: '#475569' }}>{new Date(app.applied_on || new Date()).toLocaleDateString()}</td>
-                        <td style={{ padding: '16px' }}>
-                          <span style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', backgroundColor: pStyle.bg, color: pStyle.color }}>
-                            {app.priority || 'Normal'}
-                          </span>
-                        </td>
-                        <td style={{ padding: '16px', textAlign: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                            <button 
-                              onClick={() => handleAction(app.id, 'Approved')}
-                              style={{ background: '#ecfdf5', border: 'none', cursor: 'pointer', color: '#10b981', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
-                              title="Approve"
-                            >
-                              <Check size={16} />
-                            </button>
-                            <button 
-                              onClick={() => handleAction(app.id, 'Rejected')}
-                              style={{ background: '#fef2f2', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
-                              title="Reject"
-                            >
-                              <X size={16} />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px', fontSize: '13px', color: '#475569', fontWeight: '500' }}>{app.type}</td>
+                      <td style={{ padding: '16px', fontSize: '13px', color: '#475569' }}>{app.duration}</td>
+                      <td style={{ padding: '16px', fontSize: '13px', color: '#475569' }}>{app.applied}</td>
+                      <td style={{ padding: '16px' }}>
+                        <span style={{ padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', backgroundColor: pStyle.bg, color: pStyle.color }}>
+                          {app.priority}
+                        </span>
+                      </td>
+                      <td style={{ padding: '16px', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                          <button style={{ background: '#ecfdf5', border: 'none', cursor: 'pointer', color: '#10b981', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Approve"><Check size={16} /></button>
+                          <button style={{ background: '#fef2f2', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="Reject"><X size={16} /></button>
+                          <button style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', color: '#64748b', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="View Details"><Eye size={16} /></button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
+          </div>
+          
+          <div style={{ padding: '16px 24px', borderTop: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '13px', color: '#64748b' }}>Showing 1 to 5 of 12 entries</span>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button style={{ padding: '6px', border: '1px solid #E5E7EB', background: '#fff', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ChevronLeft size={16} color="#64748b" /></button>
+              <button style={{ padding: '6px 12px', border: 'none', background: '#2952E3', color: '#fff', borderRadius: '6px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>1</button>
+              <button style={{ padding: '6px', border: '1px solid #E5E7EB', background: '#fff', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><ChevronRight size={16} color="#64748b" /></button>
+            </div>
           </div>
         </div>
 
@@ -240,6 +155,20 @@ export default function LeaveApproval() {
                 <div style={{ height: '6px', background: '#f1f5f9', borderRadius: '3px', overflow: 'hidden' }}>
                   <div style={{ width: '92%', height: '100%', background: '#2952E3', borderRadius: '3px' }}></div>
                 </div>
+              </div>
+            </div>
+          </div>
+
+          <div style={cardStyle}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '600', color: '#1e293b' }}>Pending Manager Actions</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: '#475569' }}>Rahul Kapoor</span>
+                <span style={{ fontSize: '12px', fontWeight: '600', color: '#f59e0b', background: '#fffbeb', padding: '2px 8px', borderRadius: '12px' }}>3 Pending</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '13px', color: '#475569' }}>Anita Desai</span>
+                <span style={{ fontSize: '12px', fontWeight: '600', color: '#f59e0b', background: '#fffbeb', padding: '2px 8px', borderRadius: '12px' }}>1 Pending</span>
               </div>
             </div>
           </div>

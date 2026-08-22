@@ -1,25 +1,10 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Bell, Search, ChevronRight, X } from 'lucide-react';
 import { LeaveApprovals } from '../attendance/LeaveApprovals';
 
 export function Header({ title, userRole, currentView }) {
-  const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const isManager = userRole === 'BRANCH_MANAGER' || userRole === 'SUPER_ADMIN';
-
-  const handleProfileClick = () => {
-    let userId = 1;
-    const auth = localStorage.getItem('hrms_auth');
-    if (auth) {
-      try {
-        const parsed = JSON.parse(auth);
-        if (parsed.user && parsed.user.id) userId = parsed.user.id;
-      } catch (e) {}
-    }
-    localStorage.setItem('selectedEmployeeId', userId);
-    navigate('/employees/profile');
-  };
 
   const getBreadcrumbs = () => {
     const viewMap = {
@@ -157,17 +142,13 @@ export function Header({ title, userRole, currentView }) {
         </div>
 
         {/* User Info */}
-        <div 
-          onClick={handleProfileClick}
-          style={{ cursor: 'pointer' }}
-          className="flex items-center gap-3 hover:opacity-85 transition-opacity"
-        >
+        <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold text-white">
-            {(localStorage.getItem('userName') || 'John Doe').split(' ').map(n => n[0]).join('')}
+            JD
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-800">{localStorage.getItem('userName') || 'John Doe'}</p>
-            <p className="text-xs text-slate-500">{localStorage.getItem('userRole') || 'Super Admin'}</p>
+            <p className="text-sm font-semibold text-slate-800">John Doe</p>
+            <p className="text-xs text-slate-500">Super Admin</p>
           </div>
         </div>
       </div>

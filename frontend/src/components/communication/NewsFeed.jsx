@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { apiFetch } from '../../lib/api';
+import React, { useState } from 'react';
 import {
   Search,
   Filter,
@@ -8,31 +7,66 @@ import {
   Megaphone,
   Pin,
   MessageSquare,
-  ThumbsUp,
-  X } from
+  ThumbsUp } from
 'lucide-react';
 import { format } from 'date-fns';
 
+const MOCK_NEWS = [
+{
+  id: '1',
+  title: 'New Branch Opening in Chicago Downtown',
+  content: 'We are thrilled to announce the grand opening of our new flagship branch in Chicago Downtown! This expansion marks a significant milestone in our growth strategy. All staff are invited to the virtual inauguration ceremony next Friday.',
+  author: 'Sarah Johnson',
+  role: 'CEO',
+  date: '2023-10-24T09:00:00',
+  category: 'GENERAL',
+  pinned: true,
+  likes: 45,
+  comments: 12
+},
+{
+  id: '2',
+  title: 'Q4 Incentive Structure Update',
+  content: 'Please note the following changes to the Q4 Sales Incentive Structure. We have introduced a new tier for exceeding targets by 20%. Review the attached document for detailed breakdown.',
+  author: 'Michael Chen',
+  role: 'Sales Director',
+  date: '2023-10-23T14:30:00',
+  category: 'SALES',
+  pinned: false,
+  likes: 28,
+  comments: 5
+},
+{
+  id: '3',
+  title: 'System Maintenance Scheduled',
+  content: 'The CRM system will undergo scheduled maintenance this Sunday from 2:00 AM to 4:00 AM EST. Please ensure all data is saved before this time. We apologize for any inconvenience.',
+  author: 'IT Support',
+  role: 'System Admin',
+  date: '2023-10-22T10:00:00',
+  category: 'URGENT',
+  pinned: true,
+  likes: 15,
+  comments: 2
+},
+{
+  id: '4',
+  title: 'Health & Wellness Workshop',
+  content: 'Join us for a virtual wellness workshop focused on stress management and work-life balance. Hosted by Dr. Emily White on Wednesday at 3 PM.',
+  author: 'Jessica Davis',
+  role: 'HR Manager',
+  date: '2023-10-20T11:15:00',
+  category: 'HR',
+  pinned: false,
+  likes: 32,
+  comments: 8
+}];
+
+
 export function NewsFeed() {
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [posts, setPosts] = useState(MOCK_NEWS);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [showCreateModal, setShowCreateModal] = useState(false);
-
-  useEffect(() => {
-    apiFetch('/tickets/newsfeed')
-      .then(data => {
-        if (Array.isArray(data)) {
-          setPosts(data);
-        }
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to load newsfeed:", err);
-        setLoading(false);
-      });
-  }, []);
 
   // New Post Form State
 

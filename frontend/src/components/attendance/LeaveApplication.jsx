@@ -1,27 +1,37 @@
-import React, { useState, useEffect } from 'react';
-import { apiFetch } from '../../lib/api';
+import React, { useState } from 'react';
 import { Calendar, Clock, FileText, Send, CheckCircle, RotateCcw } from 'lucide-react';
 
+
+const MOCK_MY_HISTORY = [
+{
+  id: 'lr_101',
+  employeeId: 'current_user',
+  employeeName: 'John Doe',
+  type: 'Sick',
+  startDate: '2023-11-10',
+  endDate: '2023-11-12',
+  days: 3,
+  reason: 'Viral Fever',
+  status: 'Approved',
+  appliedOn: '2023-11-09'
+},
+{
+  id: 'lr_102',
+  employeeId: 'current_user',
+  employeeName: 'John Doe',
+  type: 'Casual',
+  startDate: '2023-10-25',
+  endDate: '2023-10-25',
+  days: 1,
+  reason: 'Personal work',
+  status: 'Rejected',
+  appliedOn: '2023-10-20'
+}];
+
+
 export function LeaveApplication() {
-  const [leaveHistory, setLeaveHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  const loadHistory = async () => {
-    setLoading(true);
-    try {
-      const data = await apiFetch('/leaves/my-requests');
-      if (Array.isArray(data)) {
-        setLeaveHistory(data);
-      }
-    } catch (e) {
-      console.error("Failed to load leave history:", e);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadHistory();
-  }, []);
+  const [submitted, setSubmitted] = useState(false);
+  const [history, setHistory] = useState(MOCK_MY_HISTORY);
   const [formData, setFormData] = useState({
     type: 'Sick',
     startDate: '',
@@ -210,6 +220,5 @@ export function LeaveApplication() {
         </div>
       </div>
     </div>);
-}
 
-export default LeaveApplication;
+}

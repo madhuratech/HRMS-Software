@@ -1,66 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Search, Download, Plus, Mail, Phone,
+  Search, Filter, Download, Plus, Mail, Phone,
   MoreVertical, Calendar, UserPlus, Zap
 } from 'lucide-react';
-import EmployeeAvatar from './EmployeeAvatar';
 import './employee-module.css';
+
+const employees = [
+  { id: 'EMP001', name: 'Aarav Sharma', department: 'Design', designation: 'UI/UX Designer', email: 'aarav.sharma@company.com', phone: '+91 98765 43210', status: 'Active', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026024d' },
+  { id: 'EMP002', name: 'Neha Patel', department: 'Human Resources', designation: 'HR Executive', email: 'neha.patel@company.com', phone: '+91 87654 32109', status: 'Active', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d' },
+  { id: 'EMP003', name: 'Rohan Mehta', department: 'Sales', designation: 'Sales Manager', email: 'rohan.mehta@company.com', phone: '+91 76543 21098', status: 'Active', avatar: 'https://i.pravatar.cc/150?u=a04258a2462d826712d' },
+  { id: 'EMP004', name: 'Priya Nair', department: 'Finance', designation: 'Accountant', email: 'priya.nair@company.com', phone: '+91 65432 10987', status: 'Active', avatar: 'https://i.pravatar.cc/150?u=a048581f4e29026701d' },
+  { id: 'EMP005', name: 'Karan Verma', department: 'IT', designation: 'Software Engineer', email: 'karan.verma@company.com', phone: '+91 54321 09876', status: 'Active', avatar: 'https://i.pravatar.cc/150?u=a04258114e29026702d' },
+  { id: 'EMP006', name: 'Anjali Desai', department: 'Marketing', designation: 'Marketing Executive', email: 'anjali.desai@company.com', phone: '+91 43210 98765', status: 'Active', avatar: 'https://i.pravatar.cc/150?u=a04258114e29026302d' },
+];
 
 export default function EmployeeDirectory() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [departmentFilter, setDepartmentFilter] = useState('');
-  const [designationFilter, setDesignationFilter] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // Fetch employees on search/filter changes
-  useEffect(() => {
-    setLoading(true);
-    const query = new URLSearchParams({
-      search: searchTerm,
-      department: departmentFilter,
-      designation: designationFilter,
-      status: statusFilter
-    }).toString();
-
-    fetch(`http://localhost:3000/app/employees?${query}`)
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setEmployees(data);
-        } else {
-          setEmployees([]);
-        }
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to load directory", err);
-        setLoading(false);
-      });
-  }, [searchTerm, departmentFilter, designationFilter, statusFilter]);
-
-  // Derived stats
-  const totalEmployees = employees.length;
-  const activeEmployees = employees.filter(e => e.status === 'Active').length;
-  // New joiners (e.g., joined in last 6 months or 2024/2026 depending on seeded data)
-  const newJoinersCount = employees.filter(e => e.join_date && new Date(e.join_date).getFullYear() >= 2024).length;
-  
-  // Extract unique departments and designations for filter options
-  const uniqueDepts = ["Engineering", "Sales", "Marketing", "Customer Support", "Human Resources"];
-  const uniqueDesgs = ["Super Admin", "Branch Manager", "Sales Manager", "Service Staff", "Software Engineer", "HR Executive", "UI/UX Designer"];
-
-  // Birthdays dynamic (placeholder derived from dob matching current month or simple calculation)
-  const currentMonth = new Date().getMonth();
-  const birthdayEmployees = employees.filter(e => e.dob && new Date(e.dob).getMonth() === currentMonth).slice(0, 3);
-
-  // Dynamic new joiners list for widget
-  const recentJoiners = employees
-    .filter(e => e.join_date)
-    .sort((a, b) => new Date(b.join_date) - new Date(a.join_date))
-    .slice(0, 3);
 
   return (
     <div className="hrms-content">
@@ -78,31 +35,21 @@ export default function EmployeeDirectory() {
               />
             </div>
           </div>
-          <select 
-            className="hrms-select"
-            value={departmentFilter}
-            onChange={(e) => setDepartmentFilter(e.target.value)}
-          >
+          <select className="hrms-select">
             <option value="">Department</option>
-            {uniqueDepts.map(d => <option key={d} value={d}>{d}</option>)}
+            <option value="design">Design</option>
+            <option value="hr">Human Resources</option>
+            <option value="sales">Sales</option>
           </select>
-          <select 
-            className="hrms-select"
-            value={designationFilter}
-            onChange={(e) => setDesignationFilter(e.target.value)}
-          >
+          <select className="hrms-select">
             <option value="">Designation</option>
-            {uniqueDesgs.map(d => <option key={d} value={d}>{d}</option>)}
+            <option value="manager">Manager</option>
+            <option value="executive">Executive</option>
           </select>
-          <select 
-            className="hrms-select"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
+          <select className="hrms-select">
             <option value="">Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-            <option value="Terminated">Terminated</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
           </select>
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
@@ -118,83 +65,72 @@ export default function EmployeeDirectory() {
           <div className="hrms-grid-4">
             <div className="hrms-card hrms-stat-card">
               <span className="hrms-stat-title">Total Employees</span>
-              <span className="hrms-stat-value">{totalEmployees}</span>
-              <span className="hrms-stat-trend hrms-text-success">Live count</span>
+              <span className="hrms-stat-value">245</span>
+              <span className="hrms-stat-trend hrms-text-success">+12 this month</span>
             </div>
             <div className="hrms-card hrms-stat-card">
               <span className="hrms-stat-title">Active Employees</span>
-              <span className="hrms-stat-value hrms-text-primary">{activeEmployees}</span>
-              <span className="hrms-stat-trend hrms-text-success">{totalEmployees > 0 ? ((activeEmployees / totalEmployees) * 100).toFixed(1) : 0}%</span>
+              <span className="hrms-stat-value hrms-text-primary">212</span>
+              <span className="hrms-stat-trend hrms-text-success">86.53%</span>
             </div>
             <div className="hrms-card hrms-stat-card">
               <span className="hrms-stat-title">New Joiners</span>
-              <span className="hrms-stat-value" style={{ color: '#0ea5e9' }}>{newJoinersCount}</span>
-              <span className="hrms-stat-trend hrms-text-success">Since 2024</span>
+              <span className="hrms-stat-value" style={{ color: '#0ea5e9' }}>18</span>
+              <span className="hrms-stat-trend hrms-text-success">+5 this month</span>
             </div>
             <div className="hrms-card hrms-stat-card">
               <span className="hrms-stat-title">Departments</span>
-              <span className="hrms-stat-value" style={{ color: '#8b5cf6' }}>{uniqueDepts.length}</span>
+              <span className="hrms-stat-value" style={{ color: '#8b5cf6' }}>24</span>
               <a href="#" className="hrms-text-primary hrms-text-sm hrms-font-medium" style={{ marginTop: '4px' }}>View all</a>
             </div>
           </div>
 
           <h2 className="hrms-font-semibold hrms-mb-4" style={{ fontSize: '18px' }}>All Employees</h2>
 
-          {loading ? (
-            <div className="hrms-card" style={{ padding: '40px', textAlign: 'center' }}>
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-              <p className="hrms-text-muted hrms-mt-4">Loading directory...</p>
-            </div>
-          ) : employees.length === 0 ? (
-            <div className="hrms-card" style={{ padding: '40px', textAlign: 'center' }}>
-              <p className="hrms-text-muted">No employees found matching the filters.</p>
-            </div>
-          ) : (
-            /* Employee Grid */
-            <div className="hrms-employee-grid">
-              {employees.map(emp => (
-                <div key={emp.id} className="hrms-card" style={{ padding: '20px', display: 'flex', flexDirection: 'column' }}>
-                  <div className="hrms-flex-between hrms-mb-4">
-                    <div className="hrms-user-info">
-                      <EmployeeAvatar name={emp.name} photoUrl={emp.profile_photo} size={40} className="hrms-avatar" />
-                      <div className="hrms-user-details">
-                        <h4>{emp.name}</h4>
-                        <p>EMP00{emp.id}</p>
-                      </div>
-                    </div>
-                    <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
-                      <MoreVertical size={18} />
-                    </button>
-                  </div>
-
-                  <div className="hrms-mb-4">
-                    <p className="hrms-text-sm hrms-font-medium">{emp.dept_name || 'General'}</p>
-                    <p className="hrms-text-xs hrms-text-muted">{emp.role_name || 'Staff'}</p>
-                  </div>
-
-                  <div className="hrms-mb-4" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div className="hrms-flex-start" style={{ gap: '8px', color: '#64748b' }}>
-                      <Mail size={14} />
-                      <span className="hrms-text-xs" style={{ wordBreak: 'break-all' }}>{emp.email}</span>
-                    </div>
-                    <div className="hrms-flex-start" style={{ gap: '8px', color: '#64748b' }}>
-                      <Phone size={14} />
-                      <span className="hrms-text-xs">{emp.phone || '—'}</span>
+          {/* Employee Grid */}
+          <div className="hrms-employee-grid">
+            {employees.map(emp => (
+              <div key={emp.id} className="hrms-card" style={{ padding: '20px' }}>
+                <div className="hrms-flex-between hrms-mb-4">
+                  <div className="hrms-user-info">
+                    <img src={emp.avatar} alt={emp.name} className="hrms-avatar" />
+                    <div className="hrms-user-details">
+                      <h4>{emp.name}</h4>
+                      <p>{emp.id}</p>
                     </div>
                   </div>
+                  <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                    <MoreVertical size={18} />
+                  </button>
+                </div>
 
-                  <div className="hrms-flex-between" style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
-                    <span className={`hrms-badge ${emp.status === 'Active' ? 'hrms-badge-active' : 'hrms-badge-inactive'}`}>
-                      {emp.status || 'Active'}
-                    </span>
-                    <button className="hrms-secondary-btn" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => { localStorage.setItem('selectedEmployeeId', emp.id); navigate('/employees/profile'); }}>
-                      View Profile
-                    </button>
+                <div className="hrms-mb-4">
+                  <p className="hrms-text-sm hrms-font-medium">{emp.department}</p>
+                  <p className="hrms-text-xs hrms-text-muted">{emp.designation}</p>
+                </div>
+
+                <div className="hrms-mb-4" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div className="hrms-flex-start" style={{ gap: '8px', color: '#64748b' }}>
+                    <Mail size={14} />
+                    <span className="hrms-text-xs">{emp.email}</span>
+                  </div>
+                  <div className="hrms-flex-start" style={{ gap: '8px', color: '#64748b' }}>
+                    <Phone size={14} />
+                    <span className="hrms-text-xs">{emp.phone}</span>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+
+                <div className="hrms-flex-between" style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
+                  <span className={`hrms-badge ${emp.status === 'Active' ? 'hrms-badge-active' : 'hrms-badge-inactive'}`}>
+                    {emp.status}
+                  </span>
+                  <button className="hrms-secondary-btn" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => navigate('/employees/profile')}>
+                    View Profile
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         {/* Right Side Widgets */}
@@ -203,38 +139,43 @@ export default function EmployeeDirectory() {
             <h3 className="hrms-font-semibold hrms-mb-4" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Calendar size={18} className="hrms-text-primary" /> Birthday Today
             </h3>
-            {birthdayEmployees.length === 0 ? (
-              <p className="hrms-text-xs hrms-text-muted">No birthdays today</p>
-            ) : (
-              birthdayEmployees.map(emp => (
-                <div key={emp.id} className="hrms-user-info hrms-mb-4">
-                  <EmployeeAvatar name={emp.name} photoUrl={emp.profile_photo} size={40} className="hrms-avatar" />
-                  <div className="hrms-user-details">
-                    <h4>{emp.name}</h4>
-                    <p>{emp.role_name || 'Staff'}</p>
-                  </div>
-                </div>
-              ))
-            )}
+            <div className="hrms-user-info hrms-mb-4">
+              <img src="https://i.pravatar.cc/150?u=a042581f4e29026024d" className="hrms-avatar" />
+              <div className="hrms-user-details">
+                <h4>Aarav Sharma</h4>
+                <p>UI/UX Designer</p>
+              </div>
+            </div>
+            <div className="hrms-user-info">
+              <img src="https://i.pravatar.cc/150?u=a042581f4e29026704d" className="hrms-avatar" />
+              <div className="hrms-user-details">
+                <h4>Neha Patel</h4>
+                <p>HR Executive</p>
+              </div>
+            </div>
+            <button className="hrms-secondary-btn" style={{ width: '100%', marginTop: '16px', justifyContent: 'center' }}>
+              View all
+            </button>
           </div>
 
           <div className="hrms-card">
             <h3 className="hrms-font-semibold hrms-mb-4" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <UserPlus size={18} className="hrms-text-success" /> New Joiners
             </h3>
-            {recentJoiners.length === 0 ? (
-              <p className="hrms-text-xs hrms-text-muted">No recent joiners</p>
-            ) : (
-              recentJoiners.map(emp => (
-                <div key={emp.id} className="hrms-user-info hrms-mb-4">
-                  <EmployeeAvatar name={emp.name} photoUrl={emp.profile_photo} size={40} className="hrms-avatar" />
-                  <div className="hrms-user-details">
-                    <h4>{emp.name}</h4>
-                    <p>{emp.role_name || 'Staff'}</p>
-                  </div>
-                </div>
-              ))
-            )}
+            <div className="hrms-user-info hrms-mb-4">
+              <img src="https://i.pravatar.cc/150?u=a04258a2462d826712d" className="hrms-avatar" />
+              <div className="hrms-user-details">
+                <h4>Vikram Singh</h4>
+                <p>Software Engineer</p>
+              </div>
+            </div>
+            <div className="hrms-user-info">
+              <img src="https://i.pravatar.cc/150?u=a048581f4e29026701d" className="hrms-avatar" />
+              <div className="hrms-user-details">
+                <h4>Pooja Reddy</h4>
+                <p>HR Executive</p>
+              </div>
+            </div>
           </div>
 
           <div className="hrms-card">

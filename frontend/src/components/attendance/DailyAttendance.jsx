@@ -1,147 +1,38 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Filter, CheckCircle2, XCircle, Clock, AlertCircle, MoreVertical, Calendar as CalendarIcon, ChevronDown, Eye, Edit2, Trash2, X } from 'lucide-react';
-import { apiFetch } from '../../lib/api';
-import { useNavigate } from 'react-router-dom';
-import EmployeeAvatar from '../employee/EmployeeAvatar';
-import { useToast } from '../ui/Toast';
+import React, { useState } from 'react';
+import { Search, Filter, Download, Upload, CheckCircle2, XCircle, Clock, AlertCircle, MoreVertical, Calendar as CalendarIcon, MapPin, Users, Briefcase, ChevronDown } from 'lucide-react';
 
 export default function DailyAttendance() {
-  const navigate = useNavigate();
-  const { addToast } = useToast();
-
   const [searchTerm, setSearchTerm] = useState('');
-  const [attendanceData, setAttendanceData] = useState([]);
-  const [kpis, setKpis] = useState({
-    totalEmployees: 0,
-    present: 0,
-    presentPct: '0.00%',
-    absent: 0,
-    absentPct: '0.00%',
-    late: 0,
-    latePct: '0.00%',
-    leave: 0,
-    leavePct: '0.00%'
-  });
-  const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Edit Modal State
-  const [showEditModal, setShowEditModal] = useState(false);
-  const [editingRecord, setEditingRecord] = useState(null);
-  const [editForm, setEditForm] = useState({
-    checkInTime: '',
-    checkOutTime: '',
-    status: 'Present',
-    workingHours: '08h 00m'
-  });
+  const attendanceData = [
+    { id: 'EMP001', name: 'Aarav Sharma', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026024d', department: 'Design', checkIn: '09:05 AM', checkOut: '06:15 PM', status: 'Present', workingHours: '09h 10m' },
+    { id: 'EMP002', name: 'Neha Patel', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', department: 'HR', checkIn: '08:55 AM', checkOut: '06:05 PM', status: 'Present', workingHours: '09h 05m' },
+    { id: 'EMP003', name: 'Rohan Mehta', avatar: 'https://i.pravatar.cc/150?u=a04258114e29026702d', department: 'Sales', checkIn: '09:15 AM', checkOut: '06:30 PM', status: 'Present', workingHours: '09h 05m' },
+    { id: 'EMP004', name: 'Priya Nair', avatar: 'https://i.pravatar.cc/150?u=a048581f4e29026701d', department: 'Finance', checkIn: '09:45 AM', checkOut: '06:30 PM', status: 'Late', workingHours: '08h 45m' },
+    { id: 'EMP005', name: 'Karan Verma', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026703d', department: 'Development', checkIn: '09:10 AM', checkOut: '06:00 PM', status: 'Present', workingHours: '08h 50m' },
+    { id: 'EMP006', name: 'Anjali Desai', avatar: 'https://i.pravatar.cc/150?img=32', department: 'Marketing', checkIn: '--', checkOut: '--', status: 'Absent', workingHours: '00h 00m' },
+    { id: 'EMP007', name: 'Vikram Singh', avatar: 'https://i.pravatar.cc/150?img=11', department: 'Operations', checkIn: '09:02 AM', checkOut: '06:10 PM', status: 'Present', workingHours: '09h 08m' },
+    { id: 'EMP008', name: 'Pooja Reddy', avatar: 'https://i.pravatar.cc/150?img=5', department: 'HR', checkIn: '--', checkOut: '--', status: 'On Leave', workingHours: '00h 00m' },
+  ];
 
-  const loadDailyAttendance = () => {
-    setLoading(true);
-    apiFetch(`/attendance/daily?date=${selectedDate}`)
-      .then(data => {
-        if (data.records) setAttendanceData(data.records);
-        if (data.kpis) setKpis(data.kpis);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to fetch daily attendance", err);
-        setLoading(false);
-      });
-  };
-
-  useEffect(() => {
-    loadDailyAttendance();
-  }, [selectedDate]);
-
-  const handleViewProfile = (emp) => {
-    localStorage.setItem('selectedEmployeeId', emp.db_id);
-    navigate('/employees/profile');
-  };
-
-  const handleOpenEdit = (emp) => {
-    setEditingRecord(emp);
-    
-    // Parse times (e.g. "01:04 PM" -> "13:04")
-    const formatTimeForInput = (timeStr) => {
-      if (!timeStr || timeStr === '--') return '';
-      const [time, modifier] = timeStr.split(' ');
-      let [hours, minutes] = time.split(':');
-      if (hours === '12') {
-        hours = '00';
-      }
-      if (modifier === 'PM') {
-        hours = parseInt(hours, 10) + 12;
-      }
-      return `${String(hours).padStart(2, '0')}:${minutes}`;
-    };
-
-    setEditForm({
-      checkInTime: formatTimeForInput(emp.checkIn),
-      checkOutTime: formatTimeForInput(emp.checkOut),
-      status: emp.status || 'Present',
-      workingHours: emp.workingHours !== '00h 00m' ? emp.workingHours : '08h 00m'
-    });
-    setShowEditModal(true);
-  };
-
-  const handleSaveEdit = async (e) => {
-    e.preventDefault();
-    try {
-      const res = await apiFetch(`/attendance/records/${editingRecord.db_id}/${selectedDate}`, {
-        method: 'PUT',
-        body: JSON.stringify(editForm)
-      });
-      if (res.success) {
-        addToast("Attendance record updated successfully!", "success");
-        setShowEditModal(false);
-        loadDailyAttendance();
-      } else {
-        addToast(res.message || "Failed to update record", "error");
-      }
-    } catch (err) {
-      console.error(err);
-      addToast("Failed to update record", "error");
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'Present': return 'hrms-badge-active';
+      case 'Absent': return 'hrms-badge-danger';
+      case 'Late': return 'hrms-badge-warning';
+      case 'On Leave': return 'hrms-badge-pending';
+      default: return 'hrms-badge-inactive';
     }
   };
-
-  const handleDeleteRecord = async (emp) => {
-    const confirmed = window.confirm(`Are you sure you want to delete the daily attendance record for ${emp.name} on ${selectedDate}?`);
-    if (!confirmed) return;
-
-    try {
-      const res = await apiFetch(`/attendance/records/${emp.db_id}/${selectedDate}`, {
-        method: 'DELETE'
-      });
-      if (res.success) {
-        addToast("Attendance record deleted successfully!", "success");
-        loadDailyAttendance();
-      } else {
-        addToast(res.message || "Failed to delete record", "error");
-      }
-    } catch (err) {
-      console.error(err);
-      addToast("Failed to delete record", "error");
-    }
-  };
-
-  const filteredDocs = attendanceData.filter(emp =>
-    emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.department.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
     <div className="hrms-content">
       {/* Header and Toolbar */}
       <div className="hrms-header" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', gap: '16px', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: '4px' }}>
         <div className="hrms-flex-start" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', minWidth: '180px', justifyContent: 'space-between' }}>
-            <input 
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              style={{ border: 'none', outline: 'none', color: '#475569', fontWeight: '500', fontSize: '14px', width: '100%', cursor: 'pointer' }}
-            />
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', minWidth: '180px', justifyContent: 'space-between', cursor: 'pointer' }}>
+            <span className="hrms-text-sm" style={{ color: '#475569', fontWeight: '500' }}>May 20, 2024</span>
+            <CalendarIcon size={16} style={{ color: '#64748b' }} />
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', minWidth: '180px', justifyContent: 'space-between', cursor: 'pointer' }}>
             <span className="hrms-text-sm" style={{ color: '#475569', fontWeight: '500' }}>All Departments</span>
@@ -172,34 +63,34 @@ export default function DailyAttendance() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '24px' }}>
             <div className="hrms-card" style={{ padding: '20px' }}>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '20px' }}>Total Employees</div>
-              <div style={{ fontSize: '32px', fontWeight: '700', color: '#2952E3', lineHeight: '1' }}>{kpis.totalEmployees}</div>
+              <div style={{ fontSize: '32px', fontWeight: '700', color: '#2952E3', lineHeight: '1' }}>245</div>
             </div>
             <div className="hrms-card" style={{ padding: '20px' }}>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '20px' }}>Present</div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
-                <div style={{ fontSize: '32px', fontWeight: '700', color: '#10b981', lineHeight: '1' }}>{kpis.present}</div>
-                <span style={{ fontSize: '11px', color: '#94a3b8', paddingBottom: '4px', fontWeight: '500' }}>{kpis.presentPct}</span>
+                <div style={{ fontSize: '32px', fontWeight: '700', color: '#10b981', lineHeight: '1' }}>198</div>
+                <span style={{ fontSize: '11px', color: '#94a3b8', paddingBottom: '4px', fontWeight: '500' }}>80.82%</span>
               </div>
             </div>
             <div className="hrms-card" style={{ padding: '20px' }}>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '20px' }}>Absent</div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
-                <div style={{ fontSize: '32px', fontWeight: '700', color: '#ef4444', lineHeight: '1' }}>{kpis.absent}</div>
-                <span style={{ fontSize: '11px', color: '#94a3b8', paddingBottom: '4px', fontWeight: '500' }}>{kpis.absentPct}</span>
+                <div style={{ fontSize: '32px', fontWeight: '700', color: '#ef4444', lineHeight: '1' }}>28</div>
+                <span style={{ fontSize: '11px', color: '#94a3b8', paddingBottom: '4px', fontWeight: '500' }}>11.43%</span>
               </div>
             </div>
             <div className="hrms-card" style={{ padding: '20px' }}>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '20px' }}>Late</div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
-                <div style={{ fontSize: '32px', fontWeight: '700', color: '#f59e0b', lineHeight: '1' }}>{kpis.late}</div>
-                <span style={{ fontSize: '11px', color: '#94a3b8', paddingBottom: '4px', fontWeight: '500' }}>{kpis.latePct}</span>
+                <div style={{ fontSize: '32px', fontWeight: '700', color: '#f59e0b', lineHeight: '1' }}>12</div>
+                <span style={{ fontSize: '11px', color: '#94a3b8', paddingBottom: '4px', fontWeight: '500' }}>4.90%</span>
               </div>
             </div>
             <div className="hrms-card" style={{ padding: '20px' }}>
               <div style={{ fontSize: '13px', fontWeight: '700', color: '#334155', marginBottom: '20px' }}>On Leave</div>
               <div style={{ display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
-                <div style={{ fontSize: '32px', fontWeight: '700', color: '#8b5cf6', lineHeight: '1' }}>{kpis.leave}</div>
-                <span style={{ fontSize: '11px', color: '#94a3b8', paddingBottom: '4px', fontWeight: '500' }}>{kpis.leavePct}</span>
+                <div style={{ fontSize: '32px', fontWeight: '700', color: '#8b5cf6', lineHeight: '1' }}>7</div>
+                <span style={{ fontSize: '11px', color: '#94a3b8', paddingBottom: '4px', fontWeight: '500' }}>2.86%</span>
               </div>
             </div>
           </div>
@@ -233,68 +124,38 @@ export default function DailyAttendance() {
                     </tr>
                   </thead>
                   <tbody>
-                    {loading ? (
-                      <tr>
-                        <td colSpan="8" style={{ textAlign: 'center', padding: '24px' }}>Loading daily attendance records...</td>
+                    {attendanceData.map((emp) => (
+                      <tr key={emp.id}>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <div className="hrms-user-info">
+                            <img src={emp.avatar} alt={emp.name} className="hrms-avatar" style={{ width: '32px', height: '32px' }} />
+                            <span className="hrms-font-medium hrms-text-primary">{emp.name}</span>
+                          </div>
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}><span className="hrms-text-muted">{emp.id}</span></td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{emp.department}</td>
+                        <td style={{ whiteSpace: 'nowrap' }} className="hrms-font-medium">{emp.checkIn}</td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{emp.checkOut}</td>
+                        <td>
+                        <span style={{
+                          padding: '4px 10px', 
+                          borderRadius: '12px', 
+                          fontSize: '11px', 
+                          fontWeight: '600',
+                          backgroundColor: emp.status === 'On Leave' ? '#f3e8ff' : emp.status === 'Late' ? '#fef3c7' : emp.status === 'Absent' ? '#fee2e2' : '#dcfce7',
+                          color: emp.status === 'On Leave' ? '#9333ea' : emp.status === 'Late' ? '#d97706' : emp.status === 'Absent' ? '#dc2626' : '#16a34a'
+                        }}>
+                          {emp.status}
+                        </span>
+                      </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{emp.workingHours}</td>
+                        <td>
+                          <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+                            <MoreVertical size={18} />
+                          </button>
+                        </td>
                       </tr>
-                    ) : filteredDocs.length === 0 ? (
-                      <tr>
-                        <td colSpan="8" style={{ textAlign: 'center', padding: '24px' }}>No records found.</td>
-                      </tr>
-                    ) : (
-                      filteredDocs.map((emp) => (
-                        <tr key={emp.id}>
-                          <td style={{ whiteSpace: 'nowrap' }}>
-                            <div className="hrms-user-info" style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <EmployeeAvatar name={emp.name} photoUrl={emp.avatar} size={32} />
-                              <span className="hrms-font-medium hrms-text-primary">{emp.name}</span>
-                            </div>
-                          </td>
-                          <td style={{ whiteSpace: 'nowrap' }}><span className="hrms-text-muted">{emp.id}</span></td>
-                          <td style={{ whiteSpace: 'nowrap' }}>{emp.department}</td>
-                          <td style={{ whiteSpace: 'nowrap' }} className="hrms-font-medium">{emp.checkIn}</td>
-                          <td style={{ whiteSpace: 'nowrap' }}>{emp.checkOut}</td>
-                          <td>
-                            <span style={{
-                              padding: '4px 10px', 
-                              borderRadius: '12px', 
-                              fontSize: '11px', 
-                              fontWeight: '600',
-                              backgroundColor: emp.status === 'On Leave' ? '#f3e8ff' : emp.status === 'Late' ? '#fef3c7' : emp.status === 'Absent' ? '#fee2e2' : '#dcfce7',
-                              color: emp.status === 'On Leave' ? '#9333ea' : emp.status === 'Late' ? '#d97706' : emp.status === 'Absent' ? '#dc2626' : '#16a34a'
-                            }}>
-                              {emp.status}
-                            </span>
-                          </td>
-                          <td style={{ whiteSpace: 'nowrap' }}>{emp.workingHours}</td>
-                          <td>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <button 
-                                onClick={() => handleViewProfile(emp)}
-                                title="View Profile"
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: '4px' }}
-                              >
-                                <Eye size={16} />
-                              </button>
-                              <button 
-                                onClick={() => handleOpenEdit(emp)}
-                                title="Edit Attendance"
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2563eb', padding: '4px' }}
-                              >
-                                <Edit2 size={16} />
-                              </button>
-                              <button 
-                                onClick={() => handleDeleteRecord(emp)}
-                                title="Delete Record"
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: '4px' }}
-                              >
-                                <Trash2 size={16} />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))
-                    )}
+                    ))}
                   </tbody>
                 </table>
               </div>
@@ -302,14 +163,18 @@ export default function DailyAttendance() {
               {/* Pagination */}
               <div className="hrms-flex-between" style={{ padding: '16px 24px', borderTop: '1px solid #f1f5f9' }}>
                 <span className="hrms-text-sm hrms-text-muted">
-                  Showing 1 to {filteredDocs.length} of {attendanceData.length} entries
+                  Showing 1 to 8 of 245 entries
                 </span>
                 <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                   <button className="hrms-secondary-btn" style={{ padding: '6px', borderRadius: '4px' }} disabled>
                     &lt;
                   </button>
                   <button className="hrms-primary-btn" style={{ padding: '6px 12px', borderRadius: '4px' }}>1</button>
-                  <button className="hrms-secondary-btn" style={{ padding: '6px', borderRadius: '4px' }} disabled>
+                  <button className="hrms-secondary-btn" style={{ padding: '6px 12px', borderRadius: '4px', border: 'none' }}>2</button>
+                  <button className="hrms-secondary-btn" style={{ padding: '6px 12px', borderRadius: '4px', border: 'none' }}>3</button>
+                  <span className="hrms-text-muted">...</span>
+                  <button className="hrms-secondary-btn" style={{ padding: '6px 12px', borderRadius: '4px', border: 'none' }}>23</button>
+                  <button className="hrms-secondary-btn" style={{ padding: '6px', borderRadius: '4px' }}>
                     &gt;
                   </button>
                 </div>
@@ -318,123 +183,6 @@ export default function DailyAttendance() {
           </div>
         </div>
       </div>
-
-      {/* Edit Modal */}
-      {showEditModal && editingRecord && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.4)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 50,
-          padding: '16px'
-        }}>
-          <div style={{
-            backgroundColor: '#fff',
-            borderRadius: '16px',
-            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
-            border: '1px solid #e2e8f0',
-            width: '100%',
-            maxWidth: '440px',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid #f1f5f9',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b', margin: 0 }}>Edit Attendance Record</h3>
-              <button 
-                onClick={() => setShowEditModal(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px' }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <form onSubmit={handleSaveEdit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Employee</label>
-                <input 
-                  type="text" 
-                  disabled 
-                  value={`${editingRecord.name} (${editingRecord.id})`}
-                  style={{ width: '100%', padding: '10px 14px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#64748b', fontSize: '14px', fontWeight: '500', cursor: 'not-allowed', boxSizing: 'border-box' }}
-                />
-              </div>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Check In Time</label>
-                  <input 
-                    type="time" 
-                    value={editForm.checkInTime}
-                    onChange={(e) => setEditForm({ ...editForm, checkInTime: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a', fontSize: '14px', fontWeight: '500', boxSizing: 'border-box' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Check Out Time</label>
-                  <input 
-                    type="time" 
-                    value={editForm.checkOutTime}
-                    onChange={(e) => setEditForm({ ...editForm, checkOutTime: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a', fontSize: '14px', fontWeight: '500', boxSizing: 'border-box' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Status</label>
-                  <select 
-                    value={editForm.status}
-                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a', fontSize: '14px', fontWeight: '500', background: '#fff', boxSizing: 'border-box' }}
-                  >
-                    <option value="Present">Present</option>
-                    <option value="Late">Late</option>
-                    <option value="Early Exit">Early Exit</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Absent">Absent</option>
-                    <option value="On Leave">On Leave</option>
-                  </select>
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Working Hours</label>
-                  <input 
-                    type="text" 
-                    placeholder="e.g. 08h 00m"
-                    value={editForm.workingHours}
-                    onChange={(e) => setEditForm({ ...editForm, workingHours: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a', fontSize: '14px', fontWeight: '500', boxSizing: 'border-box' }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-                <button 
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  style={{ flex: 1, padding: '12px', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#475569', fontWeight: '600', fontSize: '14px', cursor: 'pointer', background: '#fff' }}
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  style={{ flex: 1, padding: '12px', background: '#2563eb', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
-                >
-                  Save Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

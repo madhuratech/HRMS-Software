@@ -36,15 +36,15 @@ export default function Reimbursements() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-
+      
       {/* Top Toolbar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '16px', flex: 1 }}>
           <div style={{ position: 'relative', width: '300px' }}>
             <Search size={18} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-            <input
-              type="text"
-              placeholder="Search Claim..."
+            <input 
+              type="text" 
+              placeholder="Search Claim..." 
               style={{ width: '100%', padding: '10px 10px 10px 40px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px' }}
             />
           </div>
@@ -78,7 +78,7 @@ export default function Reimbursements() {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: '24px' }}>
-
+        
         {/* Main Table */}
         <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', alignSelf: 'start' }}>
           <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
@@ -106,13 +106,13 @@ export default function Reimbursements() {
                     <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569' }}>{row.date}</td>
                     <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569' }}>{row.approver}</td>
                     <td style={{ padding: '16px 24px', textAlign: 'center' }}>
-                      <span style={{
-                        padding: '6px 12px',
-                        borderRadius: '20px',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        backgroundColor: row.status === 'Approved' ? '#ECFDF5' : row.status === 'Rejected' ? '#FEF2F2' : '#FFFBEB',
-                        color: row.status === 'Approved' ? '#10B981' : row.status === 'Rejected' ? '#EF4444' : '#F59E0B'
+                      <span style={{ 
+                        padding: '6px 12px', 
+                        borderRadius: '20px', 
+                        fontSize: '12px', 
+                        fontWeight: '600', 
+                        backgroundColor: row.status === 'Approved' ? '#ECFDF5' : row.status === 'Rejected' ? '#FEF2F2' : '#FFFBEB', 
+                        color: row.status === 'Approved' ? '#10B981' : row.status === 'Rejected' ? '#EF4444' : '#F59E0B' 
                       }}>
                         {row.status}
                       </span>

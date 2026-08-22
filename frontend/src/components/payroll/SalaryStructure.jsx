@@ -1,40 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { apiFetch } from '../../lib/api';
+import React from 'react';
 import { Plus, Edit2, Eye, Building2, CheckCircle2, Wallet, Users, ChevronLeft, ChevronRight } from 'lucide-react';
 
+const kpiData = [
+  { title: 'Total Structures', value: '12', icon: <Building2 size={24} color="#2952E3" />, bgColor: '#EFF6FF' },
+  { title: 'Active Structures', value: '8', icon: <CheckCircle2 size={24} color="#2952E3" />, bgColor: '#EFF6FF' },
+  { title: 'Average CTC (LPA)', value: '₹ 8.5L', icon: <Wallet size={24} color="#8B5CF6" />, bgColor: '#F5F3FF' },
+  { title: 'Employees Mapped', value: '245', icon: <Users size={24} color="#2952E3" />, bgColor: '#EFF6FF' },
+];
+
+const tableData = [
+  { id: 1, name: 'Default Structure', code: 'STR-001', freq: 'Monthly', amount: '₹ 85,000', date: '01 Apr 2024', employees: 156, status: 'Active' },
+  { id: 2, name: 'Manager Structure', code: 'STR-002', freq: 'Monthly', amount: '₹ 1,45,000', date: '01 Apr 2024', employees: 45, status: 'Active' },
+  { id: 3, name: 'Sales Structure', code: 'STR-003', freq: 'Monthly', amount: '₹ 65,000', date: '01 May 2024', employees: 28, status: 'Active' },
+  { id: 4, name: 'Intern Structure', code: 'STR-004', freq: 'Monthly', amount: '₹ 15,000', date: '01 Jun 2024', employees: 10, status: 'Inactive' },
+  { id: 5, name: 'Executive Structure', code: 'STR-005', freq: 'Monthly', amount: '₹ 2,10,000', date: '01 Jul 2024', employees: 20, status: 'Active' },
+  { id: 6, name: 'Hourly Structure', code: 'STR-006', freq: 'Hourly', amount: '₹ 800/hr', date: '01 Jul 2024', employees: 12, status: 'Inactive' },
+];
+
 export default function SalaryStructure() {
-  const [tableData, setTableData] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    apiFetch('/payroll/structures')
-      .then(data => {
-        if (Array.isArray(data)) {
-          setTableData(data.map(item => ({
-            ...item,
-            freq: item.frequency || item.freq || 'Monthly',
-            amount: item.total_ctc ? `₹ ${Number(item.total_ctc).toLocaleString('en-IN')}${item.frequency === 'Hourly' ? '/hr' : ''}` : '₹ 85,000',
-            date: item.created_at ? new Date(item.created_at).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '01 Apr 2024'
-          })));
-        }
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to load salary structures:", err);
-        setLoading(false);
-      });
-  }, []);
-
-  const totalStructures = tableData.length;
-  const activeStructures = tableData.filter(s => s.status === 'Active').length;
-  const totalEmployeesMapped = tableData.reduce((acc, curr) => acc + (Number(curr.employees) || 0), 0);
-
-  const kpiData = [
-    { title: 'Total Structures', value: String(totalStructures), icon: <Building2 size={24} color="#2952E3" />, bgColor: '#EFF6FF' },
-    { title: 'Active Structures', value: String(activeStructures), icon: <CheckCircle2 size={24} color="#2952E3" />, bgColor: '#EFF6FF' },
-    { title: 'Average CTC (LPA)', value: '₹ 8.5L', icon: <Wallet size={24} color="#8B5CF6" />, bgColor: '#F5F3FF' },
-    { title: 'Employees Mapped', value: String(totalEmployeesMapped || 245), icon: <Users size={24} color="#2952E3" />, bgColor: '#EFF6FF' },
-  ];
   const cardStyle = {
     background: '#FFFFFF',
     borderRadius: '16px',
@@ -44,7 +27,7 @@ export default function SalaryStructure() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '0', background: '#F8FAFC', minHeight: '100%' }}>
-
+      
       {/* Header Area */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
@@ -97,13 +80,13 @@ export default function SalaryStructure() {
                   <td style={{ padding: '20px 24px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>{row.date}</td>
                   <td style={{ padding: '20px 24px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>{row.employees}</td>
                   <td style={{ padding: '20px 24px', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                    <span style={{
-                      padding: '6px 12px',
-                      borderRadius: '4px',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      backgroundColor: row.status === 'Active' ? '#ECFDF5' : '#FEF2F2',
-                      color: row.status === 'Active' ? '#10B981' : '#EF4444'
+                    <span style={{ 
+                      padding: '6px 12px', 
+                      borderRadius: '4px', 
+                      fontSize: '12px', 
+                      fontWeight: '600', 
+                      backgroundColor: row.status === 'Active' ? '#ECFDF5' : '#FEF2F2', 
+                      color: row.status === 'Active' ? '#10B981' : '#EF4444' 
                     }}>
                       {row.status}
                     </span>
@@ -130,14 +113,14 @@ export default function SalaryStructure() {
           <button style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '8px', cursor: 'pointer', color: '#64748B' }}>
             <ChevronLeft size={18} />
           </button>
-
+          
           <button style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2952E3', border: 'none', borderRadius: '8px', cursor: 'pointer', color: '#FFF', fontSize: '14px', fontWeight: '500' }}>
             1
           </button>
           <button style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '8px', cursor: 'pointer', color: '#64748B', fontSize: '14px', fontWeight: '500' }}>
             2
           </button>
-
+          
           <button style={{ width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '8px', cursor: 'pointer', color: '#64748B' }}>
             <ChevronRight size={18} />
           </button>

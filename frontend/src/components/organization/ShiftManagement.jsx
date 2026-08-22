@@ -1,5 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { apiFetch } from '../../lib/api';
+import React, { useState, useMemo } from 'react';
 import {
   Clock,
   Users,
@@ -25,7 +24,16 @@ import {
   Briefcase
 } from 'lucide-react';
 
-const INITIAL_SHIFTS = [];
+const INITIAL_SHIFTS = [
+  { id: 1, name: 'General Shift', code: 'SHT-GEN', startTime: '09:00 AM', endTime: '06:00 PM', breakTime: '60 mins', graceTime: '15 mins', workingHours: '9 hours', employees: 420, createdDate: '01 Jan 2026', status: 'Active', description: 'Standard day shift for most corporate employees.' },
+  { id: 2, name: 'Morning Shift', code: 'SHT-MRN', startTime: '06:00 AM', endTime: '02:00 PM', breakTime: '30 mins', graceTime: '10 mins', workingHours: '8 hours', employees: 85, createdDate: '02 Jan 2026', status: 'Active', description: 'Early morning shift for support and operations.' },
+  { id: 3, name: 'Evening Shift', code: 'SHT-EVE', startTime: '02:00 PM', endTime: '10:00 PM', breakTime: '30 mins', graceTime: '10 mins', workingHours: '8 hours', employees: 90, createdDate: '03 Jan 2026', status: 'Active', description: 'Afternoon to evening shift for global support.' },
+  { id: 4, name: 'Night Shift', code: 'SHT-NGT', startTime: '10:00 PM', endTime: '06:00 AM', breakTime: '45 mins', graceTime: '10 mins', workingHours: '8 hours', employees: 120, createdDate: '04 Jan 2026', status: 'Active', description: 'Overnight shift for 24/7 operations and US client support.' },
+  { id: 5, name: 'UK Shift', code: 'SHT-UK', startTime: '01:30 PM', endTime: '10:30 PM', breakTime: '60 mins', graceTime: '15 mins', workingHours: '9 hours', employees: 65, createdDate: '05 Jan 2026', status: 'Active', description: 'Aligned with UK business hours.' },
+  { id: 6, name: 'US East Coast', code: 'SHT-USE', startTime: '06:30 PM', endTime: '03:30 AM', breakTime: '60 mins', graceTime: '15 mins', workingHours: '9 hours', employees: 110, createdDate: '06 Jan 2026', status: 'Active', description: 'Aligned with US EST business hours.' },
+  { id: 7, name: 'Part-Time Morning', code: 'SHT-PTM', startTime: '09:00 AM', endTime: '01:00 PM', breakTime: '15 mins', graceTime: '5 mins', workingHours: '4 hours', employees: 15, createdDate: '07 Jan 2026', status: 'Inactive', description: 'Half-day morning shift.' },
+  { id: 8, name: 'Flexible Shift', code: 'SHT-FLEX', startTime: 'Flexible', endTime: 'Flexible', breakTime: '60 mins', graceTime: '—', workingHours: '8 hours', employees: 45, createdDate: '08 Jan 2026', status: 'Active', description: 'Flexible timing with mandatory 8 working hours.' }
+];
 
 const emptyForm = { name: '', code: '', startTime: '', endTime: '', breakTime: '', graceTime: '', workingHours: '', status: 'Active' };
 
@@ -39,11 +47,10 @@ const getShiftStyles = (name) => {
 };
 
 export const ShiftManagement = () => {
-  const [shifts, setShifts] = useState([]);
+  const [shifts, setShifts] = useState(INITIAL_SHIFTS);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
-  const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -51,23 +58,6 @@ export const ShiftManagement = () => {
   const [selectedItem, setSelectedItem] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
   const itemsPerPage = 8;
-
-  const loadShifts = async () => {
-    setLoading(true);
-    try {
-      const data = await apiFetch('/organization/shifts');
-      if (Array.isArray(data)) {
-        setShifts(data);
-      }
-    } catch (e) {
-      console.error("Failed to load shifts:", e);
-    }
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    loadShifts();
-  }, []);
 
   const statistics = useMemo(() => {
     const activeShifts = shifts.filter(s => s.status === 'Active');
@@ -87,7 +77,7 @@ export const ShiftManagement = () => {
 
   const filteredData = useMemo(() => {
     return shifts.filter(s => {
-      const matchSearch = (s.name || '').toLowerCase().includes(searchTerm.toLowerCase()) || (s.code || '').toLowerCase().includes(searchTerm.toLowerCase());
+      const matchSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.code.toLowerCase().includes(searchTerm.toLowerCase());
       const matchStatus = statusFilter === 'All' || s.status === statusFilter;
       return matchSearch && matchStatus;
     });
@@ -97,48 +87,20 @@ export const ShiftManagement = () => {
   const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleAdd = () => { setFormData(emptyForm); setShowAddModal(true); };
-  const handleSaveAdd = async () => {
+  const handleSaveAdd = () => {
     if (!formData.name || !formData.code || !formData.startTime || !formData.endTime) return;
-    try {
-      await apiFetch('/organization/shifts', {
-        method: 'POST',
-        body: JSON.stringify(formData)
-      });
-      await loadShifts();
-    } catch (err) {
-      console.error("Error creating shift:", err);
-    }
+    setShifts(prev => [...prev, { ...formData, id: Date.now(), employees: 0, createdDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) }]);
     setShowAddModal(false);
   };
   const handleOpenEdit = (item) => { setSelectedItem(item); setFormData({ name: item.name, code: item.code, startTime: item.startTime, endTime: item.endTime, breakTime: item.breakTime, graceTime: item.graceTime, workingHours: item.workingHours, status: item.status, description: item.description }); setShowEditModal(true); };
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = () => {
     if (!formData.name || !formData.code || !formData.startTime || !formData.endTime) return;
-    try {
-      await apiFetch(`/organization/shifts/${selectedItem.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(formData)
-      });
-      await loadShifts();
-    } catch (err) {
-      console.error("Error updating shift:", err);
-    }
+    setShifts(prev => prev.map(s => s.id === selectedItem.id ? { ...s, ...formData } : s));
     setShowEditModal(false);
   };
   const handleOpenView = (item) => { setSelectedItem(item); setShowViewModal(true); };
   const handleOpenDelete = (item) => { setSelectedItem(item); setShowDeleteModal(true); };
-  const handleConfirmDelete = async () => {
-    if (selectedItem) {
-      try {
-        await apiFetch(`/organization/shifts/${selectedItem.id}`, {
-          method: 'DELETE'
-        });
-        await loadShifts();
-      } catch (err) {
-        console.error("Error deleting shift:", err);
-      }
-    }
-    setShowDeleteModal(false);
-  };
+  const handleConfirmDelete = () => { setShifts(prev => prev.filter(s => s.id !== selectedItem.id)); setShowDeleteModal(false); };
 
   const renderFormModal = (title, subtitle, show, onClose, onSave, saveLabel) => {
     if (!show) return null;
@@ -234,21 +196,13 @@ export const ShiftManagement = () => {
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="relative flex-1 max-w-md">
-<<<<<<< HEAD
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-=======
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" size={16} />
->>>>>>> origin/main
             <input
               type="text"
               placeholder="Search Shift..."
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
-<<<<<<< HEAD
               className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-slate-50/50"
-=======
-              className="w-full h-10 pl-10 pr-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white hover:border-slate-300 transition-colors shadow-sm text-slate-900 placeholder:text-slate-400"
->>>>>>> origin/main
             />
           </div>
 
@@ -256,11 +210,7 @@ export const ShiftManagement = () => {
             <select
               value={statusFilter}
               onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-<<<<<<< HEAD
               className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-=======
-              className="h-10 px-4 border border-slate-200 rounded-xl text-sm bg-white text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors shadow-sm font-medium cursor-pointer"
->>>>>>> origin/main
             >
               <option value="All">Status: All</option>
               <option value="Active">Active</option>

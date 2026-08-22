@@ -1,58 +1,48 @@
-import React, { useState, useEffect } from 'react';
-import { apiFetch } from '../../lib/api';
+import React from 'react';
 import { Search, Filter, Download, LineChart, FileText, IndianRupee, PieChart as PieChartIcon } from 'lucide-react';
 import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
 
+// Mock Data
+const kpiData = [
+  { title: 'Total Payroll (Oct)', value: '₹ 4.8 Cr', icon: <IndianRupee size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
+  { title: 'Gross Salary YTD', value: '₹ 32.4 Cr', icon: <LineChart size={20} color="#10B981" />, bgColor: '#ECFDF5' },
+  { title: 'Total Deductions YTD', value: '₹ 6.2 Cr', icon: <PieChartIcon size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
+  { title: 'Net Salary Paid YTD', value: '₹ 26.2 Cr', icon: <FileText size={20} color="#8B5CF6" />, bgColor: '#F5F3FF' },
+];
+
+const areaData = [
+  { month: 'Apr', Payroll: 42000000 },
+  { month: 'May', Payroll: 43000000 },
+  { month: 'Jun', Payroll: 44000000 },
+  { month: 'Jul', Payroll: 42500000 },
+  { month: 'Aug', Payroll: 46000000 },
+  { month: 'Sep', Payroll: 48000000 },
+];
+
+const barData = [
+  { dept: 'Eng', Salary: 18000000 },
+  { dept: 'Sales', Salary: 12000000 },
+  { dept: 'Mktg', Salary: 8000000 },
+  { dept: 'HR', Salary: 4000000 },
+  { dept: 'Ops', Salary: 6000000 },
+];
+
+const pieData = [
+  { name: 'Basic Salary', value: 40, color: '#2952E3' },
+  { name: 'Allowances', value: 30, color: '#10B981' },
+  { name: 'Bonus', value: 15, color: '#F59E0B' },
+  { name: 'Employer PF/ESI', value: 15, color: '#8B5CF6' },
+];
+
+const tableData = [
+  { id: 1, name: 'Monthly Payroll Register - Oct 2026', type: 'Payroll Register', date: '01 Nov 2026', by: 'HR Admin' },
+  { id: 2, name: 'PF Remittance Report - Sep 2026', type: 'Statutory', date: '10 Oct 2026', by: 'System Auto' },
+  { id: 3, name: 'TDS Deduction Summary - Q2', type: 'Tax Report', date: '05 Oct 2026', by: 'Finance Dept' },
+  { id: 4, name: 'Bank Transfer Advice - Oct 2026', type: 'Bank Report', date: '31 Oct 2026', by: 'HR Admin' },
+  { id: 5, name: 'Department Costing Report', type: 'Analytics', date: '28 Oct 2026', by: 'Finance Dept' },
+];
+
 export default function PayrollReports() {
-  const [reportsData, setReportsData] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    apiFetch('/payroll/reports')
-      .then(data => {
-        setReportsData(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to load payroll reports:", err);
-        setLoading(false);
-      });
-  }, []);
-
-  const totalPayrollFormatted = reportsData ? `₹ ${(reportsData.totalPayroll / 100000).toFixed(1)} L` : '₹ 0.0 L';
-  const ytdGrossFormatted = reportsData ? `₹ ${(reportsData.ytdGross / 100000).toFixed(1)} L` : '₹ 0.0 L';
-  const ytdDeductionsFormatted = reportsData ? `₹ ${(reportsData.ytdDeductions / 100000).toFixed(1)} L` : '₹ 0.0 L';
-  const ytdNetFormatted = reportsData ? `₹ ${(reportsData.ytdNet / 100000).toFixed(1)} L` : '₹ 0.0 L';
-
-  const kpiData = [
-    { title: 'Total Payroll (Current)', value: totalPayrollFormatted, icon: <IndianRupee size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
-    { title: 'Gross Salary YTD', value: ytdGrossFormatted, icon: <LineChart size={20} color="#10B981" />, bgColor: '#ECFDF5' },
-    { title: 'Total Deductions YTD', value: ytdDeductionsFormatted, icon: <PieChartIcon size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
-    { title: 'Net Salary Paid YTD', value: ytdNetFormatted, icon: <FileText size={20} color="#8B5CF6" />, bgColor: '#F5F3FF' },
-  ];
-
-  const areaData = [
-    { month: 'Apr', Payroll: (reportsData?.totalPayroll || 100000) * 0.9 },
-    { month: 'May', Payroll: (reportsData?.totalPayroll || 100000) * 0.95 },
-    { month: 'Jun', Payroll: (reportsData?.totalPayroll || 100000) },
-    { month: 'Jul', Payroll: (reportsData?.totalPayroll || 100000) * 1.02 },
-    { month: 'Aug', Payroll: (reportsData?.totalPayroll || 100000) * 1.05 },
-  ];
-
-  const barData = reportsData?.departmentSalaries || [];
-
-  const pieData = [
-    { name: 'Basic Salary', value: 40, color: '#2952E3' },
-    { name: 'Allowances', value: 30, color: '#10B981' },
-    { name: 'Bonus', value: 15, color: '#F59E0B' },
-    { name: 'Employer PF/ESI', value: 15, color: '#8B5CF6' },
-  ];
-
-  const tableData = [
-    { id: 1, name: 'Monthly Payroll Register', type: 'Payroll Register', date: new Date().toLocaleDateString('en-GB'), by: 'HR Admin' },
-    { id: 2, name: 'PF Remittance Report', type: 'Statutory', date: new Date().toLocaleDateString('en-GB'), by: 'System Auto' },
-    { id: 3, name: 'TDS Deduction Summary', type: 'Tax Report', date: new Date().toLocaleDateString('en-GB'), by: 'Finance Dept' }
-  ];
   const cardStyle = {
     background: '#FFFFFF',
     borderRadius: '16px',
