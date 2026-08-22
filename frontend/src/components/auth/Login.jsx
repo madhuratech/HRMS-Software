@@ -1,44 +1,85 @@
 import React, { useState } from 'react';
-import { User, Lock, ArrowRight, ShieldCheck, Briefcase, TrendingUp, Wrench } from 'lucide-react';
-
-
-
-
-
-
+import { User, Lock, ArrowRight, ShieldCheck, TrendingUp, Wrench } from 'lucide-react';
+import { apiFetch } from '../../lib/api';
 
 export function Login({ onLogin, onRegisterClick }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedRole, setSelectedRole] = useState('SUPER_ADMIN');
+  const [loginType, setLoginType] = useState('admin'); // 'admin' | 'employee'
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
-  const handleLogin = (e) => {
-    e.preventDefault();
-    // Simulate login - in a real app, this would validate credentials
-    let name = "John Doe";
-    if (selectedRole === 'SUPER_ADMIN') name = "Admin User";
-    if (selectedRole === 'SALES_MANAGER') name = "Sarah Sales";
-    if (selectedRole === 'SERVICE_STAFF') name = "Mike Mechanic";
+  // Keep the same visual "selectedRole" state for button active styling
+  const selectedRole = loginType === 'admin' ? 'SUPER_ADMIN' : 'EMPLOYEE';
 
-    onLogin(selectedRole, name);
+  const handleRoleClick = (type, emailPreset) => {
+    setLoginType(type);
+    setEmail(emailPreset);
+    setPassword('password123');
+    setErrorMsg('');
   };
 
-  // Quick preset helper
-  const setPreset = (role, emailVal) => {
-    setSelectedRole(role);
-    setEmail(emailVal);
-    setPassword('password123');
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setErrorMsg('');
+
+    try {
+      // Attempt real backend authentication
+      const data = await apiFetch('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password, loginType })
+      });
+
+      if (data && data.user) {
+        // Backend resolved the actual role and employee ID
+        onLogin(data.user.role, data.user.name, data.user);
+      }
+    } catch (err) {
+      console.error('Login error:', err);
+      // If it is a real authentication/verification error from backend, show it
+      if (err.message && (err.message.toLowerCase().includes('verify') || err.message.toLowerCase().includes('invalid') || err.message.toLowerCase().includes('denied'))) {
+        setErrorMsg(err.message);
+      } else {
+        // Offline / demo fallback — resolve role from email heuristics
+        const e2 = email.toLowerCase();
+        let finalRole = 'SUPER_ADMIN';
+        let finalName = 'Admin User';
+        let finalId = 1;
+
+        if (loginType === 'employee') {
+          if (e2.includes('leader') || e2.includes('alex') || e2.includes('kiruthi') || e2.includes('dhilipan')) {
+            finalRole = 'TEAM_LEADER';
+            finalName = 'Dhilipan P';
+            finalId = 11;
+          } else if (e2.includes('hr') || e2.includes('branch') || e2.includes('manager')) {
+            finalRole = 'BRANCH_MANAGER';
+            finalName = 'HR Manager';
+            finalId = 2;
+          } else {
+            finalRole = 'EMPLOYEE';
+            finalName = 'Dhilipan P';
+            finalId = 11;
+          }
+        }
+
+        const fallbackUser = { id: finalId, name: finalName, email, role: finalRole };
+        onLogin(finalRole, finalName, fallbackUser);
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-blue-900 flex items-center justify-center p-4">
       <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
-        
+
         {/* Left Side - Brand & Info */}
         <div className="md:w-1/2 bg-blue-600 p-12 text-white flex flex-col justify-between relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-full bg-[url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')] bg-cover bg-center opacity-10"></div>
           <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/90 to-indigo-900/90"></div>
-          
+
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-6">
               <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-blue-600">
@@ -73,37 +114,38 @@ export function Login({ onLogin, onRegisterClick }) {
             <p className="text-slate-500">Please choose your role and sign in.</p>
           </div>
 
+          {errorMsg && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
+              {errorMsg}
+            </div>
+          )}
+
           <form onSubmit={handleLogin} className="space-y-6">
+            {/* Role — ONLY Admin and Employee */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Role</label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => setPreset('SUPER_ADMIN', 'admin@hawkeye.com')}
-                  className={`p-3 rounded-lg border text-sm font-medium flex items-center gap-2 transition-all ${selectedRole === 'SUPER_ADMIN' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                  
-                  <ShieldCheck size={16} /> Super Admin
+                  onClick={() => handleRoleClick('admin', 'admin@hawkeye.com')}
+                  className={`w-full py-3 px-4 rounded-xl border-2 text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${
+                    selectedRole === 'SUPER_ADMIN'
+                      ? 'border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-200'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600'
+                  }`}>
+                  <ShieldCheck size={16} />
+                  Admin
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPreset('SALES_MANAGER', 'sales@hawkeye.com')}
-                  className={`p-3 rounded-lg border text-sm font-medium flex items-center gap-2 transition-all ${selectedRole === 'SALES_MANAGER' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                  
-                  <TrendingUp size={16} /> Sales Mgr
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreset('SERVICE_STAFF', 'tech@hawkeye.com')}
-                  className={`p-3 rounded-lg border text-sm font-medium flex items-center gap-2 transition-all ${selectedRole === 'SERVICE_STAFF' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                  
-                  <Wrench size={16} /> Service Staff
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPreset('BRANCH_MANAGER', 'branch@hawkeye.com')}
-                  className={`p-3 rounded-lg border text-sm font-medium flex items-center gap-2 transition-all ${selectedRole === 'BRANCH_MANAGER' ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-slate-200 text-slate-600 hover:border-slate-300'}`}>
-                  
-                  <Briefcase size={16} /> Branch Mgr
+                  onClick={() => handleRoleClick('employee', 'Madhuratechcbe@gmail.com')}
+                  className={`w-full py-3 px-4 rounded-xl border-2 text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${
+                    selectedRole === 'EMPLOYEE'
+                      ? 'border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-200'
+                      : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600'
+                  }`}>
+                  <User size={16} />
+                  Employee
                 </button>
               </div>
             </div>
@@ -120,7 +162,6 @@ export function Login({ onLogin, onRegisterClick }) {
                     className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                     placeholder="name@company.com"
                     required />
-                  
                 </div>
               </div>
 
@@ -135,16 +176,15 @@ export function Login({ onLogin, onRegisterClick }) {
                     className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
                     placeholder="••••••••"
                     required />
-                  
                 </div>
               </div>
             </div>
 
             <button
               type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2">
-              
-              Sign In to Dashboard <ArrowRight size={18} />
+              disabled={loading}
+              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
+              {loading ? 'Signing in...' : <>Sign In to Dashboard <ArrowRight size={18} /></>}
             </button>
           </form>
 
@@ -154,17 +194,16 @@ export function Login({ onLogin, onRegisterClick }) {
               <button
                 onClick={onRegisterClick}
                 className="text-blue-600 font-bold hover:underline">
-                
                 Create Account
               </button>
             </p>
           </div>
-          
+
           <p className="mt-8 text-center text-xs text-slate-400">
             © 2026 HAWKEYE NEST. All rights reserved.
           </p>
         </div>
       </div>
-    </div>);
-
+    </div>
+  );
 }

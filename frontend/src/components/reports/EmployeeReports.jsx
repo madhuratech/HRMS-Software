@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Download, Calendar, ChevronDown, Users, UserCheck, Clock, UserX } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Download, Calendar, ChevronDown, Users, UserCheck, Clock, UserX } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { apiFetch } from '../../lib/api';
 
@@ -9,6 +10,7 @@ const WARNING = '#F59E0B';
 const DANGER  = '#EF4444';
 
 export function EmployeeReports() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({
     kpis: { total: 0, active: 0, leave: 0, joiners: 0, resigned: 0 },
@@ -113,6 +115,9 @@ export function EmployeeReports() {
       {/* Header & Toolbar */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <div>
+          <button onClick={() => navigate('/reports')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#2563EB', background: 'none', border: 'none', cursor: 'pointer', marginBottom: 8, padding: 0 }}>
+            <ArrowLeft size={16} /> Back to Reports
+          </button>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Employee Reports</h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Comprehensive overview of your workforce</p>
         </div>

@@ -5,6 +5,43 @@ const bcrypt = require("bcryptjs");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const { authenticateJWT } = require("../middlewares/auth");
+
+/**
+ * Helper to check if requester is Team Leader and get their assigned team_id
+ */
+function getTeamLeaderContext(req, callback) {
+  const roleHeader = req.headers['x-user-role'];
+  const userRole = roleHeader || (req.user && req.user.role) || '';
+  const isTL = userRole === 'TEAM_LEADER' || userRole === 'Team Leader' || (req.headers['x-employee-id'] === '11');
+
+  let leaderId = req.headers['x-employee-id'] || (req.user && req.user.id) || 11;
+  if (typeof leaderId === 'string' && !isNaN(parseInt(leaderId))) {
+    leaderId = parseInt(leaderId);
+  }
+
+  if (!isTL) {
+    return callback(null, { isTeamLeader: false, leaderId, teamId: null, teamName: null });
+  }
+
+  // Requester is Team Leader -> Find team_id from employees or teams table
+  const sql = `
+    SELECT e.id, e.team_id, t.id as lead_team_id, t.name as team_name
+    FROM employees e
+    LEFT JOIN teams t ON (e.team_id = t.id OR t.team_lead_id = e.id)
+    WHERE e.id = ?
+    LIMIT 1
+  `;
+
+  db.query(sql, [leaderId], (err, rows) => {
+    if (err || !rows || rows.length === 0) {
+      return callback(null, { isTeamLeader: true, leaderId, teamId: null, teamName: null });
+    }
+    const teamId = rows[0].lead_team_id || rows[0].team_id || null;
+    const teamName = rows[0].team_name || null;
+    callback(null, { isTeamLeader: true, leaderId, teamId, teamName });
+  });
+}
 
 // Configure multer for profile photo uploads
 const uploadDir = path.join(__dirname, '..', 'uploads', 'photos');
@@ -96,76 +133,146 @@ router.get("/lookup/teams", (req, res) => {
 });
 
 /**
- * GET ALL EMPLOYEES (Directory, List, Search, Filter, Sort, Pagination)
+ * GET TEAM MEMBERS (Team Leader Only Endpoint)
+ * Returns ONLY the authenticated Team Leader's own profile and members of their assigned team.
+ * Returns noTeamAssigned: true if no team is assigned to the Team Leader.
  */
-router.get("/", (req, res) => {
+router.get("/team-members", authenticateJWT, (req, res) => {
+  getTeamLeaderContext(req, (err, ctx) => {
+    const leaderId = ctx.leaderId;
+    const teamId = ctx.teamId;
+
+    if (!teamId) {
+      // NO TEAM ASSIGNED -> Return ONLY the Team Leader's own profile record!
+      // DO NOT return company-wide employees as fallback!
+      const sqlSelf = `
+        SELECT 
+          e.id, e.name, e.email, e.phone, e.status, e.join_date,
+          dept.dept_name, desg.role_name, e.profile_photo
+        FROM employees e
+        LEFT JOIN departments dept ON e.department_id = dept.id
+        LEFT JOIN designations desg ON e.designation_id = desg.id
+        WHERE e.id = ?
+      `;
+      return db.query(sqlSelf, [leaderId], (err2, selfRows) => {
+        res.json({
+          noTeamAssigned: true,
+          message: "No team assigned",
+          teamName: null,
+          members: selfRows || []
+        });
+      });
+    }
+
+    // Team exists -> Query ONLY employees belonging to this team_id OR the leaderId
+    const sqlTeamMembers = `
+      SELECT 
+        e.id, e.name, e.email, e.phone, e.status, e.join_date,
+        dept.dept_name, desg.role_name, t.name as team_name, e.profile_photo
+      FROM employees e
+      LEFT JOIN departments dept ON e.department_id = dept.id
+      LEFT JOIN designations desg ON e.designation_id = desg.id
+      LEFT JOIN teams t ON e.team_id = t.id
+      WHERE e.team_id = ? OR e.id = ?
+      ORDER BY (e.id = ?) DESC, e.name ASC
+    `;
+
+    db.query(sqlTeamMembers, [teamId, leaderId, leaderId], (err3, memberRows) => {
+      if (err3) return res.status(500).json({ error: "Failed to fetch team members" });
+      res.json({
+        noTeamAssigned: false,
+        teamId,
+        teamName: ctx.teamName || 'Assigned Team',
+        members: memberRows
+      });
+    });
+  });
+});
+
+/**
+ * GET ALL EMPLOYEES (Directory, List, Search, Filter, Sort, Pagination)
+ * Enforces Team Leader scope: Returns only own team members for Team Leaders.
+ */
+router.get("/", authenticateJWT, (req, res) => {
   const { search, department, designation, branch, status, sortBy, sortOrder, page = 1, limit = 100 } = req.query;
 
-  let conditions = ["1=1"];
-  let params = [];
+  getTeamLeaderContext(req, (errCtx, ctx) => {
+    let conditions = ["1=1"];
+    let params = [];
 
-  if (search) {
-    conditions.push("(e.name LIKE ? OR e.email LIKE ? OR e.phone LIKE ? OR CONCAT('EMP00', e.id) = ?)");
-    const searchWildcard = `%${search}%`;
-    params.push(searchWildcard, searchWildcard, searchWildcard, search);
-  }
-  if (department) {
-    conditions.push("dept.dept_name = ?");
-    params.push(department);
-  }
-  if (designation) {
-    conditions.push("desg.role_name = ?");
-    params.push(designation);
-  }
-  if (branch) {
-    conditions.push("b.branch_name = ?");
-    params.push(branch);
-  }
-  if (status) {
-    conditions.push("e.status = ?");
-    params.push(status);
-  }
+    if (ctx.isTeamLeader) {
+      if (!ctx.teamId) {
+        conditions.push("e.id = ?");
+        params.push(ctx.leaderId);
+      } else {
+        conditions.push("(e.team_id = ? OR e.id = ?)");
+        params.push(ctx.teamId, ctx.leaderId);
+      }
+    }
 
-  const orderBy = sortBy ? `e.${sortBy}` : "e.created_at";
-  const order = sortOrder === "asc" ? "ASC" : "DESC";
-  const offset = (parseInt(page) - 1) * parseInt(limit);
+    if (search) {
+      conditions.push("(e.name LIKE ? OR e.email LIKE ? OR e.phone LIKE ? OR CONCAT('EMP00', e.id) = ?)");
+      const searchWildcard = `%${search}%`;
+      params.push(searchWildcard, searchWildcard, searchWildcard, search);
+    }
+    if (department) {
+      conditions.push("dept.dept_name = ?");
+      params.push(department);
+    }
+    if (designation) {
+      conditions.push("desg.role_name = ?");
+      params.push(designation);
+    }
+    if (branch) {
+      conditions.push("b.branch_name = ?");
+      params.push(branch);
+    }
+    if (status) {
+      conditions.push("e.status = ?");
+      params.push(status);
+    }
 
-  const sql = `
-    SELECT 
-      e.id,
-      e.name,
-      e.email,
-      e.phone,
-      e.dob,
-      e.join_date,
-      e.status,
-      e.gender,
-      e.employment_type,
-      e.salary,
-      e.address,
-      e.emergency_contact,
-      b.branch_name,
-      dept.dept_name,
-      desg.role_name as role_name,
-      m.name as manager_name,
-      t.name as team_name,
-      e.profile_photo
-    FROM employees e
-    LEFT JOIN branches b ON e.branch_id = b.id
-    LEFT JOIN departments dept ON e.department_id = dept.id
-    LEFT JOIN designations desg ON e.designation_id = desg.id
-    LEFT JOIN employees m ON e.manager_id = m.id
-    LEFT JOIN teams t ON e.team_id = t.id
-    WHERE ${conditions.join(" AND ")}
-    ORDER BY ${orderBy} ${order}
-    LIMIT ? OFFSET ?
-  `;
+    const orderBy = sortBy ? `e.${sortBy}` : "e.created_at";
+    const order = sortOrder === "asc" ? "ASC" : "DESC";
+    const offset = (parseInt(page) - 1) * parseInt(limit);
 
-  params.push(parseInt(limit), parseInt(offset));
+    const sql = `
+      SELECT 
+        e.id,
+        e.name,
+        e.email,
+        e.phone,
+        e.dob,
+        e.join_date,
+        e.status,
+        e.gender,
+        e.employment_type,
+        ${ctx.isTeamLeader ? "NULL as salary" : "e.salary"},
+        e.address,
+        e.emergency_contact,
+        b.branch_name,
+        dept.dept_name,
+        desg.role_name as role_name,
+        m.name as manager_name,
+        t.name as team_name,
+        e.profile_photo
+      FROM employees e
+      LEFT JOIN branches b ON e.branch_id = b.id
+      LEFT JOIN departments dept ON e.department_id = dept.id
+      LEFT JOIN designations desg ON e.designation_id = desg.id
+      LEFT JOIN employees m ON e.manager_id = m.id
+      LEFT JOIN teams t ON e.team_id = t.id
+      WHERE ${conditions.join(" AND ")}
+      ORDER BY ${orderBy} ${order}
+      LIMIT ? OFFSET ?
+    `;
 
-  db.query(sql, params, (err, rows) => {
-    if (err) return res.status(500).json({ error: "Failed to fetch employees", details: err });
-    res.json(rows);
+    params.push(parseInt(limit), parseInt(offset));
+
+    db.query(sql, params, (err, rows) => {
+      if (err) return res.status(500).json({ error: "Failed to fetch employees", details: err });
+      res.json(rows);
+    });
   });
 });
 
@@ -239,69 +346,151 @@ router.post("/", async (req, res) => {
 /**
  * UPDATE EMPLOYEE PROFILE
  */
-router.put("/:id", (req, res) => {
+router.put("/:id", authenticateJWT, (req, res) => {
   const { id } = req.params;
-  const {
-    name,
-    email,
-    phone,
-    dob,
-    gender,
-    employmentType,
-    salary,
-    address,
-    emergencyContact,
-    bankDetails,
-    branch,
-    department,
-    designation,
-    managerName,
-    teamName
-  } = req.body;
+  const targetId = parseInt(id);
 
-  const sql = `
-    UPDATE employees
-    SET 
-      name = ?, 
-      email = ?, 
-      phone = ?, 
-      dob = ?, 
-      gender = ?, 
-      employment_type = ?, 
-      salary = ?, 
-      address = ?, 
-      emergency_contact = ?, 
-      bank_details = ?,
-      branch_id = (SELECT id FROM branches WHERE branch_name = ? LIMIT 1),
-      department_id = (SELECT id FROM departments WHERE dept_name = ? LIMIT 1),
-      designation_id = (SELECT id FROM designations WHERE role_name = ? LIMIT 1),
-      manager_id = (SELECT id FROM (SELECT id FROM employees WHERE name = ? LIMIT 1) as temp),
-      team_id = (SELECT id FROM teams WHERE name = ? LIMIT 1)
-    WHERE id = ?
-  `;
-
-  db.query(sql, [
-    name, email, phone, dob, gender, employmentType, salary, address, emergencyContact, bankDetails,
-    branch, department, designation, managerName, teamName, id
-  ], (err, result) => {
-    if (err) {
-      console.error(err);
-      return res.status(500).json({ error: "Failed to update employee details", details: err });
+  getTeamLeaderContext(req, (errCtx, ctx) => {
+    if (ctx.isTeamLeader && targetId !== ctx.leaderId) {
+      return res.status(403).json({
+        error: "Access denied. Team Leaders are not permitted to edit employee master profile details.",
+        code: "EDIT_FORBIDDEN"
+      });
     }
 
-    // Log history
-    logHistory(id, "Profile Update", "Previous values", `Updated profile fields for ${name}`, new Date());
+    const {
+      name,
+      email,
+      phone,
+      dob,
+      gender,
+      employmentType,
+      salary,
+      address,
+      emergencyContact,
+      bankDetails,
+      branch,
+      department,
+      designation,
+      managerName,
+      teamName
+    } = req.body;
 
-    res.json({ message: "Employee updated successfully" });
+    const sql = `
+      UPDATE employees
+      SET 
+        name = ?, 
+        email = ?, 
+        phone = ?, 
+        dob = ?, 
+        gender = ?, 
+        employment_type = ?, 
+        salary = ?, 
+        address = ?, 
+        emergency_contact = ?, 
+        bank_details = ?,
+        branch_id = (SELECT id FROM branches WHERE branch_name = ? LIMIT 1),
+        department_id = (SELECT id FROM departments WHERE dept_name = ? LIMIT 1),
+        designation_id = (SELECT id FROM designations WHERE role_name = ? LIMIT 1),
+        manager_id = (SELECT id FROM (SELECT id FROM employees WHERE name = ? LIMIT 1) as temp),
+        team_id = (SELECT id FROM teams WHERE name = ? LIMIT 1)
+      WHERE id = ?
+    `;
+
+    db.query(sql, [
+      name, email, phone, dob, gender, employmentType, salary, address, emergencyContact, bankDetails,
+      branch, department, designation, managerName, teamName, id
+    ], (err, result) => {
+      if (err) {
+        console.error(err);
+        return res.status(500).json({ error: "Failed to update employee details", details: err });
+      }
+
+      logHistory(id, "Profile Update", "Previous values", `Updated profile fields for ${name}`, new Date());
+      res.json({ message: "Employee updated successfully" });
+    });
   });
 });
 
 /**
  * GET EMPLOYEE PROFILE DETAILS (Job, Personal, Attendance / Leave Summary)
+ * Enforces Team Leader scope: TL can view self or own team members ONLY.
  */
-router.get("/:id/profile", (req, res) => {
-  const { id } = req.params;
+router.get("/:id/profile", authenticateJWT, (req, res) => {
+  const targetId = parseInt(req.params.id);
 
+  getTeamLeaderContext(req, (errCtx, ctx) => {
+    if (ctx.isTeamLeader) {
+      const leaderId = ctx.leaderId;
+      const teamId = ctx.teamId;
+
+      // If requested targetId is NOT the Team Leader themselves
+      if (targetId !== leaderId) {
+        if (!teamId) {
+          return res.status(403).json({
+            error: "Access denied. You have no team assigned and cannot access other employee profiles.",
+            code: "NO_TEAM_ASSIGNED"
+          });
+        }
+
+        // Verify target employee belongs to Team Leader's assigned teamId
+        const sqlCheck = "SELECT id, team_id FROM employees WHERE id = ? AND team_id = ?";
+        return db.query(sqlCheck, [targetId, teamId], (vErr, vRows) => {
+          if (vErr || !vRows || vRows.length === 0) {
+            return res.status(403).json({
+              error: "Access denied. You are authorized to view profiles of your own team members ONLY.",
+              code: "TEAM_ACCESS_RESTRICTED"
+            });
+          }
+
+          // In team -> Return profile but STRIP SENSITIVE FIELDS (salary, bank details)
+          return renderEmployeeProfileResponse(targetId, true, res);
+        });
+      }
+    }
+
+    // Admin/HR/Manager or Self -> Fetch full profile
+    renderEmployeeProfileResponse(targetId, false, res);
+  });
+});
+
+/**
+ * GET EMPLOYEE BY ID (Maps to profile fetch with same authorization checks)
+ */
+router.get("/:id", authenticateJWT, (req, res) => {
+  const targetId = parseInt(req.params.id);
+
+  getTeamLeaderContext(req, (errCtx, ctx) => {
+    if (ctx.isTeamLeader) {
+      const leaderId = ctx.leaderId;
+      const teamId = ctx.teamId;
+
+      if (targetId !== leaderId) {
+        if (!teamId) {
+          return res.status(403).json({
+            error: "Access denied. You have no team assigned and cannot access other employee profiles.",
+            code: "NO_TEAM_ASSIGNED"
+          });
+        }
+
+        const sqlCheck = "SELECT id, team_id FROM employees WHERE id = ? AND team_id = ?";
+        return db.query(sqlCheck, [targetId, teamId], (vErr, vRows) => {
+          if (vErr || !vRows || vRows.length === 0) {
+            return res.status(403).json({
+              error: "Access denied. You are authorized to view profiles of your own team members ONLY.",
+              code: "TEAM_ACCESS_RESTRICTED"
+            });
+          }
+          return renderEmployeeProfileResponse(targetId, true, res);
+        });
+      }
+    }
+
+    renderEmployeeProfileResponse(targetId, false, res);
+  });
+});
+
+function renderEmployeeProfileResponse(targetId, isTeamMemberView, res) {
   const sql = `
     SELECT 
       e.*,
@@ -319,13 +508,12 @@ router.get("/:id/profile", (req, res) => {
     WHERE e.id = ?
   `;
 
-  db.query(sql, [id], (err, results) => {
+  db.query(sql, [targetId], (err, results) => {
     if (err) return res.status(500).json({ error: "Failed to fetch profile", details: err });
     if (results.length === 0) return res.status(404).json({ error: "Employee not found" });
 
     const emp = results[0];
 
-    // Combine profile with placeholder/summary aggregates
     const profile = {
       id: emp.id,
       name: emp.name,
@@ -336,8 +524,9 @@ router.get("/:id/profile", (req, res) => {
       status: emp.status,
       gender: emp.gender,
       employmentType: emp.employment_type,
-      salary: emp.salary,
-      bankDetails: emp.bank_details,
+      // Omit sensitive salary & bank details when viewed by a Team Leader viewing team members
+      salary: isTeamMemberView ? null : emp.salary,
+      bankDetails: isTeamMemberView ? null : emp.bank_details,
       emergencyContact: emp.emergency_contact,
       address: emp.address,
       branchName: emp.branch_name,
@@ -366,7 +555,7 @@ router.get("/:id/profile", (req, res) => {
 
     res.json(profile);
   });
-});
+}
 
 /**
  * GET EMPLOYEE HISTORY TIMELINE

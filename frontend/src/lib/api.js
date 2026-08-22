@@ -14,9 +14,20 @@ export const getAuthToken = () => {
 };
 
 export const apiFetch = async (path, options = {}) => {
+  let empHeaderId = '';
+  const auth = localStorage.getItem('hrms_auth');
+  if (auth) {
+    try {
+      const parsed = JSON.parse(auth);
+      const userObj = parsed.user || parsed;
+      empHeaderId = userObj.id || userObj.emp_id || userObj.employee_id || '';
+    } catch (e) {}
+  }
+
   const headers = {
     'Content-Type': 'application/json',
     'Authorization': `Bearer ${getAuthToken()}`,
+    ...(empHeaderId ? { 'x-employee-id': String(empHeaderId) } : {}),
     ...(options.headers || {})
   };
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });

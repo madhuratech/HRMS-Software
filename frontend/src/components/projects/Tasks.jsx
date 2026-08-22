@@ -203,6 +203,16 @@ export default function Tasks() {
     }
   };
 
+  const authRaw = localStorage.getItem('hrms_auth');
+  let userRole = 'SUPER_ADMIN';
+  if (authRaw) {
+    try {
+      const parsed = JSON.parse(authRaw);
+      if (parsed.role) userRole = parsed.role;
+    } catch(e) {}
+  }
+  const isEmployeeRole = userRole === 'EMPLOYEE';
+
   const totalPages = Math.ceil(total / limit) || 1;
   const startIndex = total === 0 ? 0 : (page - 1) * limit + 1;
   const endIndex = Math.min(page * limit, total);
@@ -223,7 +233,9 @@ export default function Tasks() {
             <option value="">All Status</option>
             {TASK_STATUSES.map(s => <option key={s} value={s}>{s}</option>)}
           </Sel>
-          <button onClick={openAdd} style={{ height:38, padding:'0 16px', background:'#2563EB', border:'none', borderRadius:8, fontSize:13, fontWeight:600, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Plus size={14} /> Add Task</button>
+          {!isEmployeeRole && (
+            <button onClick={openAdd} style={{ height:38, padding:'0 16px', background:'#2563EB', border:'none', borderRadius:8, fontSize:13, fontWeight:600, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Plus size={14} /> Add Task</button>
+          )}
         </div>
       </div>
 
@@ -280,10 +292,14 @@ export default function Tasks() {
                       </select>
                     </td>
                     <td style={{ padding:'0 16px' }}>
-                      <div style={{ display:'flex', gap:4 }}>
-                        <button style={{ width:26,height:26,borderRadius:5,border:'none',background:'transparent',color:'#2563EB',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }} onMouseEnter={e=>e.currentTarget.style.background='#EFF6FF'} onMouseLeave={e=>e.currentTarget.style.background='transparent'} onClick={() => openEdit(t)}><Edit2 size={12}/></button>
-                        <button style={{ width:26,height:26,borderRadius:5,border:'none',background:'transparent',color:'#94A3B8',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }} onMouseEnter={e=>e.currentTarget.style.background='#FEF2F2'} onMouseLeave={e=>e.currentTarget.style.background='transparent'} onClick={() => handleDelete(t)}><Trash2 size={12}/></button>
-                      </div>
+                      {!isEmployeeRole ? (
+                        <div style={{ display:'flex', gap:4 }}>
+                          <button style={{ width:26,height:26,borderRadius:5,border:'none',background:'transparent',color:'#2563EB',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }} onMouseEnter={e=>e.currentTarget.style.background='#EFF6FF'} onMouseLeave={e=>e.currentTarget.style.background='transparent'} onClick={() => openEdit(t)}><Edit2 size={12}/></button>
+                          <button style={{ width:26,height:26,borderRadius:5,border:'none',background:'transparent',color:'#94A3B8',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }} onMouseEnter={e=>e.currentTarget.style.background='#FEF2F2'} onMouseLeave={e=>e.currentTarget.style.background='transparent'} onClick={() => handleDelete(t)}><Trash2 size={12}/></button>
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>Status Only</span>
+                      )}
                     </td>
                   </tr>
                 );

@@ -7,6 +7,40 @@ exports.getTypes = (req, res) => {
   });
 };
 
+exports.createType = (req, res) => {
+  const { name, code, desc, maxDays, carryForward, status } = req.body;
+  const sql = `
+    INSERT INTO leave_types (name, code, description, max_days, carry_forward, status)
+    VALUES (?, ?, ?, ?, ?, ?)
+  `;
+  db.query(sql, [name, code, desc || '', maxDays || 12, carryForward ? 1 : 0, status || 'Active'], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Leave type created successfully", id: result.insertId });
+  });
+};
+
+exports.updateType = (req, res) => {
+  const { id } = req.params;
+  const { name, code, desc, maxDays, carryForward, status } = req.body;
+  const sql = `
+    UPDATE leave_types
+    SET name = ?, code = ?, description = ?, max_days = ?, carry_forward = ?, status = ?
+    WHERE id = ?
+  `;
+  db.query(sql, [name, code, desc || '', maxDays || 12, carryForward ? 1 : 0, status || 'Active', id], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Leave type updated successfully" });
+  });
+};
+
+exports.deleteType = (req, res) => {
+  const { id } = req.params;
+  db.query("DELETE FROM leave_types WHERE id = ?", [id], (err, result) => {
+    if (err) return res.status(500).json(err);
+    res.json({ message: "Leave type deleted successfully" });
+  });
+};
+
 exports.getBalances = (req, res) => {
   const { employee_id } = req.params;
   const sql = `

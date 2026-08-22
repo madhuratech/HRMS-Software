@@ -352,9 +352,10 @@ export default function GPSAttendance() {
               <thead>
                 <tr>
                   <th>Employee</th>
-                  <th>Punch Time</th>
+                  <th>Check IN</th>
+                  <th>Check OUT</th>
+                  <th>Working Hours</th>
                   <th>Location / Coordinates</th>
-                  <th>Distance to Office</th>
                   <th>Geofence Status</th>
                   <th>Verification</th>
                 </tr>
@@ -364,22 +365,25 @@ export default function GPSAttendance() {
                   <tr key={i}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <EmployeeAvatar name={r.name} photoUrl={r.profile_photo} size={32} />
+                        <EmployeeAvatar name={r.name} photoUrl={r.avatar} size={32} />
                         <div>
                           <div style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>{r.name}</div>
                           <div style={{ fontSize: '11px', color: '#64748B' }}>{r.dept}</div>
                         </div>
                       </div>
                     </td>
-                    <td style={{ fontSize: '12px', fontWeight: 600, color: '#334155' }}>
-                      {r.checkIn || r.checkOut || '—'}
+                    <td style={{ fontSize: '12px', fontWeight: 700, color: '#10B981' }}>
+                      {r.checkIn || '—'}
+                    </td>
+                    <td style={{ fontSize: '12px', fontWeight: 700, color: r.checkOut && r.checkOut !== '--' ? '#2563EB' : '#94A3B8' }}>
+                      {r.checkOut || '--'}
+                    </td>
+                    <td style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>
+                      {r.workingHours || '--'}
                     </td>
                     <td style={{ fontSize: '12px', color: '#475569' }}>
                       <div style={{ fontWeight: 600 }}>{r.location || 'HQ Location'}</div>
                       <div style={{ fontSize: '11px', color: '#94A3B8' }}>{r.lat?.toFixed(4)}, {r.lng?.toFixed(4)}</div>
-                    </td>
-                    <td style={{ fontSize: '12px', fontWeight: 600, color: '#334155' }}>
-                      {r.distance ? `${r.distance} meters` : '0 meters'}
                     </td>
                     <td>
                       <span className={`hrms-badge ${r.status === 'On-Site' ? 'hrms-badge-active' : 'hrms-badge-warning'}`}>

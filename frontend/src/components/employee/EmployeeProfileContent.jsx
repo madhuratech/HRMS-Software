@@ -14,11 +14,29 @@ const tabs = [
 export default function EmployeeProfileContent() {
   const navigate = useNavigate();
   const { addToast } = useToast();
+
+  const authRaw = localStorage.getItem('hrms_auth');
+  let userRole = 'SUPER_ADMIN';
+  let authUserId = '11';
+  if (authRaw) {
+    try {
+      const parsed = JSON.parse(authRaw);
+      const userObj = parsed.user || parsed;
+      if (parsed.role) userRole = parsed.role;
+      if (userObj && userObj.id) authUserId = String(userObj.id);
+    } catch(e) {}
+  }
+  const isEmployeeRole = userRole === 'EMPLOYEE';
+  const isTeamLeaderRole = userRole === 'TEAM_LEADER' || userRole === 'Team Leader';
+
   const [activeTab, setActiveTab] = useState('Overview');
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState([]);
-  
+  const [profileError, setProfileError] = useState(null);
+  const [noTeamAssigned, setNoTeamAssigned] = useState(false);
+  const [teamName, setTeamName] = useState(null);
+
   // Lookup data for dropdowns
   const [designations, setDesignations] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -47,7 +65,10 @@ export default function EmployeeProfileContent() {
     teamName: ''
   });
 
-  const [currentEmpId, setCurrentEmpId] = useState(() => localStorage.getItem('selectedEmployeeId') || '1');
+  const [currentEmpId, setCurrentEmpId] = useState(() => {
+    if (isTeamLeaderRole || isEmployeeRole) return authUserId;
+    return localStorage.getItem('selectedEmployeeId') || '1';
+  });
   const [allEmployees, setAllEmployees] = useState([]);
   const photoInputRef = useRef(null);
 
@@ -92,24 +113,49 @@ export default function EmployeeProfileContent() {
 
   const loadProfile = () => {
     setLoading(true);
+    setProfileError(null);
     apiFetch(`/employees/${currentEmpId}/profile`)
       .then(data => {
-        setProfile(data);
+        if (data && data.error) {
+          setProfileError(data.error);
+          setProfile(null);
+        } else {
+          setProfile(data);
+        }
         setLoading(false);
       })
       .catch(err => {
         console.error(err);
+        setProfileError("Access Denied: You are only authorized to view profiles of your own team members.");
+        setProfile(null);
         setLoading(false);
       });
   };
 
   useEffect(() => {
-    apiFetch('/employees')
-      .then(data => {
-        if (Array.isArray(data)) setAllEmployees(data);
-      })
-      .catch(err => console.error("Error fetching all employees:", err));
-  }, []);
+    if (isTeamLeaderRole) {
+      apiFetch('/employees/team-members')
+        .then(res => {
+          if (res && res.noTeamAssigned) {
+            setNoTeamAssigned(true);
+            setAllEmployees(res.members || []);
+          } else if (res && Array.isArray(res.members)) {
+            setNoTeamAssigned(false);
+            setTeamName(res.teamName);
+            setAllEmployees(res.members);
+          } else if (Array.isArray(res)) {
+            setAllEmployees(res);
+          }
+        })
+        .catch(err => console.error("Error fetching team members:", err));
+    } else {
+      apiFetch('/employees')
+        .then(data => {
+          if (Array.isArray(data)) setAllEmployees(data);
+        })
+        .catch(err => console.error("Error fetching all employees:", err));
+    }
+  }, [isTeamLeaderRole]);
 
   // Fetch profile on mount and when selected employee changes
   useEffect(() => {
@@ -229,42 +275,93 @@ export default function EmployeeProfileContent() {
     });
   };
 
+  const isViewingTeamMember = isTeamLeaderRole && String(currentEmpId) !== String(authUserId);
+  const hideEditButton = isEmployeeRole || isViewingTeamMember;
+  const filteredTabs = (isEmployeeRole || isViewingTeamMember)
+    ? tabs.filter(t => t !== 'Salary')
+    : tabs;
+
+  if (profileError) {
+    return (
+      <div className="hrms-content">
+        <div className="p-8 bg-rose-50 border border-rose-200 rounded-2xl text-center space-y-4 max-w-xl mx-auto my-12 shadow-sm">
+          <div className="w-12 h-12 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto">
+            <User size={28} />
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-slate-900">Profile Access Restricted</h3>
+            <p className="text-xs text-rose-700 font-semibold mt-1">{profileError}</p>
+          </div>
+          <button
+            onClick={() => {
+              localStorage.setItem('selectedEmployeeId', authUserId);
+              setCurrentEmpId(authUserId);
+            }}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-all"
+          >
+            Return to My Profile
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (loading || !profile) {
+    return (
+      <div className="hrms-content flex items-center justify-center min-h-[300px]">
+        <div className="text-center space-y-2">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto" />
+          <p className="text-xs text-slate-500 font-semibold">Loading profile details...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="hrms-content">
       {/* Profile Header */}
       <div className="hrms-card hrms-mb-6" style={{ position: 'relative' }}>
         <div style={{ position: 'absolute', top: '24px', right: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: '8px',
-            background: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '8px',
-            padding: '6px 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-          }}>
-            <User size={16} color="#475569" />
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>Select Employee:</span>
-            <select
-              value={currentEmpId}
-              onChange={(e) => handleEmployeeSelect(e.target.value)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                fontSize: '13px',
-                fontWeight: 700,
-                color: '#0F172A',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              {allEmployees.map(emp => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.name} ({emp.employeeCode || `EMP${String(emp.id).padStart(3, '0')}`}) {emp.status === 'Terminated' ? '• Terminated' : ''}
-                </option>
-              ))}
-            </select>
-          </div>
+          {!isEmployeeRole && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: '8px',
+              background: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '8px',
+              padding: '6px 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+            }}>
+              <User size={16} color="#475569" />
+              <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>
+                {isTeamLeaderRole ? 'My Team Profiles:' : 'Select Employee:'}
+              </span>
+              <select
+                value={currentEmpId}
+                onChange={(e) => handleEmployeeSelect(e.target.value)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  color: '#0F172A',
+                  outline: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                {noTeamAssigned && (
+                  <option value={authUserId}>My Profile (No Team Assigned)</option>
+                )}
+                {!noTeamAssigned && allEmployees.map(emp => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name} ({`EMP${String(emp.id).padStart(4, '0')}`}){String(emp.id) === String(authUserId) ? ' (Me)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
-          <button className="hrms-secondary-btn" onClick={handleEditClick}>
-            <Edit2 size={16} /> Edit Profile
-          </button>
+          {!hideEditButton && (
+            <button className="hrms-secondary-btn" onClick={handleEditClick}>
+              <Edit2 size={16} /> Edit Profile
+            </button>
+          )}
         </div>
 
         <div className="hrms-flex-start" style={{ gap: '32px', marginBottom: '32px' }}>
@@ -353,7 +450,7 @@ export default function EmployeeProfileContent() {
 
         {/* Tabs */}
         <div className="hrms-tabs" style={{ marginBottom: 0, borderBottom: 'none' }}>
-          {tabs.map(tab => (
+          {filteredTabs.map(tab => (
             <div 
               key={tab} 
               className={`hrms-tab ${activeTab === tab ? 'active' : ''}`}

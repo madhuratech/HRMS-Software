@@ -226,17 +226,21 @@ class GPSAttendanceService {
         g.employee_id,
         e.name,
         e.profile_photo as avatar,
+        d.dept_name as dept,
         COALESCE(g.punch_out_location, g.punch_in_location) as location,
         COALESCE(g.latitude_out, g.latitude_in) as lat,
         COALESCE(g.longitude_out, g.longitude_in) as lng,
         g.check_in_time,
-        g.check_out_time
+        g.check_out_time,
+        g.working_hours,
+        g.status as attendance_status
       FROM GPSAttendance g
       JOIN employees e ON e.id = g.employee_id
-      WHERE g.punch_date = ?
+      LEFT JOIN departments d ON d.id = e.department_id
+      WHERE g.punch_date = ? OR DATE(g.check_in_time) = ?
       ORDER BY g.created_at DESC
     `;
-    const rows = await query(sqlFeed, [date]);
+    const rows = await query(sqlFeed, [date, date]);
 
     const records = rows.map(r => {
       const fmt = t => t ? new Date(t).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--';
@@ -245,10 +249,13 @@ class GPSAttendanceService {
       return {
         employee_id: r.employee_id,
         name: r.name,
+        dept: r.dept || 'Engineering',
         avatar: r.avatar ? `/${r.avatar}` : null,
-        location: r.location,
+        location: r.location || 'Main Headquarters - Coimbatore',
         checkIn: fmt(r.check_in_time),
         checkOut: fmt(r.check_out_time),
+        workingHours: r.working_hours || (r.check_in_time && !r.check_out_time ? 'Punched In' : '--'),
+        attendanceStatus: r.attendance_status || (r.check_out_time ? 'Completed' : 'Present'),
         coordinates: lat && lng ? `${lat}° N, ${lng}° E` : 'N/A',
         lat: r.lat ? parseFloat(r.lat) : null,
         lng: r.lng ? parseFloat(r.lng) : null,

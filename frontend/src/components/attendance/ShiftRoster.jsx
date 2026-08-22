@@ -1,76 +1,266 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../../lib/api';
-import { ChevronLeft, ChevronRight, Filter, ChevronDown, Plus, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
+
+const DEFAULT_EMPLOYEES = [
+  { id: 1, employee: 'John Doe', empId: 'EMP001', department: 'Engineering', location: 'Chennai', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100' },
+  { id: 2, employee: 'Sarah Jenkins', empId: 'EMP002', department: 'Human Resources', location: 'Bangalore', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100' },
+  { id: 3, employee: 'Michael Chen', empId: 'EMP003', department: 'Engineering', location: 'Chennai', avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100' },
+  { id: 4, employee: 'Alex Rivera', empId: 'EMP004', department: 'Sales & Marketing', location: 'Mumbai', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100' },
+  { id: 5, employee: 'Emily Wong', empId: 'EMP005', department: 'Finance', location: 'Hyderabad', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100' },
+  { id: 6, employee: 'David Kim', empId: 'EMP006', department: 'Operations', location: 'Chennai', avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100' },
+  { id: 7, employee: 'Lisa Ray', empId: 'EMP007', department: 'Human Resources', location: 'Bangalore', avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100' },
+  { id: 8, employee: 'Robert Taylor', empId: 'EMP008', department: 'Engineering', location: 'Mumbai', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100' }
+];
 
 export default function ShiftRoster() {
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [formData, setFormData] = useState({
-    shiftName: '',
-    shiftCode: '',
-    startTime: '',
-    endTime: '',
-    breakTime: '',
-    status: 'Active',
-  });
-
-  const getShiftStyles = (type) => {
-    switch (type) {
-      case 'general': return { background: '#eff6ff', color: '#2563eb' };
-      case 'morning': return { background: '#ecfdf5', color: '#059669' };
-      case 'evening': return { background: '#f5f3ff', color: '#7c3aed' };
-      case 'off': return { background: '#fef2f2', color: '#dc2626' };
-      default: return { background: '#f8fafc', color: '#64748b' };
-    }
-  };
-
+  const [orgShifts, setOrgShifts] = useState([]);
   const [rosterData, setRosterData] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    apiFetch('/attendance/roster')
-      .then(data => {
-        if (Array.isArray(data)) {
-          setRosterData(data);
+  // Filters state
+  const [selectedDepartment, setSelectedDepartment] = useState('All Departments');
+  const [selectedLocation, setSelectedLocation] = useState('All Locations');
+  const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
+
+  // Department and Location options
+  const departments = ['All Departments', 'Engineering', 'Human Resources', 'Sales & Marketing', 'Finance', 'Operations'];
+  const locations = ['All Locations', 'Chennai', 'Bangalore', 'Mumbai', 'Hyderabad'];
+
+  // Dropdown toggle states
+  const [showDeptDropdown, setShowDeptDropdown] = useState(false);
+  const [showLocDropdown, setShowLocDropdown] = useState(false);
+
+  const getShiftStyles = (type) => {
+    const str = String(type || '').toLowerCase();
+    if (str.includes('morning') || str.includes('msh') || str.includes('a-001')) return { background: '#ecfdf5', color: '#059669' };
+    if (str.includes('afternoon') || str.includes('evening') || str.includes('esh')) return { background: '#f5f3ff', color: '#7c3aed' };
+    if (str.includes('night') || str.includes('nsh')) return { background: '#fef3c7', color: '#d97706' };
+    if (str.includes('off') || str.includes('no shift')) return { background: '#fef2f2', color: '#dc2626' };
+    return { background: '#eff6ff', color: '#2563eb' };
+  };
+
+  // Compute week range text based on week offset
+  const getWeekRangeText = () => {
+    const baseDate = new Date();
+    baseDate.setDate(baseDate.getDate() + currentWeekOffset * 7);
+    
+    // Find Monday of the current week
+    const day = baseDate.getDay();
+    const diffToMon = baseDate.getDate() - day + (day === 0 ? -6 : 1);
+    const mon = new Date(baseDate.setDate(diffToMon));
+    const sun = new Date(mon);
+    sun.setDate(mon.getDate() + 6);
+
+    const formatMonthDay = (d) => `${d.getDate()} ${d.toLocaleString('en-US', { month: 'short' })}`;
+    return `${formatMonthDay(mon)} - ${formatMonthDay(sun)} ${sun.getFullYear()}`;
+  };
+
+  const fetchRosterData = () => {
+    setLoading(true);
+
+    // Fetch Organization shifts (Single Source of Truth) and employee data
+    Promise.all([
+      apiFetch('/organization/shifts').catch(() => []),
+      apiFetch('/employees').catch(() => []),
+      apiFetch('/attendance/roster').catch(() => [])
+    ]).then(([shiftsData, employeesData, rosterRes]) => {
+      const activeShifts = Array.isArray(shiftsData) ? shiftsData : [];
+      setOrgShifts(activeShifts);
+
+      // CRITICAL: If no active shifts exist in Organization -> Shift Management, clear roster data!
+      if (activeShifts.length === 0) {
+        setRosterData([]);
+        setLoading(false);
+        return;
+      }
+
+      let empList = [];
+      if (Array.isArray(rosterRes) && rosterRes.length > 0) {
+        empList = rosterRes;
+      } else if (Array.isArray(employeesData) && employeesData.length > 0) {
+        empList = employeesData.map((e, idx) => ({
+          id: e.id || idx + 1,
+          employee: e.name || `${e.first_name || ''} ${e.last_name || ''}`.trim() || `Employee ${idx + 1}`,
+          empId: e.employee_code || e.employeeId || `EMP00${e.id || idx + 1}`,
+          department: e.department || (idx % 2 === 0 ? 'Engineering' : 'Human Resources'),
+          location: e.location || (idx % 3 === 0 ? 'Chennai' : 'Bangalore'),
+          avatar: e.profile_photo || e.avatar || null
+        }));
+      } else {
+        empList = DEFAULT_EMPLOYEES;
+      }
+
+      // Check if any shift has explicit assignedEmployees array populated
+      const hasExplicitAssignments = activeShifts.some(s => Array.isArray(s.assignedEmployees) && s.assignedEmployees.length > 0);
+
+      // Filter employees to ONLY those assigned to active Organization shifts if explicit assignments exist
+      const assignedEmpList = empList.filter((emp, index) => {
+        if (hasExplicitAssignments) {
+          return activeShifts.some(s => Array.isArray(s.assignedEmployees) && s.assignedEmployees.includes(emp.id));
         }
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to load shift roster:", err);
-        setLoading(false);
+        const totalEmpAssignedInOrg = activeShifts.reduce((sum, s) => sum + (parseInt(s.employees) || 0), 0);
+        if (totalEmpAssignedInOrg > 0) {
+          return index < totalEmpAssignedInOrg;
+        }
+        return true;
       });
+
+      const formatShiftTime = (s) => {
+        if (!s) return '--';
+        const start = s.startTime ? (String(s.startTime).includes(':') ? s.startTime : `${s.startTime}:00 AM`) : '09:00 AM';
+        const end = s.endTime ? (String(s.endTime).includes(':') ? s.endTime : `${s.endTime}:00 PM`) : '06:00 PM';
+        return `${start} - ${end}`;
+      };
+
+      // Construct roster rows based on exact Working Days configured in Organization Shift Management
+      const constructedRoster = assignedEmpList.map((emp, index) => {
+        // Find assigned Organization shift
+        let assignedShift = activeShifts.find(s => Array.isArray(s.assignedEmployees) && s.assignedEmployees.includes(emp.id));
+        if (!assignedShift) {
+          assignedShift = activeShifts[index % activeShifts.length];
+        }
+
+        const assignedWorkingDays = Array.isArray(assignedShift?.workingDays) && assignedShift.workingDays.length > 0
+          ? assignedShift.workingDays
+          : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+
+        const weekDayKeys = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+        const days = weekDayKeys.map(dayKey => {
+          if (assignedWorkingDays.includes(dayKey)) {
+            return {
+              day: dayKey,
+              shift: assignedShift ? assignedShift.name : 'General Shift',
+              time: formatShiftTime(assignedShift),
+              type: assignedShift ? (assignedShift.code || assignedShift.name) : 'general'
+            };
+          }
+          return {
+            day: dayKey,
+            shift: assignedShift?.dayOffLabels?.[dayKey] || assignedShift?.offLabel || 'Weekly Off',
+            time: '--',
+            type: 'off'
+          };
+        });
+
+        return {
+          id: emp.id,
+          employee: emp.employee || emp.name,
+          empId: emp.empId || `EMP00${emp.id}`,
+          department: emp.department || 'Engineering',
+          location: emp.location || 'Chennai',
+          avatar: emp.avatar,
+          shifts: days
+        };
+      });
+
+      setRosterData(constructedRoster);
+      setLoading(false);
+    }).catch(err => {
+      console.error("Failed to load Organization Shift Roster data:", err);
+      setLoading(false);
+    });
+  };
+
+  useEffect(() => {
+    fetchRosterData();
+    window.addEventListener('focus', fetchRosterData);
+    return () => window.removeEventListener('focus', fetchRosterData);
   }, []);
+
+  // Filter roster data based on department and location filters
+  const filteredRoster = rosterData.filter(row => {
+    const matchesDept = selectedDepartment === 'All Departments' || row.department === selectedDepartment || !row.department;
+    const matchesLoc = selectedLocation === 'All Locations' || row.location === selectedLocation || !row.location;
+    return matchesDept && matchesLoc;
+  });
 
   return (
     <div className="hrms-content" style={{ display: 'flex', flexDirection: 'column', gap: '24px', height: '100%', minHeight: 'calc(100vh - 120px)' }}>
+      
+      {/* Header Toolbar (Filters & Week Navigator) - NO Add Shift Button */}
       <div className="hrms-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+          
+          {/* Week Selector */}
           <div style={{ display: 'flex', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
-            <button style={{ padding: '8px 12px', background: '#fff', border: 'none', borderRight: '1px solid #e2e8f0', cursor: 'pointer' }}>
+            <button 
+              onClick={() => setCurrentWeekOffset(prev => prev - 1)} 
+              style={{ padding: '8px 12px', background: '#fff', border: 'none', borderRight: '1px solid #e2e8f0', cursor: 'pointer' }}
+              title="Previous Week"
+            >
               <ChevronLeft size={16} style={{ color: '#64748b' }} />
             </button>
-            <span className="hrms-text-sm hrms-font-semibold" style={{ padding: '8px 16px', color: '#1e293b' }}>
-              20 May - 26 May 2026
+            <span className="hrms-text-sm hrms-font-semibold" style={{ padding: '8px 16px', color: '#1e293b', whiteSpace: 'nowrap' }}>
+              {getWeekRangeText()}
             </span>
-            <button style={{ padding: '8px 12px', background: '#fff', border: 'none', borderLeft: '1px solid #e2e8f0', cursor: 'pointer' }}>
+            <button 
+              onClick={() => setCurrentWeekOffset(prev => prev + 1)} 
+              style={{ padding: '8px 12px', background: '#fff', border: 'none', borderLeft: '1px solid #e2e8f0', cursor: 'pointer' }}
+              title="Next Week"
+            >
               <ChevronRight size={16} style={{ color: '#64748b' }} />
             </button>
           </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', minWidth: '180px', justifyContent: 'space-between', cursor: 'pointer' }}>
-            <span className="hrms-text-sm" style={{ color: '#475569', fontWeight: '500' }}>All Departments</span>
-            <ChevronDown size={16} style={{ color: '#94a3b8' }} />
+
+          {/* Department Filter */}
+          <div style={{ position: 'relative' }}>
+            <div 
+              onClick={() => { setShowDeptDropdown(!showDeptDropdown); setShowLocDropdown(false); }}
+              style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', minWidth: '180px', justifyContent: 'space-between', cursor: 'pointer' }}
+            >
+              <span className="hrms-text-sm" style={{ color: '#475569', fontWeight: '500' }}>{selectedDepartment}</span>
+              <ChevronDown size={16} style={{ color: '#94a3b8' }} />
+            </div>
+            {showDeptDropdown && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, width: '100%', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', zIndex: 50, overflow: 'hidden' }}>
+                {departments.map(dept => (
+                  <div 
+                    key={dept} 
+                    onClick={() => { setSelectedDepartment(dept); setShowDeptDropdown(false); }}
+                    style={{ padding: '8px 14px', fontSize: 13, color: '#334155', cursor: 'pointer', background: selectedDepartment === dept ? '#eff6ff' : '#fff' }}
+                  >
+                    {dept}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', minWidth: '180px', justifyContent: 'space-between', cursor: 'pointer' }}>
-            <span className="hrms-text-sm" style={{ color: '#475569', fontWeight: '500' }}>All Locations</span>
-            <ChevronDown size={16} style={{ color: '#94a3b8' }} />
+
+          {/* Location Filter */}
+          <div style={{ position: 'relative' }}>
+            <div 
+              onClick={() => { setShowLocDropdown(!showLocDropdown); setShowDeptDropdown(false); }}
+              style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', minWidth: '180px', justifyContent: 'space-between', cursor: 'pointer' }}
+            >
+              <span className="hrms-text-sm" style={{ color: '#475569', fontWeight: '500' }}>{selectedLocation}</span>
+              <ChevronDown size={16} style={{ color: '#94a3b8' }} />
+            </div>
+            {showLocDropdown && (
+              <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: 4, width: '100%', background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', zIndex: 50, overflow: 'hidden' }}>
+                {locations.map(loc => (
+                  <div 
+                    key={loc} 
+                    onClick={() => { setSelectedLocation(loc); setShowLocDropdown(false); }}
+                    style={{ padding: '8px 14px', fontSize: 13, color: '#334155', cursor: 'pointer', background: selectedLocation === loc ? '#eff6ff' : '#fff' }}
+                  >
+                    {loc}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+
         </div>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
-          <button onClick={() => setShowAddModal(true)} className="hrms-primary-btn" style={{ whiteSpace: 'nowrap', padding: '10px 24px', borderRadius: '8px', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Plus size={16} /> Add Shift
-          </button>
+
+        {/* Source of Truth Info Badge */}
+        <div style={{ fontSize: 12, color: '#64748B', background: '#F8FAFC', padding: '6px 12px', borderRadius: 6, border: '1px solid #E2E8F0' }}>
+          Shifts managed via <strong>Organization → Shift Management</strong>
         </div>
       </div>
 
+      {/* Roster Grid Table */}
       <div style={{ width: '100%', flex: 1, display: 'flex' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', flex: 1, minWidth: 0 }}>
           <div className="hrms-card" style={{ padding: '0', overflowX: 'auto' }}>
@@ -88,102 +278,65 @@ export default function ShiftRoster() {
                 </tr>
               </thead>
               <tbody>
-                {rosterData.map((row) => (
-                  <tr key={row.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '16px 64px 16px 16px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <img src={row.avatar} alt={row.employee} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontWeight: '500', color: '#1e293b' }}>{row.employee}</span>
-                          <span style={{ fontSize: '12px', color: '#64748b' }}>{row.empId}</span>
-                        </div>
-                      </div>
+                {loading ? (
+                  <tr>
+                    <td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#64748b', fontSize: 14 }}>
+                      Loading Organization Shift Roster…
                     </td>
-                    {row.shifts.map((shift, i) => {
-                      const styles = getShiftStyles(shift.type);
-                      return (
-                        <td key={i} style={{ padding: '8px', verticalAlign: 'middle', textAlign: 'center' }}>
-                          <div style={{
-                            display: 'inline-flex',
-                            flexDirection: 'column',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            padding: '6px 8px',
-                            borderRadius: '6px',
-                            background: styles.background,
-                            minWidth: '120px'
-                          }}>
-                            <span style={{ color: styles.color, fontSize: '12px', fontWeight: '600' }}>{shift.shift}</span>
-                            {shift.time !== '--' && <span style={{ color: styles.color, fontSize: '10px', opacity: 0.8 }}>{shift.time}</span>}
-                          </div>
-                        </td>
-                      );
-                    })}
                   </tr>
-                ))}
+                ) : filteredRoster.length === 0 ? (
+                  <tr>
+                    <td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#64748b', fontSize: 14 }}>
+                      No Shift Roster records found for selected filters. Manage shifts in <strong>Organization → Shift Management</strong>.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredRoster.map((row) => (
+                    <tr key={row.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <td style={{ padding: '16px 64px 16px 16px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          {row.avatar ? (
+                            <img src={row.avatar} alt={row.employee} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+                          ) : (
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#3b82f6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>
+                              {(row.employee || 'E').charAt(0)}
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontWeight: '500', color: '#1e293b' }}>{row.employee}</span>
+                            <span style={{ fontSize: '12px', color: '#64748b' }}>{row.empId}</span>
+                          </div>
+                        </div>
+                      </td>
+                      {row.shifts?.map((shift, i) => {
+                        const styles = getShiftStyles(shift.type || shift.shift);
+
+                        return (
+                          <td key={i} style={{ padding: '8px', verticalAlign: 'middle', textAlign: 'center' }}>
+                            <div style={{
+                              display: 'inline-flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '6px 8px',
+                              borderRadius: '6px',
+                              background: styles.background,
+                              minWidth: '120px'
+                            }}>
+                              <span style={{ color: styles.color, fontSize: '12px', fontWeight: '600' }}>{shift.shift}</span>
+                              {shift.time !== '--' && <span style={{ color: styles.color, fontSize: '10px', opacity: 0.8 }}>{shift.time}</span>}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         </div>
       </div>
-
-      {showAddModal && (
-        <>
-          <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.4)', zIndex: 100 }} />
-          <div className="modal-centered-content" style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', background: '#fff', borderRadius: '16px', width: '600px', maxWidth: '90vw', zIndex: 101, boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <div className="p-8 border-b border-slate-200 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-[#0A1629]">Add Shift</h2>
-                <p className="text-sm text-slate-500 mt-1">Create a new work shift for attendance rosters.</p>
-              </div>
-              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <X size={20} className="text-slate-400" />
-              </button>
-            </div>
-            <form onSubmit={(e) => { e.preventDefault(); setShowAddModal(false); }} className="p-8 overflow-y-auto flex-1 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Shift Name <span className="text-red-500">*</span></label>
-                  <input type="text" required value={formData.shiftName} onChange={e => setFormData({ ...formData, shiftName: e.target.value })} placeholder="e.g. Morning Shift" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Shift Code <span className="text-red-500">*</span></label>
-                  <input type="text" required value={formData.shiftCode} onChange={e => setFormData({ ...formData, shiftCode: e.target.value })} placeholder="e.g. MSH" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Start Time <span className="text-red-500">*</span></label>
-                  <input type="text" required value={formData.startTime} onChange={e => setFormData({ ...formData, startTime: e.target.value })} placeholder="e.g. 09:00 AM" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">End Time <span className="text-red-500">*</span></label>
-                  <input type="text" required value={formData.endTime} onChange={e => setFormData({ ...formData, endTime: e.target.value })} placeholder="e.g. 06:00 PM" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Break Time</label>
-                  <input type="text" value={formData.breakTime} onChange={e => setFormData({ ...formData, breakTime: e.target.value })} placeholder="e.g. 60 mins" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div className="pt-0">
-                  <label className="block text-sm font-semibold text-slate-700 mb-3">Status <span className="text-red-500">*</span></label>
-                  <div className="flex items-center gap-3 pt-1">
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input type="radio" name="rosterStatus" checked={formData.status === 'Active'} onChange={() => setFormData({ ...formData, status: 'Active' })} className="w-4 h-4 text-blue-600 cursor-pointer" />
-                      <span className="text-sm font-semibold text-slate-700">Active</span>
-                    </label>
-                    <label className="flex items-center gap-1.5 cursor-pointer">
-                      <input type="radio" name="rosterStatus" checked={formData.status === 'Inactive'} onChange={() => setFormData({ ...formData, status: 'Inactive' })} className="w-4 h-4 text-blue-600 cursor-pointer" />
-                      <span className="text-sm font-semibold text-slate-700">Inactive</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-                <button type="submit" className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">Save Shift</button>
-              </div>
-            </form>
-          </div>
-        </>
-      )}
     </div>
   );
 }

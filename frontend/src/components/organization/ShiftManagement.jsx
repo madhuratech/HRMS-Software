@@ -25,12 +25,24 @@ import {
   Briefcase
 } from 'lucide-react';
 
-const INITIAL_SHIFTS = [];
+const DEFAULT_EMPLOYEE_RECORDS = [
+  { id: 1, name: 'John Doe', code: 'EMP001' },
+  { id: 2, name: 'Sarah Jenkins', code: 'EMP002' },
+  { id: 3, name: 'Michael Chen', code: 'EMP003' },
+  { id: 4, name: 'Alex Rivera', code: 'EMP004' },
+  { id: 5, name: 'Emily Wong', code: 'EMP005' },
+  { id: 6, name: 'David Kim', code: 'EMP006' },
+  { id: 7, name: 'Lisa Ray', code: 'EMP007' },
+  { id: 8, name: 'Robert Taylor', code: 'EMP008' }
+];
 
-const emptyForm = { name: '', code: '', startTime: '', endTime: '', breakTime: '', graceTime: '', workingHours: '', status: 'Active' };
+const ALL_WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const defaultDayOffLabels = { Mon: 'Weekly Off', Tue: 'Weekly Off', Wed: 'Weekly Off', Thu: 'Weekly Off', Fri: 'Weekly Off', Sat: 'Weekly Off', Sun: 'Weekly Off' };
+
+const emptyForm = { name: '', code: '', startTime: '', endTime: '', breakTime: '', graceTime: '', workingHours: '', status: 'Active', assignedEmployees: [], workingDays: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'], offLabel: 'Weekly Off', dayOffLabels: { ...defaultDayOffLabels } };
 
 const getShiftStyles = (name) => {
-  const nameLower = name.toLowerCase();
+  const nameLower = (name || '').toLowerCase();
   if (nameLower.includes('morning') || nameLower.includes('sunrise')) return { IconComp: Sunrise, bg: '#FEF3C7', color: '#D97706' };
   if (nameLower.includes('night')) return { IconComp: Moon, bg: '#EEF2FF', color: '#4F46E5' };
   if (nameLower.includes('evening') || nameLower.includes('sunset')) return { IconComp: Sunset, bg: '#FDF2F8', color: '#DB2777' };
@@ -40,6 +52,8 @@ const getShiftStyles = (name) => {
 
 export const ShiftManagement = () => {
   const [shifts, setShifts] = useState([]);
+  const [employeeList, setEmployeeList] = useState(DEFAULT_EMPLOYEE_RECORDS);
+  const [showEmpDropdown, setShowEmpDropdown] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [currentPage, setCurrentPage] = useState(1);
@@ -67,6 +81,15 @@ export const ShiftManagement = () => {
 
   useEffect(() => {
     loadShifts();
+    apiFetch('/employees').then(data => {
+      if (Array.isArray(data) && data.length > 0) {
+        setEmployeeList(data.map((e, idx) => ({
+          id: e.id || idx + 1,
+          name: e.name || `${e.first_name || ''} ${e.last_name || ''}`.trim() || `Employee ${idx + 1}`,
+          code: e.employee_code || e.employeeId || `EMP00${e.id || idx + 1}`
+        })));
+      }
+    }).catch(() => {});
   }, []);
 
   const statistics = useMemo(() => {
@@ -80,7 +103,7 @@ export const ShiftManagement = () => {
     return {
       total: shifts.length,
       active: activeShifts.length,
-      employees: shifts.reduce((sum, s) => sum + (parseInt(s.employees) || 0), 0),
+      employees: shifts.reduce((sum, s) => sum + (Array.isArray(s.assignedEmployees) ? s.assignedEmployees.length : (parseInt(s.employees) || 0)), 0),
       avgHours: count > 0 ? (totalHrs / count).toFixed(1) + ' hrs' : '0 hrs'
     };
   }, [shifts]);
@@ -96,13 +119,18 @@ export const ShiftManagement = () => {
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
-  const handleAdd = () => { setFormData(emptyForm); setShowAddModal(true); };
+  const handleAdd = () => { setFormData(emptyForm); setShowEmpDropdown(false); setShowAddModal(true); };
   const handleSaveAdd = async () => {
     if (!formData.name || !formData.code || !formData.startTime || !formData.endTime) return;
     try {
+      const empCount = formData.assignedEmployees ? formData.assignedEmployees.length : 0;
+      const payload = {
+        ...formData,
+        employees: empCount
+      };
       await apiFetch('/organization/shifts', {
         method: 'POST',
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
       await loadShifts();
     } catch (err) {
@@ -110,13 +138,42 @@ export const ShiftManagement = () => {
     }
     setShowAddModal(false);
   };
-  const handleOpenEdit = (item) => { setSelectedItem(item); setFormData({ name: item.name, code: item.code, startTime: item.startTime, endTime: item.endTime, breakTime: item.breakTime, graceTime: item.graceTime, workingHours: item.workingHours, status: item.status, description: item.description }); setShowEditModal(true); };
+
+  const handleOpenEdit = (item) => { 
+    setSelectedItem(item); 
+    const assigned = Array.isArray(item.assignedEmployees) ? item.assignedEmployees : (item.employees > 0 ? employeeList.slice(0, item.employees).map(e => e.id) : []);
+    const days = Array.isArray(item.workingDays) && item.workingDays.length > 0 ? item.workingDays : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+    const initialDayOffLabels = item.dayOffLabels ? { ...defaultDayOffLabels, ...item.dayOffLabels } : { ...defaultDayOffLabels };
+    setFormData({ 
+      name: item.name, 
+      code: item.code, 
+      startTime: item.startTime, 
+      endTime: item.endTime, 
+      breakTime: item.breakTime, 
+      graceTime: item.graceTime, 
+      workingHours: item.workingHours, 
+      status: item.status, 
+      description: item.description,
+      assignedEmployees: assigned,
+      workingDays: days,
+      offLabel: item.offLabel || 'Weekly Off',
+      dayOffLabels: initialDayOffLabels
+    }); 
+    setShowEmpDropdown(false);
+    setShowEditModal(true); 
+  };
+
   const handleSaveEdit = async () => {
     if (!formData.name || !formData.code || !formData.startTime || !formData.endTime) return;
     try {
+      const empCount = formData.assignedEmployees ? formData.assignedEmployees.length : 0;
+      const payload = {
+        ...formData,
+        employees: empCount
+      };
       await apiFetch(`/organization/shifts/${selectedItem.id}`, {
         method: 'PUT',
-        body: JSON.stringify(formData)
+        body: JSON.stringify(payload)
       });
       await loadShifts();
     } catch (err) {
@@ -124,6 +181,7 @@ export const ShiftManagement = () => {
     }
     setShowEditModal(false);
   };
+
   const handleOpenView = (item) => { setSelectedItem(item); setShowViewModal(true); };
   const handleOpenDelete = (item) => { setSelectedItem(item); setShowDeleteModal(true); };
   const handleConfirmDelete = async () => {
@@ -145,7 +203,7 @@ export const ShiftManagement = () => {
     return (
       <>
         <div className="modal-backdrop-blur" onClick={onClose} />
-        <div className="modal-centered-content">
+        <div className="modal-centered-content" style={{ width: '680px', maxWidth: '90vw', overflowX: 'hidden' }}>
           <div className="p-8 border-b border-slate-200 flex items-center justify-between shrink-0">
             <div>
               <h2 className="text-xl font-bold text-[#0A1629]">{title}</h2>
@@ -153,8 +211,10 @@ export const ShiftManagement = () => {
             </div>
             <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition-colors"><X size={20} className="text-slate-400" /></button>
           </div>
-          <div className="p-8 overflow-y-auto flex-1 space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          
+          <div className="p-8 overflow-y-auto flex-1 space-y-6" style={{ overflowX: 'hidden', width: '100%', boxSizing: 'border-box' }}>
+            {/* Standard 2-Column Grid Fields */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Shift Name <span className="text-red-500">*</span></label>
                 <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Enter shift name" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
@@ -197,7 +257,223 @@ export const ShiftManagement = () => {
                 </div>
               </div>
             </div>
+
+            {/* ── WORKING DAYS SELECTION INPUT ── */}
+            <div style={{ width: '100%', boxSizing: 'border-box', marginTop: '24px' }}>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Working Days
+              </label>
+              <div className="flex flex-wrap gap-2 pt-1 w-full">
+                {ALL_WEEKDAYS.map(day => {
+                  const isSelected = (formData.workingDays || []).includes(day);
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => {
+                        const current = formData.workingDays || [];
+                        const updated = isSelected ? current.filter(d => d !== day) : [...current, day];
+                        setFormData({ ...formData, workingDays: updated });
+                      }}
+                      className={`px-4 py-2.5 rounded-xl text-xs font-semibold border transition-all ${
+                        isSelected
+                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {day}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── PER-DAY NON-WORKING DAYS STATUS / COMMENTS (SPACIOUS UI) ── */}
+            {ALL_WEEKDAYS.filter(day => !(formData.workingDays || []).includes(day)).length > 0 && (
+              <div style={{ width: '100%', boxSizing: 'border-box', marginTop: '24px' }}>
+                <label className="block text-sm font-semibold text-slate-700 mb-3">
+                  Non-Working Days Status / Comments
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
+                  {ALL_WEEKDAYS.filter(day => !(formData.workingDays || []).includes(day)).map(day => (
+                    <div key={day} className="w-full">
+                      <label className="block text-sm font-semibold text-slate-700 mb-2">
+                        {day} Status
+                      </label>
+                      <input
+                        type="text"
+                        value={(formData.dayOffLabels && formData.dayOffLabels[day] !== undefined) ? formData.dayOffLabels[day] : 'Weekly Off'}
+                        onChange={e => {
+                          const updated = { ...(formData.dayOffLabels || defaultDayOffLabels), [day]: e.target.value };
+                          setFormData({ ...formData, dayOffLabels: updated });
+                        }}
+                        placeholder={`e.g. Weekly Off, Power Shutdown`}
+                        className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all bg-white"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* ── EMPLOYEES SELECTION INPUT (RESPONSIVE FLEX-WRAP CONTAINED) ── */}
+            <div style={{ width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', marginTop: '24px' }}>
+              <div className="flex items-center justify-between mb-2 w-full" style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
+                <label className="block text-sm font-semibold text-slate-700">
+                  Employees
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowEmpDropdown(!showEmpDropdown)}
+                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded-lg flex items-center gap-1 transition-colors"
+                  style={{ flexShrink: 0 }}
+                >
+                  Select Employees <ChevronRight size={14} className={`transition-transform ${showEmpDropdown ? 'rotate-90' : ''}`} />
+                </button>
+              </div>
+
+              <div 
+                onClick={() => setShowEmpDropdown(!showEmpDropdown)}
+                style={{
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                  width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  boxSizing: 'border-box',
+                  minHeight: '52px',
+                  padding: '12px',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  background: '#ffffff',
+                  overflow: 'hidden',
+                  cursor: 'pointer'
+                }}
+              >
+                {(formData.assignedEmployees || []).length === 0 ? (
+                  <span className="text-xs text-slate-400">No employees selected. Click "Select Employees" to add.</span>
+                ) : (
+                  (formData.assignedEmployees || []).map(empId => {
+                    const emp = employeeList.find(e => e.id === empId);
+                    if (!emp) return null;
+                    return (
+                      <div 
+                        key={empId}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '6px 12px',
+                          background: '#eff6ff',
+                          border: '1px solid #bfdbfe',
+                          color: '#1d4ed8',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          maxWidth: '100%',
+                          minWidth: 0,
+                          boxSizing: 'border-box',
+                          flexShrink: 0
+                        }}
+                      >
+                        <span 
+                          style={{
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            maxWidth: '200px',
+                            minWidth: 0
+                          }}
+                        >
+                          {emp.name} — {emp.code}
+                        </span>
+                        <button 
+                          type="button" 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const updated = (formData.assignedEmployees || []).filter(id => id !== empId);
+                            setFormData({ ...formData, assignedEmployees: updated });
+                          }}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            background: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#1d4ed8',
+                            padding: 0,
+                            marginLeft: '4px',
+                            flexShrink: 0
+                          }}
+                          className="hover:text-blue-900"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Dropdown Employee List */}
+              {showEmpDropdown && (
+                <div 
+                  style={{
+                    marginTop: '8px',
+                    padding: '8px',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '12px',
+                    background: '#ffffff',
+                    boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
+                    maxHeight: '220px',
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    width: '100%',
+                    maxWidth: '100%',
+                    boxSizing: 'border-box',
+                    zIndex: 50
+                  }}
+                >
+                  {employeeList.map(emp => {
+                    const isSelected = (formData.assignedEmployees || []).includes(emp.id);
+                    return (
+                      <div
+                        key={emp.id}
+                        onClick={() => {
+                          const current = formData.assignedEmployees || [];
+                          const updated = isSelected ? current.filter(id => id !== emp.id) : [...current, emp.id];
+                          setFormData({ ...formData, assignedEmployees: updated });
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontWeight: '500',
+                          cursor: 'pointer',
+                          transition: 'background-color 0.15s ease',
+                          background: isSelected ? '#eff6ff' : 'transparent',
+                          color: isSelected ? '#1d4ed8' : '#334155',
+                          width: '100%',
+                          boxSizing: 'border-box'
+                        }}
+                      >
+                        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', paddingRight: '8px' }}>
+                          {emp.name} — {emp.code}
+                        </span>
+                        {isSelected && <CheckCircle2 size={16} style={{ color: '#2563eb', flexShrink: 0 }} />}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
+
           <div className="flex items-center justify-end gap-4 p-8 border-t border-slate-200 shrink-0">
             <button onClick={onClose} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
             <button onClick={onSave} className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">{saveLabel}</button>
@@ -303,6 +579,8 @@ export const ShiftManagement = () => {
               {paginatedData.map((item) => {
                 const styles = getShiftStyles(item.name);
                 const IconComp = styles.IconComp;
+                const empCount = Array.isArray(item.assignedEmployees) ? item.assignedEmployees.length : (parseInt(item.employees) || 0);
+
                 return (
                   <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50/30 transition-colors">
                     <td className="py-4 px-4"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: styles.bg, color: styles.color }}><IconComp size={18} /></div><span className="font-semibold text-[#101828] text-sm whitespace-nowrap">{item.name}</span></div></td>
@@ -310,7 +588,7 @@ export const ShiftManagement = () => {
                     <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">{item.startTime}</td>
                     <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">{item.endTime}</td>
                     <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">{item.workingHours}</td>
-                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap"><div className="flex items-center gap-1.5"><Users size={16} className="text-slate-400" /><span>{item.employees}</span></div></td>
+                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap"><div className="flex items-center gap-1.5"><Users size={16} className="text-slate-400" /><span>{empCount}</span></div></td>
                     <td className="py-4 px-4 whitespace-nowrap"><span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" style={item.status === 'Active' ? { backgroundColor: '#ECFDF5', color: '#047857' } : { backgroundColor: '#F3F4F6', color: '#4B5563' }}>{item.status}</span></td>
                     <td className="py-4 px-4 whitespace-nowrap text-left">
                       <div className="flex items-center justify-start gap-2">
@@ -338,8 +616,8 @@ export const ShiftManagement = () => {
         </div>
       )}
 
-      {renderFormModal('Add Shift', 'Create a new work shift.', showAddModal, () => setShowAddModal(false), handleSaveAdd, 'Save Shift')}
-      {renderFormModal('Edit Shift', 'Update shift information.', showEditModal, () => setShowEditModal(false), handleSaveEdit, 'Update Shift')}
+      {renderFormModal('Add Shift', 'Create a new work shift, select working days, and assign employees.', showAddModal, () => setShowAddModal(false), handleSaveAdd, 'Save Shift')}
+      {renderFormModal('Edit Shift', 'Update shift information, working days, and assigned employees.', showEditModal, () => setShowEditModal(false), handleSaveEdit, 'Update Shift')}
       {showViewModal && selectedItem && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowViewModal(false)} />
@@ -363,6 +641,8 @@ export const ShiftManagement = () => {
                   ['Break Time', selectedItem.breakTime || '—'],
                   ['Grace Time', selectedItem.graceTime || '—'],
                   ['Working Hours', selectedItem.workingHours],
+                  ['Working Days', Array.isArray(selectedItem.workingDays) ? selectedItem.workingDays.join(', ') : 'Mon, Tue, Wed, Thu, Fri'],
+                  ['Employees Assigned', Array.isArray(selectedItem.assignedEmployees) ? selectedItem.assignedEmployees.length : (parseInt(selectedItem.employees) || 0)],
                   ['Status', selectedItem.status]
                 ].map(([label, value]) => (
                   <div key={label} className="bg-slate-50 rounded-xl p-4">
@@ -394,7 +674,7 @@ export const ShiftManagement = () => {
             </div>
             <h3 className="text-lg font-bold text-[#0A1629]">Delete Shift?</h3>
             <p className="text-sm text-slate-500 mt-2">
-              Are you sure you want to delete "{selectedItem.name}"? This action cannot be undone.
+              Are you sure you want to delete "{selectedItem.name}"? This action will remove shift assignments from affected employees.
             </p>
             <div className="flex items-center justify-center gap-3 mt-6">
               <button onClick={() => setShowDeleteModal(false)} className="px-5 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">

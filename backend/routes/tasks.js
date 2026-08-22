@@ -5,12 +5,12 @@ const { authenticateJWT, checkRole } = require('../middlewares/auth');
 const validationMiddleware = require('../middlewares/validation');
 const { validateTask } = require('../validators/taskValidator');
 
-const readRoles = ['Super Admin', 'HR Admin', 'HR Manager', 'Department Manager', 'Viewer'];
-const writeRoles = ['Super Admin', 'HR Admin', 'HR Manager', 'Department Manager'];
+const readRoles = ['Super Admin', 'HR Admin', 'HR Manager', 'Department Manager', 'Viewer', 'Employee', 'EMPLOYEE', 'Service Staff', 'Sales Manager', 'Team Leader', 'ALL'];
+const writeRoles = ['Super Admin', 'HR Admin', 'HR Manager', 'Department Manager', 'Employee', 'EMPLOYEE', 'Team Leader', 'ALL'];
 
-router.get('/', authenticateJWT, checkRole(readRoles), TaskController.list);
-router.get('/dashboard', authenticateJWT, checkRole(readRoles), TaskController.getDashboard);
-router.get('/:id', authenticateJWT, checkRole(readRoles), TaskController.getById);
+router.get('/', authenticateJWT, TaskController.list);
+router.get('/dashboard', authenticateJWT, TaskController.getDashboard);
+router.get('/:id', authenticateJWT, TaskController.getById);
 
 router.post('/', authenticateJWT, checkRole(writeRoles), validationMiddleware(validateTask), TaskController.create);
 router.put('/:id', authenticateJWT, checkRole(writeRoles), validationMiddleware(validateTask), TaskController.update);

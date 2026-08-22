@@ -60,7 +60,7 @@ export default function DailyAttendance() {
 
   const handleOpenEdit = (emp) => {
     setEditingRecord(emp);
-    
+
     // Parse times (e.g. "01:04 PM" -> "13:04")
     const formatTimeForInput = (timeStr) => {
       if (!timeStr || timeStr === '--') return '';
@@ -136,7 +136,7 @@ export default function DailyAttendance() {
       <div className="hrms-header" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', gap: '16px', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: '4px' }}>
         <div className="hrms-flex-start" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', minWidth: '180px', justifyContent: 'space-between' }}>
-            <input 
+            <input
               type="date"
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
@@ -208,9 +208,9 @@ export default function DailyAttendance() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '10px 16px', width: '320px' }}>
               <Search size={18} style={{ color: '#94a3b8', marginRight: '12px' }} />
-              <input 
-                type="text" 
-                placeholder="Search employee..." 
+              <input
+                type="text"
+                placeholder="Search employee..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 style={{ border: 'none', outline: 'none', width: '100%', fontSize: '14px', color: '#334155' }}
@@ -256,9 +256,9 @@ export default function DailyAttendance() {
                           <td style={{ whiteSpace: 'nowrap' }}>{emp.checkOut}</td>
                           <td>
                             <span style={{
-                              padding: '4px 10px', 
-                              borderRadius: '12px', 
-                              fontSize: '11px', 
+                              padding: '4px 10px',
+                              borderRadius: '12px',
+                              fontSize: '11px',
                               fontWeight: '600',
                               backgroundColor: emp.status === 'On Leave' ? '#f3e8ff' : emp.status === 'Late' ? '#fef3c7' : emp.status === 'Absent' ? '#fee2e2' : '#dcfce7',
                               color: emp.status === 'On Leave' ? '#9333ea' : emp.status === 'Late' ? '#d97706' : emp.status === 'Absent' ? '#dc2626' : '#16a34a'
@@ -269,21 +269,21 @@ export default function DailyAttendance() {
                           <td style={{ whiteSpace: 'nowrap' }}>{emp.workingHours}</td>
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <button 
+                              <button
                                 onClick={() => handleViewProfile(emp)}
                                 title="View Profile"
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', padding: '4px' }}
                               >
                                 <Eye size={16} />
                               </button>
-                              <button 
+                              <button
                                 onClick={() => handleOpenEdit(emp)}
                                 title="Edit Attendance"
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#2563eb', padding: '4px' }}
                               >
                                 <Edit2 size={16} />
                               </button>
-                              <button 
+                              <button
                                 onClick={() => handleDeleteRecord(emp)}
                                 title="Delete Record"
                                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#dc2626', padding: '4px' }}
@@ -349,7 +349,7 @@ export default function DailyAttendance() {
               justifyContent: 'space-between'
             }}>
               <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#1e293b', margin: 0 }}>Edit Attendance Record</h3>
-              <button 
+              <button
                 onClick={() => setShowEditModal(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', padding: '4px' }}
               >
@@ -359,19 +359,19 @@ export default function DailyAttendance() {
             <form onSubmit={handleSaveEdit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Employee</label>
-                <input 
-                  type="text" 
-                  disabled 
+                <input
+                  type="text"
+                  disabled
                   value={`${editingRecord.name} (${editingRecord.id})`}
                   style={{ width: '100%', padding: '10px 14px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#64748b', fontSize: '14px', fontWeight: '500', cursor: 'not-allowed', boxSizing: 'border-box' }}
                 />
               </div>
-              
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Check In Time</label>
-                  <input 
-                    type="time" 
+                  <input
+                    type="time"
                     value={editForm.checkInTime}
                     onChange={(e) => setEditForm({ ...editForm, checkInTime: e.target.value })}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a', fontSize: '14px', fontWeight: '500', boxSizing: 'border-box' }}
@@ -379,8 +379,8 @@ export default function DailyAttendance() {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Check Out Time</label>
-                  <input 
-                    type="time" 
+                  <input
+                    type="time"
                     value={editForm.checkOutTime}
                     onChange={(e) => setEditForm({ ...editForm, checkOutTime: e.target.value })}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a', fontSize: '14px', fontWeight: '500', boxSizing: 'border-box' }}
@@ -391,7 +391,7 @@ export default function DailyAttendance() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Status</label>
-                  <select 
+                  <select
                     value={editForm.status}
                     onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
                     style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a', fontSize: '14px', fontWeight: '500', background: '#fff', boxSizing: 'border-box' }}
@@ -406,8 +406,8 @@ export default function DailyAttendance() {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Working Hours</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     placeholder="e.g. 08h 00m"
                     value={editForm.workingHours}
                     onChange={(e) => setEditForm({ ...editForm, workingHours: e.target.value })}
@@ -417,14 +417,14 @@ export default function DailyAttendance() {
               </div>
 
               <div style={{ display: 'flex', gap: '12px', marginTop: '12px' }}>
-                <button 
+                <button
                   type="button"
                   onClick={() => setShowEditModal(false)}
                   style={{ flex: 1, padding: '12px', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#475569', fontWeight: '600', fontSize: '14px', cursor: 'pointer', background: '#fff' }}
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
                   style={{ flex: 1, padding: '12px', background: '#2563eb', border: 'none', borderRadius: '8px', color: '#fff', fontWeight: '600', fontSize: '14px', cursor: 'pointer' }}
                 >

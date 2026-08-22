@@ -23,7 +23,7 @@ import {
 
 const INITIAL_HOLIDAYS = [];
 
-const HOLIDAY_TYPES = ['National', 'Regional', 'Optional', 'Restricted'];
+const HOLIDAY_TYPES = ['National', 'Regional', 'Optional', 'Restricted', 'Festival'];
 const BRANCHES = ['All Branches', 'Chennai Head Office', 'Bangalore Tech Park', 'Mumbai Office', 'Hyderabad Center', 'Delhi NCR Office', 'Pune Development Hub', 'Kolkata Office', 'Coimbatore Branch', 'North India Branches', 'South India Branches'];
 
 const emptyForm = { name: '', date: '', type: '', description: '', status: 'Active' };
@@ -194,6 +194,15 @@ export const HolidayCalendar = () => {
                     <span className="text-sm font-semibold text-slate-700">Inactive</span>
                   </label>
                 </div>
+              </div>
+              <div className="col-span-1 sm:col-span-2">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Description</label>
+                <textarea
+                  value={formData.description ?? ''}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Enter holiday description..."
+                  className="w-full h-24 p-4 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none bg-white"
+                />
               </div>
             </div>
           </div>

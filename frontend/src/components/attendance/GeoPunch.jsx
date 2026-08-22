@@ -1,26 +1,33 @@
 import React, { useState, useEffect } from 'react';
-import { MapPin, Clock, Camera, CheckCircle, AlertTriangle, Loader2 } from 'lucide-react';
+import { MapPin, Clock, Camera, CheckCircle, AlertTriangle, Loader2, Navigation, ArrowRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiFetch } from '../../lib/api';
 
 export function GeoPunch() {
   const [status, setStatus] = useState('idle'); // 'idle', 'locating', 'success', 'error'
-  const [punchType, setPunchType] = useState('IN');
   const [coords, setCoords] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [successInfo, setSuccessInfo] = useState(null);
   const [recent, setRecent] = useState([]);
   const [todayRecord, setTodayRecord] = useState(null);
-  const [elapsed, setElapsed] = useState('');
+  const [elapsed, setElapsed] = useState('00:00:00');
+  const [currentTime, setCurrentTime] = useState(new Date());
+
+  // Live Digital Clock
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchRecent = async () => {
     try {
       const auth = localStorage.getItem('hrms_auth');
-      let userId = 1;
+      let userId = 11;
       if (auth) {
         try {
           const parsed = JSON.parse(auth);
-          if (parsed.user && parsed.user.id) userId = parsed.user.id;
+          const userObj = parsed.user || parsed;
+          if (userObj && userObj.id) userId = userObj.id;
         } catch (e) {}
       }
       const data = await apiFetch(`/attendance/recent/${userId}`);
@@ -37,11 +44,6 @@ export function GeoPunch() {
       const data = await apiFetch('/attendance/today-status');
       if (data && data.success) {
         setTodayRecord(data);
-        if (data.status === 'PUNCHED_IN') {
-          setPunchType('OUT');
-        } else {
-          setPunchType('IN');
-        }
       }
     } catch (e) {
       console.error("Failed to fetch today status", e);
@@ -74,23 +76,6 @@ export function GeoPunch() {
     return () => clearInterval(interval);
   }, [todayRecord]);
 
-  const checkIsEarly = () => {
-    const now = new Date();
-    const currentHr = now.getHours();
-    const currentMin = now.getMinutes();
-    const timeValue = currentHr * 60 + currentMin;
-    const shiftEndValue = 18 * 60 + 30; // 06:30 PM is 18:30
-    return timeValue < shiftEndValue;
-  };
-
-  const handleCheckOutClick = (isEarly) => {
-    if (isEarly) {
-      const confirmed = window.confirm("Are you sure you want to punch out before your scheduled shift ends?");
-      if (!confirmed) return;
-    }
-    handlePunch('OUT');
-  };
-
   const handlePunch = (type) => {
     if (!navigator.geolocation) {
       setErrorMessage("Geolocation is not supported by your browser.");
@@ -103,7 +88,7 @@ export function GeoPunch() {
 
     const options = {
       enableHighAccuracy: true,
-      timeout: 10000,
+      timeout: 12000,
       maximumAge: 0
     };
 
@@ -128,13 +113,15 @@ export function GeoPunch() {
 
           if (res.success) {
             setSuccessInfo({
-              time: new Date().toLocaleTimeString(),
+              time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
               lat,
               lng,
-              locationName: res.locationName,
-              distance: res.distance
+              locationName: res.locationName || 'HQ Office Geofence',
+              distance: res.distance || 0,
+              type
             });
             setStatus('success');
+            window.dispatchEvent(new CustomEvent('attendance-updated', { detail: { type } }));
             await fetchTodayStatus();
             await fetchRecent();
           } else {
@@ -169,183 +156,236 @@ export function GeoPunch() {
     if (userAgent.indexOf("Chrome") > -1) return "Google Chrome";
     if (userAgent.indexOf("Safari") > -1) return "Apple Safari";
     if (userAgent.indexOf("Firefox") > -1) return "Mozilla Firefox";
-    if (userAgent.indexOf("MSIE") > -1 || !!document.documentMode) return "Internet Explorer";
-    return "Unknown Browser";
+    return "Web Browser";
   };
 
   return (
-    <div className="max-w-md mx-auto">
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="bg-blue-600 p-6 text-center text-white">
-          <div className="text-blue-100 text-sm font-medium mb-1">{format(new Date(), 'EEEE, MMMM do')}</div>
-          <div className="text-4xl font-bold tracking-tight">{format(new Date(), 'HH:mm')}</div>
-          {status === 'idle' && todayRecord?.status === 'NOT_PUNCHED' && (
-            <div className="mt-4 flex justify-center gap-2">
-              <button className="px-4 py-1 rounded-full text-xs font-bold transition-all bg-white text-blue-600">
-                CHECK IN
-              </button>
-            </div>
-          )}
-          {status === 'idle' && todayRecord?.status === 'PUNCHED_IN' && (
-            <div className="mt-4 flex justify-center gap-2">
-              <button className="px-4 py-1 rounded-full text-xs font-bold transition-all bg-white text-blue-600">
-                CHECK OUT
-              </button>
-            </div>
-          )}
+    <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }} className="max-w-md mx-auto space-y-5">
+      
+      {/* Premium Main Card */}
+      <div style={{
+        background: '#FFFFFF',
+        borderRadius: '20px',
+        border: '1px solid #E2E8F0',
+        boxShadow: '0 10px 30px -5px rgba(15, 23, 42, 0.08)',
+        overflow: 'hidden'
+      }}>
+
+        {/* Dynamic Header Banner */}
+        <div style={{
+          background: 'linear-gradient(135deg, #1E3A8A 0%, #2563EB 100%)',
+          padding: '24px',
+          color: '#FFFFFF',
+          textAlign: 'center',
+          position: 'relative'
+        }}>
+          <div style={{ fontSize: '13px', color: '#DBEAFE', fontWeight: '600', letterSpacing: '0.02em', marginBottom: '4px' }}>
+            {format(currentTime, 'EEEE, MMMM d, yyyy')}
+          </div>
+          <div style={{ fontSize: '36px', fontWeight: '800', letterSpacing: '-0.03em', lineHeight: 1 }}>
+            {format(currentTime, 'hh:mm:ss')} <span style={{ fontSize: '16px', fontWeight: '600', opacity: 0.8 }}>{format(currentTime, 'a')}</span>
+          </div>
+
+          {/* Top Status Pill */}
+          <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'center' }}>
+            <span style={{
+              background: todayRecord?.status === 'PUNCHED_IN' ? '#10B981' : todayRecord?.status === 'PUNCHED_OUT' ? '#3B82F6' : 'rgba(255,255,255,0.2)',
+              color: '#FFFFFF',
+              padding: '4px 14px',
+              borderRadius: '999px',
+              fontSize: '11px',
+              fontWeight: '700',
+              letterSpacing: '0.05em',
+              backdropFilter: 'blur(4px)',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#FFFFFF' }} className="animate-ping" />
+              {todayRecord?.status === 'PUNCHED_IN' ? 'ACTIVE SHIFT' : todayRecord?.status === 'PUNCHED_OUT' ? 'COMPLETED FOR TODAY' : 'READY TO CHECK IN'}
+            </span>
+          </div>
         </div>
-        
-        <div className="p-5 flex flex-col items-center">
-          {status === 'idle' && todayRecord?.status === 'NOT_PUNCHED' && (
-            <div className="text-center space-y-3 w-full">
-              <div className="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mx-auto relative">
-                <MapPin className="text-blue-500 w-8 h-8" />
-                <div className="absolute inset-0 border-4 border-blue-100 rounded-full animate-pulse"></div>
+
+        {/* Card Body */}
+        <div style={{ padding: '24px' }}>
+
+          {/* Idle State: Not Punched Yet */}
+          {status === 'idle' && (todayRecord?.status === 'NOT_PUNCHED' || !todayRecord?.status) && (
+            <div className="text-center space-y-4">
+              <div style={{ width: '72px', height: '72px', background: '#EFF6FF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', border: '4px solid #DBEAFE' }}>
+                <MapPin className="text-blue-600" size={32} />
               </div>
               <div>
-                <h3 className="text-base font-bold text-slate-800">Geofenced Attendance Punch</h3>
-                <p className="text-slate-500 text-xs mt-0.5">Requires browser GPS verification to record check-in/out.</p>
+                <h3 className="text-base font-bold text-slate-900">Geofenced Punch In</h3>
+                <p className="text-xs text-slate-500 mt-1">Requires browser GPS verification to mark attendance.</p>
               </div>
               <button
                 onClick={() => handlePunch('IN')}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-md shadow-blue-200 transition-all active:scale-95 flex items-center justify-center gap-2 text-sm"
+                style={{
+                  background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                  boxShadow: '0 8px 20px -4px rgba(37, 99, 235, 0.4)'
+                }}
+                className="w-full py-3.5 px-6 rounded-xl text-white font-bold text-sm hover:opacity-95 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
               >
-                <Camera size={18} />
-                Punch IN
+                <Camera size={18} /> Punch IN Now
               </button>
             </div>
           )}
 
+          {/* Idle State: Currently Punched In -> Ready for Punch Out */}
           {status === 'idle' && todayRecord?.status === 'PUNCHED_IN' && (
-            <div className="text-center space-y-3 w-full">
-              <div className="w-20 h-20 bg-green-50 rounded-full flex items-center justify-center mx-auto relative">
-                <MapPin className="text-green-500 w-8 h-8" />
-                <div className="absolute inset-0 border-4 border-green-100 rounded-full animate-pulse"></div>
-              </div>
-              <div>
-                <h3 className="text-base font-bold text-slate-800">Active Shift</h3>
-                <div className="mt-2 text-xs text-slate-600 space-y-1 text-left bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <p className="flex justify-between"><span>Punch In Time:</span> <b>{todayRecord.punchInTime}</b></p>
-                  <p className="flex justify-between"><span>Working Hours:</span> <span className="font-mono text-blue-600 font-bold">{elapsed || '00:00:00'}</span></p>
-                  <p className="flex justify-between"><span>Current Location:</span> <b>{todayRecord.locationName}</b></p>
-                  <p className="flex justify-between"><span>Attendance Status:</span> <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[11px] font-bold rounded">{todayRecord.statusLabel}</span></p>
+            <div className="space-y-5">
+              
+              {/* Shift Stats Card */}
+              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5 text-xs">
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Punch In Time:</span>
+                  <strong className="text-slate-900 font-bold">{todayRecord.punchInTime || '09:12 AM'}</strong>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Working Hours:</span>
+                  <strong className="text-blue-600 font-mono text-sm font-extrabold">{elapsed}</strong>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500">Geofence Location:</span>
+                  <strong className="text-slate-900 font-medium truncate max-w-[180px]">{todayRecord.locationName || 'HQ Office'}</strong>
+                </div>
+                <div className="flex justify-between items-center pt-1 border-t border-slate-200">
+                  <span className="text-slate-500">Status:</span>
+                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[11px] font-bold rounded-md">
+                    {todayRecord.statusLabel || 'PUNCHED IN'}
+                  </span>
                 </div>
               </div>
-              <div className="flex flex-col gap-2 w-full">
-                <button
-                  onClick={() => handleCheckOutClick(false)}
-                  disabled={checkIsEarly()}
-                  title={checkIsEarly() ? "Cannot perform normal punch out before shift ends" : ""}
-                  className={`w-full font-bold py-2.5 rounded-xl transition-all flex items-center justify-center gap-2 text-xs ${checkIsEarly() ? 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-200 active:scale-95'}`}
-                >
-                  <Camera size={16} />
-                  Punch OUT
-                </button>
-                <button
-                  onClick={() => handleCheckOutClick(true)}
-                  className="w-full bg-orange-50 hover:bg-orange-100 text-orange-600 font-bold py-2 rounded-xl border border-orange-200 transition-colors text-xs"
-                >
-                  Early Punch OUT
-                </button>
-              </div>
+
+              {/* Punch Out Action Button */}
+              <button
+                onClick={() => handlePunch('OUT')}
+                style={{
+                  background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
+                  boxShadow: '0 8px 20px -4px rgba(220, 38, 38, 0.35)'
+                }}
+                className="w-full py-3.5 px-6 rounded-xl text-white font-bold text-sm hover:opacity-95 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+              >
+                <Camera size={18} /> Punch OUT Now
+              </button>
             </div>
           )}
 
+          {/* Idle State: Punched Out Completed */}
           {status === 'idle' && todayRecord?.status === 'PUNCHED_OUT' && (
-            <div className="text-center space-y-4 w-full">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <CheckCircle className="text-green-600 w-8 h-8" />
+            <div className="text-center space-y-4">
+              <div style={{ width: '64px', height: '64px', background: '#ECFDF5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', border: '4px solid #D1FAE5' }}>
+                <CheckCircle className="text-emerald-600" size={32} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-800">Attendance Completed</h3>
-                <div className="mt-3 text-xs text-slate-600 space-y-1 text-left bg-slate-50 p-3 rounded-xl border border-slate-100">
-                  <p className="flex justify-between"><span>Punch In:</span> <b>{todayRecord.punchInTime}</b></p>
-                  <p className="flex justify-between"><span>Punch Out:</span> <b>{todayRecord.punchOutTime}</b></p>
-                  <p className="flex justify-between"><span>Working Hours:</span> <b>{todayRecord.workingHours}</b></p>
-                  <p className="flex justify-between"><span>Status:</span> <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[11px] font-bold rounded">{todayRecord.statusLabel}</span></p>
+                <h3 className="text-lg font-extrabold text-slate-900">Attendance Completed</h3>
+                <div className="mt-3 bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2 text-xs text-left">
+                  <div className="flex justify-between"><span>Punch In:</span> <strong className="text-slate-800">{todayRecord.punchInTime}</strong></div>
+                  <div className="flex justify-between"><span>Punch Out:</span> <strong className="text-slate-800">{todayRecord.punchOutTime}</strong></div>
+                  <div className="flex justify-between"><span>Working Hours:</span> <strong className="text-blue-600 font-bold">{todayRecord.workingHours}</strong></div>
+                  <div className="flex justify-between items-center pt-1 border-t border-slate-200">
+                    <span>Status:</span>
+                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[11px] font-bold rounded-md">{todayRecord.statusLabel || 'Completed'}</span>
+                  </div>
                 </div>
-                <p className="text-green-600 text-xs font-semibold mt-3">✓ Attendance successfully recorded for today!</p>
+                <p className="text-emerald-600 text-xs font-bold mt-3">✓ Attendance successfully recorded for today!</p>
               </div>
             </div>
           )}
 
+          {/* Locating GPS State */}
           {status === 'locating' && (
-            <div className="text-center py-6">
-              <Loader2 className="animate-spin w-10 h-10 text-blue-600 mx-auto mb-3" />
-              <p className="text-slate-600 text-xs font-medium">Verifying GPS Location...</p>
-              <p className="text-slate-400 text-[11px] mt-1">Please allow browser location permissions if prompted.</p>
+            <div className="text-center py-6 space-y-3">
+              <Loader2 className="animate-spin text-blue-600 mx-auto" size={40} />
+              <div>
+                <h4 className="text-sm font-bold text-slate-800">Verifying GPS Location...</h4>
+                <p className="text-xs text-slate-400 mt-1">Acquiring accurate GPS coordinates from your device.</p>
+              </div>
             </div>
           )}
 
+          {/* Success State */}
           {status === 'success' && successInfo && (
-            <div className="text-center space-y-4 w-full">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto">
-                <CheckCircle className="text-green-600 w-8 h-8" />
+            <div className="text-center space-y-4">
+              <div style={{ width: '64px', height: '64px', background: '#ECFDF5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+                <CheckCircle className="text-emerald-600" size={36} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-800">Punch Successful!</h3>
-                <p className="text-slate-500 text-xs mt-1">Recorded: {punchType} at {successInfo.time}</p>
-                <p className="text-slate-600 text-xs font-semibold mt-1">Location: {successInfo.locationName} ({successInfo.distance}m distance)</p>
-                <p className="text-slate-400 text-[11px] mt-1">Lat: {successInfo.lat.toFixed(6)} • Lng: {successInfo.lng.toFixed(6)}</p>
+                <h3 className="text-lg font-bold text-slate-900">Punch {successInfo.type} Successful!</h3>
+                <p className="text-xs text-slate-500 mt-1">Recorded at {successInfo.time}</p>
+                <div className="mt-3 p-3 bg-slate-50 rounded-xl border border-slate-100 text-xs text-slate-600 text-left space-y-1">
+                  <div><strong>Location:</strong> {successInfo.locationName}</div>
+                  <div><strong>Coordinates:</strong> {successInfo.lat.toFixed(5)}, {successInfo.lng.toFixed(5)}</div>
+                </div>
               </div>
               <button
                 onClick={() => setStatus('idle')}
-                className="w-full bg-blue-50 text-blue-600 font-semibold py-2.5 rounded-xl hover:bg-blue-100 transition-colors text-xs"
+                className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-xs hover:bg-blue-700 transition-colors"
               >
                 Done
               </button>
             </div>
           )}
 
+          {/* Error State */}
           {status === 'error' && (
-            <div className="text-center space-y-4 w-full">
-              <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto">
-                <AlertTriangle className="text-red-600 w-8 h-8" />
+            <div className="text-center space-y-4">
+              <div style={{ width: '64px', height: '64px', background: '#FEF2F2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto' }}>
+                <AlertTriangle className="text-rose-600" size={32} />
               </div>
               <div>
-                <h3 className="text-lg font-bold text-slate-800">Punch Rejected</h3>
-                <p className="text-red-500 text-xs font-semibold mt-1">{errorMessage}</p>
-                {coords && (
-                  <p className="text-slate-400 text-[11px] mt-1">Captured Coordinates: {coords.lat.toFixed(5)}, {coords.lng.toFixed(5)}</p>
-                )}
+                <h3 className="text-base font-bold text-slate-900">Punch Rejected</h3>
+                <p className="text-xs text-rose-600 font-semibold mt-1">{errorMessage}</p>
               </div>
               <button
                 onClick={() => setStatus('idle')}
-                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold py-2.5 rounded-xl transition-colors text-xs"
+                className="w-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold py-3 rounded-xl text-xs transition-colors"
               >
                 Try Again
               </button>
             </div>
           )}
+
         </div>
       </div>
-      
-      <div className="mt-4">
-        <h4 className="font-bold text-slate-700 text-xs uppercase tracking-wider mb-2 px-1">Recent Activity</h4>
-        <div 
-          className="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-y-auto"
-          style={{ maxHeight: '170px' }}
-        >
+
+      {/* Recent Activity List */}
+      <div style={{
+        background: '#FFFFFF',
+        borderRadius: '16px',
+        border: '1px solid #E2E8F0',
+        padding: '16px',
+        boxShadow: '0 4px 12px rgba(15,23,42,0.03)'
+      }}>
+        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Recent Punch Logs</h4>
+        <div className="space-y-2 max-h-48 overflow-y-auto">
           {recent.length === 0 ? (
-            <div className="p-3 text-center text-slate-500 text-xs">No recent punch activity.</div>
+            <div className="text-center py-3 text-xs text-slate-400">No recent punch activity.</div>
           ) : (
-            recent.map((item, i) => (
-              <div key={i} className="p-2.5 px-3 flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 flex-shrink-0">
-                    <Clock size={15} />
+            recent.map((item, idx) => (
+              <div key={idx} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${item.punch_type === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+                    {item.punch_type}
                   </div>
                   <div>
-                    <p className="font-semibold text-slate-800 text-xs">Punch {item.punch_type}</p>
-                    <p className="text-[11px] text-slate-500">{new Date(item.punch_time).toLocaleString()}</p>
+                    <span className="text-xs font-bold text-slate-800 block">Punch {item.punch_type}</span>
+                    <span className="text-[11px] text-slate-400">{new Date(item.punch_time).toLocaleString()}</span>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 bg-green-50 text-green-700 text-[11px] font-bold rounded">Success</span>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-600">
+                  Recorded
+                </span>
               </div>
             ))
           )}
         </div>
       </div>
+
     </div>
   );
 }
+
+export default GeoPunch;

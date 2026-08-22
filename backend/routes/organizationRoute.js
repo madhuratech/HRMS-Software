@@ -718,6 +718,8 @@ router.get("/org-chart", (req, res) => {
 /**
  * SHIFTS CRUD
  */
+const shiftExtraStore = {};
+
 router.get("/shifts", (req, res) => {
   const sql = `
     SELECT 
@@ -729,7 +731,7 @@ router.get("/shifts", (req, res) => {
       breakTime,
       graceTime,
       workingHours,
-      (SELECT COUNT(*) FROM employees e WHERE e.status = 'Active') as employees,
+      employees,
       COALESCE(status, 'Active') as status,
       description,
       COALESCE(createdDate, DATE_FORMAT(NOW(), '%d %b %Y')) as createdDate
@@ -738,32 +740,57 @@ router.get("/shifts", (req, res) => {
   `;
   db.query(sql, (err, rows) => {
     if (err) return res.status(500).json(err);
-    res.json(rows);
+    const enriched = (rows || []).map(r => {
+      const extra = shiftExtraStore[r.id] || {};
+      return {
+        ...r,
+        workingDays: extra.workingDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+        assignedEmployees: extra.assignedEmployees || [],
+        offLabel: extra.offLabel || 'Weekly Off',
+        dayOffLabels: extra.dayOffLabels || {}
+      };
+    });
+    res.json(enriched);
   });
 });
 
 router.post("/shifts", (req, res) => {
-  const { name, code, startTime, endTime, breakTime, graceTime, workingHours, status, description } = req.body;
+  const { name, code, startTime, endTime, breakTime, graceTime, workingHours, employees, status, description, assignedEmployees, workingDays, offLabel, dayOffLabels } = req.body;
+  const empCount = Array.isArray(assignedEmployees) ? assignedEmployees.length : (parseInt(employees) || 0);
   const sql = `
     INSERT INTO shifts (name, code, startTime, endTime, breakTime, graceTime, workingHours, employees, status, description, createdDate)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, DATE_FORMAT(NOW(), '%d %b %Y'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_FORMAT(NOW(), '%d %b %Y'))
   `;
-  db.query(sql, [name, code, startTime, endTime, breakTime || '60 mins', graceTime || '15 mins', workingHours || '9 hours', status || 'Active', description], (err, result) => {
+  db.query(sql, [name, code, startTime, endTime, breakTime || '60 mins', graceTime || '15 mins', workingHours || '9 hours', empCount, status || 'Active', description], (err, result) => {
     if (err) return res.status(500).json(err);
-    res.json({ message: "Shift created successfully", id: result.insertId });
+    const newId = result.insertId;
+    shiftExtraStore[newId] = {
+      workingDays: Array.isArray(workingDays) ? workingDays : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      assignedEmployees: Array.isArray(assignedEmployees) ? assignedEmployees : [],
+      offLabel: offLabel || 'Weekly Off',
+      dayOffLabels: dayOffLabels || {}
+    };
+    res.json({ message: "Shift created successfully", id: newId });
   });
 });
 
 router.put("/shifts/:id", (req, res) => {
   const { id } = req.params;
-  const { name, code, startTime, endTime, breakTime, graceTime, workingHours, status, description } = req.body;
+  const { name, code, startTime, endTime, breakTime, graceTime, workingHours, employees, status, description, assignedEmployees, workingDays, offLabel, dayOffLabels } = req.body;
+  const empCount = Array.isArray(assignedEmployees) ? assignedEmployees.length : (parseInt(employees) || 0);
   const sql = `
     UPDATE shifts
-    SET name = ?, code = ?, startTime = ?, endTime = ?, breakTime = ?, graceTime = ?, workingHours = ?, status = ?, description = ?
+    SET name = ?, code = ?, startTime = ?, endTime = ?, breakTime = ?, graceTime = ?, workingHours = ?, employees = ?, status = ?, description = ?
     WHERE id = ?
   `;
-  db.query(sql, [name, code, startTime, endTime, breakTime, graceTime, workingHours, status, description, id], (err, result) => {
+  db.query(sql, [name, code, startTime, endTime, breakTime, graceTime, workingHours, empCount, status, description, id], (err, result) => {
     if (err) return res.status(500).json(err);
+    shiftExtraStore[id] = {
+      workingDays: Array.isArray(workingDays) ? workingDays : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      assignedEmployees: Array.isArray(assignedEmployees) ? assignedEmployees : [],
+      offLabel: offLabel || 'Weekly Off',
+      dayOffLabels: dayOffLabels || {}
+    };
     res.json({ message: "Shift updated successfully" });
   });
 });
@@ -772,6 +799,7 @@ router.delete("/shifts/:id", (req, res) => {
   const { id } = req.params;
   db.query("DELETE FROM shifts WHERE id = ?", [id], (err, result) => {
     if (err) return res.status(500).json(err);
+    delete shiftExtraStore[id];
     res.json({ message: "Shift deleted successfully" });
   });
 });

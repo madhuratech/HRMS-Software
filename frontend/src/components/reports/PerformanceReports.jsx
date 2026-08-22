@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Download, Calendar, ChevronDown, Users, Award, UserCheck, Sparkles } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Download, Calendar, ChevronDown, Users, Award, UserCheck, Sparkles } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { apiFetch } from '../../lib/api';
 
 export function PerformanceReports() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({
     kpis: { score: '0.00', appraisals: 0, promotions: 0, goals: '0%' },
@@ -97,6 +99,9 @@ export function PerformanceReports() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <div>
+          <button onClick={() => navigate('/reports')} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600, color: '#2563EB', background: 'none', border: 'none', cursor: 'pointer', marginBottom: 8, padding: 0 }}>
+            <ArrowLeft size={16} /> Back to Reports
+          </button>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Performance Reports</h1>
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Track corporate goals and employee review summaries</p>
         </div>

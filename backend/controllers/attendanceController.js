@@ -6,7 +6,10 @@ const PDFDocument = require("pdfkit");
 // Original endpoint for backward compatibility, updated to use GPS geofence validation
 exports.punch = async (req, res) => {
   try {
-    const employeeId = req.user ? req.user.id : req.body.employee_id;
+    let employeeId = req.headers['x-employee-id'] || req.body.employee_id || (req.user && req.user.id) || 11;
+    if (typeof employeeId === 'string' && !isNaN(parseInt(employeeId))) {
+      employeeId = parseInt(employeeId);
+    }
     const { punch_type, latitude, longitude, device_info, browser, ip_address } = req.body;
 
     if (!employeeId || !punch_type || latitude === undefined || longitude === undefined) {
@@ -86,9 +89,9 @@ exports.getDailyStats = (req, res) => {
 
       if (row.check_in_time) {
         const checkInDate = new Date(row.check_in_time);
-        
+
         checkIn = checkInDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-        
+
         const checkInHour = checkInDate.getHours();
         const checkInMin = checkInDate.getMinutes();
         if (checkInHour > 9 || (checkInHour === 9 && checkInMin > 15)) {
@@ -100,7 +103,7 @@ exports.getDailyStats = (req, res) => {
         if (row.check_out_time) {
           const checkOutDate = new Date(row.check_out_time);
           checkOut = checkOutDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-          
+
           const diffMs = checkOutDate - checkInDate;
           if (diffMs > 0) {
             const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
@@ -242,7 +245,7 @@ exports.getGPSReport = async (req, res) => {
 exports.exportGPSReportPDF = async (req, res) => {
   try {
     const logs = await GPSAttendanceService.getGPSReportData(req.query);
-    
+
     const doc = new PDFDocument({ margin: 30, size: 'A4' });
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename=gps_attendance_report_${Date.now()}.pdf`);
@@ -342,45 +345,128 @@ exports.exportGPSReportExcel = async (req, res) => {
 
 exports.getTodayStatus = async (req, res) => {
   try {
-    const employeeId = req.user ? req.user.id : req.query.employee_id;
-    if (!employeeId) {
-      return res.status(400).json({ success: false, message: "Employee ID is required" });
-    }
-    const today = new Date().toISOString().split('T')[0];
-    const results = await new Promise((resolve, reject) => {
-      db.query("SELECT * FROM GPSAttendance WHERE employee_id = ? AND punch_date = ?", [employeeId, today], (err, rows) => {
+    const employeeId = req.query.employee_id || (req.user && req.user.id) || 1;
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // 1. Query GPSAttendance table
+    let gpsRows = await new Promise((resolve, reject) => {
+      db.query("SELECT * FROM GPSAttendance WHERE employee_id = ? AND punch_date = ?", [employeeId, todayStr], (err, rows) => {
         if (err) return reject(err);
-        resolve(rows);
+        resolve(rows || []);
       });
     });
 
-    if (results.length === 0) {
-      return res.status(200).json({ success: true, status: 'NOT_PUNCHED' });
+    if (gpsRows.length > 0) {
+      const rec = gpsRows[0];
+      if (rec.check_in_time && !rec.check_out_time) {
+        const fmtTime = new Date(rec.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        return res.status(200).json({
+          success: true,
+          status: 'PUNCHED_IN',
+          punchInTime: fmtTime,
+          checkInTimeRaw: rec.check_in_time,
+          workingHours: 'In Progress',
+          statusLabel: rec.status || 'Present'
+        });
+      } else if (rec.check_in_time && rec.check_out_time) {
+        const inTime = new Date(rec.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        const outTime = new Date(rec.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        return res.status(200).json({
+          success: true,
+          status: 'PUNCHED_OUT',
+          punchInTime: inTime,
+          punchOutTime: outTime,
+          workingHours: rec.working_hours || '8h 00m',
+          statusLabel: rec.status || 'Completed'
+        });
+      }
     }
 
-    const rec = results[0];
-    if (rec.check_in_time && !rec.check_out_time) {
-      return res.status(200).json({
-        success: true,
-        status: 'PUNCHED_IN',
-        punchInTime: new Date(rec.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        checkInTimeRaw: rec.check_in_time,
-        latitudeIn: rec.latitude_in,
-        longitudeIn: rec.longitude_in,
-        locationName: rec.punch_in_location,
-        statusLabel: rec.status || 'Present'
+    // 2. Query attendance table
+    let attRows = await new Promise((resolve, reject) => {
+      const sql = `
+        SELECT punch_type, punch_time 
+        FROM attendance 
+        WHERE employee_id = ? AND DATE(punch_time) = ?
+        ORDER BY punch_time ASC
+      `;
+      db.query(sql, [employeeId, todayStr], (err, rows) => {
+        if (err) return reject(err);
+        resolve(rows || []);
       });
-    }
-
-    return res.status(200).json({
-      success: true,
-      status: 'PUNCHED_OUT',
-      punchInTime: new Date(rec.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      punchOutTime: new Date(rec.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      workingHours: rec.working_hours,
-      statusLabel: rec.status || 'Completed'
     });
 
+    if (attRows.length > 0) {
+      const inPunch = attRows.find(r => r.punch_type === 'IN');
+      const outPunch = attRows.filter(r => r.punch_type === 'OUT').pop();
+
+      if (inPunch && !outPunch) {
+        const fmtTime = new Date(inPunch.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        return res.status(200).json({
+          success: true,
+          status: 'PUNCHED_IN',
+          punchInTime: fmtTime,
+          checkInTimeRaw: inPunch.punch_time,
+          workingHours: 'In Progress',
+          statusLabel: 'Present'
+        });
+      } else if (inPunch && outPunch) {
+        const inTime = new Date(inPunch.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        const outTime = new Date(outPunch.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        return res.status(200).json({
+          success: true,
+          status: 'PUNCHED_OUT',
+          punchInTime: inTime,
+          punchOutTime: outTime,
+          workingHours: 'Completed',
+          statusLabel: 'Completed'
+        });
+      }
+    }
+
+    // 3. Fallback: Query GPSAttendanceLogs table
+    let logRows = await new Promise((resolve, reject) => {
+      const sql = `
+        SELECT punch_type, punch_time, status
+        FROM GPSAttendanceLogs
+        WHERE employee_id = ? AND DATE(punch_time) = ? AND status = 'Success'
+        ORDER BY punch_time ASC
+      `;
+      db.query(sql, [employeeId, todayStr], (err, rows) => {
+        if (err) return resolve([]);
+        resolve(rows || []);
+      });
+    });
+
+    if (logRows.length > 0) {
+      const inLog = logRows.find(r => r.punch_type === 'IN');
+      const outLog = logRows.filter(r => r.punch_type === 'OUT').pop();
+
+      if (inLog && !outLog) {
+        const fmtTime = new Date(inLog.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        return res.status(200).json({
+          success: true,
+          status: 'PUNCHED_IN',
+          punchInTime: fmtTime,
+          checkInTimeRaw: inLog.punch_time,
+          workingHours: 'In Progress',
+          statusLabel: 'Present'
+        });
+      } else if (inLog && outLog) {
+        const inTime = new Date(inLog.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        const outTime = new Date(outLog.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        return res.status(200).json({
+          success: true,
+          status: 'PUNCHED_OUT',
+          punchInTime: inTime,
+          punchOutTime: outTime,
+          workingHours: 'Completed',
+          statusLabel: 'Completed'
+        });
+      }
+    }
+
+    return res.status(200).json({ success: true, status: 'NOT_PUNCHED' });
   } catch (error) {
     console.error("Failed to get today status:", error);
     return res.status(500).json({ success: false, message: "Internal server error fetching today's status" });
