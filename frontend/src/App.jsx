@@ -6,6 +6,7 @@ import { Login } from './components/auth/Login';
 import { Register } from './components/auth/Register';
 import { SuperAdminDashboard } from './components/dashboard/SuperAdminDashboard';
 import { StaffDashboard } from './components/dashboard/StaffDashboard';
+import { EmployeeDashboard } from './components/dashboard/EmployeeDashboard';
 import { AttendanceModule } from './components/attendance/AttendanceModule';
 import { SalesEntry } from './components/sales/SalesEntry';
 import { SalesEnquiries } from './components/sales/SalesEnquiries';
@@ -26,6 +27,7 @@ import { DocumentManager } from './components/hr/DocumentManager';
 import { SupportTickets } from './components/support/SupportTickets';
 import { NewsFeed } from './components/communication/NewsFeed';
 import { EmployeeReports } from './components/reports/EmployeeReports';
+import { ReportsDirectory } from './components/reports/ReportsDirectory';
 import { AttendanceReports as AttendanceReportsModule } from './components/reports/AttendanceReports';
 import { LeaveReports } from './components/reports/LeaveReports';
 import { PayrollReports as PayrollReportsModule } from './components/reports/PayrollReports';
@@ -39,6 +41,7 @@ import { Teams } from './components/organization/Teams';
 import { ShiftManagement } from './components/organization/ShiftManagement';
 import { HolidayCalendar } from './components/organization/HolidayCalendar';
 import { OrganizationChart } from './components/organization/OrganizationChart';
+import { UserRoles } from './components/organization/UserRoles';
 
 // Employee Module Imports
 import EmployeeDirectory from './components/employee/EmployeeDirectory';
@@ -50,16 +53,26 @@ import PromotionsContent from './components/employee/PromotionsContent';
 import TransfersContent from './components/employee/TransfersContent';
 import ExitManagement from './components/employee/ExitManagement';
 import EmployeeDocuments from './components/employee/EmployeeDocuments';
+import { MyShift } from './components/employee/MyShift';
+import { MyPayroll } from './components/employee/MyPayroll';
+import { MyTeam } from './components/employee/MyTeam';
+import { MyPerformance } from './components/employee/MyPerformance';
+import { TeamLeaderDashboard } from './components/dashboard/TeamLeaderDashboard';
+import { TeamAttendanceModule } from './components/team-leader/TeamAttendanceModule';
+import { TeamTasksModule } from './components/team-leader/TeamTasksModule';
+import { TeamLeaveModule } from './components/team-leader/TeamLeaveModule';
+import { TeamPerformanceModule } from './components/team-leader/TeamPerformanceModule';
 import { AppLayout } from './components/layout/AppLayout';
 
 // Attendance Module Imports
 import DailyAttendance from './components/attendance/DailyAttendance';
-import BiometricAttendance from './components/attendance/BiometricAttendance';
+import GPSAttendance from './components/attendance/GPSAttendance';
 import Regularization from './components/attendance/Regularization';
 import ShiftRoster from './components/attendance/ShiftRoster';
 import Overtime from './components/attendance/Overtime';
 import LateArrival from './components/attendance/LateArrival';
 import AttendanceReports from './components/attendance/AttendanceReports';
+import PunchLocations from './components/attendance/PunchLocations';
 
 // Leave Module Imports
 import LeaveDashboard from './components/leave/LeaveDashboard';
@@ -137,6 +150,7 @@ import SettingsCommunication from './components/settings/SettingsCommunication';
 import SettingsIntegrations from './components/settings/SettingsIntegrations';
 import SettingsSecurity from './components/settings/SettingsSecurity';
 import SettingsSystem from './components/settings/SettingsSystem';
+import { AIAssistantDashboard } from './components/ai-assistant/AIAssistantDashboard';
 
 import { ToastProvider } from './components/ui/Toast';
 import { CustomCursor } from './components/ui/CustomCursor';
@@ -145,45 +159,118 @@ import { Agentation } from 'agentation';
 function App() {
   const [authView, setAuthView] = useState('login');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
   const [currentView, setCurrentView] = useState('dashboard');
   const [userRole, setUserRole] = useState('SUPER_ADMIN');
+  const [userName, setUserName] = useState('');
 
-  const handleLogin = (role, name) => {
-    setUserRole(role);
+  // On mount: restore auth state from localStorage
+  React.useEffect(() => {
+    try {
+      const storedAuth = localStorage.getItem('hrms_auth');
+      if (storedAuth) {
+        const { role, name, loggedIn } = JSON.parse(storedAuth);
+        if (loggedIn && role) {
+          setUserRole(role);
+          setUserName(name || '');
+          setIsLoggedIn(true);
+        }
+      }
+    } catch (err) {
+      // Corrupted storage — clear it and stay on login
+      localStorage.removeItem('hrms_auth');
+    } finally {
+      setIsInitializing(false);
+    }
+  }, []);
+
+  const handleLogin = (role, name, userObj) => {
+    // Use data returned from backend auth — never hardcode employee IDs
+    const finalRole = role || (userObj && userObj.role) || 'EMPLOYEE';
+    const finalName = name || (userObj && userObj.name) || '';
+    const finalId = (userObj && userObj.id) || 1;
+    const finalEmail = (userObj && userObj.email) || '';
+    const finalToken = (userObj && userObj.token) || 'mock_jwt_token';
+
+    setUserRole(finalRole);
+    setUserName(finalName);
     setIsLoggedIn(true);
+
+    const authObj = {
+      role: finalRole,
+      name: finalName,
+      loggedIn: true,
+      token: finalToken,
+      user: {
+        id: finalId,
+        emp_id: `EMP${String(finalId).padStart(4, '0')}`,
+        name: finalName,
+        email: finalEmail,
+        role: finalRole
+      }
+    };
+    localStorage.setItem('hrms_auth', JSON.stringify(authObj));
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
+    setUserName('');
     setAuthView('login');
+    // Clear persisted auth on explicit logout
+    localStorage.removeItem('hrms_auth');
   };
 
+  // Show a full-screen loading spinner while restoring auth state
+  if (isInitializing) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)',
+        gap: 20,
+      }}>
+        <div style={{
+          width: 56, height: 56, borderRadius: '50%',
+          border: '4px solid rgba(255,255,255,0.15)',
+          borderTopColor: '#3b82f6',
+          animation: 'spin 0.85s linear infinite',
+        }} />
+        <p style={{ color: '#94a3b8', fontSize: 15, fontWeight: 500, letterSpacing: '0.02em' }}>
+          Loading HRMS…
+        </p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
   if (!isLoggedIn) {
-    if (authView === 'register') {
+    if (authView === 'register' || window.location.pathname.includes('verify-email')) {
       return (
         <Register
           onRegister={handleLogin}
           onLoginClick={() => setAuthView('login')} />);
-
-
     }
     return (
       <Login
         onLogin={handleLogin}
         onRegisterClick={() => setAuthView('register')} />);
-
-
   }
 
   // A helper component to bridge the old currentView state with React Router
   const LegacyViewManager = () => {
     const location = useLocation();
     const currentView = location.pathname.substring(1) || 'dashboard'; // remove leading slash
-    
+
     switch (currentView) {
       case 'dashboard':
         if (userRole === 'SERVICE_STAFF' || userRole === 'SALES_MANAGER') {
           return <StaffDashboard />;
+        }
+        if (userRole === 'EMPLOYEE') {
+          return <EmployeeDashboard />;
         }
         return <SuperAdminDashboard />;
       case 'schedule':
@@ -217,12 +304,51 @@ function App() {
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          
+
           <Route element={<AppLayout userRole={userRole} onLogout={handleLogout} />}>
             {/* Dashboard Route */}
-            <Route path="/dashboard" element={userRole === 'SERVICE_STAFF' || userRole === 'SALES_MANAGER' ? <StaffDashboard /> : <SuperAdminDashboard />} />
+            <Route path="/dashboard" element={userRole === 'SERVICE_STAFF' || userRole === 'SALES_MANAGER' ? <StaffDashboard /> : userRole === 'EMPLOYEE' ? <EmployeeDashboard /> : userRole === 'TEAM_LEADER' ? <TeamLeaderDashboard /> : <SuperAdminDashboard />} />
+
+            {/* Dedicated Employee Module Routes */}
+            <Route path="/employee" element={<Navigate to="/employee/dashboard" replace />} />
+            <Route path="/employee/dashboard" element={<EmployeeDashboard />} />
+            <Route path="/employee/profile" element={<EmployeeProfileContent />} />
+            <Route path="/employee/attendance" element={<GPSAttendance />} />
+            <Route path="/employee/shift" element={<MyShift />} />
+            <Route path="/employee/leave" element={<LeaveApplications />} />
+            <Route path="/employee/leave-types" element={<LeaveTypes />} />
+            <Route path="/employee/holidays" element={<HolidayList />} />
+            <Route path="/employee/payroll" element={<MyPayroll />} />
+            <Route path="/employee/tasks" element={<Tasks />} />
+            <Route path="/employee/team" element={<MyTeam />} />
+            <Route path="/employee/performance" element={<MyPerformance />} />
+            <Route path="/employee/documents" element={<EmployeeDocuments />} />
+            <Route path="/employee/announcements" element={<NewsFeed />} />
+            <Route path="/employee/help" element={<SupportTickets />} />
+
+            {/* Dedicated Team Leader Routes */}
+            <Route path="/team-leader" element={<Navigate to="/team-leader/dashboard" replace />} />
+            <Route path="/team-leader/dashboard" element={<TeamLeaderDashboard />} />
+            <Route path="/team-leader/profile" element={<EmployeeProfileContent />} />
+            <Route path="/team-leader/my-attendance" element={<GPSAttendance />} />
+            <Route path="/team-leader/my-shift" element={<MyShift />} />
+            <Route path="/team-leader/my-team" element={<MyTeam />} />
+            <Route path="/team-leader/team-attendance" element={<TeamAttendanceModule />} />
+            <Route path="/team-leader/projects" element={<ProjectsList />} />
+            <Route path="/team-leader/team-tasks" element={<Tasks />} />
+            <Route path="/team-leader/team-performance" element={<TeamPerformanceModule />} />
+            <Route path="/team-leader/my-leave" element={<LeaveApplications />} />
+            <Route path="/team-leader/team-leave" element={<TeamLeaveModule />} />
+            <Route path="/team-leader/holidays" element={<HolidayList />} />
+            <Route path="/team-leader/leave-types" element={<LeaveTypes />} />
+            <Route path="/team-leader/my-payroll" element={<MyPayroll />} />
+            <Route path="/team-leader/help" element={<SupportTickets />} />
+
+            {/* AI Assistant Route */}
+            <Route path="/ai-assistant" element={<AIAssistantDashboard />} />
 
             {/* Employee Routes - explicitly rendering their own components */}
+            <Route path="/employees/dashboard" element={<StaffDashboard />} />
             <Route path="/employees" element={<EmployeeDirectory />} />
             <Route path="/employees/list" element={<EmployeeListContent />} />
             <Route path="/employees/add" element={<AddEmployeeForm />} />
@@ -232,25 +358,28 @@ function App() {
             <Route path="/employees/transfers" element={<TransfersContent />} />
             <Route path="/employees/exit" element={<ExitManagement />} />
             <Route path="/employees/documents" element={<EmployeeDocuments />} />
-            
+            <Route path="/employees/reports" element={<Navigate to="/reports/employees" replace />} />
+
             {/* Attendance Routes */}
             <Route path="/attendance/daily" element={<DailyAttendance />} />
-            <Route path="/attendance/biometric" element={<BiometricAttendance />} />
+            <Route path="/attendance/gps" element={<GPSAttendance />} />
             <Route path="/attendance/regularization" element={<Regularization />} />
             <Route path="/attendance/shift-roster" element={<ShiftRoster />} />
             <Route path="/attendance/overtime" element={<Overtime />} />
             <Route path="/attendance/late-arrival" element={<LateArrival />} />
-            <Route path="/attendance/reports" element={<AttendanceReports />} />
-            
+            <Route path="/attendance/reports" element={<Navigate to="/reports/attendance" replace />} />
+            <Route path="/attendance/punch-locations" element={<PunchLocations />} />
+
             {/* Leave Module */}
             <Route path="/leave-dashboard" element={<LeaveDashboard />} />
             <Route path="/leave-applications" element={<LeaveApplications />} />
             <Route path="/leave-approval" element={<LeaveApproval />} />
             <Route path="/leave-balance" element={<LeaveBalance />} />
             <Route path="/leave-types" element={<LeaveTypes />} />
+            <Route path="/leave/reports" element={<Navigate to="/reports/leave" replace />} />
             <Route path="/holiday-list" element={<HolidayList />} />
             <Route path="/comp-off" element={<CompOff />} />
-            
+
             {/* Organization Module */}
             <Route path="/company-profile" element={<CompanyProfile />} />
             <Route path="/departments" element={<Departments />} />
@@ -259,7 +388,8 @@ function App() {
             <Route path="/shift-management" element={<ShiftManagement />} />
             <Route path="/holiday-calendar" element={<HolidayCalendar />} />
             <Route path="/organization-chart" element={<OrganizationChart />} />
-            
+            <Route path="/user-roles" element={<UserRoles />} />
+
             {/* Other Existing Modules */}
             <Route path="/news" element={<NewsFeed />} />
             <Route path="/schedule" element={<ShiftScheduler />} />
@@ -269,15 +399,18 @@ function App() {
             <Route path="/leads" element={<SalesEnquiries />} />
             <Route path="/customer-sales" element={<CustomerSalesDetails />} />
             <Route path="/service" element={<TaskBoard />} />
-            <Route path="/reports" element={<Navigate to="/reports/employee" replace />} />
+            {/* Global Centralized Reports Module */}
+            <Route path="/reports" element={<ReportsDirectory />} />
+            <Route path="/reports/employees" element={<EmployeeReports />} />
             <Route path="/reports/employee" element={<EmployeeReports />} />
             <Route path="/reports/attendance" element={<AttendanceReportsModule />} />
             <Route path="/reports/leave" element={<LeaveReports />} />
             <Route path="/reports/payroll" element={<PayrollReportsModule />} />
             <Route path="/reports/recruitment" element={<RecruitmentReportsModule />} />
             <Route path="/reports/performance" element={<PerformanceReports />} />
+            <Route path="/reports/projects" element={<ProjectReports />} />
             <Route path="/reports/project" element={<ProjectReports />} />
-            
+
             {/* Payroll Module */}
             <Route path="/payroll" element={<Navigate to="/payroll/salary-structure" replace />} />
             <Route path="/payroll/salary-structure" element={<SalaryStructure />} />
@@ -288,8 +421,8 @@ function App() {
             <Route path="/payroll/reimbursements" element={<Reimbursements />} />
             <Route path="/payroll/loans" element={<LoansAdvances />} />
             <Route path="/payroll/tax" element={<TaxManagement />} />
-            <Route path="/payroll/reports" element={<PayrollReports />} />
-            
+            <Route path="/payroll/reports" element={<Navigate to="/reports/payroll" replace />} />
+
             {/* Recruitment Module */}
             <Route path="/recruitment" element={<Navigate to="/recruitment/dashboard" replace />} />
             <Route path="/recruitment/dashboard" element={<RecruitmentDashboard />} />
@@ -298,8 +431,8 @@ function App() {
             <Route path="/recruitment/interviews" element={<InterviewSchedule />} />
             <Route path="/recruitment/offers" element={<OfferLetters />} />
             <Route path="/recruitment/pipeline" element={<HiringPipeline />} />
-            <Route path="/recruitment/reports" element={<RecruitmentReports />} />
-            
+            <Route path="/recruitment/reports" element={<Navigate to="/reports/recruitment" replace />} />
+
             {/* Onboarding Module */}
             <Route path="/onboarding" element={<Navigate to="/onboarding/new-joiners" replace />} />
             <Route path="/onboarding/new-joiners" element={<NewJoiners />} />
@@ -308,7 +441,7 @@ function App() {
             <Route path="/onboarding/welcome-kit" element={<WelcomeKit />} />
             <Route path="/onboarding/orientation" element={<Orientation />} />
             <Route path="/onboarding/probation" element={<Probation />} />
-            
+
             {/* Performance Module */}
             <Route path="/performance" element={<Navigate to="/performance/goals" replace />} />
             <Route path="/performance/goals" element={<Goals />} />
@@ -318,6 +451,7 @@ function App() {
             <Route path="/performance/reviews" element={<Reviews />} />
             <Route path="/performance/feedback" element={<Feedback />} />
             <Route path="/performance/promotions" element={<Promotions />} />
+            <Route path="/performance/reports" element={<Navigate to="/reports/performance" replace />} />
 
             {/* Project Management Module */}
             <Route path="/projects" element={<Navigate to="/projects/dashboard" replace />} />
@@ -328,6 +462,7 @@ function App() {
             <Route path="/projects/timesheets" element={<Timesheets />} />
             <Route path="/projects/milestones" element={<Milestones />} />
             <Route path="/projects/team" element={<TeamMembers />} />
+            <Route path="/projects/reports" element={<Navigate to="/reports/projects" replace />} />
 
             {/* Expenses Module */}
             <Route path="/expenses" element={<Navigate to="/expenses/claims" replace />} />
@@ -335,7 +470,7 @@ function App() {
             <Route path="/expenses/categories" element={<ExpenseCategories />} />
             <Route path="/expenses/approval" element={<ExpenseApproval />} />
             <Route path="/expenses/reimbursements" element={<ReimbursementsModule />} />
-            <Route path="/expenses/reports" element={<ExpenseReports />} />
+            <Route path="/expenses/reports" element={<Navigate to="/reports/expenses" replace />} />
 
             {/* Documents Module */}
             <Route path="/documents" element={<Navigate to="/documents/employee" replace />} />

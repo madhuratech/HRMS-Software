@@ -2,13 +2,14 @@ const Performance = require('../models/Performance');
 
 class KpiService {
   static async create(data, userId) {
+    const kpiName = data.kpi_name || data.title || 'KPI Target';
     const sql = `
       INSERT INTO kpis (
-        kpi_name, department_id, weightage, target_value, description, status, created_by, updated_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        kpi_name, title, department_id, weightage, target_value, description, status, created_by, updated_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
-      data.kpi_name, data.department_id, data.weightage || null, data.target_value,
+      kpiName, kpiName, data.department_id || null, data.weightage || null, data.target_value,
       data.description || null, data.status || 'Active', userId, userId
     ];
     await Performance.beginTransaction();
@@ -23,14 +24,15 @@ class KpiService {
   }
 
   static async update(id, data, userId) {
+    const kpiName = data.kpi_name || data.title || 'KPI Target';
     const sql = `
       UPDATE kpis SET
-        kpi_name = ?, department_id = ?, weightage = ?, target_value = ?,
+        kpi_name = ?, title = ?, department_id = ?, weightage = ?, target_value = ?,
         description = ?, status = ?, updated_by = ?
       WHERE id = ?
     `;
     const params = [
-      data.kpi_name, data.department_id, data.weightage || null, data.target_value,
+      kpiName, kpiName, data.department_id || null, data.weightage || null, data.target_value,
       data.description || null, data.status, userId, id
     ];
     await Performance.beginTransaction();
@@ -58,7 +60,17 @@ class KpiService {
 
   static async getById(id) {
     const rows = await Performance.query(
-      `SELECT k.*, d.dept_name as department_name
+      `SELECT k.id,
+              COALESCE(k.kpi_name, k.title, 'KPI Target') as kpi_name,
+              COALESCE(k.title, k.kpi_name, 'KPI Target') as title,
+              k.department_id,
+              COALESCE(d.dept_name, 'General') as department_name,
+              k.weightage,
+              k.target_value,
+              k.achieved_value,
+              k.description,
+              COALESCE(k.status, 'Active') as status,
+              k.created_at
        FROM kpis k
        LEFT JOIN departments d ON k.department_id = d.id
        WHERE k.id = ?`,
@@ -69,7 +81,17 @@ class KpiService {
 
   static async list(filters, pagination) {
     let sql = `
-      SELECT k.*, d.dept_name as department_name
+      SELECT k.id,
+             COALESCE(k.kpi_name, k.title, 'KPI Target') as kpi_name,
+             COALESCE(k.title, k.kpi_name, 'KPI Target') as title,
+             k.department_id,
+             COALESCE(d.dept_name, 'General') as department_name,
+             k.weightage,
+             k.target_value,
+             k.achieved_value,
+             k.description,
+             COALESCE(k.status, 'Active') as status,
+             k.created_at
       FROM kpis k
       LEFT JOIN departments d ON k.department_id = d.id
       WHERE 1=1
@@ -77,9 +99,9 @@ class KpiService {
     const params = [];
 
     if (filters.search) {
-      sql += ` AND (k.kpi_name LIKE ? OR k.status LIKE ?)`;
+      sql += ` AND (k.kpi_name LIKE ? OR k.title LIKE ? OR k.status LIKE ?)`;
       const term = `%${filters.search}%`;
-      params.push(term, term);
+      params.push(term, term, term);
     }
     if (filters.department_id) {
       sql += ` AND k.department_id = ?`;

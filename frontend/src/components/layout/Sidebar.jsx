@@ -10,10 +10,8 @@ import {
   UserPlus,
   ClipboardList,
   BarChart3,
-  GraduationCap,
   FolderKanban,
   FileBarChart,
-  Package,
   Receipt,
   FileText,
   LifeBuoy,
@@ -22,38 +20,75 @@ import {
   ChevronRight,
   LogOut,
   Network,
-  GitBranch,
-  Layers,
-  Briefcase,
-  MapPin,
   Clock,
-  CalendarDays,
-  TreePine,
-  Bird
+  Bird,
+  Sparkles,
+  Calendar
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 export function Sidebar({ userRole, onLogout }) {
-  const [expandedGroups, setExpandedGroups] = useState(['organization', 'employees']);
+  const [expandedGroups, setExpandedGroups] = useState([]);
   const location = useLocation();
   const navigate = useNavigate();
 
+  const handleProfileClick = () => {
+    let userId = 1;
+    const auth = localStorage.getItem('hrms_auth');
+    if (auth) {
+      try {
+        const parsed = JSON.parse(auth);
+        if (parsed.user && parsed.user.id) userId = parsed.user.id;
+      } catch (e) { }
+    }
+    localStorage.setItem('selectedEmployeeId', userId);
+    navigate('/employees/profile');
+  };
+
   const toggleGroup = (groupId) => {
     setExpandedGroups(prev =>
-      prev.includes(groupId)
-        ? prev.filter(id => id !== groupId)
-        : [...prev, groupId]
+      prev.includes(groupId) ? [] : [groupId]
     );
   };
 
-  // Automatically expand groups based on current path
-  useEffect(() => {
-    const currentPath = location.pathname;
-    if (currentPath.startsWith('/employees') && !expandedGroups.includes('employees')) {
-      setExpandedGroups(prev => [...prev, 'employees']);
-    }
-  }, [location.pathname]);
+  // Dedicated menu items for EMPLOYEE role
+  const employeeMenuItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/employee/dashboard' },
+    { id: 'profile', label: 'My Profile', icon: Users, path: '/employee/profile' },
+    { id: 'attendance', label: 'My Attendance', icon: CalendarCheck, path: '/employee/attendance' },
+    { id: 'shift', label: 'My Shift', icon: Clock, path: '/employee/shift' },
+    { id: 'leave', label: 'My Leave', icon: CalendarOff, path: '/employee/leave' },
+    { id: 'leave-types', label: 'Leave Types', icon: CalendarOff, path: '/employee/leave-types' },
+    { id: 'holiday-list', label: 'Holiday List', icon: Calendar, path: '/employee/holidays' },
+    { id: 'payroll', label: 'My Payroll', icon: DollarSign, path: '/employee/payroll' },
+    { id: 'tasks', label: 'My Tasks', icon: ClipboardList, path: '/employee/tasks' },
+    { id: 'team', label: 'My Team', icon: Network, path: '/employee/team' },
+    { id: 'performance', label: 'My Performance', icon: BarChart3, path: '/employee/performance' },
+    { id: 'documents', label: 'My Documents', icon: FileText, path: '/employee/documents' },
+    { id: 'announcements', label: 'Announcements', icon: Sparkles, path: '/employee/announcements' },
+    { id: 'help', label: 'Help & Support', icon: LifeBuoy, path: '/employee/help' },
+  ];
 
+  // Dedicated menu items for TEAM_LEADER role
+  const teamLeaderMenuItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/team-leader/dashboard' },
+    { id: 'profile', label: 'My Profile', icon: Users, path: '/team-leader/profile' },
+    { id: 'my-attendance', label: 'My Attendance', icon: CalendarCheck, path: '/team-leader/my-attendance' },
+    { id: 'my-shift', label: 'My Shift', icon: Clock, path: '/team-leader/my-shift' },
+    { id: 'my-team', label: 'My Team', icon: Network, path: '/team-leader/my-team' },
+    { id: 'team-attendance', label: 'Team Attendance', icon: CalendarCheck, path: '/team-leader/team-attendance' },
+    { id: 'projects', label: 'Projects', icon: FolderKanban, path: '/team-leader/projects' },
+    { id: 'team-tasks', label: 'Team Tasks', icon: ClipboardList, path: '/team-leader/team-tasks' },
+    { id: 'team-performance', label: 'Team Performance', icon: BarChart3, path: '/team-leader/team-performance' },
+    { id: 'my-leave', label: 'My Leave', icon: CalendarOff, path: '/team-leader/my-leave' },
+    { id: 'team-leave', label: 'Team Leave Overview', icon: CalendarOff, path: '/team-leader/team-leave' },
+    { id: 'holidays', label: 'Holiday List', icon: CalendarOff, path: '/team-leader/holidays' },
+    { id: 'leave-types', label: 'Leave Types', icon: CalendarOff, path: '/team-leader/leave-types' },
+    { id: 'my-payroll', label: 'My Payroll', icon: DollarSign, path: '/team-leader/my-payroll' },
+    { id: 'help', label: 'Help & Support', icon: LifeBuoy, path: '/team-leader/help' },
+  ];
+
+  // Standard Admin & HR Menu Items
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['ALL'], path: '/dashboard' },
     {
@@ -68,7 +103,8 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'teams', label: 'Teams', path: '/teams' },
         { id: 'shift-management', label: 'Shift Management', path: '/shift-management' },
         { id: 'holiday-calendar', label: 'Holiday Calendar', path: '/holiday-calendar' },
-        { id: 'organization-chart', label: 'Organization Chart', path: '/organization-chart' }
+        { id: 'organization-chart', label: 'Organization Chart', path: '/organization-chart' },
+        { id: 'user-roles', label: 'User Roles & Permissions', path: '/user-roles' }
       ]
     },
     {
@@ -77,6 +113,7 @@ export function Sidebar({ userRole, onLogout }) {
       icon: Users,
       roles: ['ALL'],
       children: [
+        { id: 'employee-dashboard', label: 'Employee Dashboard', path: '/employees/dashboard' },
         { id: 'employee-directory', label: 'Employee Directory', path: '/employees' },
         { id: 'employee-list', label: 'Employee List', path: '/employees/list' },
         { id: 'add-employee', label: 'Add Employee', path: '/employees/add' },
@@ -95,12 +132,12 @@ export function Sidebar({ userRole, onLogout }) {
       roles: ['ALL'],
       children: [
         { id: 'daily-attendance', label: 'Daily Attendance', path: '/attendance/daily' },
-        { id: 'biometric-attendance', label: 'Biometric Attendance', path: '/attendance/biometric' },
+        { id: 'gps-attendance', label: 'GPS Attendance', path: '/attendance/gps' },
         { id: 'regularization', label: 'Regularization', path: '/attendance/regularization' },
         { id: 'shift-roster', label: 'Shift Roster', path: '/attendance/shift-roster' },
         { id: 'overtime', label: 'Overtime', path: '/attendance/overtime' },
         { id: 'late-arrival', label: 'Late Arrival', path: '/attendance/late-arrival' },
-        { id: 'attendance-reports', label: 'Attendance Reports', path: '/attendance/reports' }
+        { id: 'punch-locations', label: 'Punch Locations', path: '/attendance/punch-locations' }
       ]
     },
     {
@@ -131,8 +168,7 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'bonus-incentives', label: 'Bonus & Incentives', path: '/payroll/bonus' },
         { id: 'reimbursements', label: 'Reimbursements', path: '/payroll/reimbursements' },
         { id: 'loans-advances', label: 'Loans & Advances', path: '/payroll/loans' },
-        { id: 'tax-management', label: 'Tax Management', path: '/payroll/tax' },
-        { id: 'payroll-reports', label: 'Payroll Reports', path: '/payroll/reports' }
+        { id: 'tax-management', label: 'Tax Management', path: '/payroll/tax' }
       ]
     },
     {
@@ -179,19 +215,6 @@ export function Sidebar({ userRole, onLogout }) {
       ]
     },
     {
-      id: 'training',
-      label: 'Training',
-      icon: GraduationCap,
-      roles: ['ALL'],
-      children: [
-        { id: 'training-programs', label: 'Training Programs' },
-        { id: 'learning-portal', label: 'Learning Portal' },
-        { id: 'trainers', label: 'Trainers' },
-        { id: 'assessments', label: 'Assessments' },
-        { id: 'certificates', label: 'Certificates' }
-      ]
-    },
-    {
       id: 'projects',
       label: 'Projects',
       icon: FolderKanban,
@@ -206,35 +229,7 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'team-members', label: 'Team Members', path: '/projects/team' }
       ]
     },
-    {
-      id: 'reports',
-      label: 'Reports',
-      icon: FileBarChart,
-      roles: ['ALL'],
-      children: [
-        { id: 'employee-reports', label: 'Employee Reports', path: '/reports/employee' },
-        { id: 'attendance-reports-module', label: 'Attendance Reports', path: '/reports/attendance' },
-        { id: 'leave-reports', label: 'Leave Reports', path: '/reports/leave' },
-        { id: 'payroll-reports-module', label: 'Payroll Reports', path: '/reports/payroll' },
-        { id: 'recruitment-reports', label: 'Recruitment Reports', path: '/reports/recruitment' },
-        { id: 'performance-reports', label: 'Performance Reports', path: '/reports/performance' },
-        { id: 'project-reports', label: 'Project Reports', path: '/reports/project' }
-      ]
-    },
-    {
-      id: 'assets',
-      label: 'Assets',
-      icon: Package,
-      roles: ['ALL'],
-      children: [
-        { id: 'asset-categories', label: 'Asset Categories' },
-        { id: 'asset-inventory', label: 'Asset Inventory' },
-        { id: 'asset-allocation-module', label: 'Asset Allocation' },
-        { id: 'asset-return', label: 'Asset Return' },
-        { id: 'maintenance', label: 'Maintenance' },
-        { id: 'asset-reports', label: 'Asset Reports' }
-      ]
-    },
+    { id: 'reports', label: 'Reports', icon: FileBarChart, roles: ['ALL'], path: '/reports' },
     {
       id: 'expenses',
       label: 'Expenses',
@@ -271,7 +266,6 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'tickets', label: 'Tickets', path: '/help-desk/tickets' },
         { id: 'categories', label: 'Categories', path: '/help-desk/categories' },
         { id: 'priorities', label: 'Priorities', path: '/help-desk/priorities' },
-        { id: 'knowledge-base', label: 'Knowledge Base', path: '/help-desk/knowledge-base' },
         { id: 'help-desk-reports', label: 'Reports', path: '/help-desk/reports' }
       ]
     },
@@ -291,18 +285,36 @@ export function Sidebar({ userRole, onLogout }) {
         { id: 'settings-security', label: 'Security', path: '/settings/security' },
         { id: 'settings-system', label: 'System', path: '/settings/system' }
       ]
-    }
+    },
+    { id: 'ai-assistant', label: 'AI Assistant', icon: Sparkles, roles: ['ALL'], path: '/ai-assistant' },
   ];
 
-  const filteredMenu = menuItems.filter((item) =>
-    item.roles?.includes('ALL') || item.roles?.includes(userRole)
+  // Automatically expand ONLY the active module group based on current path
+  useEffect(() => {
+    const currentPath = location.pathname;
+    const targetMenu = userRole === 'EMPLOYEE' ? employeeMenuItems : menuItems;
+
+    const matchingGroup = targetMenu.find(item => {
+      if (item.children) {
+        return item.children.some(child => child.path && (currentPath.startsWith(child.path) || currentPath === child.path));
+      }
+      return false;
+    });
+
+    if (matchingGroup) {
+      setExpandedGroups([matchingGroup.id]);
+    }
+  }, [location.pathname, userRole]);
+
+  const targetMenu = userRole === 'EMPLOYEE' ? employeeMenuItems : userRole === 'TEAM_LEADER' ? teamLeaderMenuItems : menuItems;
+
+  const filteredMenu = targetMenu.filter((item) =>
+    !item.roles || item.roles.includes('ALL') || item.roles.includes(userRole)
   );
 
   const renderMenuItem = (item) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedGroups.includes(item.id);
-    
-    // Check if any child's path matches the current location exactly, or if the item's path matches
     const isActive = item.path === location.pathname || (hasChildren && item.children.some(child => child.path === location.pathname));
 
     if (hasChildren) {
@@ -322,7 +334,6 @@ export function Sidebar({ userRole, onLogout }) {
           {isExpanded && (
             <div className="ml-4 mt-1 space-y-0.5">
               {item.children.map(child => {
-                // Ensure default path fallback if we didn't update this child
                 const targetPath = child.path || `/${child.id}`;
                 return (
                   <button
@@ -345,6 +356,8 @@ export function Sidebar({ userRole, onLogout }) {
       );
     }
 
+    const isAIAssistant = item.id === 'ai-assistant';
+
     return (
       <button
         key={item.id}
@@ -352,75 +365,78 @@ export function Sidebar({ userRole, onLogout }) {
         className={cn(
           "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm font-medium",
           isActive
-            ? "custom-sidebar-btn-active bg-blue-600 text-white"
+            ? (isAIAssistant ? "bg-violet-600 text-white shadow-lg shadow-violet-600/20" : "custom-sidebar-btn-active bg-blue-600 text-white")
             : "custom-sidebar-btn"
         )}
       >
-        <item.icon size={18} />
+        <item.icon
+          size={18}
+          className={cn(isAIAssistant ? "animate-pulse" : "")}
+          style={isAIAssistant ? {
+            stroke: 'url(#ai-spark-gradient)',
+            filter: 'drop-shadow(0 0 18px rgba(139, 92, 246, 0.35))'
+          } : {}}
+        />
         {item.label}
       </button>
     );
   };
 
   return (
-    <div className="w-64 custom-sidebar h-screen flex flex-col fixed left-0 top-0 overflow-y-auto">
-      {/* Logo */}
-      <div className="p-5 custom-sidebar-border-b">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 custom-sidebar-logo-bg rounded-lg flex items-center justify-center">
-            <Bird size={22} className="text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold tracking-wide">HAWKEYE NEST</h1>
-            <p className="text-[10px] text-slate-400 uppercase tracking-widest">HRMS</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Navigation */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        {filteredMenu.map(item => renderMenuItem(item))}
-      </nav>
-
-      {/* Need Help Support Card */}
-      <div className="p-3">
-        <div style={{ background: '#1E293B', borderRadius: 12, padding: 14, border: '1px solid #334155' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontSize: 13, fontWeight: 600, color: '#FFF' }}>Need Help?</span>
-            <div style={{ width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8' }}>
-              🎧
+    <>
+      <svg style={{ width: 0, height: 0, position: 'absolute' }}>
+        <defs>
+          <linearGradient id="ai-spark-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#8B5CF6" />
+            <stop offset="50%" stopColor="#6366F1" />
+            <stop offset="100%" stopColor="#3B82F6" />
+          </linearGradient>
+        </defs>
+      </svg>
+      <div className="w-64 custom-sidebar h-screen flex flex-col fixed left-0 top-0 overflow-y-auto">
+        {/* Logo */}
+        <div className="p-5 custom-sidebar-border-b">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 custom-sidebar-logo-bg rounded-lg flex items-center justify-center">
+              <Bird size={22} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-lg font-bold tracking-wide">HAWKEYE NEST</h1>
+              <p className="text-[10px] text-slate-400 uppercase tracking-widest">HRMS</p>
             </div>
           </div>
-          <p style={{ fontSize: 11, color: '#94A3B8', margin: '0 0 10px', lineHeight: 1.3 }}>
-            Our support team is ready to help you.
-          </p>
-          <button style={{
-            width: '100%', height: 32, background: '#2952E3', color: '#FFF', border: 'none',
-            borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-          }}>
-            Contact Support
-          </button>
         </div>
-      </div>
 
-      {/* User Profile */}
-      <div className="p-3 custom-sidebar-border-t">
-        <div className="custom-sidebar-profile-bg rounded-lg p-3 flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full custom-sidebar-profile-avatar-bg flex items-center justify-center text-xs font-bold">
-            JD
+        {/* Navigation */}
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          {filteredMenu.map(item => renderMenuItem(item))}
+        </nav>
+
+        {/* User Profile */}
+        <div className="p-3 custom-sidebar-border-t">
+          <div className="custom-sidebar-profile-bg rounded-lg p-3 flex items-center gap-3">
+            <div
+              onClick={handleProfileClick}
+              style={{ cursor: 'pointer' }}
+              className="flex flex-1 items-center gap-3 min-w-0 hover:opacity-85 transition-opacity"
+            >
+              <div className="w-9 h-9 rounded-full custom-sidebar-profile-avatar-bg flex items-center justify-center text-xs font-bold flex-shrink-0">
+                {(localStorage.getItem('userName') || 'John Doe').split(' ').map(n => n[0]).join('')}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">{localStorage.getItem('userName') || 'John Doe'}</p>
+                <p className="text-xs text-slate-400 truncate">{userRole === 'EMPLOYEE' ? 'EMP0015' : (localStorage.getItem('userRole') || 'Super Admin')}</p>
+              </div>
+            </div>
+            <button
+              onClick={onLogout}
+              className="text-slate-400 hover:text-red-400 transition-colors p-1 flex-shrink-0"
+            >
+              <LogOut size={16} />
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-white truncate">John Doe</p>
-            <p className="text-xs text-slate-400 truncate">Super Admin</p>
-          </div>
-          <button
-            onClick={onLogout}
-            className="text-slate-400 hover:text-red-400 transition-colors p-1"
-          >
-            <LogOut size={16} />
-          </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }

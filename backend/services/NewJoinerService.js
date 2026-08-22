@@ -1,6 +1,57 @@
 const NewJoiner = require('../models/NewJoiner');
 
 class NewJoinerService {
+  static async syncToEmployees(data) {
+    if (!data || !data.employee_name) return;
+    const name = data.employee_name.trim();
+    const db = require('../config/database');
+
+    try {
+      const existing = await new Promise((resolve) => {
+        db.query('SELECT id FROM employees WHERE LOWER(name) = LOWER(?)', [name], (err, rows) => resolve(rows || []));
+      });
+
+      let desgId = null;
+      if (data.designation) {
+        const desgRow = await new Promise((resolve) => {
+          db.query('SELECT id FROM designations WHERE LOWER(role_name) = LOWER(?) OR LOWER(role_code) = LOWER(?) LIMIT 1', [data.designation, data.designation], (err, rows) => resolve(rows || []));
+        });
+        if (desgRow.length > 0) {
+          desgId = desgRow[0].id;
+        } else {
+          const newDesg = await new Promise((resolve) => {
+            db.query('INSERT INTO designations (role_name, role_code, status) VALUES (?, ?, "Active")', [data.designation, data.designation.toUpperCase().slice(0, 10)], (err, res) => {
+              if (err) resolve(null);
+              else resolve(res ? res.insertId : null);
+            });
+          });
+          desgId = newDesg;
+        }
+      }
+
+      if (existing.length === 0) {
+        const email = `${name.toLowerCase().replace(/[^a-z0-9]/g, '')}@madhuratech.com`;
+        const sql = `
+          INSERT INTO employees (name, email, department_id, designation_id, join_date, status, created_at)
+          VALUES (?, ?, ?, ?, ?, 'Active', NOW())
+        `;
+        await new Promise((resolve) => {
+          db.query(sql, [name, email, data.department_id || null, desgId, data.joining_date || new Date()], () => resolve());
+        });
+      } else {
+        const sql = `
+          UPDATE employees SET department_id = COALESCE(?, department_id), designation_id = COALESCE(?, designation_id), join_date = COALESCE(?, join_date)
+          WHERE id = ?
+        `;
+        await new Promise((resolve) => {
+          db.query(sql, [data.department_id || null, desgId, data.joining_date || null, existing[0].id], () => resolve());
+        });
+      }
+    } catch (e) {
+      console.error('Error syncing new joiner to employees table:', e.message);
+    }
+  }
+
   static async create(data, userId) {
     const sql = `
       INSERT INTO new_joiners (
@@ -19,6 +70,7 @@ class NewJoinerService {
     try {
       const result = await NewJoiner.query(sql, params);
       await NewJoiner.commit();
+      await this.syncToEmployees(data);
       return { id: result.insertId };
     } catch (error) {
       await NewJoiner.rollback();
@@ -47,6 +99,7 @@ class NewJoinerService {
     try {
       await NewJoiner.query(sql, params);
       await NewJoiner.commit();
+      await this.syncToEmployees(data);
       return true;
     } catch (error) {
       await NewJoiner.rollback();

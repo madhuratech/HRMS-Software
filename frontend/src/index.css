@@ -3323,6 +3323,7 @@ body {
   display: flex !important;
   gap: 0.25rem !important;
   overflow-x: auto !important;
+  margin-bottom: 1.5rem !important;
 }
 
 .custom-tab-btn {
@@ -3337,6 +3338,7 @@ body {
   background: transparent !important;
   cursor: pointer !important;
   transition: all 0.2s ease !important;
+
 }
 
 .custom-tab-btn:hover {
@@ -3350,6 +3352,7 @@ body {
 
 .custom-row-border {
   border-bottom: 1px solid #f1f5f9 !important;
+
 }
 
 .custom-row-border:last-child {

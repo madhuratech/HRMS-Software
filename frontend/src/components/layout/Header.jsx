@@ -1,10 +1,29 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Bell, Search, ChevronRight, X } from 'lucide-react';
 import { LeaveApprovals } from '../attendance/LeaveApprovals';
 
 export function Header({ title, userRole, currentView }) {
+  const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const isManager = userRole === 'BRANCH_MANAGER' || userRole === 'SUPER_ADMIN';
+
+  const authRaw = localStorage.getItem('hrms_auth');
+  let authData = {};
+  try { if (authRaw) authData = JSON.parse(authRaw); } catch(e) {}
+
+  const handleProfileClick = () => {
+    let userId = 1;
+    const auth = localStorage.getItem('hrms_auth');
+    if (auth) {
+      try {
+        const parsed = JSON.parse(auth);
+        if (parsed.user && parsed.user.id) userId = parsed.user.id;
+      } catch (e) {}
+    }
+    localStorage.setItem('selectedEmployeeId', userId);
+    navigate('/employees/profile');
+  };
 
   const getBreadcrumbs = () => {
     const viewMap = {
@@ -50,6 +69,15 @@ export function Header({ title, userRole, currentView }) {
       'training': ['Training'],
       'projects': ['Projects'],
       'reports': ['Reports'],
+      'reports-employees': ['Reports', 'Employee Reports'],
+      'reports-employee': ['Reports', 'Employee Reports'],
+      'reports-attendance': ['Reports', 'Attendance Reports'],
+      'reports-leave': ['Reports', 'Leave Reports'],
+      'reports-payroll': ['Reports', 'Payroll Reports'],
+      'reports-recruitment': ['Reports', 'Recruitment Reports'],
+      'reports-performance': ['Reports', 'Performance Reports'],
+      'reports-projects': ['Reports', 'Project Reports'],
+      'reports-project': ['Reports', 'Project Reports'],
       'assets': ['Assets'],
       'expenses': ['Expenses'],
       'documents': ['Documents'],
@@ -142,13 +170,17 @@ export function Header({ title, userRole, currentView }) {
         </div>
 
         {/* User Info */}
-        <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-full bg-blue-500 flex items-center justify-center text-xs font-bold text-white">
-            JD
+        <div 
+          onClick={handleProfileClick}
+          style={{ cursor: 'pointer' }}
+          className="flex items-center gap-3 hover:opacity-85 transition-opacity"
+        >
+          <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white shadow-sm">
+            {((authData.name || localStorage.getItem('userName')) || 'Dhilipan P').split(' ').map(n => n[0]).join('')}
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-800">John Doe</p>
-            <p className="text-xs text-slate-500">Super Admin</p>
+            <p className="text-sm font-semibold text-slate-800">{(authData.name || localStorage.getItem('userName')) || 'Dhilipan P'}</p>
+            <p className="text-xs font-medium text-slate-500">{userRole === 'EMPLOYEE' ? 'EMP0015' : userRole === 'TEAM_LEADER' ? 'EMP0010 • Team Leader' : (localStorage.getItem('userRole') || 'Super Admin')}</p>
           </div>
         </div>
       </div>

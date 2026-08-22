@@ -1,86 +1,165 @@
-import React, { useState } from 'react';
-import { User, Lock, TrendingUp, Mail, MapPin, Briefcase, Phone, ShieldCheck, CheckCircle, X, Loader2 } from 'lucide-react';
-
-
-
-
-
-
+import React, { useState, useEffect } from 'react';
+import { User, Lock, Mail, CheckCircle, Loader2, TrendingUp, Briefcase, KeyRound } from 'lucide-react';
+import { apiFetch } from '../../lib/api';
 
 export function Register({ onRegister, onLoginClick }) {
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    password: '',
-    role: 'SALES_MANAGER',
-    branch: 'New York Branch'
-  });
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [role, setRole] = useState('Employee'); // 'Admin' | 'Employee'
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-  const [verifications, setVerifications] = useState({
-    email: { sent: false, verified: false, otp: '', loading: false },
-    phone: { sent: false, verified: false, otp: '', loading: false }
-  });
+  // Session & Verification States
+  const [sessionId, setSessionId] = useState('');
+  const [verifiedEmail, setVerifiedEmail] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState('');
+  const [emailVerified, setEmailVerified] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
 
-  const [showCaptcha, setShowCaptcha] = useState(false);
-  const [captchaSolved, setCaptchaSolved] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
-  const handleVerifyRequest = (type) => {
-    if (type === 'email') {
-      if (!formData.email) return;
-      setShowCaptcha(true);
-    } else {
-      if (!formData.phone) return;
-      setVerifications((prev) => ({
-        ...prev,
-        phone: { ...prev.phone, loading: true }
-      }));
-      // Simulate sending OTP
-      setTimeout(() => {
-        setVerifications((prev) => ({
-          ...prev,
-          phone: { ...prev.phone, loading: false, sent: true }
-        }));
-      }, 1500);
+  // Handle 60s resend cooldown timer
+  useEffect(() => {
+    let timer;
+    if (cooldown > 0) {
+      timer = setInterval(() => {
+        setCooldown((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [cooldown]);
+
+  // Reset verification state if user edits Full Name or Email Address
+  const handleNameChange = (e) => {
+    setName(e.target.value);
+    resetVerificationState();
+  };
+
+  const handleEmailChange = (e) => {
+    setEmail(e.target.value);
+    resetVerificationState();
+  };
+
+  const resetVerificationState = () => {
+    setEmailVerified(false);
+    setVerifiedEmail('');
+    setSessionId('');
+    setOtpSent(false);
+    setOtpCode('');
+  };
+
+  const handleVerifyEmailRequest = async () => {
+    if (!name || !email) {
+      setErrorMsg("Please enter Full Name and Company Email before verifying.");
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      const data = await apiFetch('/auth/verify-email-request', {
+        method: 'POST',
+        body: JSON.stringify({ name, email, role })
+      });
+
+      if (data && data.success) {
+        setOtpSent(true);
+        setSessionId(data.sessionId || '');
+        setCooldown(60);
+        setSuccessMsg(data.message || `Verification code sent to ${email}`);
+      } else {
+        setErrorMsg((data && data.message) || "Failed to send verification code.");
+      }
+    } catch (err) {
+      console.error("Verification request error:", err);
+      setErrorMsg(err.message || "Failed to send verification code.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleCaptchaSuccess = () => {
-    setCaptchaSolved(true);
-    setShowCaptcha(false);
-    setVerifications((prev) => ({
-      ...prev,
-      email: { ...prev.email, loading: true }
-    }));
-    // Simulate sending OTP
-    setTimeout(() => {
-      setVerifications((prev) => ({
-        ...prev,
-        email: { ...prev.email, loading: false, sent: true }
-      }));
-    }, 1500);
+  const handleVerifyOtp = async () => {
+    if (!otpCode || otpCode.length < 6) {
+      setErrorMsg("Please enter the complete 6-digit verification code.");
+      return;
+    }
+    if (!sessionId) {
+      setErrorMsg("No verification session found. Please click Verify Email again.");
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      const data = await apiFetch('/auth/verify-otp', {
+        method: 'POST',
+        body: JSON.stringify({ email, code: otpCode, sessionId })
+      });
+
+      if (data && data.success && data.verified) {
+        setEmailVerified(true);
+        setVerifiedEmail(email);
+        setOtpSent(false);
+        setSuccessMsg(data.message || "Email Verified Successfully ✓");
+      } else {
+        setEmailVerified(false);
+        setErrorMsg((data && data.message) || "Invalid verification code. Please check your email and try again.");
+      }
+    } catch (err) {
+      console.error("OTP verification error:", err);
+      setEmailVerified(false);
+      setErrorMsg(err.message || "Invalid or expired verification code.");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleVerifyOTP = (type) => {
-    setVerifications((prev) => ({
-      ...prev,
-      [type]: { ...prev[type], loading: true }
-    }));
-
-    // Simulate verifying OTP
-    setTimeout(() => {
-      setVerifications((prev) => ({
-        ...prev,
-        [type]: { ...prev[type], loading: false, verified: true }
-      }));
-    }, 1000);
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmitRegister = async (e) => {
     e.preventDefault();
-    if (!verifications.email.verified || !verifications.phone.verified) return;
-    onRegister(formData.role, formData.name);
+    if (!emailVerified || email.trim().toLowerCase() !== verifiedEmail.trim().toLowerCase() || !sessionId) {
+      setErrorMsg("Please verify your email before creating your account.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setErrorMsg("Passwords do not match.");
+      return;
+    }
+    if (password.length < 6) {
+      setErrorMsg("Password must be at least 6 characters long.");
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      const data = await apiFetch('/auth/register', {
+        method: 'POST',
+        body: JSON.stringify({ name, email, role, password, confirmPassword, sessionId })
+      });
+
+      if (data && data.success) {
+        setSuccessMsg(data.message || "Account Created Successfully ✓ Redirecting to login...");
+        setTimeout(() => {
+          onLoginClick();
+        }, 1500);
+      } else {
+        setErrorMsg((data && data.message) || "Registration failed. Please try again.");
+      }
+    } catch (err) {
+      console.error("Account registration error:", err);
+      setErrorMsg(err.message || "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const isVerifiedForCurrentEmail = emailVerified && email.trim().toLowerCase() === verifiedEmail.trim().toLowerCase();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-blue-900 flex items-center justify-center p-4">
@@ -116,181 +195,175 @@ export function Register({ onRegister, onLoginClick }) {
         <div className="md:w-1/2 p-12 bg-white flex flex-col justify-center relative">
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-slate-800 mb-2">Create Account</h2>
-            <p className="text-slate-500">Enter your details to register.</p>
+            <p className="text-slate-500">Enter your company credentials to register.</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {errorMsg && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-xs font-semibold rounded-xl">
+              {errorMsg}
+            </div>
+          )}
+
+          {successMsg && (
+            <div className="mb-4 p-3 bg-green-50 border border-green-200 text-green-700 text-xs font-semibold rounded-xl">
+              {successMsg}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmitRegister} className="space-y-4">
+            
+            {/* Full Name */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Full Name</label>
               <div className="relative">
                 <User className="absolute left-3 top-3 text-slate-400" size={18} />
                 <input
                   type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                  placeholder="John Doe"
+                  value={name}
+                  onChange={handleNameChange}
+                  disabled={isVerifiedForCurrentEmail}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all disabled:opacity-70"
+                  placeholder="Enter your full name"
                   required />
-                
               </div>
             </div>
 
-            {/* Email Verification */}
+            {/* Company Email Address */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700 flex justify-between">
-                Email Address
-                {verifications.email.verified && <span className="text-green-600 text-xs flex items-center gap-1"><CheckCircle size={12} /> Verified</span>}
+                Company Email
+                {isVerifiedForCurrentEmail && (
+                  <span className="text-green-600 text-xs font-bold flex items-center gap-1">
+                    <CheckCircle size={13} /> Verified
+                  </span>
+                )}
               </label>
               <div className="relative flex gap-2">
                 <div className="relative flex-1">
                   <Mail className="absolute left-3 top-3 text-slate-400" size={18} />
                   <input
                     type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    disabled={verifications.email.verified || verifications.email.sent}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all disabled:bg-slate-100"
+                    value={email}
+                    onChange={handleEmailChange}
+                    disabled={isVerifiedForCurrentEmail}
+                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all disabled:opacity-70"
                     placeholder="name@company.com"
                     required />
-                  
                 </div>
-                {!verifications.email.verified &&
-                <button
-                  type="button"
-                  onClick={() => handleVerifyRequest('email')}
-                  disabled={!formData.email || verifications.email.loading || verifications.email.sent}
-                  className="px-4 py-2 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-700 disabled:opacity-50 min-w-[100px]">
-                  
-                    {verifications.email.loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : verifications.email.sent ? 'Sent' : 'Verify'}
-                  </button>
-                }
-              </div>
-              {verifications.email.sent && !verifications.email.verified &&
-              <div className="flex gap-2 animate-in fade-in slide-in-from-top-2">
-                  <input
-                  type="text"
-                  placeholder="Enter Email OTP"
-                  className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  value={verifications.email.otp}
-                  onChange={(e) => setVerifications((prev) => ({ ...prev, email: { ...prev.email, otp: e.target.value } }))} />
-                
+                {!isVerifiedForCurrentEmail && !otpSent && (
                   <button
-                  type="button"
-                  onClick={() => handleVerifyOTP('email')}
-                  className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700">
-                  
-                    Confirm
+                    type="button"
+                    onClick={handleVerifyEmailRequest}
+                    disabled={loading || !name || !email}
+                    className="px-4 py-2 bg-slate-800 text-white text-xs font-semibold rounded-lg hover:bg-slate-700 disabled:opacity-50 min-w-[100px] transition-all"
+                  >
+                    {loading ? <Loader2 className="animate-spin mx-auto" size={16} /> : 'Verify Email'}
                   </button>
-                </div>
-              }
+                )}
+              </div>
             </div>
 
-            {/* Mobile Verification */}
+            {/* OTP Code Entry UI */}
+            {otpSent && !isVerifiedForCurrentEmail && (
+              <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
+                  <KeyRound size={15} className="text-blue-600" />
+                  <span>Enter 6-Digit OTP sent to {email}</span>
+                </div>
+                
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    maxLength={6}
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                    placeholder="------"
+                    className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-lg text-center font-mono font-bold tracking-widest text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleVerifyOtp}
+                    disabled={loading || otpCode.length < 6}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all"
+                  >
+                    {loading ? <Loader2 className="animate-spin" size={16} /> : 'Verify OTP'}
+                  </button>
+                </div>
+
+                <div className="flex justify-between items-center text-xs text-slate-500 pt-1">
+                  <span>Didn't receive the code?</span>
+                  {cooldown > 0 ? (
+                    <span className="text-slate-400 font-medium text-[11px]">
+                      Resend available in {cooldown}s
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleVerifyEmailRequest}
+                      className="text-blue-600 font-bold hover:underline"
+                    >
+                      Resend OTP
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Role Selection Option - Admin / Employee */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700 flex justify-between">
-                Mobile Number
-                {verifications.phone.verified && <span className="text-green-600 text-xs flex items-center gap-1"><CheckCircle size={12} /> Verified</span>}
-              </label>
-              <div className="relative flex gap-2">
-                <div className="relative flex-1">
-                  <Phone className="absolute left-3 top-3 text-slate-400" size={18} />
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    disabled={verifications.phone.verified || verifications.phone.sent}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all disabled:bg-slate-100"
-                    placeholder="+1 (555) 000-0000"
-                    required />
-                  
-                </div>
-                {!verifications.phone.verified &&
-                <button
-                  type="button"
-                  onClick={() => handleVerifyRequest('phone')}
-                  disabled={!formData.phone || verifications.phone.loading || verifications.phone.sent}
-                  className="px-4 py-2 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-700 disabled:opacity-50 min-w-[100px]">
-                  
-                    {verifications.phone.loading ? <Loader2 className="animate-spin mx-auto" size={18} /> : verifications.phone.sent ? 'Sent' : 'Verify'}
-                  </button>
-                }
-              </div>
-              {verifications.phone.sent && !verifications.phone.verified &&
-              <div className="flex gap-2 animate-in fade-in slide-in-from-top-2">
-                  <input
-                  type="text"
-                  placeholder="Enter Mobile OTP"
-                  className="flex-1 px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  value={verifications.phone.otp}
-                  onChange={(e) => setVerifications((prev) => ({ ...prev, phone: { ...prev.phone, otp: e.target.value } }))} />
-                
-                  <button
-                  type="button"
-                  onClick={() => handleVerifyOTP('phone')}
-                  className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700">
-                  
-                    Confirm
-                  </button>
-                </div>
-              }
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Role</label>
-                <div className="relative">
-                  <Briefcase className="absolute left-3 top-3 text-slate-400" size={18} />
-                  <select
-                    value={formData.role}
-                    onChange={(e) => setFormData({ ...formData, role: e.target.value })}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none transition-all">
-                    
-                    <option value="SUPER_ADMIN">Super Admin</option>
-                    <option value="BRANCH_MANAGER">Branch Manager</option>
-                    <option value="SALES_MANAGER">Sales Manager</option>
-                    <option value="SERVICE_STAFF">Service Staff</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Branch</label>
-                <div className="relative">
-                  <MapPin className="absolute left-3 top-3 text-slate-400" size={18} />
-                  <select
-                    value={formData.branch}
-                    onChange={(e) => setFormData({ ...formData, branch: e.target.value })}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none transition-all">
-                    
-                    <option value="New York">New York</option>
-                    <option value="Los Angeles">Los Angeles</option>
-                    <option value="Chicago">Chicago</option>
-                  </select>
-                </div>
+              <label className="text-sm font-medium text-slate-700">Role</label>
+              <div className="relative">
+                <Briefcase className="absolute left-3 top-3 text-slate-400" size={18} />
+                <select
+                  value={role}
+                  onChange={(e) => setRole(e.target.value)}
+                  disabled={isVerifiedForCurrentEmail}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none transition-all disabled:opacity-70"
+                >
+                  <option value="Employee">Employee</option>
+                  <option value="Admin">Admin</option>
+                </select>
               </div>
             </div>
 
+            {/* Password */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-3 text-slate-400" size={18} />
                 <input
                   type="password"
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                  placeholder="Create a password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  disabled={!isVerifiedForCurrentEmail}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all disabled:opacity-50"
+                  placeholder="Create password"
                   required />
-                
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">Confirm Password</label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 text-slate-400" size={18} />
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  disabled={!isVerifiedForCurrentEmail}
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all disabled:opacity-50"
+                  placeholder="Confirm password"
+                  required />
               </div>
             </div>
 
             <button
               type="submit"
-              disabled={!verifications.email.verified || !verifications.phone.verified}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2 mt-4">
-              
-              <ShieldCheck size={18} /> Complete Registration
+              disabled={loading || !isVerifiedForCurrentEmail}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2 mt-4 text-sm"
+            >
+              {loading ? <Loader2 className="animate-spin" size={18} /> : 'Create Account'}
             </button>
           </form>
           
@@ -299,49 +372,14 @@ export function Register({ onRegister, onLoginClick }) {
               Already have an account?{' '}
               <button
                 onClick={onLoginClick}
-                className="text-blue-600 font-bold hover:underline">
-                
+                className="text-blue-600 font-bold hover:underline"
+              >
                 Sign In
               </button>
             </p>
           </div>
         </div>
-
-        {/* Captcha Modal */}
-        {showCaptcha &&
-        <div className="absolute inset-0 z-50 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm animate-in zoom-in-95">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-slate-800">Security Check</h3>
-                <button onClick={() => setShowCaptcha(false)} className="text-slate-400 hover:text-slate-600">
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 flex items-center gap-4 mb-6">
-                <input
-                type="checkbox"
-                id="captcha-check"
-                className="w-6 h-6 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setTimeout(handleCaptchaSuccess, 500);
-                  }
-                }} />
-              
-                <label htmlFor="captcha-check" className="text-sm text-slate-700 font-medium cursor-pointer select-none">
-                  I am not a robot
-                </label>
-                <div className="ml-auto">
-                  <ShieldCheck size={24} className="text-slate-300" />
-                </div>
-              </div>
-              <p className="text-xs text-center text-slate-400">
-                Please verify you are human to proceed with email verification.
-              </p>
-            </div>
-          </div>
-        }
       </div>
-    </div>);
-
+    </div>
+  );
 }

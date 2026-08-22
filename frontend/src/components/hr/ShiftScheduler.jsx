@@ -1,25 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Clock, Users, ChevronLeft, ChevronRight, CheckCircle, XCircle, ArrowRightLeft } from 'lucide-react';
 import { format, addDays, startOfWeek, endOfWeek } from 'date-fns';
-import { MOCK_EMPLOYEES } from '../../lib/mockData';
+import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
 
 const SHIFTS = [
-{ id: 'morning', label: 'Morning', time: '08:00 - 16:00', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
-{ id: 'afternoon', label: 'Afternoon', time: '14:00 - 22:00', color: 'bg-orange-100 text-orange-800 border-orange-200' },
-{ id: 'night', label: 'Night', time: '22:00 - 06:00', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
-{ id: 'off', label: 'Day Off', time: '-', color: 'bg-slate-100 text-slate-500 border-slate-200' }];
-
+  { id: 'morning', label: 'Morning', time: '08:00 - 16:00', color: 'bg-yellow-100 text-yellow-800 border-yellow-200' },
+  { id: 'afternoon', label: 'Afternoon', time: '14:00 - 22:00', color: 'bg-orange-100 text-orange-800 border-orange-200' },
+  { id: 'night', label: 'Night', time: '22:00 - 06:00', color: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+  { id: 'off', label: 'Day Off', time: '-', color: 'bg-slate-100 text-slate-500 border-slate-200' }
+];
 
 export function ShiftScheduler() {
+  const [employees, setEmployees] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [allocations, setAllocations] = useState({});
   const [selectedShift, setSelectedShift] = useState(SHIFTS[0].id);
   const [showRequestModal, setShowRequestModal] = useState(false);
-  const [alterationRequests, setAlterationRequests] = useState([
-  { id: 1, employeeId: 'e2', employeeName: 'Mike Chen', date: '2023-10-25', currentShift: 'morning', requestedShift: 'afternoon', reason: 'Personal appointment', status: 'PENDING' }]
-  );
+  const [alterationRequests, setAlterationRequests] = useState([]);
   const { addToast } = useToast();
+
+  useEffect(() => {
+    apiFetch('/employees')
+      .then(data => {
+        if (Array.isArray(data)) setEmployees(data);
+      })
+      .catch(err => console.error("Failed to load employees for ShiftScheduler", err));
+  }, []);
 
   const startDate = startOfWeek(currentDate, { weekStartsOn: 1 });
   const weekDays = Array.from({ length: 7 }, (_, i) => addDays(startDate, i));
@@ -122,11 +129,11 @@ export function ShiftScheduler() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {MOCK_EMPLOYEES.map((employee) =>
+                  {employees.map((employee) =>
                   <tr key={employee.id}>
                       <td className="p-4 border-r border-slate-200 bg-white sticky left-0 z-10">
                         <div className="font-bold text-slate-800">{employee.name}</div>
-                        <div className="text-xs text-slate-500">{employee.role.replace('_', ' ')}</div>
+                        <div className="text-xs text-slate-500">{(employee.designation_name || employee.department_name || 'Staff')}</div>
                       </td>
                       {weekDays.map((day) => {
                       const dateStr = format(day, 'yyyy-MM-dd');

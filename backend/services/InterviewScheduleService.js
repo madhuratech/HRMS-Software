@@ -28,6 +28,15 @@ class InterviewScheduleService {
     await InterviewSchedule.beginTransaction();
     try {
       const result = await InterviewSchedule.query(sql, params);
+
+      // Auto-sync candidate status to 'Interview Scheduled'
+      if (data.candidate_id) {
+        await InterviewSchedule.query(
+          "UPDATE candidates SET status = 'Interview Scheduled', updated_by = ? WHERE id = ?",
+          [userId, data.candidate_id]
+        );
+      }
+
       await InterviewSchedule.commit();
       return { id: result.insertId };
     } catch (error) {
@@ -218,6 +227,21 @@ class InterviewScheduleService {
 
       const sql = `UPDATE interview_schedules SET status = ?, remarks = COALESCE(?, remarks), updated_by = ? WHERE id = ?`;
       await InterviewSchedule.query(sql, [status, remarks || null, userId, id]);
+
+      // Sync candidate status based on interview status
+      if (existing.candidate_id) {
+        let candStatus = 'Interview Scheduled';
+        if (status === 'Completed') candStatus = 'Interview Completed';
+        else if (status === 'Cancelled') candStatus = 'On Hold';
+        else if (status === 'Selected') candStatus = 'Selected';
+        else if (status === 'Rejected') candStatus = 'Rejected';
+
+        await InterviewSchedule.query(
+          'UPDATE candidates SET status = ?, updated_by = ? WHERE id = ?',
+          [candStatus, userId, existing.candidate_id]
+        );
+      }
+
       await InterviewSchedule.commit();
       return true;
     } catch (error) {

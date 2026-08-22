@@ -1,301 +1,439 @@
-import React, { useState, useEffect } from 'react';
-import { ChevronDown, Star, Edit2, Link2, ChevronLeft, ChevronRight } from 'lucide-react';
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ChevronDown, Plus, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts';
+import { useToast } from '../ui/Toast';
 
-/* ─────────────────── DATA ─────────────────── */
-const PIE_DATA = [
-  { name: 'Completed',   value: 76, percent: '61.4%', color: '#10B981' },
-  { name: 'In-Progress', value: 52, percent: '33.2%', color: '#2563EB' },
-  { name: 'Pending',     value: 30, percent: '14.3%', color: '#F59E0B' },
-];
+export default function Reviews() {
+  const { addToast } = useToast();
+  const [reviewsList, setReviewsList] = useState([]);
+  const [employees, setEmployees] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
 
-const TABLE_DATA = [
-  { name: 'Rahul Sharma', initials: 'RS', type: 'Manager Review', reviewer: 'Amit Mehta',     date: '22 May 2024', status: 'Completed'   },
-  { name: 'Priya Patel',  initials: 'PP', type: 'Peer Review',    reviewer: 'Via Kapoor',      date: '21 May 2024', status: 'Completed'   },
-  { name: 'Vikram Singh', initials: 'VS', type: 'Self Review',    reviewer: '—',               date: '20 May 2024', status: 'Completed'   },
-  { name: 'Sneha Reddy',  initials: 'SR', type: '360° Review',    reviewer: '—',               date: '19 May 2024', status: 'In Progress' },
-  { name: 'Amit Kumar',   initials: 'AK', type: 'Peer Review',    reviewer: 'Rohan Verma',     date: '18 May 2024', status: 'In Progress' },
-  { name: 'Neha Singh',   initials: 'NS', type: 'Manager Review', reviewer: 'Karan Malhotra',  date: '17 May 2024', status: 'Pending'     },
-];
+  // Pagination & Filters
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const limit = 10;
+  const [search, setSearch] = useState('');
+  const [filterDept, setFilterDept] = useState('All Departments');
 
-const STATUS_STYLE = {
-  'Completed':   { bg: '#DCFCE7', color: '#15803D' },
-  'In Progress': { bg: '#DBEAFE', color: '#1D4ED8' },
-  'Pending':     { bg: '#FEF3C7', color: '#D97706' },
-};
+  // KPI Dashboard Stats
+  const [kpiData, setKpiData] = useState({
+    total: 0,
+    completed: 0,
+    inProgress: 0,
+    pending: 0,
+    rate: '0%',
+    chartData: [
+      { name: 'Completed', value: 0, color: '#10B981' },
+      { name: 'In Progress', value: 0, color: '#2952E3' },
+      { name: 'Pending', value: 0, color: '#F59E0B' }
+    ]
+  });
 
-const AVATAR_COLORS = [
-  { bg: '#DBEAFE', color: '#1D4ED8' },
-  { bg: '#FCE7F3', color: '#9D174D' },
-  { bg: '#D1FAE5', color: '#065F46' },
-  { bg: '#FEF3C7', color: '#92400E' },
-  { bg: '#EDE9FE', color: '#5B21B6' },
-  { bg: '#FEE2E2', color: '#991B1B' },
-];
+  const [formData, setFormData] = useState({
+    employee: '',
+    reviewPeriod: 'Q2 2024',
+    reviewer: '',
+    type: 'Manager Review',
+    overallRating: '5',
+    strengths: '',
+    improvement: '',
+    goals: '',
+    comments: '',
+    status: 'In Progress'
+  });
 
-/* ─────────────────── COMPONENT ─────────────────── */
-const Reviews = () => {
-  const [loaded, setLoaded] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setLoaded(true), 120);
-    return () => clearTimeout(t);
+  const getAuthToken = () => {
+    const auth = localStorage.getItem('hrms_auth');
+    if (auth) {
+      try {
+        const parsed = JSON.parse(auth);
+        return parsed.token || 'mock_jwt_token';
+      } catch (e) {
+        return 'mock_jwt_token';
+      }
+    }
+    return 'mock_jwt_token';
+  };
+
+  const fetchMeta = async () => {
+    try {
+      const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
+      
+      // Fetch departments
+      const deptRes = await fetch('/app/requirements/meta/all', { headers });
+      const deptData = await deptRes.json();
+      if (deptData && deptData.departments) {
+        setDepartments(deptData.departments);
+      }
+
+      // Fetch employees
+      const empRes = await fetch('/app/employees?status=Active', { headers });
+      const empData = await empRes.json();
+      if (Array.isArray(empData)) {
+        setEmployees(empData);
+      }
+    } catch (err) {
+      console.error('Failed to load review metadata:', err);
+    }
+  };
+
+  const fetchDashboardStats = useCallback(async () => {
+    try {
+      const res = await fetch('/app/reviews/dashboard', {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+      });
+      const resData = await res.json();
+      if (resData.success && resData.data) {
+        setKpiData(resData.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch dashboard stats:', err);
+    }
   }, []);
 
-  return (
-    <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box' }}>
+  const fetchReviews = useCallback(async () => {
+    setLoading(true);
+    try {
+      let url = `/app/reviews?page=${page}&limit=${limit}`;
+      if (search) {
+        url += `&search=${encodeURIComponent(search)}`;
+      }
+      if (filterDept && filterDept !== 'All Departments') {
+        url += `&department_id=${encodeURIComponent(filterDept)}`;
+      }
 
-      {/* ── HEADER ── */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+      const res = await fetch(url, {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+      });
+      const resData = await res.json();
+      if (resData.success && resData.data) {
+        setReviewsList(resData.data.reviews || []);
+        setTotal(resData.data.total || 0);
+      } else {
+        addToast(resData.message || 'Failed to fetch reviews', 'error');
+      }
+    } catch (err) {
+      addToast('Error connecting to backend server', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, filterDept, addToast]);
+
+  useEffect(() => {
+    fetchMeta();
+  }, []);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, filterDept]);
+
+  useEffect(() => {
+    fetchReviews();
+    fetchDashboardStats();
+  }, [page, fetchReviews, fetchDashboardStats]);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!formData.employee || !formData.reviewer || !formData.reviewPeriod) {
+      addToast('Please fill in all required fields.', 'error');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      const payload = {
+        employee_id: parseInt(formData.employee, 10) || 1,
+        review_period: formData.reviewPeriod ? formData.reviewPeriod.trim() : 'Q2 2026',
+        reviewer_id: formData.reviewer ? formData.reviewer.trim() : 'Manager',
+        type: formData.type || 'Manager Review',
+        overall_rating: formData.overallRating || '5',
+        strengths: formData.strengths ? formData.strengths.trim() : '',
+        improvement: formData.improvement ? formData.improvement.trim() : '',
+        goals: formData.goals ? formData.goals.trim() : '',
+        comments: formData.comments ? formData.comments.trim() : '',
+        status: formData.status || 'In Progress'
+      };
+
+      const res = await fetch('/app/reviews', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify(payload)
+      });
+      const resData = await res.json();
+      if (resData.success) {
+        addToast('Review submitted successfully!', 'success');
+        setShowAddModal(false);
+        setFormData({ employee: '', reviewPeriod: 'Q2 2026', reviewer: '', type: 'Manager Review', overallRating: '5', strengths: '', improvement: '', goals: '', comments: '', status: 'In Progress' });
+        fetchReviews();
+        fetchDashboardStats();
+      } else {
+        addToast(resData.message || (resData.errors ? JSON.stringify(resData.errors) : 'Failed to submit review'), 'error');
+      }
+    } catch (err) {
+      addToast('Connection error occurred', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case 'Completed': return { bg: '#DCFCE7', color: '#15803D' };
+      case 'In Progress': return { bg: '#FEF3C7', color: '#D97706' };
+      default: return { bg: '#F3F4F6', color: '#6B7280' };
+    }
+  };
+
+  const cardStyle = {
+    background: '#FFFFFF',
+    borderRadius: '16px',
+    padding: '24px',
+    boxShadow: '0 8px 24px rgba(15,23,42,0.08)',
+  };
+
+  const totalPages = Math.ceil(total / limit) || 1;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: '"Inter", sans-serif', paddingBottom: '24px' }}>
+      
+      {/* Add Review Modal */}
+      {showAddModal && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
+          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-[#0A1629]">Add Performance Review</h2>
+                <p className="text-sm text-slate-500 mt-1">Submit official manager or peer reviews.</p>
+              </div>
+              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+            <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Employee <span className="text-red-500">*</span></label>
+                  <select 
+                    required 
+                    value={formData.employee} 
+                    onChange={e => setFormData({ ...formData, employee: e.target.value })} 
+                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                  >
+                    <option value="">Select Employee</option>
+                    {employees.map(e => (
+                      <option key={e.id} value={e.id}>{e.name} (EMP{String(e.id).padStart(3, '0')})</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Review Period <span className="text-red-500">*</span></label>
+                  <input type="text" required value={formData.reviewPeriod} onChange={e => setFormData({ ...formData, reviewPeriod: e.target.value })} placeholder="e.g. Q2 2024" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Reviewer Name <span className="text-red-500">*</span></label>
+                  <input type="text" required value={formData.reviewer} onChange={e => setFormData({ ...formData, reviewer: e.target.value })} placeholder="e.g. Arjun Mehta (HR)" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Review Type</label>
+                  <select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
+                    <option value="Manager Review">Manager Review</option>
+                    <option value="Peer Review">Peer Review</option>
+                    <option value="Self Evaluation">Self Evaluation</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Overall Rating (1 to 5)</label>
+                  <select value={formData.overallRating} onChange={e => setFormData({ ...formData, overallRating: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
+                    <option value="5">5 - Exceptional</option>
+                    <option value="4">4 - Exceeds Expectations</option>
+                    <option value="3">3 - Satisfactory</option>
+                    <option value="2">2 - Needs Improvement</option>
+                    <option value="1">1 - Unsatisfactory</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
+                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                    <option value="Pending">Pending</option>
+                  </select>
+                </div>
+                <div className="col-span-1 sm:col-span-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Strengths</label>
+                  <textarea value={formData.strengths} onChange={e => setFormData({ ...formData, strengths: e.target.value })} placeholder="Top employee performance strengths..." style={{ height: '70px' }} className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
+                </div>
+                <div className="col-span-1 sm:col-span-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Areas of Improvement</label>
+                  <textarea value={formData.improvement} onChange={e => setFormData({ ...formData, improvement: e.target.value })} placeholder="Feedback on improvements..." style={{ height: '70px' }} className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
+                </div>
+                <div className="col-span-1 sm:col-span-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Comments & Details</label>
+                  <textarea value={formData.comments} onChange={e => setFormData({ ...formData, comments: e.target.value })} placeholder="General feedback remarks..." style={{ height: '70px' }} className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
+                </div>
+              </div>
+              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
+                <button type="button" onClick={() => setShowAddModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+                <button type="submit" disabled={submitting} className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50">
+                  {submitting ? 'Saving...' : 'Save Review'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </>
+      )}
+
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Reviews</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280', fontWeight: 400 }}>Track and manage performance reviews</p>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Manage performance reviews</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* All Departments */}
-          <div style={{ position: 'relative' }}>
-            <select style={{
-              appearance: 'none', WebkitAppearance: 'none',
-              height: 40, paddingLeft: 14, paddingRight: 34,
-              background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8,
-              fontSize: 13, fontWeight: 500, color: '#111827',
-              boxShadow: '0 1px 3px rgba(0,0,0,.06)', cursor: 'pointer', outline: 'none',
-            }}>
-              <option>All Departments</option>
-              <option>Engineering</option>
-            </select>
-            <ChevronDown size={14} color="#6B7280" style={{ position: 'absolute', right: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-          </div>
-          {/* All Status */}
-          <div style={{ position: 'relative' }}>
-            <select style={{
-              appearance: 'none', WebkitAppearance: 'none',
-              height: 40, paddingLeft: 14, paddingRight: 34,
-              background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8,
-              fontSize: 13, fontWeight: 500, color: '#111827',
-              boxShadow: '0 1px 3px rgba(0,0,0,.06)', cursor: 'pointer', outline: 'none',
-            }}>
-              <option>All Status</option>
-              <option>Completed</option>
-              <option>In Progress</option>
-              <option>Pending</option>
-            </select>
-            <ChevronDown size={14} color="#6B7280" style={{ position: 'absolute', right: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-          </div>
+        <div style={{ display: 'flex', gap: '12px' }}>
+          <select 
+            value={filterDept} 
+            onChange={e => setFilterDept(e.target.value)} 
+            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '13px', color: '#334155', cursor: 'pointer' }}
+          >
+            <option value="All Departments">All Departments</option>
+            {departments.map(d => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+          <button onClick={() => setShowAddModal(true)} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+            <Plus size={16} /> Add Review
+          </button>
         </div>
       </div>
 
-      {/* ── KPI CARDS (5 + summary card) ── */}
-      <div style={{ display: 'flex', gap: 14, marginBottom: 20, flexWrap: 'wrap' }}>
+      {/* KPI Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px' }}>
         {[
-          { label: 'Total Reviews',   value: 156, iconBg: '#F1F5F9', iconColor: '#475569', icon: '📋' },
-          { label: 'Peer Reviews',    value: 45,  iconBg: '#DBEAFE', iconColor: '#2563EB', icon: '👥' },
-          { label: 'Self Reviews',    value: 56,  iconBg: '#EDE9FE', iconColor: '#7C3AED', icon: '👤' },
-          { label: 'Manager Reviews', value: 55,  iconBg: '#DCFCE7', iconColor: '#16A34A', icon: '💼' },
-          { label: '360° Reviews',    value: 32,  iconBg: '#FEF3C7', iconColor: '#D97706', icon: '🔄' },
-        ].map((card, idx) => (
-          <div key={idx} style={{
-            background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
-            boxShadow: '0 2px 8px rgba(15,23,42,.05)',
-            padding: '14px 18px', flex: '1 1 0', minWidth: 110,
-            display: 'flex', alignItems: 'flex-start', gap: 12,
-          }}>
-            <span style={{
-              width: 32, height: 32, borderRadius: 8,
-              background: card.iconBg, color: card.iconColor,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 14, flexShrink: 0,
-            }}>
-              {card.icon}
-            </span>
+          { title: 'Total Reviews', value: kpiData.total, icon: <ChevronDown size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
+          { title: 'Completed Reviews', value: kpiData.completed, icon: <ChevronDown size={20} color="#10B981" />, bgColor: '#ECFDF5' },
+          { title: 'Completion Rate', value: kpiData.rate, icon: <ChevronDown size={20} color="#8B5CF6" />, bgColor: '#F5F3FF' },
+          { title: 'Pending Reviews', value: kpiData.pending, icon: <ChevronDown size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
+        ].map((kpi, idx) => (
+          <div key={idx} style={{ ...cardStyle, display: 'flex', gap: '16px', padding: '20px', alignItems: 'center' }}>
+            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: kpi.bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              {kpi.icon}
+            </div>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 500, color: '#6B7280', marginBottom: 2 }}>{card.label}</div>
-              <div style={{ fontSize: 22, fontWeight: 700, color: '#111827', lineHeight: 1 }}>{card.value}</div>
+              <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '500', marginBottom: '4px' }}>{kpi.title}</div>
+              <div style={{ fontSize: '24px', color: '#1E293B', fontWeight: '700' }}>{kpi.value}</div>
             </div>
           </div>
         ))}
-
-        {/* Top Review Summary card */}
-        <div style={{
-          background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
-          boxShadow: '0 2px 8px rgba(15,23,42,.05)',
-          padding: '14px 18px', minWidth: 120,
-          display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center',
-        }}>
-          <div style={{ fontSize: 11, fontWeight: 600, color: '#2563EB', textAlign: 'center', lineHeight: 1.4 }}>
-            Top review<br />Summaries
-          </div>
-        </div>
       </div>
 
-      {/* ── MAIN LAYOUT ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 20 }}>
-
-        {/* LEFT: Table */}
-        <div style={{
-          background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
-          boxShadow: '0 2px 8px rgba(15,23,42,.05)', overflow: 'hidden',
-        }}>
-          {/* Table header */}
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #E5E7EB' }}>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: '#111827' }}>Recent Reviews</h3>
+      {/* Main Content Layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: '24px' }}>
+        
+        {/* Table */}
+        <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Review Tracker</h3>
+            <input 
+              type="text" 
+              placeholder="Search..." 
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '13px' }}
+            />
           </div>
 
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
-                  {['Employee', 'Review Type', 'Reviewer', 'Review Date', 'Status'].map(h => (
-                    <th key={h} style={{
-                      padding: '11px 16px 11px 16px', textAlign: 'left',
-                      fontSize: 12, fontWeight: 500, color: '#6B7280',
-                      whiteSpace: 'nowrap', background: '#fff',
-                    }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {TABLE_DATA.map((row, idx) => {
-                  const s = STATUS_STYLE[row.status];
-                  const av = AVATAR_COLORS[idx % AVATAR_COLORS.length];
-                  return (
-                    <tr key={idx} style={{ height: 54, borderBottom: '1px solid #F3F4F6' }}>
-                      {/* Employee */}
-                      <td style={{ padding: '0 16px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{
-                            width: 30, height: 30, borderRadius: '50%',
-                            background: av.bg, color: av.color,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 11, fontWeight: 700, flexShrink: 0,
-                          }}>
-                            {row.initials}
-                          </div>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{row.name}</span>
-                        </div>
-                      </td>
-                      <td style={{ padding: '0 16px', fontSize: 13, color: '#374151' }}>{row.type}</td>
-                      <td style={{ padding: '0 16px', fontSize: 13, color: '#374151' }}>{row.reviewer}</td>
-                      <td style={{ padding: '0 16px', fontSize: 13, color: '#374151' }}>{row.date}</td>
-                      <td style={{ padding: '0 16px' }}>
-                        <span style={{
-                          display: 'inline-block', padding: '3px 10px', borderRadius: 999,
-                          background: s.bg, color: s.color,
-                          fontSize: 12, fontWeight: 500, whiteSpace: 'nowrap',
-                        }}>
-                          {row.status}
-                        </span>
-                      </td>
+            {loading ? (
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>Loading reviews...</div>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr style={{ background: '#F8FAFC' }}>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Employee</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Review Period</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Reviewer</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Type</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Rating</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reviewsList.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No reviews tracked</td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  ) : (
+                    reviewsList.map((row, idx) => (
+                      <tr key={row.id} style={{ borderBottom: idx === reviewsList.length - 1 ? 'none' : '1px solid #F8FAFC' }}>
+                        <td style={{ padding: '16px 24px', whiteSpace: 'nowrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600', color: '#475569' }}>
+                              {row.employee_name ? row.employee_name.split(' ').map(n => n[0]).join('') : 'EV'}
+                            </div>
+                            <div style={{ fontSize: '13px', fontWeight: '600', color: '#1E293B' }}>{row.employee_name}</div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.review_period}</td>
+                        <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.reviewer_id}</td>
+                        <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.type}</td>
+                        <td style={{ padding: '16px 24px', fontSize: '13px', color: '#1E293B', fontWeight: '600', textAlign: 'center' }}>{row.overall_rating} ★</td>
+                        <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                          <span style={{ 
+                            padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600',
+                            backgroundColor: getStatusStyle(row.status).bg, color: getStatusStyle(row.status).color
+                          }}>
+                            {row.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
 
-          {/* Pagination */}
-          <div style={{
-            padding: '14px 20px', borderTop: '1px solid #E5E7EB',
-            display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12,
-          }}>
-            <span style={{ fontSize: 13, color: '#6B7280' }}>Showing 1 to 6 of 156 entries</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              {[null, 1, 2, 3, '...', 28, null].map((pg, i) => {
-                if (pg === null) {
-                  const isLeft = i === 0;
-                  return (
-                    <button key={i} style={{
-                      width: 30, height: 30, borderRadius: 6,
-                      border: '1px solid #E5E7EB', background: '#fff',
-                      color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      {isLeft ? <ChevronLeft size={13} /> : <ChevronRight size={13} />}
-                    </button>
-                  );
-                }
-                if (pg === '...') return <span key={i} style={{ width: 30, textAlign: 'center', color: '#6B7280', fontSize: 13 }}>...</span>;
-                const isActive = pg === 1;
-                return (
-                  <button key={i} style={{
-                    width: 30, height: 30, borderRadius: 6,
-                    border: isActive ? 'none' : '1px solid #E5E7EB',
-                    background: isActive ? '#2563EB' : '#fff',
-                    color: isActive ? '#fff' : '#374151',
-                    fontWeight: isActive ? 600 : 500,
-                    fontSize: 13, cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    {pg}
-                  </button>
-                );
-              })}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 24px', borderTop: '1px solid #F1F5F9' }}>
+            <div style={{ fontSize: '13px', color: '#64748B' }}>
+              Showing {total === 0 ? 0 : (page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} entries
+            </div>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button disabled={page === 1} onClick={() => setPage(prev => prev - 1)} style={{ padding: '4px 8px', border: '1px solid #E2E8F0', borderRadius: '6px', background: '#FFF', cursor: page === 1 ? 'not-allowed' : 'pointer' }}><ChevronLeft size={16} /></button>
+              <button disabled={page === totalPages} onClick={() => setPage(prev => prev + 1)} style={{ padding: '4px 8px', border: '1px solid #E2E8F0', borderRadius: '6px', background: '#FFF', cursor: page === totalPages ? 'not-allowed' : 'pointer' }}><ChevronRight size={16} /></button>
             </div>
           </div>
         </div>
 
-        {/* RIGHT SIDEBAR: Review Summary */}
-        <div style={{
-          background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB',
-          boxShadow: '0 2px 8px rgba(15,23,42,.05)', padding: 20,
-          display: 'flex', flexDirection: 'column',
-        }}>
-          <h3 style={{ margin: '0 0 14px', fontSize: 14, fontWeight: 600, color: '#111827' }}>Review Summary</h3>
-
-          {/* Rating */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, paddingBottom: 14, borderBottom: '1px solid #F3F4F6' }}>
-            <span style={{ fontSize: 28, fontWeight: 700, color: '#111827', lineHeight: 1 }}>4.3</span>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 2, marginBottom: 3 }}>
-                {[1,2,3,4,5].map(i => (
-                  <Star key={i} size={13} style={{ color: i <= 4 ? '#F59E0B' : '#D1D5DB', fill: i <= 4 ? '#F59E0B' : 'none' }} />
-                ))}
-              </div>
-              <div style={{ fontSize: 11, color: '#6B7280' }}>Average Rating</div>
+        {/* Right Side Charts */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={cardStyle}>
+            <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Review Status</h3>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '140px' }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={kpiData.chartData} innerRadius={40} outerRadius={55} paddingAngle={2} dataKey="value" cx="50%" cy="50%" stroke="none">
+                    {kpiData.chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                    <Label value={kpiData.total} position="center" fill="#1E293B" style={{ fontSize: '24px', fontWeight: '700' }} />
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
-          </div>
-
-          {/* Sub-rating row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <span style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>4.2</span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              {[1,2,3,4,5].map(i => (
-                <Star key={i} size={11} style={{ color: i <= 4 ? '#F59E0B' : '#D1D5DB', fill: i <= 4 ? '#F59E0B' : 'none' }} />
-              ))}
-            </div>
-            <span style={{ fontSize: 11, color: '#6B7280' }}>% total done</span>
-          </div>
-
-          {/* Donut Chart */}
-          <div style={{ width: '100%', height: 160, position: 'relative', marginBottom: 14 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={PIE_DATA} cx="50%" cy="50%" innerRadius={52} outerRadius={70}
-                  paddingAngle={2} dataKey="value" stroke="none">
-                  {PIE_DATA.map((e, i) => <Cell key={i} fill={e.color} />)}
-                </Pie>
-                <Tooltip contentStyle={{ borderRadius: 8, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,.1)' }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Legend */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {PIE_DATA.map((item, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ width: 9, height: 9, borderRadius: '50%', background: item.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: '#374151', fontWeight: 500 }}>{item.name}</span>
-                </div>
-                <span style={{ fontSize: 12, color: '#6B7280' }}>
-                  {item.value} <span style={{ color: '#9CA3AF' }}>({item.percent})</span>
-                </span>
-              </div>
-            ))}
           </div>
         </div>
+
       </div>
 
     </div>
   );
-};
-
-export default Reviews;
+}

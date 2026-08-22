@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
-import { Plus, Edit3, Trash2, User, Activity, ShieldCheck, Briefcase, Baby, BookOpen, Users, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Edit3, Trash2, User, Activity, ShieldCheck, Briefcase, Baby, BookOpen, Users, X, Loader2 } from 'lucide-react';
+import { apiFetch } from '../../lib/api';
 
-const leaveTypesData = [
+const defaultLeaveTypes = [
   {
     name: 'Casual Leave',
     code: 'CL',
     desc: 'Leave for personal work and other casual reasons',
     max: 12,
     forward: 'Yes',
-    encash: 'No',
     status: 'Active',
     icon: <User size={18} color="#3b82f6" />,
     iconBg: '#eff6ff'
@@ -19,7 +19,6 @@ const leaveTypesData = [
     desc: 'Leave for illness or medical reasons',
     max: 15,
     forward: 'Yes',
-    encash: 'No',
     status: 'Active',
     icon: <Activity size={18} color="#3b82f6" />,
     iconBg: '#eff6ff'
@@ -30,7 +29,6 @@ const leaveTypesData = [
     desc: 'Leave for vacation and personal reasons',
     max: 10,
     forward: 'Yes',
-    encash: 'Yes',
     status: 'Active',
     icon: <ShieldCheck size={18} color="#10b981" />,
     iconBg: '#ecfdf5'
@@ -41,7 +39,6 @@ const leaveTypesData = [
     desc: 'Leave earned for the service period',
     max: 30,
     forward: 'Yes',
-    encash: 'Yes',
     status: 'Active',
     icon: <Briefcase size={18} color="#ef4444" />,
     iconBg: '#fef2f2'
@@ -52,7 +49,6 @@ const leaveTypesData = [
     desc: 'Leave for maternity and child care',
     max: 180,
     forward: 'No',
-    encash: 'No',
     status: 'Active',
     icon: <Baby size={18} color="#3b82f6" />,
     iconBg: '#eff6ff'
@@ -61,12 +57,6 @@ const leaveTypesData = [
     name: 'Paternity Leave',
     code: 'PTL',
     desc: 'Leave for paternity and child care',
-    max: 15,
-    forward: 'No',
-    encash: 'No',
-    status: 'Active',
-    code: 'PL',
-    desc: 'Paid leave for paternity',
     max: 15,
     forward: 'No',
     status: 'Active',
@@ -92,11 +82,15 @@ const leaveTypesData = [
     status: 'Active',
     iconBg: '#fffbeb',
     icon: <Users size={18} color="#f59e0b" />
-  },
+  }
 ];
 
 export default function LeaveTypes() {
+  const [leaveTypes, setLeaveTypes] = useState(defaultLeaveTypes);
+  const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [isEmployeeView, setIsEmployeeView] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     code: '',
@@ -108,6 +102,99 @@ export default function LeaveTypes() {
     status: 'Active'
   });
 
+  useEffect(() => {
+    // Check if user is accessing under /employee route or has EMPLOYEE role
+    const isEmpRoute = window.location.pathname.startsWith('/employee');
+    let isEmpRole = false;
+    const auth = localStorage.getItem('hrms_auth');
+    if (auth) {
+      try {
+        const parsed = JSON.parse(auth);
+        if (parsed.role === 'EMPLOYEE' || parsed.user?.role === 'EMPLOYEE') {
+          isEmpRole = true;
+        }
+      } catch (e) {}
+    }
+    setIsEmployeeView(isEmpRoute || isEmpRole);
+
+    const fetchLeaveTypes = async () => {
+      setLoading(true);
+      try {
+        const res = await apiFetch('/leaves/types');
+        if (Array.isArray(res) && res.length > 0) {
+          const formatted = res.map((lt, i) => ({
+            id: lt.id,
+            name: lt.name || 'Leave Type',
+            code: lt.code || 'LV',
+            desc: lt.description || 'Company official leave category',
+            max: lt.max_days || 12,
+            forward: lt.carry_forward ? 'Yes' : 'No',
+            status: lt.status || 'Active',
+            icon: defaultLeaveTypes[i % defaultLeaveTypes.length].icon,
+            iconBg: defaultLeaveTypes[i % defaultLeaveTypes.length].iconBg
+          }));
+          setLeaveTypes(formatted);
+        }
+      } catch (err) {
+        console.error("Failed to load leave types from API:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchLeaveTypes();
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await apiFetch('/leaves/types', {
+        method: 'POST',
+        body: JSON.stringify(formData)
+      });
+      setShowModal(false);
+      setFormData({
+        name: '',
+        code: '',
+        desc: '',
+        maxDays: '',
+        carryForward: false,
+        requiresApproval: true,
+        paidLeave: true,
+        status: 'Active'
+      });
+      // Refresh list
+      const res = await apiFetch('/leaves/types');
+      if (Array.isArray(res) && res.length > 0) {
+        const formatted = res.map((lt, i) => ({
+          id: lt.id,
+          name: lt.name || 'Leave Type',
+          code: lt.code || 'LV',
+          desc: lt.description || 'Company official leave category',
+          max: lt.max_days || 12,
+          forward: lt.carry_forward ? 'Yes' : 'No',
+          status: lt.status || 'Active',
+          icon: defaultLeaveTypes[i % defaultLeaveTypes.length].icon,
+          iconBg: defaultLeaveTypes[i % defaultLeaveTypes.length].iconBg
+        }));
+        setLeaveTypes(formatted);
+      }
+    } catch (err) {
+      console.error("Failed to save leave type:", err);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Are you sure you want to delete this leave type?")) {
+      try {
+        await apiFetch(`/leaves/types/${id}`, { method: 'DELETE' });
+        setLeaveTypes(prev => prev.filter(t => t.id !== id));
+      } catch (err) {
+        console.error("Failed to delete leave type:", err);
+      }
+    }
+  };
+
   const cardStyle = {
     background: '#FFFFFF',
     borderRadius: '12px',
@@ -117,12 +204,29 @@ export default function LeaveTypes() {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px', padding: '24px', width: '100%' }}>
-      {/* Header & Toolbar */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-        <button onClick={() => setShowModal(true)} style={{ background: '#2952E3', color: '#fff', border: 'none', padding: '10px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-          <Plus size={16} /> Add Leave Type
-        </button>
-      </div>
+      {/* Header & Toolbar (Only show Add Leave Type button if NOT employee view) */}
+      {!isEmployeeView && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+          <button
+            onClick={() => setShowModal(true)}
+            style={{
+              background: '#2952E3',
+              color: '#fff',
+              border: 'none',
+              padding: '10px 16px',
+              borderRadius: '8px',
+              fontSize: '13px',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: 'pointer'
+            }}
+          >
+            <Plus size={16} /> Add Leave Type
+          </button>
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
         {/* Main Table */}
@@ -137,81 +241,100 @@ export default function LeaveTypes() {
                   <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '700', color: '#334155', borderBottom: '1px solid #f1f5f9', textAlign: 'center', whiteSpace: 'nowrap' }}>Max Days</th>
                   <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '700', color: '#334155', borderBottom: '1px solid #f1f5f9', textAlign: 'center', whiteSpace: 'nowrap' }}>Carry Forward</th>
                   <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '700', color: '#334155', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>Status</th>
-                  <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '700', color: '#334155', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>Actions</th>
+                  {!isEmployeeView && (
+                    <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '700', color: '#334155', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
-                {leaveTypesData.map((type, idx) => (
-                  <tr key={idx} style={{ borderBottom: idx === leaveTypesData.length - 1 ? 'none' : '1px solid #f8fafc' }}>
-                    <td style={{ padding: '16px 24px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                        <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: type.iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                          {type.icon}
-                        </div>
-                        <span style={{ fontSize: '14px', fontWeight: '600', color: '#334155', whiteSpace: 'nowrap' }}>{type.name}</span>
-                      </div>
-                    </td>
-                    <td style={{ padding: '16px 24px', fontSize: '14px', color: '#64748b', whiteSpace: 'nowrap' }}>{type.desc}</td>
-                    <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569', fontWeight: '600', textAlign: 'center' }}>{type.code}</td>
-                    <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569', textAlign: 'center' }}>{type.max}</td>
-                    <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569', textAlign: 'center' }}>{type.forward}</td>
-                    <td style={{ padding: '16px 24px', textAlign: 'center' }}>
-                      <span style={{
-                        padding: '6px 12px',
-                        borderRadius: '20px',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        backgroundColor: type.status === 'Active' ? '#ecfdf5' : '#fef2f2',
-                        color: type.status === 'Active' ? '#10b981' : '#ef4444',
-                        border: `1px solid ${type.status === 'Active' ? '#d1fae5' : '#fee2e2'}`
-                      }}>
-                        {type.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '16px 24px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                        <button style={{
-                          background: '#eff6ff',
-                          border: '1px solid #dbeafe',
-                          borderRadius: '6px',
-                          width: '32px',
-                          height: '32px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          color: '#3b82f6',
-                          transition: 'all 0.2s'
-                        }}>
-                          <Edit3 size={16} />
-                        </button>
-                        <button style={{
-                          background: '#fef2f2',
-                          border: '1px solid #fee2e2',
-                          borderRadius: '6px',
-                          width: '32px',
-                          height: '32px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          color: '#ef4444',
-                          transition: 'all 0.2s'
-                        }}>
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
+                {loading ? (
+                  <tr>
+                    <td colSpan={isEmployeeView ? 6 : 7} style={{ padding: '40px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
+                      <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
+                      Loading Leave Types…
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  leaveTypes.map((type, idx) => (
+                    <tr key={idx} style={{ borderBottom: idx === leaveTypes.length - 1 ? 'none' : '1px solid #f8fafc' }}>
+                      <td style={{ padding: '16px 24px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                          <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: type.iconBg || '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {type.icon || <Briefcase size={18} color="#3b82f6" />}
+                          </div>
+                          <span style={{ fontSize: '14px', fontWeight: '600', color: '#334155', whiteSpace: 'nowrap' }}>{type.name}</span>
+                        </div>
+                      </td>
+                      <td style={{ padding: '16px 24px', fontSize: '14px', color: '#64748b', whiteSpace: 'nowrap' }}>{type.desc}</td>
+                      <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569', fontWeight: '600', textAlign: 'center' }}>{type.code}</td>
+                      <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569', textAlign: 'center' }}>{type.max}</td>
+                      <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569', textAlign: 'center' }}>{type.forward}</td>
+                      <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                        <span style={{
+                          padding: '6px 12px',
+                          borderRadius: '20px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          backgroundColor: type.status === 'Active' ? '#ecfdf5' : '#fef2f2',
+                          color: type.status === 'Active' ? '#10b981' : '#ef4444',
+                          border: `1px solid ${type.status === 'Active' ? '#d1fae5' : '#fee2e2'}`
+                        }}>
+                          {type.status}
+                        </span>
+                      </td>
+                      {!isEmployeeView && (
+                        <td style={{ padding: '16px 24px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                            <button
+                              onClick={() => setShowModal(true)}
+                              style={{
+                                background: '#eff6ff',
+                                border: '1px solid #dbeafe',
+                                borderRadius: '6px',
+                                width: '32px',
+                                height: '32px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                color: '#3b82f6',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <Edit3 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(type.id)}
+                              style={{
+                                background: '#fef2f2',
+                                border: '1px solid #fee2e2',
+                                borderRadius: '6px',
+                                width: '32px',
+                                height: '32px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                cursor: 'pointer',
+                                color: '#ef4444',
+                                transition: 'all 0.2s'
+                              }}
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      )}
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         </div>
       </div>
 
-      {/* Add Leave Type Modal */}
-      {showModal && (
+      {/* Add Leave Type Modal (Admin view only) */}
+      {!isEmployeeView && showModal && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowModal(false)} />
           <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw' }}>
@@ -224,7 +347,7 @@ export default function LeaveTypes() {
                 <X size={20} className="text-slate-400" />
               </button>
             </div>
-            <form onSubmit={(e) => { e.preventDefault(); setShowModal(false); }} className="p-8 overflow-y-auto flex-1 space-y-6">
+            <form onSubmit={handleSubmit} className="p-8 overflow-y-auto flex-1 space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Leave Type Name <span className="text-red-500">*</span></label>

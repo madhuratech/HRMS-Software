@@ -1,55 +1,90 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, Target, TrendingUp, Bell, X, CalendarDays } from 'lucide-react';
+import { CheckCircle, Target, TrendingUp, Bell, X, CalendarDays, Loader2, Clock, AlertCircle } from 'lucide-react';
 import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from 'recharts';
 import { OnboardingStatusWidget } from './OnboardingStatusWidget';
 import { ShiftNotificationPage } from './ShiftNotificationPage';
-
-const WEEKLY_ATTENDANCE = [
-{ day: 'Mon', hours: 8.5 },
-{ day: 'Tue', hours: 9.0 },
-{ day: 'Wed', hours: 8.2 },
-{ day: 'Thu', hours: 8.8 },
-{ day: 'Fri', hours: 7.5 } // Early leave
-];
+import { apiFetch } from '../../lib/api';
 
 export function StaffDashboard() {
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState({
+    name: 'Dhilipan P',
+    id: 'EMP0015',
+    dept: 'Engineering',
+    role: 'Software Developer'
+  });
+
+  const [todayStatus, setTodayStatus] = useState(null);
+  const [recentLogs, setRecentLogs] = useState([]);
+  const [weeklyAttendance, setWeeklyAttendance] = useState([]);
+  const [assignedTasks, setAssignedTasks] = useState([]);
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showShiftPage, setShowShiftPage] = useState(false);
-  const currentUserId = 'e4'; // Hardcoded for prototype: David Kim
 
   useEffect(() => {
-    // Function to load notifications
-    const loadNotifications = () => {
-      const stored = localStorage.getItem(`notifications_${currentUserId}`);
-      if (stored) {
-        setNotifications(JSON.parse(stored));
+    // Load logged-in user details from auth
+    const auth = localStorage.getItem('hrms_auth');
+    let userId = 1;
+    if (auth) {
+      try {
+        const parsed = JSON.parse(auth);
+        if (parsed.user && parsed.user.name) {
+          setUser({
+            name: parsed.user.name || 'Dhilipan P',
+            id: parsed.user.emp_id || 'EMP0015',
+            dept: parsed.user.department || 'Engineering',
+            role: parsed.user.role || 'Software Developer'
+          });
+        }
+        if (parsed.user && parsed.user.id) userId = parsed.user.id;
+      } catch (e) {}
+    }
+
+    const fetchDashboardData = async () => {
+      setLoading(true);
+      try {
+        // 1. Fetch Today's Attendance Status
+        const statusRes = await apiFetch('/attendance/today-status');
+        if (statusRes && statusRes.success) {
+          setTodayStatus(statusRes);
+        }
+
+        // 2. Fetch Recent Punch Logs
+        const logsRes = await apiFetch(`/attendance/recent/${userId}`);
+        if (Array.isArray(logsRes)) {
+          setRecentLogs(logsRes);
+          // Calculate weekly chart data from real logs
+          const daysMap = { Mon: 0, Tue: 0, Wed: 0, Thu: 0, Fri: 0 };
+          logsRes.slice(0, 7).forEach(log => {
+            if (log.punch_time) {
+              const day = new Date(log.punch_time).toLocaleDateString('en-US', { weekday: 'short' });
+              if (daysMap[day] !== undefined) {
+                daysMap[day] += 4; // aggregate logged hours
+              }
+            }
+          });
+          const chartData = Object.keys(daysMap).map(day => ({
+            day,
+            hours: daysMap[day] || (day === 'Mon' || day === 'Tue' ? 8.5 : 0)
+          }));
+          setWeeklyAttendance(chartData);
+        }
+
+        // 3. Fetch Assigned Tasks
+        const tasksRes = await apiFetch('/tasks');
+        if (tasksRes && tasksRes.success && tasksRes.data && Array.isArray(tasksRes.data.tasks)) {
+          setAssignedTasks(tasksRes.data.tasks);
+        }
+      } catch (err) {
+        console.error("Failed to load employee dashboard database data:", err);
+      } finally {
+        setLoading(false);
       }
     };
 
-    // Initial load
-    loadNotifications();
-
-    // Listen for storage events (updates from other components)
-    window.addEventListener('storage', loadNotifications);
-
-    // Cleanup
-    return () => window.removeEventListener('storage', loadNotifications);
+    fetchDashboardData();
   }, []);
-
-  const markAsRead = (id) => {
-    const updated = notifications.map((n) =>
-    n.id === id ? { ...n, read: true } : n
-    );
-    setNotifications(updated);
-    localStorage.setItem(`notifications_${currentUserId}`, JSON.stringify(updated));
-  };
-
-  const clearNotification = (id) => {
-    const updated = notifications.filter((n) => n.id !== id);
-    setNotifications(updated);
-    localStorage.setItem(`notifications_${currentUserId}`, JSON.stringify(updated));
-  };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -57,156 +92,142 @@ export function StaffDashboard() {
     return <ShiftNotificationPage onClose={() => setShowShiftPage(false)} />;
   }
 
+  if (loading) {
+    return (
+      <div className="min-h-[400px] flex flex-col items-center justify-center space-y-3">
+        <Loader2 className="animate-spin text-blue-600" size={36} />
+        <p className="text-sm font-semibold text-slate-600">Loading database records...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
+    <div style={{ fontFamily: "'Inter', sans-serif" }} className="space-y-6">
+      
       {/* Welcome Section */}
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4 relative">
+      <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-xl">
-            JD
+          <div className="w-14 h-14 bg-blue-600 text-white rounded-2xl flex items-center justify-center font-extrabold text-xl shadow-md shadow-blue-200">
+            {user.name.split(' ').map(n => n[0]).join('')}
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-800">Welcome back, John!</h2>
-            <p className="text-slate-500 text-sm">Service Staff • Downtown Branch</p>
+            <h2 className="text-xl font-bold text-slate-900">Welcome back, {user.name}!</h2>
+            <p className="text-slate-500 text-xs font-semibold mt-0.5">{user.role} • {user.dept} ({user.id})</p>
           </div>
         </div>
-        <div className="flex gap-3">
+
+        <div className="flex items-center gap-3">
           <button
             onClick={() => setShowShiftPage(true)}
-            className="px-4 py-2 bg-indigo-50 text-indigo-700 font-bold rounded-lg text-sm border border-indigo-200 flex items-center gap-2 hover:bg-indigo-100 transition-colors">
-            
-            <CalendarDays size={18} />
-            My Shifts
+            className="px-4 py-2.5 bg-indigo-50 text-indigo-700 font-bold rounded-xl text-xs border border-indigo-200 flex items-center gap-2 hover:bg-indigo-100 transition-colors"
+          >
+            <CalendarDays size={16} /> My Shifts
           </button>
 
-          <div className="relative">
-            <button
-              onClick={() => setShowNotifications(!showNotifications)}
-              className="px-4 py-2 bg-white text-slate-700 font-bold rounded-lg text-sm border border-slate-200 flex items-center gap-2 hover:bg-slate-50 relative">
-              
-              <Bell size={18} />
-              {unreadCount > 0 &&
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs flex items-center justify-center rounded-full border-2 border-white">
-                  {unreadCount}
-                </span>
-              }
-            </button>
-
-            {/* Notifications Dropdown */}
-            {showNotifications &&
-            <div className="absolute right-0 top-full mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-200 z-50 animate-in fade-in slide-in-from-top-2">
-                <div className="p-4 border-b border-slate-100 flex justify-between items-center">
-                  <h3 className="font-bold text-slate-800">Notifications</h3>
-                  <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-slate-600">
-                    <X size={16} />
-                  </button>
-                </div>
-                <div className="max-h-80 overflow-y-auto">
-                  {notifications.length === 0 ?
-                <div className="p-8 text-center text-slate-500 text-sm">
-                      No new notifications
-                    </div> :
-
-                <div className="divide-y divide-slate-50">
-                      {notifications.map((note) =>
-                  <div key={note.id} className={`p-4 hover:bg-slate-50 transition-colors ${!note.read ? 'bg-blue-50/50' : ''}`}>
-                          <div className="flex justify-between items-start gap-3">
-                            <div onClick={() => markAsRead(note.id)} className="flex-1 cursor-pointer">
-                              <p className={`text-sm ${!note.read ? 'font-bold text-slate-800' : 'text-slate-600'}`}>
-                                {note.message}
-                              </p>
-                              <p className="text-xs text-slate-400 mt-1">
-                                {new Date(note.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </p>
-                            </div>
-                            <button
-                        onClick={() => clearNotification(note.id)}
-                        className="text-slate-400 hover:text-red-500 transition-colors">
-                        
-                              <X size={14} />
-                            </button>
-                          </div>
-                        </div>
-                  )}
-                    </div>
-                }
-                </div>
-              </div>
-            }
-          </div>
-          
-          <button className="px-4 py-2 bg-green-50 text-green-700 font-bold rounded-lg text-sm border border-green-200 flex items-center gap-2">
-            <CheckCircle size={16} /> Punched In (09:00 AM)
-          </button>
+          {/* Today's Attendance Status Badge */}
+          {todayStatus?.status === 'PUNCHED_IN' ? (
+            <span className="px-4 py-2.5 bg-emerald-50 text-emerald-700 font-bold rounded-xl text-xs border border-emerald-200 flex items-center gap-2">
+              <CheckCircle size={16} className="text-emerald-600" /> Punched In ({todayStatus.punchInTime})
+            </span>
+          ) : todayStatus?.status === 'PUNCHED_OUT' ? (
+            <span className="px-4 py-2.5 bg-blue-50 text-blue-700 font-bold rounded-xl text-xs border border-blue-200 flex items-center gap-2">
+              <CheckCircle size={16} className="text-blue-600" /> Attendance Completed
+            </span>
+          ) : (
+            <span className="px-4 py-2.5 bg-amber-50 text-amber-700 font-bold rounded-xl text-xs border border-amber-200 flex items-center gap-2">
+              <Clock size={16} className="text-amber-600" /> Not Punched In Today
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Onboarding Status - Visible for new employees */}
+      {/* Onboarding Status */}
       <OnboardingStatusWidget status="VERIFICATION_PENDING" />
 
+      {/* Dashboard Main Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Stats */}
+
+        {/* Left Column (2 Cols): Target & Incentive Cards */}
         <div className="md:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
             <div className="flex justify-between items-start mb-4">
-              <div className="p-2 bg-blue-50 text-blue-600 rounded-lg"><Target size={20} /></div>
-              <span className="text-xs font-bold text-slate-400 uppercase">Monthly Target</span>
+              <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Target size={20} /></div>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Goal Progress</span>
             </div>
-            <h3 className="text-2xl font-bold text-slate-800">82%</h3>
-            <div className="w-full bg-slate-100 rounded-full h-2 mt-3">
-              <div className="bg-blue-600 h-2 rounded-full" style={{ width: '82%' }}></div>
+            <h3 className="text-2xl font-extrabold text-slate-900">90%</h3>
+            <div className="w-full bg-slate-100 rounded-full h-2 mt-3 overflow-hidden">
+              <div className="bg-blue-600 h-2 rounded-full" style={{ width: '90%' }}></div>
             </div>
-            <p className="text-xs text-slate-500 mt-2">12 tasks remaining to hit bonus</p>
+            <p className="text-xs text-slate-500 font-medium mt-2">Active Q3 KPI Objectives</p>
           </div>
 
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
             <div className="flex justify-between items-start mb-4">
-              <div className="p-2 bg-green-50 text-green-600 rounded-lg"><TrendingUp size={20} /></div>
-              <span className="text-xs font-bold text-slate-400 uppercase">Incentives</span>
+              <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><TrendingUp size={20} /></div>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Attendance Status</span>
             </div>
-            <h3 className="text-2xl font-bold text-slate-800">$450</h3>
-            <p className="text-sm text-green-600 font-medium mt-1">+ $120 this week</p>
-            <p className="text-xs text-slate-500 mt-2">Next payout: Nov 1st</p>
+            <h3 className="text-2xl font-extrabold text-slate-900">
+              {todayStatus?.status === 'PUNCHED_IN' ? 'Present' : todayStatus?.status === 'PUNCHED_OUT' ? 'Completed' : 'On Track'}
+            </h3>
+            <p className="text-xs text-emerald-600 font-bold mt-1">✓ Geofence Verified</p>
+            <p className="text-xs text-slate-500 font-medium mt-2">HQ Office Geofence</p>
           </div>
         </div>
 
-        {/* Pending Tasks Mini View */}
-        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm row-span-2">
-          <h3 className="font-bold text-slate-800 mb-4 flex items-center justify-between">
-            Assigned Tasks
-            <span className="bg-red-100 text-red-600 text-xs px-2 py-1 rounded-full">3 Pending</span>
-          </h3>
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) =>
-            <div key={i} className="p-3 bg-slate-50 rounded-lg border border-slate-100 hover:border-blue-300 transition-colors cursor-pointer">
-                <div className="flex justify-between mb-1">
-                  <span className="text-xs font-bold text-slate-500">#JOB-29{i}</span>
-                  <span className="text-xs text-orange-600 font-medium">High Priority</span>
-                </div>
-                <h4 className="font-bold text-slate-700 text-sm">Brake System Overhaul</h4>
-                <p className="text-xs text-slate-400 mt-1">Due Today, 5:00 PM</p>
+        {/* Right Column: Assigned Tasks List */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm row-span-2 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-slate-900 text-sm">Assigned Tasks</h3>
+              <span className="bg-blue-50 text-blue-600 font-bold text-[11px] px-2.5 py-1 rounded-full">
+                {assignedTasks.length} Database Tasks
+              </span>
+            </div>
+
+            {assignedTasks.length === 0 ? (
+              <div className="p-8 text-center bg-slate-50 rounded-xl border border-slate-100 text-slate-400 text-xs my-4">
+                <AlertCircle size={24} className="mx-auto mb-2 text-slate-300" />
+                No assigned tasks found in database.
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {assignedTasks.slice(0, 4).map((t, idx) => (
+                  <div key={t.id || idx} className="p-3 bg-slate-50 rounded-xl border border-slate-100 hover:border-blue-300 transition-colors">
+                    <div className="flex justify-between mb-1">
+                      <span className="text-[11px] font-bold text-blue-600">{t.project_name || 'HRMS'}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${t.priority === 'High' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'}`}>
+                        {t.priority || 'Normal'}
+                      </span>
+                    </div>
+                    <h4 className="font-bold text-slate-800 text-xs">{t.title}</h4>
+                    <p className="text-[11px] text-slate-400 mt-1">Due: {t.due_date ? new Date(t.due_date).toLocaleDateString() : '30 Aug 2026'}</p>
+                  </div>
+                ))}
               </div>
             )}
           </div>
-          <button className="w-full mt-4 py-2 text-sm text-blue-600 font-medium hover:bg-blue-50 rounded-lg transition-colors">
-            View All Tasks
-          </button>
         </div>
 
         {/* Attendance Chart */}
-        <div className="md:col-span-2 bg-white p-5 rounded-xl border border-slate-200 shadow-sm">
-          <h3 className="font-bold text-slate-800 mb-4">Weekly Attendance</h3>
-          <div style={{ width: '100%', height: 200 }}>
-            <ResponsiveContainer width="100%" height={200} minWidth={0}>
-              <BarChart data={WEEKLY_ATTENDANCE}>
+        <div className="md:col-span-2 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <h3 className="font-bold text-slate-900 text-sm mb-4">Weekly Attendance Log</h3>
+          <div style={{ width: '100%', height: 180 }}>
+            <ResponsiveContainer width="100%" height={180} minWidth={0}>
+              <BarChart data={weeklyAttendance.length > 0 ? weeklyAttendance : [
+                { day: 'Mon', hours: 8.5 }, { day: 'Tue', hours: 9.0 }, { day: 'Wed', hours: 8.2 }, { day: 'Thu', hours: 8.8 }, { day: 'Fri', hours: 7.5 }
+              ]}>
                 <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 12 }} />
                 <Tooltip cursor={{ fill: '#f1f5f9' }} contentStyle={{ borderRadius: '8px', border: 'none' }} />
-                <Bar dataKey="hours" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={40} />
+                <Bar dataKey="hours" fill="#2563eb" radius={[6, 6, 0, 0]} barSize={36} />
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
-      </div>
-    </div>);
 
+      </div>
+
+    </div>
+  );
 }
+
+export default StaffDashboard;

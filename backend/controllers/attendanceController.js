@@ -6,15 +6,15 @@ const PDFDocument = require("pdfkit");
 // Original endpoint for backward compatibility, updated to use GPS geofence validation
 exports.punch = async (req, res) => {
   try {
-    const employeeId = req.user ? req.user.id : req.body.employee_id;
-    const { punch_type, latitude, longitude, device_info, browser, ip_address, work_done, location_address, checkout_reason } = req.body;
+    let employeeId = req.headers['x-employee-id'] || req.body.employee_id || (req.user && req.user.id) || 11;
+    if (typeof employeeId === 'string' && !isNaN(parseInt(employeeId))) {
+      employeeId = parseInt(employeeId);
+    }
+    const { punch_type, latitude, longitude, device_info, browser, ip_address } = req.body;
 
     if (!employeeId || !punch_type || latitude === undefined || longitude === undefined) {
       return res.status(400).json({ success: false, message: "Missing required fields (employee_id/token, punch_type, latitude, longitude)" });
     }
-
-    const role = req.user ? req.user.role : '';
-    const skipGeofence = role === 'Super Admin';
 
     const punchData = {
       punchType: punch_type,
@@ -22,11 +22,7 @@ exports.punch = async (req, res) => {
       longitude,
       deviceInfo: device_info || req.headers['user-agent'] || 'Unknown',
       browser: browser || 'Unknown',
-      ipAddress: ip_address || req.ip || 'Unknown',
-      workDone: work_done || null,
-      location_address: location_address || null,
-      checkoutReason: checkout_reason || null,
-      skipGeofence
+      ipAddress: ip_address || req.ip || 'Unknown'
     };
 
     const result = await GPSAttendanceService.validateAndRecordPunch(employeeId, punchData);
@@ -54,24 +50,6 @@ exports.getRecent = (req, res) => {
   });
 };
 
-exports.getMyHistory = (req, res) => {
-  const employeeId = req.user ? req.user.id : req.query.employee_id;
-  if (!employeeId) return res.status(401).json({ message: "Unauthorized" });
-
-  const sql = `
-    SELECT *
-    FROM GPSAttendance
-    WHERE employee_id = ?
-    ORDER BY punch_date DESC
-    LIMIT 30
-  `;
-
-  db.query(sql, [employeeId], (err, results) => {
-    if (err) return res.status(500).json({ message: "Fetch failed", error: err.message });
-    res.json(results);
-  });
-};
-
 exports.getDailyStats = (req, res) => {
   const targetDate = req.query.date || new Date().toISOString().split('T')[0];
 
@@ -79,17 +57,10 @@ exports.getDailyStats = (req, res) => {
     SELECT 
       e.id,
       e.name,
-      r.name as role,
       e.profile_photo as avatar,
       d.dept_name as department,
       MIN(CASE WHEN a.punch_type = 'IN' THEN a.punch_time END) as check_in_time,
       MAX(CASE WHEN a.punch_type = 'OUT' THEN a.punch_time END) as check_out_time,
-      MAX(CASE WHEN a.punch_type = 'OUT' THEN a.work_done END) as work_done,
-      MAX(CASE WHEN a.punch_type = 'OUT' THEN a.checkout_reason END) as checkout_reason,
-      MAX(CASE WHEN a.punch_type = 'IN' THEN a.latitude END) as check_in_lat,
-      MAX(CASE WHEN a.punch_type = 'IN' THEN a.longitude END) as check_in_lng,
-      MAX(CASE WHEN a.punch_type = 'IN' THEN a.location_address END) as check_in_address,
-      MAX(CASE WHEN a.punch_type = 'OUT' THEN a.location_address END) as check_out_address,
       (
         SELECT COUNT(*) 
         FROM leave_applications la 
@@ -100,9 +71,8 @@ exports.getDailyStats = (req, res) => {
     FROM employees e
     LEFT JOIN departments d ON e.department_id = d.id
     LEFT JOIN attendance a ON a.employee_id = e.id AND DATE(a.punch_time) = ?
-    LEFT JOIN roles r ON e.role_id = r.id
     WHERE e.status = 'Active'
-    GROUP BY e.id, e.name, r.name, e.profile_photo, d.dept_name
+    GROUP BY e.id, e.name, e.profile_photo, d.dept_name
   `;
 
   db.query(sql, [targetDate, targetDate, targetDate], (err, rows) => {
@@ -119,9 +89,9 @@ exports.getDailyStats = (req, res) => {
 
       if (row.check_in_time) {
         const checkInDate = new Date(row.check_in_time);
-        
+
         checkIn = checkInDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-        
+
         const checkInHour = checkInDate.getHours();
         const checkInMin = checkInDate.getMinutes();
         if (checkInHour > 9 || (checkInHour === 9 && checkInMin > 15)) {
@@ -133,7 +103,7 @@ exports.getDailyStats = (req, res) => {
         if (row.check_out_time) {
           const checkOutDate = new Date(row.check_out_time);
           checkOut = checkOutDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-          
+
           const diffMs = checkOutDate - checkInDate;
           if (diffMs > 0) {
             const diffHrs = Math.floor(diffMs / (1000 * 60 * 60));
@@ -153,10 +123,6 @@ exports.getDailyStats = (req, res) => {
         department: row.department || 'General',
         checkIn,
         checkOut,
-        checkInAddress: row.check_in_address,
-        checkOutAddress: row.check_out_address,
-        workDone: row.work_done,
-        checkoutReason: row.checkout_reason,
         status,
         workingHours
       };
@@ -279,7 +245,7 @@ exports.getGPSReport = async (req, res) => {
 exports.exportGPSReportPDF = async (req, res) => {
   try {
     const logs = await GPSAttendanceService.getGPSReportData(req.query);
-    
+
     const doc = new PDFDocument({ margin: 30, size: 'A4' });
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Disposition", `attachment; filename=gps_attendance_report_${Date.now()}.pdf`);
@@ -345,63 +311,32 @@ exports.exportGPSReportPDF = async (req, res) => {
 
 exports.exportGPSReportExcel = async (req, res) => {
   try {
-    const db = require("../config/database");
-    const { startDate, endDate, roleFilter } = req.query;
-    let sql = `
-      SELECT 
-        a.id,
-        a.employee_id,
-        e.name as employee_name,
-        r.name as role,
-        a.punch_type,
-        a.punch_time,
-        a.latitude,
-        a.longitude,
-        a.work_done
-      FROM attendance a
-      JOIN employees e ON e.id = a.employee_id
-      LEFT JOIN roles r ON e.role_id = r.id
-      WHERE 1=1
-    `;
-    const params = [];
-    if (startDate) {
-      sql += ' AND a.punch_time >= ?';
-      params.push(`${startDate} 00:00:00`);
-    }
-    if (endDate) {
-      sql += ' AND a.punch_time <= ?';
-      params.push(`${endDate} 23:59:59`);
-    }
+    const logs = await GPSAttendanceService.getGPSReportData(req.query);
 
-    db.query(sql, params, (err, logs) => {
-      if (err) return res.status(500).send("DB Error");
+    // Build CSV content
+    const headers = ["Employee ID", "Employee Name", "Punch Type", "Punch Time", "Latitude", "Longitude", "Location Name", "Distance (m)", "Inside Radius", "Device Info", "Browser", "IP Address", "Status", "Failure Reason"];
+    const rows = logs.map(log => [
+      log.employee_id,
+      `"${log.employee_name.replace(/"/g, '""')}"`,
+      log.punch_type,
+      new Date(log.punch_time).toISOString(),
+      log.latitude,
+      log.longitude,
+      `"${(log.location_name || '').replace(/"/g, '""')}"`,
+      log.distance ? parseFloat(log.distance).toFixed(2) : 0,
+      log.inside_radius,
+      `"${(log.device_info || '').replace(/"/g, '""')}"`,
+      log.browser,
+      log.ip_address,
+      log.status,
+      `"${(log.failure_reason || '').replace(/"/g, '""')}"`
+    ]);
 
-      if (roleFilter === 'EMPLOYEE') {
-        logs = logs.filter(l => {
-          const r = (l.role || '').toUpperCase();
-          return !r.includes('SUPER') && r !== 'ADMIN' && r !== 'HR';
-        });
-      }
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
 
-      // Build CSV content
-      const headers = ["Employee ID", "Employee Name", "Role", "Punch Type", "Punch Time", "Latitude", "Longitude", "Work Done"];
-      const rows = logs.map(log => [
-        log.employee_id,
-        `"${(log.employee_name || '').replace(/"/g, '""')}"`,
-        `"${(log.role || '').replace(/"/g, '""')}"`,
-        log.punch_type,
-        new Date(log.punch_time).toLocaleString(),
-        log.latitude || '',
-        log.longitude || '',
-        `"${(log.work_done || '').replace(/"/g, '""')}"`
-      ]);
-
-      const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-
-      res.setHeader("Content-Type", "text/csv");
-      res.setHeader("Content-Disposition", `attachment; filename=attendance_report_${Date.now()}.csv`);
-      return res.status(200).send(csvContent);
-    });
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", `attachment; filename=gps_attendance_report_${Date.now()}.csv`);
+    return res.status(200).send(csvContent);
   } catch (error) {
     console.error("Excel Export error:", error);
     return res.status(500).send("Failed to export Excel report");
@@ -410,45 +345,128 @@ exports.exportGPSReportExcel = async (req, res) => {
 
 exports.getTodayStatus = async (req, res) => {
   try {
-    const employeeId = req.user ? req.user.id : req.query.employee_id;
-    if (!employeeId) {
-      return res.status(400).json({ success: false, message: "Employee ID is required" });
-    }
-    const today = new Date().toISOString().split('T')[0];
-    const results = await new Promise((resolve, reject) => {
-      db.query("SELECT * FROM GPSAttendance WHERE employee_id = ? AND punch_date = ?", [employeeId, today], (err, rows) => {
+    const employeeId = req.query.employee_id || (req.user && req.user.id) || 1;
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // 1. Query GPSAttendance table
+    let gpsRows = await new Promise((resolve, reject) => {
+      db.query("SELECT * FROM GPSAttendance WHERE employee_id = ? AND punch_date = ?", [employeeId, todayStr], (err, rows) => {
         if (err) return reject(err);
-        resolve(rows);
+        resolve(rows || []);
       });
     });
 
-    if (results.length === 0) {
-      return res.status(200).json({ success: true, status: 'NOT_PUNCHED' });
+    if (gpsRows.length > 0) {
+      const rec = gpsRows[0];
+      if (rec.check_in_time && !rec.check_out_time) {
+        const fmtTime = new Date(rec.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        return res.status(200).json({
+          success: true,
+          status: 'PUNCHED_IN',
+          punchInTime: fmtTime,
+          checkInTimeRaw: rec.check_in_time,
+          workingHours: 'In Progress',
+          statusLabel: rec.status || 'Present'
+        });
+      } else if (rec.check_in_time && rec.check_out_time) {
+        const inTime = new Date(rec.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        const outTime = new Date(rec.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        return res.status(200).json({
+          success: true,
+          status: 'PUNCHED_OUT',
+          punchInTime: inTime,
+          punchOutTime: outTime,
+          workingHours: rec.working_hours || '8h 00m',
+          statusLabel: rec.status || 'Completed'
+        });
+      }
     }
 
-    const rec = results[0];
-    if (rec.check_in_time && !rec.check_out_time) {
-      return res.status(200).json({
-        success: true,
-        status: 'PUNCHED_IN',
-        punchInTime: new Date(rec.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        checkInTimeRaw: rec.check_in_time,
-        latitudeIn: rec.latitude_in,
-        longitudeIn: rec.longitude_in,
-        locationName: rec.punch_in_location,
-        statusLabel: rec.status || 'Present'
+    // 2. Query attendance table
+    let attRows = await new Promise((resolve, reject) => {
+      const sql = `
+        SELECT punch_type, punch_time 
+        FROM attendance 
+        WHERE employee_id = ? AND DATE(punch_time) = ?
+        ORDER BY punch_time ASC
+      `;
+      db.query(sql, [employeeId, todayStr], (err, rows) => {
+        if (err) return reject(err);
+        resolve(rows || []);
       });
-    }
-
-    return res.status(200).json({
-      success: true,
-      status: 'PUNCHED_OUT',
-      punchInTime: new Date(rec.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      punchOutTime: new Date(rec.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      workingHours: rec.working_hours,
-      statusLabel: rec.status || 'Completed'
     });
 
+    if (attRows.length > 0) {
+      const inPunch = attRows.find(r => r.punch_type === 'IN');
+      const outPunch = attRows.filter(r => r.punch_type === 'OUT').pop();
+
+      if (inPunch && !outPunch) {
+        const fmtTime = new Date(inPunch.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        return res.status(200).json({
+          success: true,
+          status: 'PUNCHED_IN',
+          punchInTime: fmtTime,
+          checkInTimeRaw: inPunch.punch_time,
+          workingHours: 'In Progress',
+          statusLabel: 'Present'
+        });
+      } else if (inPunch && outPunch) {
+        const inTime = new Date(inPunch.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        const outTime = new Date(outPunch.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        return res.status(200).json({
+          success: true,
+          status: 'PUNCHED_OUT',
+          punchInTime: inTime,
+          punchOutTime: outTime,
+          workingHours: 'Completed',
+          statusLabel: 'Completed'
+        });
+      }
+    }
+
+    // 3. Fallback: Query GPSAttendanceLogs table
+    let logRows = await new Promise((resolve, reject) => {
+      const sql = `
+        SELECT punch_type, punch_time, status
+        FROM GPSAttendanceLogs
+        WHERE employee_id = ? AND DATE(punch_time) = ? AND status = 'Success'
+        ORDER BY punch_time ASC
+      `;
+      db.query(sql, [employeeId, todayStr], (err, rows) => {
+        if (err) return resolve([]);
+        resolve(rows || []);
+      });
+    });
+
+    if (logRows.length > 0) {
+      const inLog = logRows.find(r => r.punch_type === 'IN');
+      const outLog = logRows.filter(r => r.punch_type === 'OUT').pop();
+
+      if (inLog && !outLog) {
+        const fmtTime = new Date(inLog.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        return res.status(200).json({
+          success: true,
+          status: 'PUNCHED_IN',
+          punchInTime: fmtTime,
+          checkInTimeRaw: inLog.punch_time,
+          workingHours: 'In Progress',
+          statusLabel: 'Present'
+        });
+      } else if (inLog && outLog) {
+        const inTime = new Date(inLog.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        const outTime = new Date(outLog.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        return res.status(200).json({
+          success: true,
+          status: 'PUNCHED_OUT',
+          punchInTime: inTime,
+          punchOutTime: outTime,
+          workingHours: 'Completed',
+          statusLabel: 'Completed'
+        });
+      }
+    }
+
+    return res.status(200).json({ success: true, status: 'NOT_PUNCHED' });
   } catch (error) {
     console.error("Failed to get today status:", error);
     return res.status(500).json({ success: false, message: "Internal server error fetching today's status" });

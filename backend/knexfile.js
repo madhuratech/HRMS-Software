@@ -10,6 +10,7 @@ const poolConfig = {
   reapIntervalMillis: 1000,
   createRetryIntervalMillis: 200
 };
+
 module.exports = {
   development: {
     client: 'mysql2',

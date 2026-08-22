@@ -1,49 +1,148 @@
-import React, { useState } from 'react';
-import { Calendar as CalendarIcon, Filter, MoreHorizontal, ChevronDown, Plus, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../lib/api';
+import { getAvatarUrl } from '../../lib/utils';
+import { Calendar as CalendarIcon, Filter, MoreHorizontal, ChevronDown, Plus, X, Check, Trash2, RotateCcw } from 'lucide-react';
 
 export default function Overtime() {
   const [showAddModal, setShowAddModal] = useState(false);
+  const [employees, setEmployees] = useState([]);
+  const [overtimeData, setOvertimeData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
   const [formData, setFormData] = useState({
-    employee: '',
-    date: '',
-    hours: '',
-    reason: '',
+    employee_id: '',
+    date: new Date().toISOString().split('T')[0],
+    hours: '02h 00m',
+    reason: ''
   });
 
-  const [overtimeData, setOvertimeData] = useState([
-    { id: '1', employee: 'Aarav Sharma', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026024d', date: 'May 20, 2024', hours: '02h 30m', reason: 'Project Deadline', status: 'Approved' },
-    { id: '2', employee: 'Neha Patel', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', date: 'May 19, 2024', hours: '01h 45m', reason: 'Client Meeting', status: 'Pending' },
-    { id: '3', employee: 'Rohan Mehta', avatar: 'https://i.pravatar.cc/150?u=a04258114e29026702d', date: 'May 18, 2024', hours: '03h 15m', reason: 'System Deployment', status: 'Approved' },
-    { id: '4', employee: 'Priya Nair', avatar: 'https://i.pravatar.cc/150?u=a048581f4e29026701d', date: 'May 17, 2024', hours: '02h 00m', reason: 'Month End Closing', status: 'Pending' },
-    { id: '5', employee: 'Karan Verma', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026703d', date: 'May 16, 2024', hours: '01h 30m', reason: 'Bug Fixing', status: 'Approved' },
-    { id: '6', employee: 'Anjali Desai', avatar: 'https://i.pravatar.cc/150?img=32', date: 'May 15, 2024', hours: '02h 45m', reason: 'Campaign Launch', status: 'Approved' },
-    { id: '7', employee: 'Vikram Singh', avatar: 'https://i.pravatar.cc/150?img=11', date: 'May 14, 2024', hours: '01h 15m', reason: 'Report Preparation', status: 'Pending' },
-  ]);
+  const loadEmployees = async () => {
+    try {
+      const data = await apiFetch('/employees?status=Active');
+      if (Array.isArray(data)) {
+        setEmployees(data);
+        if (data.length > 0) {
+          setFormData(prev => ({ ...prev, employee_id: data[0].id }));
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load employees:", e);
+    }
+  };
 
-  const handleSave = (e) => {
+  const loadOvertime = async () => {
+    setLoading(true);
+    try {
+      const data = await apiFetch('/attendance/overtime');
+      if (Array.isArray(data)) {
+        setOvertimeData(data);
+      }
+    } catch (e) {
+      console.error("Failed to load overtime records:", e);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    loadOvertime();
+    loadEmployees();
+  }, []);
+
+  const handleUpdateStatus = async (id, newStatus) => {
+    // Optimistically update local state for instant UI responsiveness
+    setOvertimeData(prev => prev.map(rec => rec.id === id ? { ...rec, status: newStatus } : rec));
+    try {
+      await apiFetch(`/attendance/overtime/${id}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus })
+      });
+      await loadOvertime();
+    } catch (err) {
+      console.error("Failed to update status:", err);
+      await loadOvertime();
+    }
+  };
+
+  const handleReset = async (id) => {
+    await handleUpdateStatus(id, 'Pending');
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this overtime record?")) return;
+    setOvertimeData(prev => prev.filter(rec => rec.id !== id));
+    try {
+      await apiFetch(`/attendance/overtime/${id}`, { method: 'DELETE' });
+      await loadOvertime();
+    } catch (err) {
+      console.error("Failed to delete overtime record:", err);
+      await loadOvertime();
+    }
+  };
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (!formData.employee || !formData.date || !formData.hours) return;
-    const newItem = {
-      id: String(Date.now()),
-      employee: formData.employee,
-      avatar: 'https://i.pravatar.cc/150?u=' + Date.now(),
-      date: formData.date,
-      hours: formData.hours,
-      reason: formData.reason || 'N/A',
-      status: 'Pending',
-    };
-    setOvertimeData([newItem, ...overtimeData]);
-    setFormData({ employee: '', date: '', hours: '', reason: '' });
+    if (!formData.employee_id || !formData.date || !formData.hours) return;
+
+    try {
+      const selectedEmp = employees.find(emp => String(emp.id) === String(formData.employee_id));
+      const formattedDate = new Date(formData.date).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+
+      await apiFetch('/attendance/overtime', {
+        method: 'POST',
+        body: JSON.stringify({
+          employee_id: formData.employee_id,
+          employee_name: selectedEmp ? selectedEmp.name : 'Employee',
+          date: formattedDate,
+          hours: formData.hours,
+          reason: formData.reason
+        })
+      });
+      await loadOvertime();
+    } catch (err) {
+      console.error("Failed to log overtime:", err);
+    }
+
+    setFormData({
+      employee_id: employees.length > 0 ? employees[0].id : '',
+      date: new Date().toISOString().split('T')[0],
+      hours: '02h 00m',
+      reason: ''
+    });
     setShowAddModal(false);
   };
+
+  // Helper calculation functions for KPIs
+  const parseOvertimeMinutes = (str) => {
+    if (!str) return 0;
+    const hMatch = String(str).match(/(\d+)\s*h/i);
+    const mMatch = String(str).match(/(\d+)\s*m/i);
+    let mins = 0;
+    if (hMatch) mins += parseInt(hMatch[1], 10) * 60;
+    if (mMatch) mins += parseInt(mMatch[1], 10);
+    if (!hMatch && !mMatch) {
+      const floatVal = parseFloat(str);
+      if (!isNaN(floatVal)) mins = Math.round(floatVal * 60);
+    }
+    return mins;
+  };
+
+  const formatMinutesToHours = (totalMins) => {
+    const h = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    return `${h}h ${m}m`;
+  };
+
+  const totalMins = overtimeData.reduce((acc, curr) => acc + parseOvertimeMinutes(curr.hours), 0);
+  const pendingMins = overtimeData.filter(d => d.status === 'Pending').reduce((acc, curr) => acc + parseOvertimeMinutes(curr.hours), 0);
+  const approvedMins = overtimeData.filter(d => d.status === 'Approved').reduce((acc, curr) => acc + parseOvertimeMinutes(curr.hours), 0);
 
   return (
     <div className="hrms-content">
       {/* Header and Toolbar */}
       <div className="hrms-header" style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', gap: '16px', flexWrap: 'nowrap', overflowX: 'auto', paddingBottom: '16px' }}>
         <div className="hrms-flex-start" style={{ flexWrap: 'nowrap', flexShrink: 0 }}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', minWidth: '220px', justifyContent: 'space-between', cursor: 'pointer' }}>
-            <span className="hrms-text-sm" style={{ color: '#475569', fontWeight: '500' }}>May 1 - May 31, 2024</span>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', minWidth: '180px', justifyContent: 'space-between', cursor: 'pointer' }}>
+            <span className="hrms-text-sm" style={{ color: '#475569', fontWeight: '500' }}>August 2026</span>
             <CalendarIcon size={16} style={{ color: '#64748b' }} />
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 16px', minWidth: '160px', justifyContent: 'space-between', cursor: 'pointer' }}>
@@ -69,28 +168,28 @@ export default function Overtime() {
       <div style={{ width: '100%', flex: 1, display: 'flex' }}>
         {/* Main Content Area */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', flex: 1, minWidth: 0 }}>
-          {/* KPI Cards */}
+          {/* Dynamic KPI Cards */}
           <div className="hrms-grid-4">
             <div className="hrms-card hrms-stat-card">
               <div className="hrms-text-sm hrms-font-medium hrms-text-muted" style={{ marginBottom: '12px' }}>Total Overtime Hours</div>
-              <div style={{ fontSize: '24px', fontWeight: '700', color: '#2563eb' }}>248h 30m</div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#2563eb' }}>{formatMinutesToHours(totalMins)}</div>
             </div>
             <div className="hrms-card hrms-stat-card">
               <div className="hrms-text-sm hrms-font-medium hrms-text-muted" style={{ marginBottom: '12px' }}>Total Employees</div>
-              <div style={{ fontSize: '24px', fontWeight: '700', color: '#2563eb' }}>45</div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#2563eb' }}>{employees.length || 1}</div>
             </div>
             <div className="hrms-card hrms-stat-card">
               <div className="hrms-text-sm hrms-font-medium hrms-text-muted" style={{ marginBottom: '12px' }}>Pending Approval</div>
-              <div style={{ fontSize: '24px', fontWeight: '700', color: '#ef4444' }}>18h 45m</div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#ef4444' }}>{formatMinutesToHours(pendingMins)}</div>
             </div>
             <div className="hrms-card hrms-stat-card">
               <div className="hrms-text-sm hrms-font-medium hrms-text-muted" style={{ marginBottom: '12px' }}>Approved Hours</div>
-              <div style={{ fontSize: '24px', fontWeight: '700', color: '#2563eb' }}>229h 45m</div>
+              <div style={{ fontSize: '24px', fontWeight: '700', color: '#10b981' }}>{formatMinutesToHours(approvedMins)}</div>
             </div>
           </div>
 
           {/* Main Table */}
-          <div className="hrms-card" style={{ padding: '0', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column' }}>
+          <div className="hrms-card" style={{ padding: '0', overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', borderRadius: '12px' }}>
             <div className="hrms-table-container">
               <table className="hrms-table">
                 <thead>
@@ -100,85 +199,139 @@ export default function Overtime() {
                     <th>Overtime Hours</th>
                     <th>Reason</th>
                     <th>Status</th>
-                    <th>Actions</th>
+                    <th style={{ textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {overtimeData.map((record) => (
-                    <tr key={record.id}>
-                      <td style={{ whiteSpace: 'nowrap' }}>
-                        <div className="hrms-user-info">
-                          <img src={record.avatar} alt={record.employee} className="hrms-avatar" style={{width: '32px', height: '32px'}} />
-                          <span className="hrms-font-medium hrms-text-primary">{record.employee}</span>
-                        </div>
-                      </td>
-                      <td style={{ whiteSpace: 'nowrap' }}>{record.date}</td>
-                      <td style={{ whiteSpace: 'nowrap' }} className="hrms-font-medium">{record.hours}</td>
-                      <td style={{ whiteSpace: 'nowrap' }}>{record.reason}</td>
-                      <td>
-                        <span style={{
-                          padding: '6px 16px', 
-                          borderRadius: '6px', 
-                          fontSize: '12px', 
-                          fontWeight: '600',
-                          backgroundColor: record.status === 'Approved' ? '#ecfdf5' : '#fff7ed',
-                          color: record.status === 'Approved' ? '#10b981' : '#ea580c'
-                        }}>
-                          {record.status}
-                        </span>
-                      </td>
-                      <td>
-                        <button style={{background: 'none', border: 'none', cursor: 'pointer', color: '#64748b'}}>
-                          <MoreHorizontal size={18} />
-                        </button>
-                      </td>
+                  {loading ? (
+                    <tr>
+                      <td colSpan="6" style={{ textAlign: 'center', padding: '24px' }}>Loading overtime records...</td>
                     </tr>
-                  ))}
+                  ) : overtimeData.length === 0 ? (
+                    <tr>
+                      <td colSpan="6" style={{ textAlign: 'center', padding: '24px', color: '#64748b' }}>No overtime records found.</td>
+                    </tr>
+                  ) : (
+                    overtimeData.map((record) => (
+                      <tr key={record.id}>
+                        <td style={{ whiteSpace: 'nowrap' }}>
+                          <div className="hrms-user-info">
+                            <img src={getAvatarUrl(record.profile_photo || record.avatar, record.employee_name, record.employee_id || record.id)} alt={record.employee_name} className="hrms-avatar" style={{width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover'}} />
+                            <span className="hrms-font-medium hrms-text-primary">{record.employee_name}</span>
+                          </div>
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{record.date}</td>
+                        <td style={{ whiteSpace: 'nowrap' }} className="hrms-font-medium">{record.hours}</td>
+                        <td style={{ whiteSpace: 'nowrap' }}>{record.reason}</td>
+                        <td>
+                          <span style={{
+                            padding: '6px 16px', 
+                            borderRadius: '6px', 
+                            fontSize: '12px', 
+                            fontWeight: '600',
+                            backgroundColor: record.status === 'Approved' ? '#ecfdf5' : record.status === 'Rejected' ? '#fef2f2' : '#fff7ed',
+                            color: record.status === 'Approved' ? '#10b981' : record.status === 'Rejected' ? '#dc2626' : '#ea580c'
+                          }}>
+                            {record.status}
+                          </span>
+                        </td>
+                        <td style={{ whiteSpace: 'nowrap', textAlign: 'center' }}>
+                          <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center', justifyContent: 'center' }}>
+                            {record.status === 'Pending' ? (
+                              <>
+                                <button 
+                                  title="Approve Overtime"
+                                  onClick={() => handleUpdateStatus(record.id, 'Approved')}
+                                  style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                    background: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0',
+                                    borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: '600',
+                                    cursor: 'pointer', transition: 'all 0.15s ease'
+                                  }}
+                                >
+                                  <Check size={14} strokeWidth={2.5} /> Approve
+                                </button>
+                                <button 
+                                  title="Reject Overtime"
+                                  onClick={() => handleUpdateStatus(record.id, 'Rejected')}
+                                  style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                    background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA',
+                                    borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: '600',
+                                    cursor: 'pointer', transition: 'all 0.15s ease'
+                                  }}
+                                >
+                                  <X size={14} strokeWidth={2.5} /> Reject
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  title="Reset Status to Pending"
+                                  onClick={() => handleReset(record.id)}
+                                  style={{
+                                    display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                    background: '#F1F5F9', color: '#475569', border: '1px solid #E2E8F0',
+                                    borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: '600',
+                                    cursor: 'pointer', transition: 'all 0.15s ease'
+                                  }}
+                                >
+                                  <RotateCcw size={14} strokeWidth={2.5} /> Reset
+                                </button>
+                                <button
+                                  title="Delete Record"
+                                  onClick={() => handleDelete(record.id)}
+                                  style={{
+                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                    background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA',
+                                    borderRadius: '6px', width: '28px', height: '28px', cursor: 'pointer'
+                                  }}
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
             
-            {/* Pagination */}
+            {/* Table Footer */}
             <div className="hrms-flex-between" style={{ padding: '16px 24px', borderTop: '1px solid #f1f5f9' }}>
               <span className="hrms-text-sm hrms-text-muted">
-                Showing 1 to 7 of 45 entries
+                Showing {overtimeData.length} entries
               </span>
-              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button className="hrms-secondary-btn" style={{ padding: '6px', borderRadius: '4px' }} disabled>&lt;</button>
-                <button className="hrms-primary-btn" style={{ padding: '6px 12px', borderRadius: '4px' }}>1</button>
-                <button className="hrms-secondary-btn" style={{ padding: '6px 12px', borderRadius: '4px', border: 'none' }}>2</button>
-                <button className="hrms-secondary-btn" style={{ padding: '6px 12px', borderRadius: '4px', border: 'none' }}>3</button>
-                <button className="hrms-secondary-btn" style={{ padding: '6px 12px', borderRadius: '4px', border: 'none' }}>4</button>
-                <button className="hrms-secondary-btn" style={{ padding: '6px 12px', borderRadius: '4px', border: 'none' }}>5</button>
-                <span className="hrms-text-muted" style={{ padding: '0 4px' }}>...</span>
-                <button className="hrms-secondary-btn" style={{ padding: '6px 12px', borderRadius: '4px', border: 'none' }}>29</button>
-                <button className="hrms-secondary-btn" style={{ padding: '6px', borderRadius: '4px' }}>&gt;</button>
-              </div>
             </div>
           </div>
         </div>
       </div>
-      {/* Create Overtime Modal */}
+
+      {/* Dynamic Log Overtime Modal */}
       {showAddModal && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', backdropFilter: 'blur(4px)' }}>
           <div style={{ background: '#fff', borderRadius: '16px', width: '100%', maxWidth: '480px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #e2e8f0' }}>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#1e293b' }}>Log Overtime</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #e2e8f0', background: '#F8FAFC' }}>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#1e293b' }}>Log Overtime Record</h3>
               <button onClick={() => setShowAddModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
                 <X size={18} />
               </button>
             </div>
             <form onSubmit={handleSave} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Employee Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Aarav Sharma"
-                  value={formData.employee}
-                  onChange={(e) => setFormData({ ...formData, employee: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
-                />
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Employee *</label>
+                <select
+                  value={formData.employee_id}
+                  onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', boxSizing: 'border-box', color: '#0F172A' }}
+                >
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.dept || 'Employee'})</option>
+                  ))}
+                </select>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
@@ -210,7 +363,7 @@ export default function Overtime() {
                   placeholder="Brief reason for overtime..."
                   value={formData.reason}
                   onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', boxSizing: 'border-box', resize: 'none' }}
                 />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>

@@ -1,15 +1,25 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiFetch } from '../../lib/api';
 import { Calendar as CalendarIcon, Filter, MoreVertical, TrendingUp, Clock, AlertTriangle, ChevronDown } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 
 export default function LateArrival() {
-  const lateData = [
-    { id: '1', employee: 'Priya Nair', avatar: 'https://i.pravatar.cc/150?u=a048581f4e29026701d', date: 'May 20, 2024', expected: '09:00 AM', checkIn: '09:45 AM', delay: '00h 45m', reason: 'Traffic due to heavy rain', status: 'Late' },
-    { id: '2', employee: 'Karan Verma', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026703d', date: 'May 20, 2024', expected: '09:00 AM', checkIn: '09:20 AM', delay: '00h 20m', reason: 'Missed train', status: 'Late' },
-    { id: '3', employee: 'Anjali Desai', avatar: 'https://i.pravatar.cc/150?img=32', date: 'May 20, 2024', expected: '09:00 AM', checkIn: '09:15 AM', delay: '00h 15m', reason: 'Personal work', status: 'Late' },
-    { id: '4', employee: 'Neha Patel', avatar: 'https://i.pravatar.cc/150?u=a042581f4e29026704d', date: 'May 19, 2024', expected: '09:00 AM', checkIn: '09:30 AM', delay: '00h 30m', reason: 'Overslept', status: 'Late' },
-    { id: '5', employee: 'Pooja Reddy', avatar: 'https://i.pravatar.cc/150?img=5', date: 'May 18, 2024', expected: '09:00 AM', checkIn: '09:10 AM', delay: '00h 10m', reason: 'Vehicle breakdown', status: 'Late' },
-  ];
+  const [lateData, setLateData] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch('/attendance/late-arrivals')
+      .then(data => {
+        if (Array.isArray(data)) {
+          setLateData(data);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to load late arrivals:", err);
+        setLoading(false);
+      });
+  }, []);
 
   const chartData = [
     { day: 'May 1', value: 5 }, { day: 'May 3', value: 12 }, { day: 'May 5', value: 8 },

@@ -652,13 +652,39 @@ export function AnalyticsReports({ reportType = 'employee' }) {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button style={{
-            display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 14px',
-            background: '#FFF', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13,
-            color: '#334155', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,.05)',
+          <div style={{
+            display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 12px',
+            background: '#FFF', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#334155',
+            boxShadow: '0 1px 2px rgba(0,0,0,.05)',
           }}>
-            <Calendar size={14} color="#64748B" /> May 1 - May 31, 2024
-          </button>
+            <Calendar size={14} color="#64748B" />
+            <select
+              defaultValue={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`}
+              style={{
+                border: 'none',
+                outline: 'none',
+                background: 'transparent',
+                fontSize: 13,
+                fontWeight: 500,
+                color: '#334155',
+                cursor: 'pointer'
+              }}
+            >
+              {Array.from({ length: 18 }).map((_, i) => {
+                const d = new Date(new Date().getFullYear(), new Date().getMonth() - i, 1);
+                const year = d.getFullYear();
+                const monthIndex = d.getMonth();
+                const shortMonth = d.toLocaleString('en-US', { month: 'short' });
+                const lastDay = new Date(year, monthIndex + 1, 0).getDate();
+                const val = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
+                return (
+                  <option key={val} value={val}>
+                    {`${shortMonth} 1 – ${shortMonth} ${lastDay}, ${year}`}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
 
           <div style={{ position: 'relative' }}>
             <select style={{

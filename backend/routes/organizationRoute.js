@@ -307,7 +307,7 @@ router.put("/profile", (req, res) => {
       language = ?, time_zone = ?, currency = ?, date_format = ?, time_format = ?, password_policy = ?, two_factor_authentication = ?, session_timeout = ?, login_attempts = ?, email_notification = ?, sms_notification = ?, push_notification = ?, smtp = ?, sms_gateway = ?, google_workspace = ?, microsoft_365 = ?, biometric_device = ?
     WHERE id = 1
   `;
-  
+
   const values = [
     p.general?.companyName, p.general?.legalCompanyName, p.general?.companyCode, p.general?.companyType, p.general?.industry, p.general?.businessType, p.general?.yearEstablished, p.general?.numberOfEmployees, p.general?.financialYear,
     p.contact?.officialEmail, p.contact?.hrEmail, p.contact?.supportEmail, p.contact?.website, p.contact?.phoneNumber, p.contact?.mobileNumber, p.contact?.alternateNumber, p.contact?.faxNumber, p.contact?.linkedinUrl, p.contact?.facebookUrl, p.contact?.twitterUrl, p.contact?.instagramUrl,
@@ -340,7 +340,7 @@ router.post("/export-pdf", (req, res) => {
     if (rows.length === 0) return res.status(404).json({ error: "Company profile not found" });
 
     const p = mapRowToProfile(rows[0]);
-    
+
     // Log the activity
     const logSql = "INSERT INTO activity_logs (user_email, action, details) VALUES (?, ?, ?)";
     db.query(logSql, [user, "Company Profile Export", `Company profile PDF report exported by ${user}.`], (logErr) => {
@@ -421,7 +421,7 @@ router.post("/export-pdf", (req, res) => {
           doc.fillColor("#64748b").font("Helvetica-Bold").fontSize(9).text(label2, 300, startY, { width: 110 });
           doc.fillColor("#1e293b").font("Helvetica").fontSize(9).text(val2 || "—", 410, startY, { width: 135 });
         }
-        
+
         const maxY = Math.max(doc.y, startY);
         doc.y = maxY + 8; // Row spacing
       };
@@ -472,8 +472,8 @@ router.post("/export-pdf", (req, res) => {
       drawSectionHeader("Bank Details");
       // Mask bank account number (mask all but last 4 digits)
       const rawAcc = p.banking?.accountNumber || "";
-      const maskedAcc = rawAcc.length > 4 
-        ? rawAcc.slice(-4).padStart(rawAcc.length, "*") 
+      const maskedAcc = rawAcc.length > 4
+        ? rawAcc.slice(-4).padStart(rawAcc.length, "*")
         : rawAcc;
       drawRow("Bank Name", p.banking?.bankName, "Branch Name", p.banking?.branchName);
       drawRow("Account Holder", p.banking?.accountHolderName, "Account Number", maskedAcc);
@@ -498,15 +498,19 @@ router.post("/export-pdf", (req, res) => {
 /**
  * TEAMS CRUD
  */
+/**
+ * TEAMS CRUD
+ */
 router.get("/teams", (req, res) => {
   const sql = `
     SELECT 
       t.id,
       t.name,
-
       COALESCE(t.code, CONCAT('TM-', UPPER(SUBSTRING(t.name, 1, 3)))) as code,
       COALESCE(d.dept_name, t.department, 'General') as department,
+      t.department_id,
       COALESCE(tl.name, NULLIF(t.teamLead, ''), 'Unassigned') as teamLead,
+      t.team_lead_id,
       (SELECT COUNT(*) FROM employees e WHERE e.team_id = t.id AND e.status = 'Active') as members,
       COALESCE(t.status, 'Active') as status,
       t.description,
@@ -516,43 +520,103 @@ router.get("/teams", (req, res) => {
     LEFT JOIN employees tl ON t.team_lead_id = tl.id
     ORDER BY t.id ASC
   `;
-  db.query(sql, (err, rows) => {
+  db.query(sql, async (err, rows) => {
     if (err) return res.status(500).json(err);
-    res.json(rows);
+    try {
+      const teamsWithMembers = await Promise.all(rows.map(async (team) => {
+        const emps = await new Promise(r => db.query("SELECT id FROM employees WHERE team_id = ?", [team.id], (e, res) => r(res || [])));
+        return {
+          ...team,
+          teamMemberIds: emps.map(e => e.id)
+        };
+      }));
+      res.json(teamsWithMembers);
+    } catch (e) {
+      res.json(rows);
+    }
   });
 });
 
-router.post("/teams", (req, res) => {
-  const { name, code, department, teamLead, members, status, description } = req.body;
+router.post("/teams", async (req, res) => {
+  const { name, code, department, departmentId, teamLead, teamLeadId, members, status, description, teamMemberIds } = req.body;
+  
+  let deptId = departmentId;
+  if (!deptId && department) {
+    const deptRows = await new Promise(r => db.query("SELECT id FROM departments WHERE dept_name = ? LIMIT 1", [department], (e, res) => r(res)));
+    if (deptRows && deptRows.length > 0) deptId = deptRows[0].id;
+  }
+
+  let leadId = teamLeadId;
+  if (!leadId && teamLead) {
+    const leadRows = await new Promise(r => db.query("SELECT id FROM employees WHERE name = ? LIMIT 1", [teamLead], (e, res) => r(res)));
+    if (leadRows && leadRows.length > 0) leadId = leadRows[0].id;
+  }
+
+  const memberCount = Array.isArray(teamMemberIds) && teamMemberIds.length > 0 ? teamMemberIds.length : (parseInt(members) || 1);
+
   const sql = `
-    INSERT INTO teams (name, code, department, teamLead, members, status, description, createdDate)
-    VALUES (?, ?, ?, ?, ?, ?, ?, DATE_FORMAT(NOW(), '%d %b %Y'))
+    INSERT INTO teams (name, code, department, department_id, teamLead, team_lead_id, members, status, description, createdDate)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_FORMAT(NOW(), '%d %b %Y'))
   `;
-  db.query(sql, [name, code, department, teamLead, members || 1, status || 'Active', description], (err, result) => {
+  db.query(sql, [name, code, department, deptId, teamLead, leadId, memberCount, status || 'Active', description], (err, result) => {
     if (err) return res.status(500).json(err);
-    res.json({ message: "Team created successfully", id: result.insertId });
+    const teamId = result.insertId;
+
+    if (Array.isArray(teamMemberIds) && teamMemberIds.length > 0) {
+      db.query("UPDATE employees SET team_id = ? WHERE id IN (?)", [teamId, teamMemberIds], (e) => {
+        if (e) console.error("Error updating team_id for employees:", e);
+      });
+    }
+
+    res.json({ message: "Team created successfully", id: teamId });
   });
 });
 
-router.put("/teams/:id", (req, res) => {
+router.put("/teams/:id", async (req, res) => {
   const { id } = req.params;
-  const { name, code, department, teamLead, members, status, description } = req.body;
+  const { name, code, department, departmentId, teamLead, teamLeadId, members, status, description, teamMemberIds } = req.body;
+
+  let deptId = departmentId;
+  if (!deptId && department) {
+    const deptRows = await new Promise(r => db.query("SELECT id FROM departments WHERE dept_name = ? LIMIT 1", [department], (e, res) => r(res)));
+    if (deptRows && deptRows.length > 0) deptId = deptRows[0].id;
+  }
+
+  let leadId = teamLeadId;
+  if (!leadId && teamLead) {
+    const leadRows = await new Promise(r => db.query("SELECT id FROM employees WHERE name = ? LIMIT 1", [teamLead], (e, res) => r(res)));
+    if (leadRows && leadRows.length > 0) leadId = leadRows[0].id;
+  }
+
+  const memberCount = Array.isArray(teamMemberIds) && teamMemberIds.length > 0 ? teamMemberIds.length : (parseInt(members) || 1);
+
   const sql = `
     UPDATE teams
-    SET name = ?, code = ?, department = ?, teamLead = ?, members = ?, status = ?, description = ?
+    SET name = ?, code = ?, department = ?, department_id = ?, teamLead = ?, team_lead_id = ?, members = ?, status = ?, description = ?
     WHERE id = ?
   `;
-  db.query(sql, [name, code, department, teamLead, members, status, description, id], (err, result) => {
+  db.query(sql, [name, code, department, deptId, teamLead, leadId, memberCount, status, description, id], (err, result) => {
     if (err) return res.status(500).json(err);
+
+    if (Array.isArray(teamMemberIds)) {
+      db.query("UPDATE employees SET team_id = NULL WHERE team_id = ?", [id], () => {
+        if (teamMemberIds.length > 0) {
+          db.query("UPDATE employees SET team_id = ? WHERE id IN (?)", [id, teamMemberIds]);
+        }
+      });
+    }
+
     res.json({ message: "Team updated successfully" });
   });
 });
 
 router.delete("/teams/:id", (req, res) => {
   const { id } = req.params;
-  db.query("DELETE FROM teams WHERE id = ?", [id], (err, result) => {
-    if (err) return res.status(500).json(err);
-    res.json({ message: "Team deleted successfully" });
+  db.query("UPDATE employees SET team_id = NULL WHERE team_id = ?", [id], () => {
+    db.query("DELETE FROM teams WHERE id = ?", [id], (err, result) => {
+      if (err) return res.status(500).json(err);
+      res.json({ message: "Team deleted successfully" });
+    });
   });
 });
 
@@ -654,6 +718,8 @@ router.get("/org-chart", (req, res) => {
 /**
  * SHIFTS CRUD
  */
+const shiftExtraStore = {};
+
 router.get("/shifts", (req, res) => {
   const sql = `
     SELECT 
@@ -665,7 +731,7 @@ router.get("/shifts", (req, res) => {
       breakTime,
       graceTime,
       workingHours,
-      (SELECT COUNT(*) FROM employees e WHERE e.status = 'Active') as employees,
+      employees,
       COALESCE(status, 'Active') as status,
       description,
       COALESCE(createdDate, DATE_FORMAT(NOW(), '%d %b %Y')) as createdDate
@@ -674,32 +740,57 @@ router.get("/shifts", (req, res) => {
   `;
   db.query(sql, (err, rows) => {
     if (err) return res.status(500).json(err);
-    res.json(rows);
+    const enriched = (rows || []).map(r => {
+      const extra = shiftExtraStore[r.id] || {};
+      return {
+        ...r,
+        workingDays: extra.workingDays || ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+        assignedEmployees: extra.assignedEmployees || [],
+        offLabel: extra.offLabel || 'Weekly Off',
+        dayOffLabels: extra.dayOffLabels || {}
+      };
+    });
+    res.json(enriched);
   });
 });
 
 router.post("/shifts", (req, res) => {
-  const { name, code, startTime, endTime, breakTime, graceTime, workingHours, status, description } = req.body;
+  const { name, code, startTime, endTime, breakTime, graceTime, workingHours, employees, status, description, assignedEmployees, workingDays, offLabel, dayOffLabels } = req.body;
+  const empCount = Array.isArray(assignedEmployees) ? assignedEmployees.length : (parseInt(employees) || 0);
   const sql = `
     INSERT INTO shifts (name, code, startTime, endTime, breakTime, graceTime, workingHours, employees, status, description, createdDate)
-    VALUES (?, ?, ?, ?, ?, ?, ?, 0, ?, ?, DATE_FORMAT(NOW(), '%d %b %Y'))
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_FORMAT(NOW(), '%d %b %Y'))
   `;
-  db.query(sql, [name, code, startTime, endTime, breakTime || '60 mins', graceTime || '15 mins', workingHours || '9 hours', status || 'Active', description], (err, result) => {
+  db.query(sql, [name, code, startTime, endTime, breakTime || '60 mins', graceTime || '15 mins', workingHours || '9 hours', empCount, status || 'Active', description], (err, result) => {
     if (err) return res.status(500).json(err);
-    res.json({ message: "Shift created successfully", id: result.insertId });
+    const newId = result.insertId;
+    shiftExtraStore[newId] = {
+      workingDays: Array.isArray(workingDays) ? workingDays : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      assignedEmployees: Array.isArray(assignedEmployees) ? assignedEmployees : [],
+      offLabel: offLabel || 'Weekly Off',
+      dayOffLabels: dayOffLabels || {}
+    };
+    res.json({ message: "Shift created successfully", id: newId });
   });
 });
 
 router.put("/shifts/:id", (req, res) => {
   const { id } = req.params;
-  const { name, code, startTime, endTime, breakTime, graceTime, workingHours, status, description } = req.body;
+  const { name, code, startTime, endTime, breakTime, graceTime, workingHours, employees, status, description, assignedEmployees, workingDays, offLabel, dayOffLabels } = req.body;
+  const empCount = Array.isArray(assignedEmployees) ? assignedEmployees.length : (parseInt(employees) || 0);
   const sql = `
     UPDATE shifts
-    SET name = ?, code = ?, startTime = ?, endTime = ?, breakTime = ?, graceTime = ?, workingHours = ?, status = ?, description = ?
+    SET name = ?, code = ?, startTime = ?, endTime = ?, breakTime = ?, graceTime = ?, workingHours = ?, employees = ?, status = ?, description = ?
     WHERE id = ?
   `;
-  db.query(sql, [name, code, startTime, endTime, breakTime, graceTime, workingHours, status, description, id], (err, result) => {
+  db.query(sql, [name, code, startTime, endTime, breakTime, graceTime, workingHours, empCount, status, description, id], (err, result) => {
     if (err) return res.status(500).json(err);
+    shiftExtraStore[id] = {
+      workingDays: Array.isArray(workingDays) ? workingDays : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      assignedEmployees: Array.isArray(assignedEmployees) ? assignedEmployees : [],
+      offLabel: offLabel || 'Weekly Off',
+      dayOffLabels: dayOffLabels || {}
+    };
     res.json({ message: "Shift updated successfully" });
   });
 });
@@ -708,68 +799,10 @@ router.delete("/shifts/:id", (req, res) => {
   const { id } = req.params;
   db.query("DELETE FROM shifts WHERE id = ?", [id], (err, result) => {
     if (err) return res.status(500).json(err);
+    delete shiftExtraStore[id];
     res.json({ message: "Shift deleted successfully" });
   });
 });
 
 module.exports = router;
 
-/**
- * CREATE TEAM
- */
-router.post("/teams", (req, res) => {
-  const { name, lead_id, description } = req.body;
-  const sql = "INSERT INTO teams (name, team_lead_id, description) VALUES (?, ?, ?)";
-  db.query(sql, [name, lead_id || null, description], (err, result) => {
-    if (err) return res.status(500).json(err);
-    res.json({ message: "Team created successfully", id: result.insertId });
-  });
-});
-
-/**
- * GET ALL SHIFTS
- */
-router.get("/shifts", (req, res) => {
-  const sql = "SELECT * FROM shifts";
-  db.query(sql, (err, rows) => {
-    if (err) return res.status(500).json(err);
-    res.json(rows);
-  });
-});
-
-/**
- * CREATE SHIFT
- */
-router.post("/shifts", (req, res) => {
-  const { name, start_time, end_time, grace_time, shift_type, color, status } = req.body;
-  const sql = "INSERT INTO shifts (shift_name, start_time, end_time, grace_time, shift_type, color, status) VALUES (?, ?, ?, ?, ?, ?, ?)";
-  db.query(sql, [name, start_time, end_time, grace_time || 15, shift_type || 'Regular', color || '#3B82F6', status || 'Active'], (err, result) => {
-    if (err) return res.status(500).json(err);
-    res.json({ message: "Shift created successfully", id: result.insertId });
-  });
-});
-
-/**
- * GET ALL HOLIDAYS
- */
-router.get("/holidays", (req, res) => {
-  const sql = "SELECT * FROM holidays ORDER BY holiday_date ASC";
-  db.query(sql, (err, rows) => {
-    if (err) return res.status(500).json(err);
-    res.json(rows);
-  });
-});
-
-/**
- * CREATE HOLIDAY
- */
-router.post("/holidays", (req, res) => {
-  const { name, date, type, location } = req.body;
-  const sql = "INSERT INTO holidays (holiday_name, holiday_date, holiday_type, location) VALUES (?, ?, ?, ?)";
-  db.query(sql, [name, date, type || 'National', location || 'All Locations'], (err, result) => {
-    if (err) return res.status(500).json(err);
-    res.json({ message: "Holiday created successfully", id: result.insertId });
-  });
-});
-
-module.exports = router;

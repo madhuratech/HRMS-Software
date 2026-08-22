@@ -38,10 +38,6 @@ CREATE TABLE IF NOT EXISTS attendance (
     punch_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     latitude DECIMAL(10, 8) DEFAULT NULL,
     longitude DECIMAL(11, 8) DEFAULT NULL,
-<<<<<<< HEAD
-    location_address VARCHAR(255) DEFAULT NULL,
-=======
->>>>>>> origin/main
     FOREIGN KEY (employee_id) REFERENCES employees(id) ON DELETE CASCADE
 );
 

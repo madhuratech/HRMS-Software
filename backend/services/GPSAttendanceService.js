@@ -28,7 +28,7 @@ class GPSAttendanceService {
   }
 
   static async validateAndRecordPunch(employeeId, data) {
-    const { punchType, latitude, longitude, deviceInfo, browser, ipAddress, checkoutReason } = data;
+    const { punchType, latitude, longitude, deviceInfo, browser, ipAddress } = data;
 
     // Validate coordinates
     const lat = parseFloat(latitude);
@@ -56,7 +56,7 @@ class GPSAttendanceService {
     }
 
     // GPS Validation: Permitted radius check
-    const insideRadius = data.skipGeofence ? 'Yes' : (minDistance <= nearestLocation.radius ? 'Yes' : 'No');
+    const insideRadius = minDistance <= nearestLocation.radius ? 'Yes' : 'No';
 
     if (insideRadius === 'No') {
       await this.logPunchAttempt(employeeId, punchType, lat, lng, nearestLocation.name, minDistance, 'No', deviceInfo, browser, ipAddress, 'Failed', 'Outside allowed geofence radius.');
@@ -143,7 +143,7 @@ class GPSAttendanceService {
 
       const sqlUpdate = `
         UPDATE GPSAttendance
-        SET check_out_time = ?, latitude_out = ?, longitude_out = ?, punch_out_location = ?, working_hours = ?, status = ?, early_exit = ?, checkout_reason = ?
+        SET check_out_time = ?, latitude_out = ?, longitude_out = ?, punch_out_location = ?, working_hours = ?, status = ?, early_exit = ?
         WHERE employee_id = ? AND punch_date = ?
       `;
       await query(sqlUpdate, [
@@ -154,20 +154,17 @@ class GPSAttendanceService {
         workingHours,
         status,
         isEarly ? 1 : 0,
-        checkoutReason || null,
         employeeId,
         punchDate
       ]);
     }
 
-    const { workDone, location_address } = data;
-
     // Sync to original log table for backward compatibility
     const sqlSync = `
-      INSERT INTO attendance (employee_id, punch_type, punch_time, latitude, longitude, location_address, work_done, checkout_reason)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO attendance (employee_id, punch_type, punch_time, latitude, longitude)
+      VALUES (?, ?, ?, ?, ?)
     `;
-    await query(sqlSync, [employeeId, punchType, timestamp, lat, lng, location_address || null, workDone || null, checkoutReason || null]);
+    await query(sqlSync, [employeeId, punchType, timestamp, lat, lng]);
 
     return {
       success: true,
@@ -229,17 +226,21 @@ class GPSAttendanceService {
         g.employee_id,
         e.name,
         e.profile_photo as avatar,
+        d.dept_name as dept,
         COALESCE(g.punch_out_location, g.punch_in_location) as location,
         COALESCE(g.latitude_out, g.latitude_in) as lat,
         COALESCE(g.longitude_out, g.longitude_in) as lng,
         g.check_in_time,
-        g.check_out_time
+        g.check_out_time,
+        g.working_hours,
+        g.status as attendance_status
       FROM GPSAttendance g
       JOIN employees e ON e.id = g.employee_id
-      WHERE g.punch_date = ?
+      LEFT JOIN departments d ON d.id = e.department_id
+      WHERE g.punch_date = ? OR DATE(g.check_in_time) = ?
       ORDER BY g.created_at DESC
     `;
-    const rows = await query(sqlFeed, [date]);
+    const rows = await query(sqlFeed, [date, date]);
 
     const records = rows.map(r => {
       const fmt = t => t ? new Date(t).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--';
@@ -248,10 +249,13 @@ class GPSAttendanceService {
       return {
         employee_id: r.employee_id,
         name: r.name,
+        dept: r.dept || 'Engineering',
         avatar: r.avatar ? `/${r.avatar}` : null,
-        location: r.location,
+        location: r.location || 'Main Headquarters - Coimbatore',
         checkIn: fmt(r.check_in_time),
         checkOut: fmt(r.check_out_time),
+        workingHours: r.working_hours || (r.check_in_time && !r.check_out_time ? 'Punched In' : '--'),
+        attendanceStatus: r.attendance_status || (r.check_out_time ? 'Completed' : 'Present'),
         coordinates: lat && lng ? `${lat}° N, ${lng}° E` : 'N/A',
         lat: r.lat ? parseFloat(r.lat) : null,
         lng: r.lng ? parseFloat(r.lng) : null,
@@ -302,7 +306,6 @@ class GPSAttendanceService {
         l.id,
         l.employee_id,
         e.name as employee_name,
-        r.name as role,
         l.punch_type,
         l.punch_time,
         l.latitude,
@@ -316,7 +319,6 @@ class GPSAttendanceService {
         l.ip_address
       FROM AttendanceLogs l
       JOIN employees e ON e.id = l.employee_id
-      LEFT JOIN roles r ON e.role_id = r.id
       ${where}
       ORDER BY l.punch_time DESC
     `;
