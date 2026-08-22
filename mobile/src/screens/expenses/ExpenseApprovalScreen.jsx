@@ -64,7 +64,7 @@ export default function ExpenseApprovalScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Expense Approvals</Text>
@@ -75,7 +75,7 @@ export default function ExpenseApprovalScreen() {
 
       <View style={styles.toolbar}>
         <View style={styles.searchBox}>
-          <Search size={20} color="#64748B" />
+          <Search size={20} color='#6B7280' />
           <TextInput 
             style={styles.searchInput} 
             placeholder="Search claims..." 
@@ -128,11 +128,11 @@ export default function ExpenseApprovalScreen() {
                 
                 <View style={styles.cardDetails}>
                   <View style={styles.detailRow}>
-                    <Calendar size={14} color="#64748B" />
+                    <Calendar size={14} color='#6B7280' />
                     <Text style={styles.detailText}>{new Date(claim.date).toLocaleDateString()}</Text>
                   </View>
                   
-                  <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(claim.status)}15` }]}>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(claim.status) + '15' }]}>
                     {claim.status === 'Approved' ? <CheckCircle size={14} color={getStatusColor(claim.status)} style={{ marginRight: 4 }}/> : null}
                     {claim.status === 'Pending' ? <Clock size={14} color={getStatusColor(claim.status)} style={{ marginRight: 4 }}/> : null}
                     {claim.status === 'Rejected' ? <X size={14} color={getStatusColor(claim.status)} style={{ marginRight: 4 }}/> : null}
@@ -143,11 +143,11 @@ export default function ExpenseApprovalScreen() {
                 {claim.status === 'Pending' && (
                   <View style={styles.actionRow}>
                     <TouchableOpacity style={[styles.actionBtn, styles.approveBtn]} onPress={() => handleApproveReject(claim.id, 'Approved')}>
-                      <CheckCircle size={18} color="#FFF" />
+                      <CheckCircle size={18} color='#FFFFFF' />
                       <Text style={styles.actionBtnText}>Approve</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.actionBtn, styles.rejectBtn]} onPress={() => handleApproveReject(claim.id, 'Rejected')}>
-                      <XCircle size={18} color="#FFF" />
+                      <XCircle size={18} color='#FFFFFF' />
                       <Text style={styles.actionBtnText}>Reject</Text>
                     </TouchableOpacity>
                   </View>
@@ -166,7 +166,7 @@ export default function ExpenseApprovalScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Claim Details</Text>
               <TouchableOpacity onPress={() => setSelectedClaim(null)}>
-                <X size={24} color="#64748B" />
+                <X size={24} color='#6B7280' />
               </TouchableOpacity>
             </View>
             
@@ -183,7 +183,7 @@ export default function ExpenseApprovalScreen() {
                   <Text style={styles.detailValue}>{selectedClaim.title}</Text>
                   <Text style={styles.detailSub}>Category: {selectedClaim.category_name}</Text>
                   <Text style={styles.detailSub}>Date: {new Date(selectedClaim.date).toLocaleDateString()}</Text>
-                  <Text style={[styles.detailValue, { color: '#4F46E5', marginTop: 4 }]}>₹{parseFloat(selectedClaim.amount).toLocaleString('en-IN')}</Text>
+                  <Text style={[styles.detailValue, { color: '#2563EB', marginTop: 4 }]}>₹{parseFloat(selectedClaim.amount).toLocaleString('en-IN')}</Text>
                 </View>
 
                 {selectedClaim.description ? (
@@ -196,11 +196,11 @@ export default function ExpenseApprovalScreen() {
                 {selectedClaim.status === 'Pending' && (
                   <View style={[styles.actionRow, { marginTop: 16 }]}>
                     <TouchableOpacity style={[styles.actionBtn, styles.approveBtn]} onPress={() => handleApproveReject(selectedClaim.id, 'Approved')}>
-                      <CheckCircle size={18} color="#FFF" />
+                      <CheckCircle size={18} color='#FFFFFF' />
                       <Text style={styles.actionBtnText}>Approve Claim</Text>
                     </TouchableOpacity>
                     <TouchableOpacity style={[styles.actionBtn, styles.rejectBtn]} onPress={() => handleApproveReject(selectedClaim.id, 'Rejected')}>
-                      <XCircle size={18} color="#FFF" />
+                      <XCircle size={18} color='#FFFFFF' />
                       <Text style={styles.actionBtnText}>Reject Claim</Text>
                     </TouchableOpacity>
                   </View>
@@ -218,49 +218,49 @@ export default function ExpenseApprovalScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: { 
-    padding: 24, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    padding: 24, borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
   },
   headerTop: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
-  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
+  headerTitle: { fontSize: 24, fontWeight: '900', color: '#111827', letterSpacing: -1 },
+  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
   
   toolbar: { flexDirection: 'row', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 10, gap: 12 },
   searchBox: { 
-    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', 
-    borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 16, paddingHorizontal: 16, height: 52,
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
+    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', 
+    borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, paddingHorizontal: 16, height: 52,
+    shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
   },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 16, color: '#1E293B', fontWeight: '500' },
   
-  tabs: { flexDirection: 'row', paddingHorizontal: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  tabs: { flexDirection: 'row', paddingHorizontal: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
-  tabActive: { borderBottomColor: '#4F46E5' },
-  tabText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
-  tabTextActive: { color: '#4F46E5', fontWeight: '800' },
+  tabActive: { borderBottomColor: '#2563EB' },
+  tabText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
+  tabTextActive: { color: '#2563EB', fontWeight: '800' },
 
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyBox: { padding: 40, alignItems: 'center' },
   emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
   content: { paddingHorizontal: 24, paddingTop: 16 },
   card: { 
-    backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9',
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.05, shadowRadius: 24, elevation: 4,
+    backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB',
+    shadowColor: '#111827', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.05, shadowRadius: 24, elevation: 4,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatarBox: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#C7D2FE' },
-  avatarText: { color: '#4338CA', fontWeight: '800', fontSize: 14 },
+  avatarBox: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#BFDBFE' },
+  avatarText: { color: '#2563EB', fontWeight: '800', fontSize: 14 },
   cardTitleCol: { flex: 1 },
-  empName: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
-  claimTitle: { fontSize: 13, fontWeight: '500', color: '#64748B', marginTop: 2 },
-  amountBox: { backgroundColor: '#F8FAFC', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+  empName: { fontSize: 16, fontWeight: '800', color: '#111827' },
+  claimTitle: { fontSize: 13, fontWeight: '500', color: '#6B7280', marginTop: 2 },
+  amountBox: { backgroundColor: '#F8FAFC', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB' },
   amountText: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 16 },
+  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 16 },
   cardDetails: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  detailText: { fontSize: 14, color: '#64748B', fontWeight: '500' },
+  detailText: { fontSize: 14, color: '#6B7280', fontWeight: '500' },
   statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
   statusText: { fontSize: 13, fontWeight: '700' },
 
@@ -268,15 +268,15 @@ const styles = StyleSheet.create({
   actionBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderRadius: 12, gap: 8 },
   approveBtn: { backgroundColor: '#10B981' },
   rejectBtn: { backgroundColor: '#EF4444' },
-  actionBtnText: { color: '#FFF', fontWeight: '700', fontSize: 15 },
+  actionBtnText: { color: '#FFFFFF', fontWeight: '700', fontSize: 15 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'center', alignItems: 'center', padding: 24 },
-  modalContent: { backgroundColor: '#FFF', borderRadius: 24, padding: 24, width: '100%', maxHeight: '80%' },
+  modalContent: { backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, width: '100%', maxHeight: '80%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
   modalBody: { gap: 16 },
-  detailCard: { backgroundColor: '#F8FAFC', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9', marginBottom: 12 },
+  detailCard: { backgroundColor: '#F8FAFC', padding: 16, borderRadius: 16, borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 12 },
   detailLabel: { fontSize: 12, fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 8 },
   detailValue: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
-  detailSub: { fontSize: 14, color: '#64748B', marginTop: 4, lineHeight: 20 },
+  detailSub: { fontSize: 14, color: '#6B7280', marginTop: 4, lineHeight: 20 },
 });

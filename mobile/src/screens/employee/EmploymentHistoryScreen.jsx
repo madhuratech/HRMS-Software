@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
-import { Search, Plus, MoreVertical, Briefcase, Calendar, CheckCircle2, Clock, ArrowLeft } from 'lucide-react-native';
+import { Search, Plus, MoreVertical, Briefcase, Calendar, CheckCircle2, Clock, ChevronLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
 
@@ -54,7 +54,7 @@ export default function EmploymentHistoryScreen({ route, navigation }) {
 
       <View style={styles.cardBody}>
         <View style={styles.infoRow}>
-          <Calendar size={16} color="#64748B" />
+          <Calendar size={16} color='#6B7280' />
           <Text style={styles.infoText}>
             {formatDate(item.start_date || item.effective_date)} - {formatDate(item.end_date)}
           </Text>
@@ -120,10 +120,10 @@ export default function EmploymentHistoryScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.pageHeader}>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.pageHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 16, padding: 4 }}>
-            <ArrowLeft size={24} color="#0F172A" />
+            <ChevronLeft size={24} color='#111827' />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.pageTitle}>Employment History</Text>
@@ -188,16 +188,16 @@ const styles = StyleSheet.create({
   pageHeader: { 
     padding: 24, 
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#E5E7EB',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
   },
   headerTextContainer: { flex: 1 },
-  pageTitle: { fontSize: 24, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
-  pageSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
+  pageTitle: { fontSize: 24, fontWeight: '900', color: '#111827', letterSpacing: -0.5 },
+  pageSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
 
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#EFF6FF',
     borderRadius: 16,
     padding: 6,
     marginHorizontal: 24,
@@ -209,39 +209,39 @@ const styles = StyleSheet.create({
     paddingVertical: 12, borderRadius: 12, gap: 8
   },
   tabButtonActive: {
-    backgroundColor: '#FFF',
-    shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 2
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 2
   },
-  tabText: { fontSize: 13, fontWeight: '700', color: '#64748B' },
-  tabTextActive: { color: '#4F46E5' },
+  tabText: { fontSize: 13, fontWeight: '700', color: '#6B7280' },
+  tabTextActive: { color: '#2563EB' },
 
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { paddingHorizontal: 24, paddingBottom: 24 },
   card: { 
-    backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16,
-    borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 6 }, 
+    backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, marginBottom: 16,
+    borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#111827', shadowOffset: { width: 0, height: 6 }, 
     shadowOpacity: 0.04, shadowRadius: 12, elevation: 2,
   },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   titleRow: { flexDirection: 'row', gap: 16, alignItems: 'center' },
   iconBox: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
-  jobTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 2 },
-  companyName: { fontSize: 14, color: '#64748B', fontWeight: '600' },
+  jobTitle: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 2 },
+  companyName: { fontSize: 14, color: '#6B7280', fontWeight: '600' },
   moreButton: { padding: 4 },
   divider: { height: 1, backgroundColor: '#F8FAFC', marginVertical: 16 },
   cardBody: { gap: 12 },
   infoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   infoText: { fontSize: 14, color: '#475569', fontWeight: '600' },
   changeBox: { backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12, marginTop: 4 },
-  changeLabel: { fontSize: 12, color: '#64748B', marginBottom: 4, fontWeight: '600' },
+  changeLabel: { fontSize: 12, color: '#6B7280', marginBottom: 4, fontWeight: '600' },
   changeText: { fontSize: 14, color: '#1E293B', fontWeight: '700' },
   responsibilities: { fontSize: 14, color: '#475569', lineHeight: 22, fontWeight: '500' },
   emptyBox: { padding: 40, alignItems: 'center' },
   emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
 
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  statCard: { flex: 1, minWidth: '45%', backgroundColor: '#FFF', padding: 20, borderRadius: 20, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
+  statCard: { flex: 1, minWidth: '45%', backgroundColor: '#FFFFFF', padding: 20, borderRadius: 20, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
   iconWrapper: { width: 40, height: 40, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginBottom: 12 },
-  statTitle: { fontSize: 12, color: '#64748B', fontWeight: '600', marginBottom: 4 },
-  statValue: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
+  statTitle: { fontSize: 12, color: '#6B7280', fontWeight: '600', marginBottom: 4 },
+  statValue: { fontSize: 20, fontWeight: '800', color: '#111827' },
 });

@@ -100,11 +100,7 @@ router.get("/lookup/teams", (req, res) => {
  */
 router.get("/", (req, res) => {
   const { search, department, designation, branch, status, sortBy, sortOrder, page = 1, limit = 100 } = req.query;
-<<<<<<< HEAD
   
-=======
-
->>>>>>> origin/main
   let conditions = ["1=1"];
   let params = [];
 
@@ -228,17 +224,10 @@ router.post("/", async (req, res) => {
           }
           return res.status(500).json({ message: "Employee creation failed", details: err });
         }
-<<<<<<< HEAD
         
         // Log creation history
         logHistory(result.insertId, "Joining", null, `Joined as ${designation} in ${department}`, joinDate);
         
-=======
-
-        // Log creation history
-        logHistory(result.insertId, "Joining", null, `Joined as ${designation} in ${department}`, joinDate);
-
->>>>>>> origin/main
         res.json({ message: "Employee created successfully", id: result.insertId });
       }
     );
@@ -299,17 +288,10 @@ router.put("/:id", (req, res) => {
       console.error(err);
       return res.status(500).json({ error: "Failed to update employee details", details: err });
     }
-<<<<<<< HEAD
     
     // Log history
     logHistory(id, "Profile Update", "Previous values", `Updated profile fields for ${name}`, new Date());
     
-=======
-
-    // Log history
-    logHistory(id, "Profile Update", "Previous values", `Updated profile fields for ${name}`, new Date());
-
->>>>>>> origin/main
     res.json({ message: "Employee updated successfully" });
   });
 });
@@ -426,11 +408,7 @@ router.get("/promotions", (req, res) => {
  * SUBMIT PROMOTION REQUEST
  */
 router.post("/promotions", (req, res) => {
-<<<<<<< HEAD
   const { employeeId, newDesignationName, effectiveDate, newSalary } = req.body;
-=======
-  const { employeeId, newDesignationName, effectiveDate } = req.body;
->>>>>>> origin/main
   if (!employeeId || !newDesignationName) {
     return res.status(400).json({ error: "employeeId and newDesignationName are required" });
   }
@@ -449,7 +427,6 @@ router.post("/promotions", (req, res) => {
         `;
         db.query(insertPromoSql, [employeeId, oldDesgId, newDesgId, effectiveDate || new Date().toISOString().split('T')[0]], (err3, result) => {
           if (err3) return res.status(500).json({ error: "Failed to submit promotion request", details: err3 });
-<<<<<<< HEAD
           
           if (newSalary) {
             db.query("UPDATE employees SET salary = ? WHERE id = ?", [newSalary, employeeId], (empErr) => {
@@ -457,8 +434,6 @@ router.post("/promotions", (req, res) => {
             });
           }
           
-=======
->>>>>>> origin/main
           res.json({ message: "Promotion request submitted successfully", id: result.insertId });
         });
       });
@@ -625,17 +600,10 @@ router.post("/exits", (req, res) => {
 
   db.query(sql, [employeeId, exitType, noticeDate, exitDate, reason, checklistStr], (err, result) => {
     if (err) return res.status(500).json({ error: "Failed to create exit record", details: err });
-<<<<<<< HEAD
     
     // Auto update status in history
     logHistory(employeeId, "Exit Request", null, `${exitType} scheduled on ${exitDate}`, exitDate);
     
-=======
-
-    // Auto update status in history
-    logHistory(employeeId, "Exit Request", null, `${exitType} scheduled on ${exitDate}`, exitDate);
-
->>>>>>> origin/main
     res.json({ message: "Exit record saved successfully", id: result.insertId });
   });
 });
@@ -743,11 +711,7 @@ router.delete("/:id/photo", (req, res) => {
   // Get current photo path to delete file
   db.query("SELECT profile_photo FROM employees WHERE id = ?", [id], (err, rows) => {
     if (err) return res.status(500).json({ error: "Failed" });
-<<<<<<< HEAD
     
-=======
-
->>>>>>> origin/main
     if (rows.length > 0 && rows[0].profile_photo) {
       const filePath = path.join(__dirname, '..', rows[0].profile_photo);
       if (fs.existsSync(filePath)) fs.unlinkSync(filePath);

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
-import { Clock, AlertCircle, CheckCircle, User, Calendar as CalendarIcon, ArrowLeft } from 'lucide-react-native';
+import { Clock, AlertCircle, CheckCircle, User, Calendar as CalendarIcon, ChevronLeft } from 'lucide-react-native';
 import apiClient from '../../api/client';
 
 export default function TaskDetailsScreen({ route, navigation }) {
@@ -86,12 +86,12 @@ export default function TaskDetailsScreen({ route, navigation }) {
           </View>
 
           <View style={styles.badgesRow}>
-            <View style={[styles.badge, { backgroundColor: `${getPriorityColor(task.priority)}15` }]}>
+            <View style={[styles.badge, { backgroundColor: getPriorityColor(task.priority) + '15' }]}>
               <Text style={[styles.badgeText, { color: getPriorityColor(task.priority) }]}>
                 {task.priority?.toUpperCase()} PRIORITY
               </Text>
             </View>
-            <View style={[styles.badge, { backgroundColor: '#F1F5F9' }]}>
+            <View style={[styles.badge, { backgroundColor: '#E5E7EB' }]}>
               <Text style={[styles.badgeText, { color: '#475569' }]}>
                 {task.status?.replace('_', ' ').toUpperCase()}
               </Text>
@@ -107,17 +107,17 @@ export default function TaskDetailsScreen({ route, navigation }) {
 
           <Text style={styles.sectionTitle}>Details</Text>
           <View style={styles.detailRow}>
-            <User size={18} color="#64748B" />
+            <User size={18} color='#6B7280' />
             <Text style={styles.detailLabel}>Assignee:</Text>
             <Text style={styles.detailValue}>{task.assignee_name || 'Unassigned'}</Text>
           </View>
           <View style={styles.detailRow}>
-            <CalendarIcon size={18} color="#64748B" />
+            <CalendarIcon size={18} color='#6B7280' />
             <Text style={styles.detailLabel}>Due Date:</Text>
             <Text style={styles.detailValue}>{task.due_date ? new Date(task.due_date).toLocaleDateString() : 'None'}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Clock size={18} color="#64748B" />
+            <Clock size={18} color='#6B7280' />
             <Text style={styles.detailLabel}>Created:</Text>
             <Text style={styles.detailValue}>{new Date(task.created_at).toLocaleDateString()}</Text>
           </View>
@@ -164,37 +164,37 @@ export default function TaskDetailsScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: { 
-    padding: 20, backgroundColor: '#FFF', flexDirection: 'row', 
-    justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    padding: 20, backgroundColor: '#FFFFFF', flexDirection: 'row', 
+    justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
   },
   headerBack: { padding: 4, marginLeft: -4 },
-  headerTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A' },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#111827' },
   content: { padding: 20 },
   card: { 
-    backgroundColor: '#FFF', borderRadius: 16, padding: 20, marginBottom: 24,
-    borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.03, shadowRadius: 8, elevation: 2,
+    backgroundColor: '#FFFFFF', borderRadius: 16, padding: 20, marginBottom: 24,
+    borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, 
+    shadowOpacity: 0.04, shadowRadius: 16, elevation: 2,
   },
   titleRow: { marginBottom: 12 },
-  taskTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A', lineHeight: 28 },
+  taskTitle: { fontSize: 20, fontWeight: '800', color: '#111827', lineHeight: 28 },
   badgesRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16 },
   badgeText: { fontSize: 12, fontWeight: '700' },
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 20 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#0F172A', marginBottom: 12 },
+  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 20 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 12 },
   taskDesc: { fontSize: 15, color: '#475569', lineHeight: 24 },
   detailRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  detailLabel: { fontSize: 14, color: '#64748B', marginLeft: 10, width: 80 },
+  detailLabel: { fontSize: 14, color: '#6B7280', marginLeft: 10, width: 80 },
   detailValue: { fontSize: 15, fontWeight: '600', color: '#1E293B', flex: 1 },
   statusButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   statusBtn: { 
-    backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', 
+    backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E5E7EB', 
     borderRadius: 12, paddingVertical: 12, paddingHorizontal: 16, width: '47%', alignItems: 'center'
   },
   statusBtnActive: { backgroundColor: '#EFF6FF', borderColor: '#2563EB' },
-  statusBtnText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
+  statusBtnText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
   statusBtnTextActive: { color: '#2563EB' },
-  emptyText: { fontSize: 16, color: '#64748B', marginBottom: 16 },
+  emptyText: { fontSize: 16, color: '#6B7280', marginBottom: 16 },
   backBtn: { backgroundColor: '#2563EB', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8 },
-  backBtnText: { color: '#FFF', fontWeight: '600' }
+  backBtnText: { color: '#FFFFFF', fontWeight: '600' }
 });

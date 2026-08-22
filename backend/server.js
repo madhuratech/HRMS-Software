@@ -1,10 +1,6 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-<<<<<<< HEAD
-const db = require("./config/database");
-
-=======
 const path = require("path");
 const fs = require("fs");
 const db = require("./config/database");
@@ -26,7 +22,6 @@ process.on('uncaughtException', (err) => {
   } catch (e) {}
 });
 
->>>>>>> origin/main
 // Programmatic Knex Migration Runner on Startup
 const knex = require('knex');
 const knexConfig = require('./knexfile');
@@ -34,19 +29,12 @@ const knexInstance = knex(knexConfig.development);
 knexInstance.migrate.latest()
   .then(() => {
     console.log('✅ Cloud database schemas/migrations verified and updated.');
-<<<<<<< HEAD
-=======
     return knexInstance.destroy();
->>>>>>> origin/main
   })
   .catch(err => {
     console.error('❌ Programmatic Knex migration runner failed:', err);
   });
 
-<<<<<<< HEAD
-const path = require("path");
-=======
->>>>>>> origin/main
 const app = express();
 
 app.use(cors());
@@ -59,12 +47,10 @@ app.get("/", (req, res) => {
 
 app.use("/api/attendance", require("./routes/attendanceRoute"));
 app.use("/app/attendance", require("./routes/attendanceRoute"));
-<<<<<<< HEAD
 app.use("/app/leaves", require("./routes/leaveRoute"));
 app.use("/app/payroll", require("./routes/payroll"));
 app.use("/app/projects", require("./routes/projects"));
-=======
->>>>>>> origin/main
+
 app.use("/app/dashboard", require("./routes/dashboard"));
 app.use("/app/employees", require("./routes/employee"));
 app.use("/app/requirements", require("./routes/requirements"));
@@ -81,28 +67,21 @@ app.use("/app/goals", require("./routes/goals"));
 app.use("/app/kpis", require("./routes/kpis"));
 app.use("/app/kras", require("./routes/kras"));
 app.use("/app/appraisals", require("./routes/appraisals"));
-<<<<<<< HEAD
+
 app.use("/app/tasks", require("./routes/taskRoute"));
 app.use("/app/sales", require("./routes/salesRoute"));
 app.use("/app/training", require("./routes/trainingRoute"));
 app.use("/app/performance", require("./routes/performanceRoute"));
-=======
->>>>>>> origin/main
 app.use("/app/reviews", require("./routes/reviews"));
 app.use("/app/feedback", require("./routes/feedback"));
 app.use("/app/promotions", require("./routes/promotions"));
 
 app.use("/app/leaves", require("./routes/leaves"));
 app.use("/app/organization", require("./routes/organizationRoute"));
-app.use("/app/payroll", require("./routes/payroll"));
 app.use("/app/tickets", require("./routes/tickets"));
-<<<<<<< HEAD
-=======
 app.use("/app/rbac", require("./routes/rbacRoute"));
->>>>>>> origin/main
 
 // Projects Management Module
-app.use("/app/projects", require("./routes/projects"));
 app.use("/app/tasks", require("./routes/tasks"));
 app.use("/app/sprints", require("./routes/sprints"));
 app.use("/app/timesheets", require("./routes/timesheets"));
@@ -111,19 +90,12 @@ app.use("/app/project-team", require("./routes/teamMembers"));
 app.use("/app/reports", require("./routes/reports"));
 app.use("/app/expenses", require("./routes/expenses"));
 app.use("/app/documents", require("./routes/documents"));
-<<<<<<< HEAD
 
-app.use((err, req, res, next) => {
-  const fs = require('fs');
-  const path = require('path');
-  const logMessage = `[${new Date().toISOString()}] Uncaught Error: ${err.stack || err}\n\n`;
-=======
 app.use("/app/aichat", require("./routes/aichatroute"));
 app.use("/api/ai", require("./routes/aichatroute"));
 
 app.use((err, req, res, next) => {
   const logMessage = `[${new Date().toISOString()}] Middleware Error: ${err.stack || err}\n\n`;
->>>>>>> origin/main
   try {
     fs.appendFileSync(path.join(__dirname, 'error.log'), logMessage);
   } catch (e) {
@@ -134,15 +106,35 @@ app.use((err, req, res, next) => {
 
 const PORT = 5001;
 
-<<<<<<< HEAD
-app.listen(PORT, '0.0.0.0', () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`SERVER IS RUNNING at http://0.0.0.0:${PORT}`);
 });
-=======
-const server = app.listen(PORT, () => {
-    console.log(`SERVER IS RUNNING at http://localhost:${PORT}`);
+
+// Setup Socket.IO
+const { Server } = require("socket.io");
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"]
+  }
+});
+
+// Expose io object to all routes
+app.set("io", io);
+
+io.on("connection", (socket) => {
+  console.log("Client connected:", socket.id);
+  
+  // Clients will emit 'join' with their user ID so they can receive personal events
+  socket.on("join", (userId) => {
+    socket.join(`user_${userId}`);
+    console.log(`Socket ${socket.id} joined room user_${userId}`);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("Client disconnected:", socket.id);
+  });
 });
 
 // Ensure Node.js event loop stays active for HTTP server
 setInterval(() => {}, 1000 * 60 * 60);
->>>>>>> origin/main

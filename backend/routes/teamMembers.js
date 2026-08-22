@@ -15,8 +15,4 @@ router.post('/', authenticateJWT, checkRole(writeRoles), validationMiddleware(va
 router.put('/:id', authenticateJWT, checkRole(writeRoles), TeamMemberController.update);
 router.delete('/:id', authenticateJWT, checkRole(writeRoles), TeamMemberController.remove);
 
-<<<<<<< HEAD
 module.exports = router;
-=======
-module.exports = router;
->>>>>>> origin/main

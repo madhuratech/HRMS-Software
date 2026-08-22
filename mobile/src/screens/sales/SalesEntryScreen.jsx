@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert } from 'react-native';
-import { Search, Plus, X, DollarSign, Calendar, Building2, StickyNote, ArrowLeft } from 'lucide-react-native';
+import { Search, Plus, X, DollarSign, Calendar, Building2, StickyNote, ChevronLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
 
@@ -89,10 +89,10 @@ export default function SalesEntryScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
           <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
-            <ArrowLeft size={24} color="#0F172A" />
+            <ChevronLeft size={24} color='#111827' />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Sales Entries</Text>
@@ -101,7 +101,7 @@ export default function SalesEntryScreen({ navigation }) {
         </View>
         <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
           <LinearGradient colors={['#10B981', '#059669']} style={styles.gradientBtn}>
-            <Plus size={18} color="#FFF" />
+            <Plus size={18} color='#FFFFFF' />
             <Text style={styles.addButtonText}>Log Sale</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -109,7 +109,7 @@ export default function SalesEntryScreen({ navigation }) {
 
       <View style={styles.toolbar}>
         <View style={styles.searchBox}>
-          <Search size={20} color="#64748B" />
+          <Search size={20} color='#6B7280' />
           <TextInput 
             style={styles.searchInput} 
             placeholder="Search sales..." 
@@ -150,7 +150,7 @@ export default function SalesEntryScreen({ navigation }) {
                   <>
                     <View style={styles.divider} />
                     <View style={styles.notesRow}>
-                      <StickyNote size={14} color="#64748B" style={{marginRight: 6}} />
+                      <StickyNote size={14} color='#6B7280' style={{marginRight: 6}} />
                       <Text style={styles.notesText} numberOfLines={2}>{item.notes}</Text>
                     </View>
                   </>
@@ -169,7 +169,7 @@ export default function SalesEntryScreen({ navigation }) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Log New Sale</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color="#64748B" />
+                <X size={24} color='#6B7280' />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
@@ -244,22 +244,22 @@ export default function SalesEntryScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: { 
-    padding: 24, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    padding: 24, borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
   },
   headerTop: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
-  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
+  headerTitle: { fontSize: 24, fontWeight: '900', color: '#111827', letterSpacing: -1 },
+  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
   addButton: { borderRadius: 20, overflow: 'hidden', shadowColor: '#10B981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 6 },
-  addButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  addButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   toolbar: { flexDirection: 'row', padding: 24, gap: 12 },
   searchBox: { 
-    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', 
-    borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 16, paddingHorizontal: 16, height: 52,
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
+    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', 
+    borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, paddingHorizontal: 16, height: 52,
+    shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
   },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 16, color: '#1E293B', fontWeight: '500' },
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -268,35 +268,35 @@ const styles = StyleSheet.create({
   
   content: { paddingHorizontal: 24 },
   card: { 
-    backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9',
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.05, shadowRadius: 24, elevation: 4,
+    backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB',
+    shadowColor: '#111827', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.05, shadowRadius: 24, elevation: 4,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconBox: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center' },
   cardTitleCol: { flex: 1 },
-  customerName: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
-  dateText: { fontSize: 13, fontWeight: '500', color: '#64748B', marginTop: 2 },
-  amountBox: { backgroundColor: '#F8FAFC', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+  customerName: { fontSize: 17, fontWeight: '800', color: '#111827' },
+  dateText: { fontSize: 13, fontWeight: '500', color: '#6B7280', marginTop: 2 },
+  amountBox: { backgroundColor: '#F8FAFC', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB' },
   amountText: { fontSize: 16, fontWeight: '800', color: '#10B981' },
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 16 },
+  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 16 },
   
   notesRow: { flexDirection: 'row', alignItems: 'flex-start', flex: 1 },
   notesText: { fontSize: 14, color: '#475569', flex: 1, lineHeight: 20 },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 50, maxHeight: '85%' },
+  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 50, maxHeight: '85%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  modalTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A' },
+  modalTitle: { fontSize: 24, fontWeight: '800', color: '#111827' },
   modalBody: { gap: 20 },
   inputGroup: { gap: 8 },
   inputLabel: { fontSize: 14, fontWeight: '700', color: '#475569' },
   modalInput: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 14, padding: 16, fontSize: 16, color: '#1E293B', backgroundColor: '#F8FAFC' },
   
-  pill: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: '#F1F5F9', marginRight: 8, borderWidth: 1, borderColor: 'transparent' },
+  pill: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: '#E5E7EB', marginRight: 8, borderWidth: 1, borderColor: 'transparent' },
   pillActive: { backgroundColor: '#ECFDF5', borderColor: '#10B981' },
-  pillText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
+  pillText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
   pillTextActive: { color: '#10B981', fontWeight: '700' },
 
   submitButton: { backgroundColor: '#10B981', borderRadius: 14, padding: 18, alignItems: 'center', marginTop: 10, shadowColor: '#10B981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  submitButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });

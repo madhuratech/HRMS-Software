@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Modal } from 'react-native';
-import { Search, Plus, DoorOpen, X, AlertCircle, ArrowLeft } from 'lucide-react-native';
+import { Search, Plus, DoorOpen, X, AlertCircle, ChevronLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import apiClient from '../../api/client';
@@ -63,6 +63,17 @@ export default function ExitManagementScreen() {
     }
   };
 
+  const handleSettle = async (exitId) => {
+    try {
+      await apiClient.put(`/employees/exits/${exitId}/settle`);
+      alert('Exit settled and employee deactivated!');
+      fetchExits();
+    } catch (err) {
+      console.error('Error settling exit:', err);
+      alert('Failed to settle exit.');
+    }
+  };
+
   const filtered = exits.filter(e => 
     e.employee_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     e.exit_type?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -89,7 +100,7 @@ export default function ExitManagementScreen() {
             <Text style={styles.dateText}>Exit Date: {new Date(item.exit_date).toLocaleDateString()}</Text>
           </View>
         </View>
-        <View style={[styles.badge, { backgroundColor: `${getStatusColor(item.status)}15` }]}>
+        <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) + '15' }]}>
           <Text style={[styles.badgeText, { color: getStatusColor(item.status) }]}>{item.status}</Text>
         </View>
       </View>
@@ -109,9 +120,17 @@ export default function ExitManagementScreen() {
         </View>
         {item.reason && (
           <View style={styles.reasonBox}>
-            <AlertCircle size={16} color="#64748B" />
+            <AlertCircle size={16} color='#6B7280' />
             <Text style={styles.reasonText}>{item.reason}</Text>
           </View>
+        )}
+        {item.status === 'Pending' && (
+          <TouchableOpacity 
+            style={{ marginTop: 12, backgroundColor: '#10B981', paddingVertical: 8, borderRadius: 8, alignItems: 'center' }}
+            onPress={() => handleSettle(item.id)}
+          >
+            <Text style={{ color: '#FFFFFF', fontWeight: 'bold' }}>Settle Exit</Text>
+          </TouchableOpacity>
         )}
       </View>
     </View>
@@ -119,10 +138,10 @@ export default function ExitManagementScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.pageHeader}>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.pageHeader}>
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
-            <ArrowLeft size={24} color="#0F172A" />
+            <ChevronLeft size={24} color='#111827' />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.pageTitle}>Exit Records</Text>
@@ -130,7 +149,7 @@ export default function ExitManagementScreen() {
           </View>
           <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
             <LinearGradient colors={['#EF4444', '#B91C1C']} style={styles.gradientBtn}>
-              <Plus size={20} color="#FFF" />
+              <Plus size={20} color='#FFFFFF' />
               <Text style={styles.addButtonText}>New</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -139,7 +158,7 @@ export default function ExitManagementScreen() {
 
       <View style={styles.toolbar}>
         <View style={styles.searchBox}>
-          <Search size={20} color="#64748B" />
+          <Search size={20} color='#6B7280' />
           <TextInput 
             style={styles.searchInput} 
             placeholder="Search exits..." 
@@ -176,7 +195,7 @@ export default function ExitManagementScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Initiate Exit</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color="#64748B" />
+                <X size={24} color='#6B7280' />
               </TouchableOpacity>
             </View>
             <View style={styles.modalBody}>
@@ -234,23 +253,23 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   pageHeader: { 
     paddingHorizontal: 24, paddingBottom: 16,
-    borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
   },
   headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   headerTextContainer: { flex: 1 },
-  pageTitle: { fontSize: 28, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
-  pageSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
+  pageTitle: { fontSize: 28, fontWeight: '900', color: '#111827', letterSpacing: -1 },
+  pageSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
 
   addButton: { borderRadius: 16, overflow: 'hidden', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 6 },
-  addButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  addButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
 
   toolbar: { padding: 24, paddingBottom: 16 },
   searchBox: { 
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', 
-    borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 16, paddingHorizontal: 16, height: 52,
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', 
+    borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, paddingHorizontal: 16, height: 52,
+    shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
   },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: '#1E293B', fontWeight: '500' },
 
@@ -258,15 +277,15 @@ const styles = StyleSheet.create({
   listContent: { paddingHorizontal: 24, paddingBottom: 24 },
 
   card: { 
-    backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16,
-    borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 6 }, 
+    backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, marginBottom: 16,
+    borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#111827', shadowOffset: { width: 0, height: 6 }, 
     shadowOpacity: 0.04, shadowRadius: 12, elevation: 2,
   },
   cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   titleRow: { flexDirection: 'row', gap: 12, alignItems: 'center', flex: 1 },
   iconBox: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  empName: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 2 },
-  dateText: { fontSize: 12, color: '#64748B', fontWeight: '600' },
+  empName: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 2 },
+  dateText: { fontSize: 12, color: '#6B7280', fontWeight: '600' },
   badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
   badgeText: { fontSize: 12, fontWeight: '800' },
   divider: { height: 1, backgroundColor: '#F8FAFC', marginVertical: 16 },
@@ -281,12 +300,12 @@ const styles = StyleSheet.create({
   emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 40 },
+  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 40 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  modalTitle: { fontSize: 22, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
+  modalTitle: { fontSize: 22, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },
   modalBody: { gap: 16 },
   inputLabel: { fontSize: 14, fontWeight: '700', color: '#475569' },
-  modalInput: { borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 16, padding: 16, fontSize: 16, color: '#1E293B', backgroundColor: '#F8FAFC' },
+  modalInput: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, padding: 16, fontSize: 16, color: '#1E293B', backgroundColor: '#F8FAFC' },
   submitButton: { backgroundColor: '#EF4444', borderRadius: 16, padding: 18, alignItems: 'center', marginTop: 16, shadowColor: '#EF4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  submitButtonText: { color: '#FFF', fontSize: 16, fontWeight: '800' }
+  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' }
 });

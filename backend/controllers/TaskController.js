@@ -8,6 +8,16 @@ class TaskController {
       const userId = req.user?.id || 1;
       const data = { ...req.body };
       const newTask = await TaskService.create(data, userId);
+
+      // Emit real-time notification
+      const io = req.app.get("io");
+      if (io && data.assignee_id) {
+        io.to(`user_${data.assignee_id}`).emit('task_assigned', {
+          message: `New task assigned: ${data.title || 'Untitled'}`,
+          task: newTask
+        });
+      }
+
       return response(res, true, 212, 'Task created successfully', newTask);
     } catch (err) {
       console.error(err);
@@ -20,6 +30,15 @@ class TaskController {
       const userId = req.user?.id || 1;
       const data = { ...req.body };
       await TaskService.update(req.params.id, data, userId);
+
+      // Emit real-time notification if reassigned or updated
+      const io = req.app.get("io");
+      if (io && data.assignee_id) {
+        io.to(`user_${data.assignee_id}`).emit('task_assigned', {
+          message: `Task updated: ${data.title || 'Untitled'}`
+        });
+      }
+
       return response(res, true, 200, 'Task updated successfully');
     } catch (err) {
       console.error(err);

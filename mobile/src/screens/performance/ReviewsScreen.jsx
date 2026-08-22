@@ -25,7 +25,7 @@ export default function ReviewsScreen() {
   const fetchReviews = async () => {
     try {
       setLoading(true);
-      const res = await apiClient.get('/performance/reviews');
+      const res = await apiClient.get('/reviews');
       if (Array.isArray(res.data)) {
         setReviews(res.data);
       }
@@ -43,7 +43,7 @@ export default function ReviewsScreen() {
     }
     try {
       setSubmitting(true);
-      await apiClient.post('/performance/reviews', { 
+      await apiClient.post('/reviews', { 
         employee_id: parseInt(employeeId), reviewer_id: parseInt(reviewerId), review_date: reviewDate, rating: parseFloat(rating), comments 
       });
       setEmployeeId(''); setReviewerId(''); setReviewDate(''); setRating(''); setComments('');
@@ -77,7 +77,7 @@ export default function ReviewsScreen() {
 
       {item.comments ? (
         <View style={styles.commentsBox}>
-          <MessageSquare size={14} color="#64748B" style={{marginRight: 6, marginTop: 2}} />
+          <MessageSquare size={14} color='#6B7280' style={{marginRight: 6, marginTop: 2}} />
           <Text style={styles.commentsText}>{item.comments}</Text>
         </View>
       ) : null}
@@ -90,7 +90,7 @@ export default function ReviewsScreen() {
           <Text style={styles.footerValue}>{item.rev_first_name ? `${item.rev_first_name} ${item.rev_last_name}` : `Emp #${item.reviewer_id}`}</Text>
         </View>
         <View style={styles.footerItem}>
-          <Calendar size={14} color="#64748B" style={{marginRight: 4}} />
+          <Calendar size={14} color='#6B7280' style={{marginRight: 4}} />
           <Text style={styles.footerValue}>{new Date(item.review_date).toLocaleDateString()}</Text>
         </View>
       </View>
@@ -106,7 +106,7 @@ export default function ReviewsScreen() {
         </View>
         <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
           <LinearGradient colors={['#8B5CF6', '#6D28D9']} style={styles.gradientBtn}>
-            <Plus size={18} color="#FFF" />
+            <Plus size={18} color='#FFFFFF' />
             <Text style={styles.addButtonText}>Add</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -114,7 +114,7 @@ export default function ReviewsScreen() {
 
       <View style={styles.toolbar}>
         <View style={styles.searchBox}>
-          <Search size={20} color="#64748B" />
+          <Search size={20} color='#6B7280' />
           <TextInput 
             style={styles.searchInput} 
             placeholder="Search reviews..." 
@@ -151,7 +151,7 @@ export default function ReviewsScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>New Review</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color="#64748B" />
+                <X size={24} color='#6B7280' />
               </TouchableOpacity>
             </View>
             <View style={styles.modalBody}>
@@ -180,27 +180,27 @@ export default function ReviewsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { padding: 20, backgroundColor: '#FFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  header: { padding: 20, backgroundColor: '#FFFFFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
   headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
-  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
   addButton: { borderRadius: 10, overflow: 'hidden' },
   gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 6 },
-  addButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  addButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   toolbar: { padding: 20 },
-  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 16, height: 48 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 16, height: 48 },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: '#1E293B', fontWeight: '500' },
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { paddingHorizontal: 20, paddingBottom: 24 },
-  card: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  titleText: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+  titleText: { fontSize: 16, fontWeight: '700', color: '#111827' },
   ratingBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FEF3C7', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 12 },
   ratingText: { fontSize: 12, fontWeight: '700', color: '#B45309' },
   commentsBox: { backgroundColor: '#F8FAFC', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'flex-start' },
   commentsText: { fontSize: 13, color: '#475569', flex: 1, lineHeight: 18 },
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 },
+  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 12 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   footerItem: { flexDirection: 'row', alignItems: 'center' },
   footerLabel: { fontSize: 12, color: '#94A3B8', fontWeight: '500', marginRight: 4 },
@@ -208,11 +208,11 @@ const styles = StyleSheet.create({
   emptyBox: { padding: 40, alignItems: 'center' },
   emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '500' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#0F172A' },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
   modalBody: { gap: 12 },
   modalInput: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, fontSize: 16, color: '#1E293B', backgroundColor: '#F8FAFC' },
   submitButton: { backgroundColor: '#8B5CF6', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 10 },
-  submitButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700' }
+  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' }
 });

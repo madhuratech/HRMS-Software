@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert } from 'react-native';
-import { Search, Plus, Mail, Phone, ChevronRight, X, Building2, User, ArrowLeft } from 'lucide-react-native';
+import { Search, Plus, Mail, Phone, ChevronRight, X, Building2, User, ChevronLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
@@ -86,7 +86,7 @@ export default function SalesEnquiriesScreen({ navigation }) {
       case 'proposal_sent': return '#6366F1';
       case 'won': return '#10B981';
       case 'lost': return '#EF4444';
-      default: return '#64748B';
+      default: return '#6B7280';
     }
   };
 
@@ -96,10 +96,10 @@ export default function SalesEnquiriesScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
           <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
-            <ArrowLeft size={24} color="#0F172A" />
+            <ChevronLeft size={24} color='#111827' />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Sales Enquiries</Text>
@@ -107,8 +107,8 @@ export default function SalesEnquiriesScreen({ navigation }) {
           </View>
         </View>
         <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
-          <LinearGradient colors={['#4F46E5', '#4338CA']} style={styles.gradientBtn}>
-            <Plus size={18} color="#FFF" />
+          <LinearGradient colors={['#2563EB', '#2563EB']} style={styles.gradientBtn}>
+            <Plus size={18} color='#FFFFFF' />
             <Text style={styles.addButtonText}>New Lead</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -116,7 +116,7 @@ export default function SalesEnquiriesScreen({ navigation }) {
 
       <View style={styles.toolbar}>
         <View style={styles.searchBox}>
-          <Search size={20} color="#64748B" />
+          <Search size={20} color='#6B7280' />
           <TextInput 
             style={styles.searchInput} 
             placeholder="Search enquiries..." 
@@ -146,13 +146,13 @@ export default function SalesEnquiriesScreen({ navigation }) {
               >
                 <View style={styles.cardHeader}>
                   <View style={styles.iconBox}>
-                    <Building2 size={20} color="#4338CA" />
+                    <Building2 size={20} color='#2563EB' />
                   </View>
                   <View style={styles.cardTitleCol}>
                     <Text style={styles.customerName} numberOfLines={1}>{item.customer_name}</Text>
                     <Text style={styles.dateText}>{new Date(item.created_at).toLocaleDateString()}</Text>
                   </View>
-                  <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(item.status)}15` }]}>
+                  <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '15' }]}>
                     <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
                       {formatStatus(item.status)}
                     </Text>
@@ -165,7 +165,7 @@ export default function SalesEnquiriesScreen({ navigation }) {
 
                 <View style={styles.cardFooter}>
                   <View style={styles.contactRow}>
-                    <Mail size={14} color="#64748B" style={{marginRight: 6}} />
+                    <Mail size={14} color='#6B7280' style={{marginRight: 6}} />
                     <Text style={styles.contactText} numberOfLines={1}>{item.contact_email || 'No email provided'}</Text>
                   </View>
                   <ChevronRight size={18} color="#94A3B8" />
@@ -184,7 +184,7 @@ export default function SalesEnquiriesScreen({ navigation }) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>New Enquiry</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color="#64748B" />
+                <X size={24} color='#6B7280' />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
@@ -257,22 +257,22 @@ export default function SalesEnquiriesScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: { 
-    padding: 24, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    padding: 24, borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
   },
   headerTop: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
-  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
-  addButton: { borderRadius: 20, overflow: 'hidden', shadowColor: '#4338CA', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  headerTitle: { fontSize: 24, fontWeight: '900', color: '#111827', letterSpacing: -1 },
+  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
+  addButton: { borderRadius: 20, overflow: 'hidden', shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 6 },
-  addButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  addButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   toolbar: { flexDirection: 'row', padding: 24, gap: 12 },
   searchBox: { 
-    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', 
-    borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 16, paddingHorizontal: 16, height: 52,
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
+    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', 
+    borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, paddingHorizontal: 16, height: 52,
+    shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
   },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 16, color: '#1E293B', fontWeight: '500' },
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -281,31 +281,31 @@ const styles = StyleSheet.create({
   
   content: { paddingHorizontal: 24 },
   card: { 
-    backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9',
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.05, shadowRadius: 24, elevation: 4,
+    backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB',
+    shadowColor: '#111827', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.05, shadowRadius: 24, elevation: 4,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iconBox: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
+  iconBox: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
   cardTitleCol: { flex: 1 },
-  customerName: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
-  dateText: { fontSize: 13, fontWeight: '500', color: '#64748B', marginTop: 2 },
+  customerName: { fontSize: 17, fontWeight: '800', color: '#111827' },
+  dateText: { fontSize: 13, fontWeight: '500', color: '#6B7280', marginTop: 2 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   statusText: { fontSize: 12, fontWeight: '700' },
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 16 },
+  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 16 },
   enquiryDesc: { fontSize: 15, color: '#475569', lineHeight: 22, marginBottom: 16 },
   
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12 },
   contactRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  contactText: { fontSize: 14, color: '#64748B', fontWeight: '500' },
+  contactText: { fontSize: 14, color: '#6B7280', fontWeight: '500' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 50, maxHeight: '85%' },
+  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 50, maxHeight: '85%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  modalTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A' },
+  modalTitle: { fontSize: 24, fontWeight: '800', color: '#111827' },
   modalBody: { gap: 20 },
   inputGroup: { gap: 8 },
   inputLabel: { fontSize: 14, fontWeight: '700', color: '#475569' },
   modalInput: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 14, padding: 16, fontSize: 16, color: '#1E293B', backgroundColor: '#F8FAFC' },
-  submitButton: { backgroundColor: '#4338CA', borderRadius: 14, padding: 18, alignItems: 'center', marginTop: 10, shadowColor: '#4338CA', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  submitButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  submitButton: { backgroundColor: '#2563EB', borderRadius: 14, padding: 18, alignItems: 'center', marginTop: 10, shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });

@@ -46,51 +46,20 @@ class CandidateService {
       }
     }
 
-<<<<<<< HEAD
     const sql = `
       UPDATE candidates SET
         candidate_name = ?, email = ?, mobile_number = ?, gender = ?, department_id = ?, job_position = ?,
         date_of_birth = ?, resume = COALESCE(?, resume), experience = ?, current_company = ?,
-=======
-    const candidate_name = data.candidate_name !== undefined ? data.candidate_name : existing.candidate_name;
-    const email = data.email !== undefined ? data.email : existing.email;
-    const mobile_number = data.mobile_number !== undefined ? data.mobile_number : existing.mobile_number;
-    const gender = data.gender !== undefined ? data.gender : existing.gender;
-    const department_id = data.department_id !== undefined ? data.department_id : existing.department_id;
-    const job_position = data.job_position !== undefined ? data.job_position : existing.job_position;
-    const date_of_birth = data.date_of_birth !== undefined ? data.date_of_birth : existing.date_of_birth;
-    const resume = data.resume !== undefined ? data.resume : existing.resume;
-    const experience = data.experience !== undefined ? data.experience : existing.experience;
-    const current_company = data.current_company !== undefined ? data.current_company : existing.current_company;
-    const current_salary = data.current_salary !== undefined ? data.current_salary : existing.current_salary;
-    const expected_salary = data.expected_salary !== undefined ? data.expected_salary : existing.expected_salary;
-    const notice_period = data.notice_period !== undefined ? data.notice_period : existing.notice_period;
-    const skills = data.skills !== undefined ? data.skills : existing.skills;
-    const address = data.address !== undefined ? data.address : existing.address;
-    const status = data.status !== undefined ? data.status : existing.status;
-
-    const sql = `
-      UPDATE candidates SET
-        candidate_name = ?, email = ?, mobile_number = ?, gender = ?, department_id = ?, job_position = ?,
-        date_of_birth = ?, resume = ?, experience = ?, current_company = ?,
->>>>>>> origin/main
         current_salary = ?, expected_salary = ?, notice_period = ?, skills = ?, address = ?,
         status = ?, updated_by = ?
       WHERE id = ?
     `;
 
     const params = [
-<<<<<<< HEAD
       data.candidate_name, data.email, data.mobile_number, data.gender, data.department_id, data.job_position,
       data.date_of_birth || null, data.resume || null, data.experience || null, data.current_company || null,
       data.current_salary || null, data.expected_salary || null, data.notice_period || null, data.skills || null,
       data.address || null, data.status, userId, id
-=======
-      candidate_name, email, mobile_number, gender, department_id, job_position,
-      date_of_birth, resume, experience, current_company,
-      current_salary, expected_salary, notice_period, skills, address,
-      status, userId, id
->>>>>>> origin/main
     ];
 
     await Candidate.beginTransaction();

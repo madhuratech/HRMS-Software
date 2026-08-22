@@ -21,11 +21,11 @@ const styles = StyleSheet.create({
   text: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#0F172A',
+    color: '#111827',
   },
   subtext: {
     fontSize: 16,
-    color: '#64748B',
+    color: '#6B7280',
     marginTop: 8,
   }
 });

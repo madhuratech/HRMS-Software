@@ -76,25 +76,25 @@ export default function AnalyticsReportsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { padding: 20, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
-  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
+  header: { padding: 20, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
   content: { padding: 20 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginBottom: 24 },
   statCard: { 
-    width: '47%', backgroundColor: '#FFF', borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, 
+    width: '47%', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16,
+    borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, 
     shadowOpacity: 0.03, shadowRadius: 8, elevation: 2,
   },
-  statValue: { fontSize: 24, fontWeight: '800', color: '#0F172A', marginTop: 12, marginBottom: 4 },
-  statLabel: { fontSize: 12, color: '#64748B', fontWeight: '500' },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#0F172A', marginBottom: 16 },
+  statValue: { fontSize: 24, fontWeight: '800', color: '#111827', marginTop: 12, marginBottom: 4 },
+  statLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 16 },
   reportItem: { 
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 12, 
-    padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9' 
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, 
+    padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' 
   },
   iconBox: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
   reportInfo: { flex: 1 },
-  reportTitle: { fontSize: 15, fontWeight: '700', color: '#0F172A', marginBottom: 4 },
-  reportDesc: { fontSize: 13, color: '#64748B' }
+  reportTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 4 },
+  reportDesc: { fontSize: 13, color: '#6B7280' }
 });

@@ -28,7 +28,7 @@ class GPSAttendanceService {
   }
 
   static async validateAndRecordPunch(employeeId, data) {
-    const { punchType, latitude, longitude, deviceInfo, browser, ipAddress } = data;
+    const { punchType, latitude, longitude, deviceInfo, browser, ipAddress, checkoutReason } = data;
 
     // Validate coordinates
     const lat = parseFloat(latitude);
@@ -56,11 +56,7 @@ class GPSAttendanceService {
     }
 
     // GPS Validation: Permitted radius check
-<<<<<<< HEAD
     const insideRadius = data.skipGeofence ? 'Yes' : (minDistance <= nearestLocation.radius ? 'Yes' : 'No');
-=======
-    const insideRadius = minDistance <= nearestLocation.radius ? 'Yes' : 'No';
->>>>>>> origin/main
 
     if (insideRadius === 'No') {
       await this.logPunchAttempt(employeeId, punchType, lat, lng, nearestLocation.name, minDistance, 'No', deviceInfo, browser, ipAddress, 'Failed', 'Outside allowed geofence radius.');
@@ -147,7 +143,7 @@ class GPSAttendanceService {
 
       const sqlUpdate = `
         UPDATE GPSAttendance
-        SET check_out_time = ?, latitude_out = ?, longitude_out = ?, punch_out_location = ?, working_hours = ?, status = ?, early_exit = ?
+        SET check_out_time = ?, latitude_out = ?, longitude_out = ?, punch_out_location = ?, working_hours = ?, status = ?, early_exit = ?, checkout_reason = ?
         WHERE employee_id = ? AND punch_date = ?
       `;
       await query(sqlUpdate, [
@@ -158,28 +154,20 @@ class GPSAttendanceService {
         workingHours,
         status,
         isEarly ? 1 : 0,
+        checkoutReason || null,
         employeeId,
         punchDate
       ]);
     }
 
-<<<<<<< HEAD
     const { workDone, location_address } = data;
 
     // Sync to original log table for backward compatibility
     const sqlSync = `
-      INSERT INTO attendance (employee_id, punch_type, punch_time, latitude, longitude, location_address, work_done)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO attendance (employee_id, punch_type, punch_time, latitude, longitude, location_address, work_done, checkout_reason)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
-    await query(sqlSync, [employeeId, punchType, timestamp, lat, lng, location_address || null, workDone || null]);
-=======
-    // Sync to original log table for backward compatibility
-    const sqlSync = `
-      INSERT INTO attendance (employee_id, punch_type, punch_time, latitude, longitude)
-      VALUES (?, ?, ?, ?, ?)
-    `;
-    await query(sqlSync, [employeeId, punchType, timestamp, lat, lng]);
->>>>>>> origin/main
+    await query(sqlSync, [employeeId, punchType, timestamp, lat, lng, location_address || null, workDone || null, checkoutReason || null]);
 
     return {
       success: true,
@@ -314,10 +302,7 @@ class GPSAttendanceService {
         l.id,
         l.employee_id,
         e.name as employee_name,
-<<<<<<< HEAD
         r.name as role,
-=======
->>>>>>> origin/main
         l.punch_type,
         l.punch_time,
         l.latitude,
@@ -331,10 +316,7 @@ class GPSAttendanceService {
         l.ip_address
       FROM AttendanceLogs l
       JOIN employees e ON e.id = l.employee_id
-<<<<<<< HEAD
       LEFT JOIN roles r ON e.role_id = r.id
-=======
->>>>>>> origin/main
       ${where}
       ORDER BY l.punch_time DESC
     `;

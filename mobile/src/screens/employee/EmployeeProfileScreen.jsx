@@ -2,9 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Modal
 } from 'react-native';
-import { 
-  Edit2, Mail, Phone, MapPin, Camera, Trash2, FileText, Briefcase, IndianRupee, ShieldCheck, ArrowLeft
-} from 'lucide-react-native';
+import { Edit2, Mail, Phone, MapPin, Camera, Trash2, FileText, Briefcase, IndianRupee, ShieldCheck, ChevronLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SIZES, FONTS } from '../../components/ui/theme';
 import { HRMSCard } from '../../components/ui/HRMSCard';
@@ -95,11 +93,21 @@ export default function EmployeeProfileScreen({ route, navigation }) {
   const handleSave = async () => {
     try {
       await apiClient.put(`/employees/${empId}`, {
-        ...profile, // mock payload for demo
-        name: editForm.name,
-        email: editForm.email,
-        phone: editForm.phone,
-        salary: parseFloat(editForm.salary) || 0
+        name: editForm.name || profile.name,
+        email: editForm.email || profile.email,
+        phone: editForm.phone || profile.phone,
+        dob: profile.dob,
+        gender: profile.gender,
+        employmentType: profile.employmentType,
+        salary: parseFloat(editForm.salary) || parseFloat(profile.salary) || 0,
+        address: profile.address,
+        emergencyContact: profile.emergencyContact,
+        bankDetails: profile.bankDetails,
+        branch: profile.branchName,
+        department: profile.deptName,
+        designation: profile.roleName,
+        managerName: profile.managerName,
+        teamName: profile.teamName
       });
       setIsEditing(false);
       loadProfile();
@@ -262,10 +270,10 @@ export default function EmployeeProfileScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.pageHeader}>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.pageHeader}>
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 16, padding: 4 }}>
-            <ArrowLeft size={24} color="#0F172A" />
+            <ChevronLeft size={24} color='#111827' />
           </TouchableOpacity>
           <View style={styles.headerDetails}>
             <Text style={styles.pageTitle}>Employee Profile</Text>
@@ -279,7 +287,7 @@ export default function EmployeeProfileScreen({ route, navigation }) {
           <View style={styles.avatarContainer}>
             <HRMSAvatar name={profile.name} imageUrl={profile.profileImage} size={80} />
             <TouchableOpacity style={styles.cameraButton}>
-              <Camera size={14} color="#FFF" />
+              <Camera size={14} color='#FFFFFF' />
             </TouchableOpacity>
           </View>
           <View style={styles.profileBasicInfo}>
@@ -371,7 +379,7 @@ const styles = StyleSheet.create({
   pageHeader: {
     paddingHorizontal: 24,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#E5E7EB',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -383,10 +391,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingHorizontal: 24,
     paddingVertical: 20,
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9'
+    borderBottomColor: '#E5E7EB'
   },
   profileBasicInfo: {
     flex: 1,
@@ -402,12 +410,12 @@ const styles = StyleSheet.create({
   pageTitle: { 
     fontSize: 28, 
     fontWeight: '900', 
-    color: '#0F172A', 
+    color: '#111827', 
     letterSpacing: -1 
   },
   pageSubtitle: { 
     fontSize: 14, 
-    color: '#64748B', 
+    color: '#6B7280', 
     marginTop: 4, 
     fontWeight: '500' 
   },
@@ -427,7 +435,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#FFF',
+    borderColor: '#FFFFFF',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4
   },
   headerDetails: {
@@ -441,7 +449,7 @@ const styles = StyleSheet.create({
   name: {
     fontFamily: FONTS.bold,
     fontSize: 24,
-    color: '#0F172A',
+    color: '#111827',
     marginRight: 10,
     letterSpacing: -0.5
   },

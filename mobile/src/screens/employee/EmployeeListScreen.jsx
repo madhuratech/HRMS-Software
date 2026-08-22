@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, SectionList, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
-import { Search, Plus, Filter, ChevronRight, Briefcase, Calendar, ArrowLeft } from 'lucide-react-native';
+import { Search, Plus, Filter, ChevronRight, Briefcase, Calendar, ChevronLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import apiClient from '../../api/client';
@@ -117,10 +117,10 @@ export default function EmployeeListScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
-            <ArrowLeft size={24} color="#0F172A" />
+            <ChevronLeft size={24} color='#111827' />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Employees</Text>
@@ -128,8 +128,8 @@ export default function EmployeeListScreen() {
           </View>
         </View>
         <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate('AddEmployee')}>
-          <LinearGradient colors={['#4F46E5', '#4338CA']} style={styles.gradientBtn}>
-            <Plus size={18} color="#FFF" />
+          <LinearGradient colors={['#2563EB', '#2563EB']} style={styles.gradientBtn}>
+            <Plus size={18} color='#FFFFFF' />
             <Text style={styles.addButtonText}>Add New</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -137,7 +137,7 @@ export default function EmployeeListScreen() {
 
       <View style={styles.toolbar}>
         <View style={styles.searchBox}>
-          <Search size={20} color="#64748B" />
+          <Search size={20} color='#6B7280' />
           <TextInput 
             style={styles.searchInput} 
             placeholder="Search employees..." 
@@ -147,7 +147,7 @@ export default function EmployeeListScreen() {
           />
         </View>
         <TouchableOpacity style={styles.filterBtn}>
-          <Filter size={20} color="#64748B" />
+          <Filter size={20} color='#6B7280' />
         </TouchableOpacity>
       </View>
 
@@ -168,7 +168,7 @@ export default function EmployeeListScreen() {
 
       {loading ? (
         <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color='#2563EB' />
         </View>
       ) : (
         <SectionList
@@ -195,30 +195,30 @@ const styles = StyleSheet.create({
   header: { 
     padding: 24, 
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#E5E7EB',
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
   },
   headerTop: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 28, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
-  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
-  addButton: { borderRadius: 16, overflow: 'hidden', shadowColor: '#4338CA', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 6 },
-  addButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  headerTitle: { fontSize: 28, fontWeight: '900', color: '#111827', letterSpacing: -1 },
+  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
+  addButton: { borderRadius: 12, overflow: 'hidden', shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 3 },
+  gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 6, backgroundColor: '#2563EB' },
+  addButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
 
   toolbar: { paddingHorizontal: 24, paddingVertical: 16, flexDirection: 'row', gap: 12 },
   searchBox: { 
-    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', 
-    borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 16, paddingHorizontal: 16, height: 52,
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
+    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', 
+    borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 12, paddingHorizontal: 16, height: 52,
+    shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2
   },
-  searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: '#1E293B', fontWeight: '500' },
+  searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: '#111827', fontWeight: '500' },
   filterBtn: { 
-    width: 52, height: 52, backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9',
-    alignItems: 'center', justifyContent: 'center', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
+    width: 52, height: 52, backgroundColor: '#FFFFFF', borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB',
+    alignItems: 'center', justifyContent: 'center', shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 2
   },
 
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -233,11 +233,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 16,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#111827',
     letterSpacing: -0.3,
   },
   sectionBadge: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#EFF6FF',
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 12,
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
   sectionBadgeText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#4F46E5',
+    color: '#2563EB',
   },
   tabContainer: {
     flexDirection: 'row',
@@ -259,32 +259,32 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
     borderRadius: 12,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#E5E7EB',
   },
   tabButtonActive: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#EFF6FF',
     borderWidth: 1,
-    borderColor: '#C7D2FE',
+    borderColor: '#BFDBFE',
   },
   tabText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#64748B',
+    color: '#6B7280',
   },
   tabTextActive: {
-    color: '#4F46E5',
+    color: '#2563EB',
     fontWeight: '700',
   },
 
   listItem: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 20, borderRadius: 20, marginBottom: 12,
-    borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.04, shadowRadius: 12, elevation: 2
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', padding: 20, borderRadius: 16, marginBottom: 12,
+    borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 16, elevation: 2
   },
   itemDetails: { flex: 1, marginLeft: 16 },
-  itemName: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 2 },
+  itemName: { fontSize: 16, fontWeight: '800', color: '#111827', marginBottom: 2 },
   itemRole: { fontSize: 14, color: '#475569', fontWeight: '600', marginBottom: 6 },
   infoRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 2 },
-  itemInfoText: { fontSize: 12, color: '#64748B', fontWeight: '500', marginLeft: 6 },
+  itemInfoText: { fontSize: 12, color: '#6B7280', fontWeight: '500', marginLeft: 6 },
 
   statusBox: { alignItems: 'flex-end', justifyContent: 'center' },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },

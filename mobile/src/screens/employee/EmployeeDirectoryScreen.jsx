@@ -10,18 +10,7 @@ import {
   TouchableOpacity,
   TextInput
 } from 'react-native';
-import { 
-  Search, 
-  Download, 
-  Plus, 
-  Mail, 
-  Phone, 
-  MoreVertical,
-  ShieldCheck,
-  User,
-  BadgeCheck,
-  ArrowLeft
-} from 'lucide-react-native';
+import { Search, Download, Plus, Mail, Phone, MoreVertical, ShieldCheck, User, BadgeCheck, ChevronLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SIZES, FONTS } from '../../components/ui/theme';
 import { HRMSCard } from '../../components/ui/HRMSCard';
@@ -99,7 +88,7 @@ export default function EmployeeDirectoryScreen({ navigation }) {
           <View style={styles.empDetails}>
             <Text style={styles.empName}>{emp.name}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 2 }}>
-              <BadgeCheck size={14} color="#64748B" />
+              <BadgeCheck size={14} color='#6B7280' />
               <Text style={styles.empId}>EMP00{emp.id}</Text>
             </View>
           </View>
@@ -154,10 +143,10 @@ export default function EmployeeDirectoryScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.pageHeader}>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.pageHeader}>
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
-            <ArrowLeft size={24} color="#0F172A" />
+            <ChevronLeft size={24} color='#111827' />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.pageTitle}>Directory</Text>
@@ -173,7 +162,7 @@ export default function EmployeeDirectoryScreen({ navigation }) {
         ListHeaderComponent={renderHeader}
         contentContainerStyle={styles.listContent}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563EB']} />
         }
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
@@ -199,11 +188,11 @@ const styles = StyleSheet.create({
   listContent: {
     paddingBottom: 24,
   },
-  headerContainer: { backgroundColor: '#FFF', paddingBottom: 16, marginBottom: 8 },
+  headerContainer: { backgroundColor: '#FFFFFF', paddingBottom: 16, marginBottom: 8 },
   pageHeader: { 
     padding: 24, 
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#E5E7EB',
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
@@ -211,11 +200,11 @@ const styles = StyleSheet.create({
   },
   headerTop: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   headerTextContainer: { flex: 1 },
-  pageTitle: { fontSize: 28, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
-  pageSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
-  addButton: { borderRadius: 20, overflow: 'hidden', shadowColor: '#4338CA', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  pageTitle: { fontSize: 28, fontWeight: '900', color: '#111827', letterSpacing: -1 },
+  pageSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
+  addButton: { borderRadius: 20, overflow: 'hidden', shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 6 },
-  addButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  addButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
 
   searchRow: {
     flexDirection: 'row',
@@ -223,15 +212,15 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   searchBox: { 
-    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', 
-    borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 16, paddingHorizontal: 16, height: 52,
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
+    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', 
+    borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, paddingHorizontal: 16, height: 52,
+    shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
   },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 16, color: '#1E293B', fontWeight: '500' },
   exportBtn: {
-    width: 52, height: 52, backgroundColor: '#FFF', borderRadius: 16,
-    alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9',
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
+    width: 52, height: 52, backgroundColor: '#FFFFFF', borderRadius: 16,
+    alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#E5E7EB',
+    shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
   },
 
   statsContainer: {
@@ -241,20 +230,20 @@ const styles = StyleSheet.create({
   },
   statCard: {
     width: 140,
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
     marginRight: 16,
-    borderWidth: 1, borderColor: '#F1F5F9',
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
+    borderWidth: 1, borderColor: '#E5E7EB',
+    shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
   },
-  statTitle: { fontSize: 13, color: '#64748B', fontWeight: '600', marginBottom: 8 },
-  statValue: { fontSize: 24, color: '#0F172A', fontWeight: '800', marginBottom: 4 },
+  statTitle: { fontSize: 13, color: '#6B7280', fontWeight: '600', marginBottom: 8 },
+  statValue: { fontSize: 24, color: '#111827', fontWeight: '800', marginBottom: 4 },
   statTrend: { fontSize: 12, color: '#94A3B8', fontWeight: '500' },
 
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#EFF6FF',
     borderRadius: 16,
     padding: 6,
     marginHorizontal: 24,
@@ -265,20 +254,20 @@ const styles = StyleSheet.create({
     paddingVertical: 12, borderRadius: 12, gap: 8
   },
   tabButtonActive: {
-    backgroundColor: '#FFF',
-    shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 2
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 2
   },
-  tabText: { fontSize: 15, fontWeight: '700', color: '#64748B' },
-  tabTextActive: { color: '#4F46E5' },
+  tabText: { fontSize: 15, fontWeight: '700', color: '#6B7280' },
+  tabTextActive: { color: '#2563EB' },
 
   employeeCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 24,
     marginHorizontal: 24,
     marginBottom: 16,
-    borderWidth: 1, borderColor: '#F1F5F9',
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 16, elevation: 3,
+    borderWidth: 1, borderColor: '#E5E7EB',
+    shadowColor: '#111827', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 16, elevation: 3,
   },
   empHeader: {
     flexDirection: 'row',
@@ -294,31 +283,31 @@ const styles = StyleSheet.create({
     marginLeft: 16,
     flex: 1,
   },
-  empName: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
-  empId: { fontSize: 13, color: '#64748B', fontWeight: '600', marginLeft: 4 },
+  empName: { fontSize: 18, fontWeight: '800', color: '#111827' },
+  empId: { fontSize: 13, color: '#6B7280', fontWeight: '600', marginLeft: 4 },
   badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
   badgeActive: { backgroundColor: '#ECFCCB' },
   badgeInactive: { backgroundColor: '#FEE2E2' },
   badgeText: { fontSize: 12, fontWeight: '700' },
   badgeTextActive: { color: '#4D7C0F' },
   badgeTextInactive: { color: '#B91C1C' },
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 16 },
+  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 16 },
   empRole: { flexDirection: 'row', marginBottom: 16, gap: 16 },
   roleBox: { flex: 1, backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12 },
   roleLabel: { fontSize: 12, color: '#94A3B8', fontWeight: '600', marginBottom: 4 },
-  empDept: { fontSize: 14, color: '#0F172A', fontWeight: '700' },
-  empDesg: { fontSize: 14, color: '#0F172A', fontWeight: '700' },
+  empDept: { fontSize: 14, color: '#111827', fontWeight: '700' },
+  empDesg: { fontSize: 14, color: '#111827', fontWeight: '700' },
   empContact: { gap: 10, marginBottom: 20 },
   contactRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   contactText: { fontSize: 14, color: '#475569', fontWeight: '500', flex: 1 },
   viewProfileBtn: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#EFF6FF',
     paddingVertical: 14,
     borderRadius: 14,
     alignItems: 'center',
   },
   viewProfileText: {
-    color: '#4338CA',
+    color: '#2563EB',
     fontSize: 15,
     fontWeight: '700',
   },

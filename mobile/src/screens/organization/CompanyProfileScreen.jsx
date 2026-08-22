@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Alert } from 'react-native';
-import { Building2, Phone, MapPin, Users, IndianRupee, Settings, ShieldCheck, Mail, Globe, Save, ArrowLeft } from 'lucide-react-native';
+import { Building2, Phone, MapPin, Users, IndianRupee, Settings, ShieldCheck, Mail, Globe, Save, ChevronLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import apiClient from '../../api/client';
@@ -90,10 +90,10 @@ export default function CompanyProfileScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
           <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
-            <ArrowLeft size={24} color="#0F172A" />
+            <ChevronLeft size={24} color='#111827' />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Company Profile</Text>
@@ -112,7 +112,7 @@ export default function CompanyProfileScreen() {
                 style={[styles.tabButton, isActive && styles.tabButtonActive]}
                 onPress={() => setActiveTab(tab.id)}
               >
-                <tab.icon size={16} color={isActive ? '#2563EB' : '#64748B'} />
+                <tab.icon size={16} color={isActive ? '#2563EB' : '#6B7280'} />
                 <Text style={[styles.tabText, isActive && styles.tabTextActive]}>{tab.label}</Text>
               </TouchableOpacity>
             );
@@ -149,7 +149,7 @@ export default function CompanyProfileScreen() {
               </TouchableOpacity>
             ) : (
               <TouchableOpacity style={styles.saveBtn} onPress={handleSave} disabled={saving}>
-                <Save size={14} color="#FFF" style={{ marginRight: 4 }} />
+                <Save size={14} color='#FFFFFF' style={{ marginRight: 4 }} />
                 <Text style={styles.saveBtnText}>{saving ? 'Saving...' : 'Save'}</Text>
               </TouchableOpacity>
             )}
@@ -233,36 +233,36 @@ export default function CompanyProfileScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { padding: 20, paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  header: { padding: 20, paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
   headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
-  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
-  tabsWrapper: { backgroundColor: '#FFF', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
+  tabsWrapper: { backgroundColor: '#FFFFFF', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
   tabsContainer: { paddingHorizontal: 24, gap: 12 },
-  tabButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#F1F5F9' },
-  tabButtonActive: { backgroundColor: '#EEF2FF', borderColor: '#C7D2FE' },
-  tabText: { fontSize: 14, fontWeight: '700', color: '#64748B', marginLeft: 8 },
-  tabTextActive: { color: '#4338CA' },
+  tabButton: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 20, borderRadius: 30, backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E5E7EB' },
+  tabButtonActive: { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' },
+  tabText: { fontSize: 14, fontWeight: '700', color: '#6B7280', marginLeft: 8 },
+  tabTextActive: { color: '#2563EB' },
   contentContainer: { padding: 24 },
   bannerCard: { borderRadius: 20, padding: 24, marginBottom: 30, shadowColor: '#312E81', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.15, shadowRadius: 24, elevation: 8 },
   bannerTop: { flexDirection: 'row', alignItems: 'center' },
   logoBox: { width: 64, height: 64, borderRadius: 20, backgroundColor: 'rgba(255, 255, 255, 0.15)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.2)' },
-  logoText: { fontSize: 24, fontWeight: '900', color: '#FFF' },
+  logoText: { fontSize: 24, fontWeight: '900', color: '#FFFFFF' },
   bannerInfo: { flex: 1, marginLeft: 16 },
-  bannerTitle: { fontSize: 20, fontWeight: '800', color: '#FFF', letterSpacing: -0.5 },
-  bannerSubtitle: { fontSize: 14, color: '#C7D2FE', marginTop: 4, fontWeight: '500' },
+  bannerTitle: { fontSize: 20, fontWeight: '800', color: '#FFFFFF', letterSpacing: -0.5 },
+  bannerSubtitle: { fontSize: 14, color: '#BFDBFE', marginTop: 4, fontWeight: '500' },
   verifiedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#ECFDF5', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 4, borderWidth: 1, borderColor: '#A7F3D0' },
   verifiedText: { fontSize: 12, fontWeight: '800', color: '#059669' },
-  card: { backgroundColor: '#FFF', borderRadius: 20, padding: 24, shadowColor: '#0F172A', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.05, shadowRadius: 24, elevation: 4, borderWidth: 1, borderColor: '#F1F5F9' },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 24, shadowColor: '#111827', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.05, shadowRadius: 24, elevation: 4, borderWidth: 1, borderColor: '#E5E7EB' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  cardTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
-  editBtn: { fontSize: 15, fontWeight: '700', color: '#4338CA', backgroundColor: '#EEF2FF', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
-  saveBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#4338CA', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, shadowColor: '#4338CA', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  saveBtnText: { fontSize: 14, fontWeight: '700', color: '#FFF' },
+  cardTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
+  editBtn: { fontSize: 15, fontWeight: '700', color: '#2563EB', backgroundColor: '#EFF6FF', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20 },
+  saveBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2563EB', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  saveBtnText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
   formGroup: { marginBottom: 20 },
   label: { fontSize: 14, fontWeight: '700', color: '#475569', marginBottom: 8 },
-  inputContainer: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 14, backgroundColor: '#FFF', height: 56 },
-  inputDisabled: { backgroundColor: '#F8FAFC', borderColor: '#F1F5F9', opacity: 0.8 },
+  inputContainer: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 14, backgroundColor: '#FFFFFF', height: 56 },
+  inputDisabled: { backgroundColor: '#F8FAFC', borderColor: '#E5E7EB', opacity: 0.8 },
   inputIcon: { marginLeft: 16, marginRight: 10 },
   input: { flex: 1, fontSize: 16, color: '#1E293B', fontWeight: '600', paddingHorizontal: 16 },
   row: { flexDirection: 'row' }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
-import { Building2, Mail, Phone, Calendar as CalendarIcon, FileText, ArrowLeft, ChevronRight, DollarSign, Clock, StickyNote, Plus } from 'lucide-react-native';
+import { Building2, Mail, Phone, Calendar as CalendarIcon, FileText, ChevronLeft, ChevronRight, DollarSign, Clock, StickyNote, Plus } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
 
@@ -59,14 +59,14 @@ export default function CustomerSalesDetailsScreen({ route, navigation }) {
       case 'proposal_sent': return '#6366F1';
       case 'won': return '#10B981';
       case 'lost': return '#EF4444';
-      default: return '#64748B';
+      default: return '#6B7280';
     }
   };
 
   if (loading) {
     return (
       <View style={[styles.container, styles.centerBox]}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+        <ActivityIndicator size="large" color='#2563EB' />
       </View>
     );
   }
@@ -86,10 +86,10 @@ export default function CustomerSalesDetailsScreen({ route, navigation }) {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backArrow}>
-            <ArrowLeft size={24} color="#0F172A" />
+            <ChevronLeft size={24} color='#111827' />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Customer Profile</Text>
@@ -104,11 +104,11 @@ export default function CustomerSalesDetailsScreen({ route, navigation }) {
         <View style={styles.profileCard}>
           <View style={styles.profileHeader}>
             <View style={styles.profileIconBox}>
-              <Building2 size={28} color="#4F46E5" />
+              <Building2 size={28} color='#2563EB' />
             </View>
             <View style={styles.profileInfo}>
               <Text style={styles.profileName}>{enquiry.customer_name}</Text>
-              <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(enquiry.status)}15` }]}>
+              <View style={[styles.statusBadge, { backgroundColor: getStatusColor(enquiry.status) + '15' }]}>
                 <Text style={[styles.statusText, { color: getStatusColor(enquiry.status) }]}>
                   {enquiry.status?.replace('_', ' ').toUpperCase() || 'NEW'}
                 </Text>
@@ -121,13 +121,13 @@ export default function CustomerSalesDetailsScreen({ route, navigation }) {
           <View style={styles.contactList}>
             <View style={styles.contactItem}>
               <View style={styles.contactIconBg}>
-                <Mail size={16} color="#64748B" />
+                <Mail size={16} color='#6B7280' />
               </View>
               <Text style={styles.contactValue}>{enquiry.contact_email || 'No email provided'}</Text>
             </View>
             <View style={styles.contactItem}>
               <View style={styles.contactIconBg}>
-                <Phone size={16} color="#64748B" />
+                <Phone size={16} color='#6B7280' />
               </View>
               <Text style={styles.contactValue}>{enquiry.contact_phone || 'No phone provided'}</Text>
             </View>
@@ -137,7 +137,7 @@ export default function CustomerSalesDetailsScreen({ route, navigation }) {
         {/* Enquiry Details */}
         <View style={styles.sectionCard}>
           <View style={styles.sectionHeader}>
-            <FileText size={20} color="#4F46E5" />
+            <FileText size={20} color='#2563EB' />
             <Text style={styles.sectionTitle}>Enquiry Requirements</Text>
           </View>
           <View style={styles.divider} />
@@ -228,33 +228,33 @@ export default function CustomerSalesDetailsScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: { 
-    padding: 24, paddingTop: 20, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    padding: 24, paddingTop: 20, borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
   },
   headerTop: { flexDirection: 'row', alignItems: 'center' },
   backArrow: { marginRight: 16, padding: 4 },
   headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
-  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 2, fontWeight: '500' },
+  headerTitle: { fontSize: 22, fontWeight: '900', color: '#111827', letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 2, fontWeight: '500' },
   
   centerBox: { justifyContent: 'center', alignItems: 'center' },
-  emptyText: { color: '#64748B', fontSize: 16, fontWeight: '600', marginBottom: 16 },
-  backBtn: { backgroundColor: '#4F46E5', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
-  backBtnText: { color: '#FFF', fontWeight: '700' },
+  emptyText: { color: '#6B7280', fontSize: 16, fontWeight: '600', marginBottom: 16 },
+  backBtn: { backgroundColor: '#2563EB', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 12 },
+  backBtnText: { color: '#FFFFFF', fontWeight: '700' },
 
   content: { paddingHorizontal: 20, paddingTop: 20 },
   
   profileCard: { 
-    backgroundColor: '#FFF', borderRadius: 24, padding: 24, marginBottom: 20, borderWidth: 1, borderColor: '#F1F5F9',
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.03, shadowRadius: 16, elevation: 2
+    backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, marginBottom: 20, borderWidth: 1, borderColor: '#E5E7EB',
+    shadowColor: '#111827', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.03, shadowRadius: 16, elevation: 2
   },
   profileHeader: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  profileIconBox: { width: 64, height: 64, borderRadius: 20, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
+  profileIconBox: { width: 64, height: 64, borderRadius: 20, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
   profileInfo: { flex: 1, alignItems: 'flex-start' },
-  profileName: { fontSize: 22, fontWeight: '800', color: '#0F172A', marginBottom: 8 },
+  profileName: { fontSize: 22, fontWeight: '800', color: '#111827', marginBottom: 8 },
   statusBadge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
   statusText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 20 },
+  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 20 },
   
   contactList: { gap: 12 },
   contactItem: { flexDirection: 'row', alignItems: 'center', gap: 12 },
@@ -262,27 +262,27 @@ const styles = StyleSheet.create({
   contactValue: { fontSize: 15, color: '#334155', fontWeight: '500' },
 
   sectionCard: { 
-    backgroundColor: '#FFF', borderRadius: 24, padding: 24, marginBottom: 24, borderWidth: 1, borderColor: '#F1F5F9',
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.03, shadowRadius: 16, elevation: 2
+    backgroundColor: '#FFFFFF', borderRadius: 24, padding: 24, marginBottom: 24, borderWidth: 1, borderColor: '#E5E7EB',
+    shadowColor: '#111827', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.03, shadowRadius: 16, elevation: 2
   },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
   descText: { fontSize: 15, color: '#475569', lineHeight: 24 },
 
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, marginTop: 8 },
   sectionHeaderTitle: { fontSize: 18, fontWeight: '800', color: '#1E293B' },
-  addSmallBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, gap: 4, borderWidth: 1, borderColor: '#F1F5F9' },
+  addSmallBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, gap: 4, borderWidth: 1, borderColor: '#E5E7EB' },
   addSmallBtnText: { fontSize: 13, fontWeight: '700' },
 
-  emptySubBox: { backgroundColor: '#F8FAFC', borderRadius: 16, padding: 20, alignItems: 'center', marginBottom: 24, borderWidth: 1, borderColor: '#F1F5F9' },
+  emptySubBox: { backgroundColor: '#F8FAFC', borderRadius: 16, padding: 20, alignItems: 'center', marginBottom: 24, borderWidth: 1, borderColor: '#E5E7EB' },
   emptySubText: { color: '#94A3B8', fontSize: 14, fontWeight: '500' },
 
-  historyCard: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+  historyCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' },
   historyRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   historyIconBox: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center' },
   historyCol: { flex: 1 },
-  historyAmount: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
-  historyDate: { fontSize: 13, color: '#64748B', marginTop: 2, fontWeight: '500' },
+  historyAmount: { fontSize: 16, fontWeight: '700', color: '#111827' },
+  historyDate: { fontSize: 13, color: '#6B7280', marginTop: 2, fontWeight: '500' },
   historyNotesRow: { flexDirection: 'row', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F8FAFC' },
-  historyNotesText: { fontSize: 14, color: '#64748B', flex: 1, lineHeight: 20 }
+  historyNotesText: { fontSize: 14, color: '#6B7280', flex: 1, lineHeight: 20 }
 });

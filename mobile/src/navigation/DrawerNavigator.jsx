@@ -28,6 +28,23 @@ import ExpenseApprovalScreen from '../screens/expenses/ExpenseApprovalScreen';
 import ReimbursementsScreen from '../screens/expenses/ReimbursementsScreen';
 import ExpenseReportsScreen from '../screens/expenses/ExpenseReportsScreen';
 
+// Phase 1: Payroll Screens
+import SalaryStructureScreen from '../screens/payroll/SalaryStructureScreen';
+import SalaryComponentsScreen from '../screens/payroll/SalaryComponentsScreen';
+import PayrollProcessingScreen from '../screens/payroll/PayrollProcessingScreen';
+import GeneratePayslipsScreen from '../screens/payroll/GeneratePayslipsScreen';
+import BonusIncentivesScreen from '../screens/payroll/BonusIncentivesScreen';
+import LoansAdvancesScreen from '../screens/payroll/LoansAdvancesScreen';
+import TaxManagementScreen from '../screens/payroll/TaxManagementScreen';
+
+// Phase 1: Recruitment Screens
+import RecruitmentDashboardScreen from '../screens/recruitment/RecruitmentDashboardScreen';
+import JobOpeningsScreen from '../screens/recruitment/JobOpeningsScreen';
+import CandidatesScreen from '../screens/recruitment/CandidatesScreen';
+import InterviewScheduleScreen from '../screens/recruitment/InterviewScheduleScreen';
+import OfferLettersScreen from '../screens/recruitment/OfferLettersScreen';
+import HiringPipelineScreen from '../screens/recruitment/HiringPipelineScreen';
+
 
 // Attendance Screens
 import DailyAttendanceScreen from '../screens/attendance/DailyAttendanceScreen';
@@ -67,6 +84,7 @@ import EmployeeDocumentsScreen from '../screens/employee/EmployeeDocumentsScreen
 // Projects & Tasks
 import TaskBoardScreen from '../screens/tasks/TaskBoardScreen';
 import TaskDetailsScreen from '../screens/tasks/TaskDetailsScreen';
+import TimesheetsScreen from '../screens/projects/TimesheetsScreen';
 
 // Sales
 import SalesEnquiriesScreen from '../screens/sales/SalesEnquiriesScreen';
@@ -187,23 +205,23 @@ export default function DrawerNavigator() {
       <Drawer.Screen name="HolidayList" component={PlaceholderScreen} />
 
       {/* Payroll */}
-      <Drawer.Screen name="SalaryStructure" component={PlaceholderScreen} />
-      <Drawer.Screen name="SalaryComponents" component={PlaceholderScreen} />
-      <Drawer.Screen name="PayrollProcessing" component={PlaceholderScreen} />
-      <Drawer.Screen name="GeneratePayslips" component={PlaceholderScreen} />
-      <Drawer.Screen name="BonusIncentives" component={PlaceholderScreen} />
-      <Drawer.Screen name="Reimbursements" component={PlaceholderScreen} />
-      <Drawer.Screen name="LoansAdvances" component={PlaceholderScreen} />
-      <Drawer.Screen name="TaxManagement" component={PlaceholderScreen} />
+      <Drawer.Screen name="SalaryStructure" component={SalaryStructureScreen} />
+      <Drawer.Screen name="SalaryComponents" component={SalaryComponentsScreen} />
+      <Drawer.Screen name="PayrollProcessing" component={PayrollProcessingScreen} />
+      <Drawer.Screen name="GeneratePayslips" component={GeneratePayslipsScreen} />
+      <Drawer.Screen name="BonusIncentives" component={BonusIncentivesScreen} />
+      <Drawer.Screen name="Reimbursements" component={ReimbursementsScreen} />
+      <Drawer.Screen name="LoansAdvances" component={LoansAdvancesScreen} />
+      <Drawer.Screen name="TaxManagement" component={TaxManagementScreen} />
       <Drawer.Screen name="PayrollReports" component={PlaceholderScreen} />
 
       {/* Recruitment */}
-      <Drawer.Screen name="RecruitmentDashboard" component={PlaceholderScreen} />
-      <Drawer.Screen name="JobOpenings" component={PlaceholderScreen} />
-      <Drawer.Screen name="Candidates" component={PlaceholderScreen} />
-      <Drawer.Screen name="InterviewSchedule" component={PlaceholderScreen} />
-      <Drawer.Screen name="OfferLetters" component={PlaceholderScreen} />
-      <Drawer.Screen name="HiringPipeline" component={PlaceholderScreen} />
+      <Drawer.Screen name="RecruitmentDashboard" component={RecruitmentDashboardScreen} />
+      <Drawer.Screen name="JobOpenings" component={JobOpeningsScreen} />
+      <Drawer.Screen name="Candidates" component={CandidatesScreen} />
+      <Drawer.Screen name="InterviewSchedule" component={InterviewScheduleScreen} />
+      <Drawer.Screen name="OfferLetters" component={OfferLettersScreen} />
+      <Drawer.Screen name="HiringPipeline" component={HiringPipelineScreen} />
 
       {/* Training */}
       <Drawer.Screen name="Training" component={TrainingScreen} />
@@ -229,9 +247,8 @@ export default function DrawerNavigator() {
       <Drawer.Screen name="ProjectDashboard" component={PlaceholderScreen} />
       <Drawer.Screen name="ProjectsList" component={PlaceholderScreen} />
       <Drawer.Screen name="Tasks" component={TaskBoardScreen} />
-      <Drawer.Screen name="TaskBoard" component={TaskBoardScreen} />
       <Drawer.Screen name="SprintBoard" component={PlaceholderScreen} />
-      <Drawer.Screen name="Timesheets" component={PlaceholderScreen} />
+      <Drawer.Screen name="Timesheets" component={TimesheetsScreen} />
       <Drawer.Screen name="Milestones" component={PlaceholderScreen} />
       <Drawer.Screen name="TeamMembers" component={PlaceholderScreen} />
 

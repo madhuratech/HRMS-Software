@@ -11,40 +11,23 @@ import {
   Image,
   Alert
 } from 'react-native';
-import { 
-  User, 
-  Lock, 
-  ArrowRight, 
-  ShieldCheck, 
-  Briefcase, 
-  TrendingUp, 
-  Wrench,
-  Mail,
-  BadgeCheck,
-  Eye,
-  EyeOff
-} from 'lucide-react-native';
+import { User, Lock, ArrowRight, ShieldCheck, Briefcase, TrendingUp, Wrench, Mail, BadgeCheck, Eye, EyeOff } from 'lucide-react-native';
 import { COLORS, SIZES, FONTS } from '../../components/ui/theme';
 import { useAuth } from '../../context/AuthContext';
 
 export default function LoginScreen({ navigation }) {
   const { login, getRegisteredUsers } = useAuth();
 
-  const [activeTab, setActiveTab] = useState('SUPER_ADMIN'); // 'SUPER_ADMIN', 'ADMIN' or 'EMPLOYEE'
+  const [selectedRole, setSelectedRole] = useState('SUPER_ADMIN');
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [employeeId, setEmployeeId] = useState(''); // Only used for EMPLOYEE tab
   const [showPassword, setShowPassword] = useState(false);
 
   const handleLogin = async () => {
     // Basic validation
     if (!email || !password) {
       Alert.alert('Validation Error', 'Please enter your email and password.');
-      return;
-    }
-    if (activeTab === 'EMPLOYEE' && !employeeId) {
-      Alert.alert('Validation Error', 'Please enter your Employee ID.');
       return;
     }
 
@@ -55,12 +38,10 @@ export default function LoginScreen({ navigation }) {
     }
   };
 
-  const handleTabSwitch = (tab) => {
-    setActiveTab(tab);
-    setEmail('');
-    setPassword('');
-    setEmployeeId('');
-    setShowPassword(false);
+  const setPreset = (role, emailVal) => {
+    setSelectedRole(role);
+    setEmail(emailVal);
+    setPassword('password123');
   };
 
   return (
@@ -102,31 +83,42 @@ export default function LoginScreen({ navigation }) {
             <Text style={styles.welcomeSubtitle}>Please sign in to continue.</Text>
           </View>
 
-          {/* Tab Switcher */}
-          <View style={styles.tabContainer}>
-            <TouchableOpacity 
-              style={[styles.tabButton, activeTab === 'SUPER_ADMIN' && styles.tabButtonActive]}
-              onPress={() => handleTabSwitch('SUPER_ADMIN')}
-            >
-              <Wrench size={18} color={activeTab === 'SUPER_ADMIN' ? COLORS.primary : COLORS.textMuted} />
-              <Text style={[styles.tabText, activeTab === 'SUPER_ADMIN' && styles.tabTextActive]}>Super Admin</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.tabButton, activeTab === 'ADMIN' && styles.tabButtonActive]}
-              onPress={() => handleTabSwitch('ADMIN')}
-            >
-              <ShieldCheck size={18} color={activeTab === 'ADMIN' ? COLORS.primary : COLORS.textMuted} />
-              <Text style={[styles.tabText, activeTab === 'ADMIN' && styles.tabTextActive]}>Admin</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity 
-              style={[styles.tabButton, activeTab === 'EMPLOYEE' && styles.tabButtonActive]}
-              onPress={() => handleTabSwitch('EMPLOYEE')}
-            >
-              <User size={18} color={activeTab === 'EMPLOYEE' ? COLORS.primary : COLORS.textMuted} />
-              <Text style={[styles.tabText, activeTab === 'EMPLOYEE' && styles.tabTextActive]}>Employee</Text>
-            </TouchableOpacity>
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Role</Text>
+            <View style={styles.roleGrid}>
+              <View style={styles.roleRow}>
+                <TouchableOpacity 
+                  style={[styles.roleButton, selectedRole === 'SUPER_ADMIN' && styles.roleButtonActive]}
+                  onPress={() => setPreset('SUPER_ADMIN', 'admin@hawkeye.com')}
+                >
+                  <ShieldCheck size={16} color={selectedRole === 'SUPER_ADMIN' ? '#1d4ed8' : COLORS.textMuted} />
+                  <Text style={[styles.roleText, selectedRole === 'SUPER_ADMIN' && styles.roleTextActive]}>Super Admin</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.roleButton, selectedRole === 'SALES_MANAGER' && styles.roleButtonActive]}
+                  onPress={() => setPreset('SALES_MANAGER', 'sales@hawkeye.com')}
+                >
+                  <TrendingUp size={16} color={selectedRole === 'SALES_MANAGER' ? '#1d4ed8' : COLORS.textMuted} />
+                  <Text style={[styles.roleText, selectedRole === 'SALES_MANAGER' && styles.roleTextActive]}>Sales Mgr</Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.roleRow}>
+                <TouchableOpacity 
+                  style={[styles.roleButton, selectedRole === 'SERVICE_STAFF' && styles.roleButtonActive]}
+                  onPress={() => setPreset('SERVICE_STAFF', 'tech@hawkeye.com')}
+                >
+                  <Wrench size={16} color={selectedRole === 'SERVICE_STAFF' ? '#1d4ed8' : COLORS.textMuted} />
+                  <Text style={[styles.roleText, selectedRole === 'SERVICE_STAFF' && styles.roleTextActive]}>Service Staff</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.roleButton, selectedRole === 'BRANCH_MANAGER' && styles.roleButtonActive]}
+                  onPress={() => setPreset('BRANCH_MANAGER', 'branch@hawkeye.com')}
+                >
+                  <Briefcase size={16} color={selectedRole === 'BRANCH_MANAGER' ? '#1d4ed8' : COLORS.textMuted} />
+                  <Text style={[styles.roleText, selectedRole === 'BRANCH_MANAGER' && styles.roleTextActive]}>Branch Mgr</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
 
           {/* Mail Input (Common) */}
@@ -147,26 +139,6 @@ export default function LoginScreen({ navigation }) {
               </View>
             </View>
           </View>
-
-          {/* Employee ID Input (Only for Employee) */}
-          {activeTab === 'EMPLOYEE' && (
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>Employee ID</Text>
-              <View style={styles.inputContainer}>
-                <BadgeCheck style={styles.inputIcon} size={18} color={COLORS.textLight} />
-                <View style={styles.inputWrapper}>
-                   <TextInput
-                     style={styles.inputText}
-                     value={employeeId}
-                     onChangeText={setEmployeeId}
-                     placeholder="e.g. EMP-1042"
-                     placeholderTextColor={COLORS.textLight}
-                     autoCapitalize="characters"
-                   />
-                </View>
-              </View>
-            </View>
-          )}
 
           {/* Password Input (Common) */}
           <View style={styles.formGroup}>
@@ -211,13 +183,13 @@ export default function LoginScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF6E8',
+    backgroundColor: '#111827', // slate-900
   },
   scrollContent: {
     flexGrow: 1,
   },
   headerSection: {
-    backgroundColor: '#FAF6E8',
+    backgroundColor: '#2563EB', // blue-600
     paddingTop: 80,
     paddingHorizontal: 24,
     paddingBottom: 60,
@@ -231,8 +203,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   logoIcon: {
-    width: 56,
-    height: 56,
+    width: 40,
+    height: 40,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -240,37 +214,35 @@ const styles = StyleSheet.create({
   logoText: {
     fontFamily: FONTS.bold,
     fontSize: 24,
-    color: '#1A2B4C',
+    color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   heroTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 28,
-    color: '#1A2B4C',
+    fontSize: 32,
+    color: '#FFFFFF',
     marginBottom: 12,
-    lineHeight: 36,
+    lineHeight: 40,
   },
   heroSubtitle: {
     fontFamily: FONTS.regular,
-    fontSize: 14,
-    color: '#5C6B83',
-    lineHeight: 20,
+    fontSize: 16,
+    color: '#DBEAFE', // blue-100
+    lineHeight: 24,
     marginBottom: 10,
   },
   formSection: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
     padding: 24,
     borderRadius: 24,
     marginHorizontal: 16,
     marginBottom: 24,
     marginTop: -40,
-    shadowColor: '#1A2B4C',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.1,
     shadowRadius: 20,
     elevation: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(26, 43, 76, 0.05)',
   },
   welcomeBox: {
     marginBottom: 24,
@@ -278,70 +250,63 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontFamily: FONTS.bold,
     fontSize: 24,
-    color: '#1A2B4C',
+    color: '#1E293B', // slate-800
     marginBottom: 8,
   },
   welcomeSubtitle: {
     fontFamily: FONTS.regular,
-    fontSize: SIZES.md,
-    color: '#5C6B83',
+    fontSize: 14,
+    color: '#6B7280', // slate-500
   },
-  tabContainer: {
+  roleGrid: {
+    gap: 8,
+  },
+  roleRow: {
     flexDirection: 'row',
-    backgroundColor: COLORS.background,
-    borderRadius: 12,
-    padding: 4,
-    marginBottom: 24,
+    gap: 8,
   },
-  tabButton: {
+  roleButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0', // slate-200
     borderRadius: 8,
-    gap: 8,
+    gap: 6,
+    backgroundColor: '#FFFFFF',
   },
-  tabButtonActive: {
-    backgroundColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+  roleButtonActive: {
+    borderColor: '#3B82F6', // blue-500
+    backgroundColor: '#EFF6FF', // blue-50
   },
-  tabText: {
+  roleText: {
     fontFamily: FONTS.medium,
-    fontSize: SIZES.sm,
-    color: COLORS.textMuted,
-    fontWeight: '600',
+    fontSize: 14,
+    color: '#475569', // slate-600
   },
-  tabTextActive: {
-    color: '#1A2B4C',
+  roleTextActive: {
+    color: '#1D4ED8', // blue-700
   },
   formGroup: {
     marginBottom: 20,
   },
   label: {
     fontFamily: FONTS.medium,
-    fontSize: SIZES.sm,
-    color: '#1A2B4C',
+    fontSize: 14,
+    color: '#334155', // slate-700
     marginBottom: 8,
     fontWeight: '500',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0', // slate-200
     borderRadius: 12,
-    height: 52,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    elevation: 1,
+    height: 48,
   },
   inputIcon: {
     marginLeft: 12,
@@ -354,27 +319,27 @@ const styles = StyleSheet.create({
   },
   inputText: {
     fontFamily: FONTS.regular,
-    fontSize: SIZES.md,
-    color: COLORS.text,
+    fontSize: 14,
+    color: '#111827', // slate-900
   },
   loginButton: {
-    backgroundColor: '#1A2B4C',
+    backgroundColor: '#2563EB', // blue-600
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 56,
-    borderRadius: 14,
+    height: 48,
+    borderRadius: 12,
     marginTop: 16,
-    shadowColor: '#1A2B4C',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     elevation: 4,
   },
   loginButtonText: {
     fontFamily: FONTS.bold,
-    fontSize: SIZES.md,
-    color: '#ffffff',
+    fontSize: 14,
+    color: '#FFFFFF',
   },
   registerPrompt: {
     flexDirection: 'row',
@@ -383,18 +348,18 @@ const styles = StyleSheet.create({
   },
   registerText: {
     fontFamily: FONTS.regular,
-    fontSize: SIZES.sm,
-    color: COLORS.textMuted,
+    fontSize: 14,
+    color: '#6B7280', // slate-500
   },
   registerLink: {
     fontFamily: FONTS.bold,
-    fontSize: SIZES.sm,
-    color: '#1A2B4C',
+    fontSize: 14,
+    color: '#2563EB', // blue-600
   },
   footerText: {
     fontFamily: FONTS.regular,
     fontSize: 11,
-    color: COLORS.textLight,
+    color: '#94A3B8', // slate-400
     textAlign: 'center',
     marginTop: 32,
   }

@@ -35,35 +35,12 @@ exports.up = async function(knex) {
       table.date('start_date').nullable();
       table.date('target_date').notNullable();
       table.integer('completion_percentage').defaultTo(0);
-<<<<<<< HEAD
       table.enum('status', ['On Track', 'At Risk', 'Not Started', 'Completed']).defaultTo('Not Started');
-=======
-      table.string('status', 100).defaultTo('Not Started');
->>>>>>> origin/main
       table.integer('created_by').nullable();
       table.integer('updated_by').nullable();
       table.timestamp('created_at').defaultTo(knex.fn.now());
       table.timestamp('updated_at').defaultTo(knex.raw('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'));
     });
-<<<<<<< HEAD
-=======
-  } else {
-    const hasGoalTitle = await knex.schema.hasColumn('goals', 'goal_title');
-    if (!hasGoalTitle) {
-      await knex.schema.alterTable('goals', (table) => {
-        table.string('goal_title', 255).nullable();
-        table.integer('department_id').nullable();
-        table.string('goal_category', 255).defaultTo('General');
-        table.text('goal_description').nullable();
-        table.string('priority', 50).defaultTo('Medium');
-        table.date('target_date').nullable();
-        table.integer('completion_percentage').defaultTo(0);
-        table.string('status', 100).defaultTo('Not Started');
-        table.integer('created_by').nullable();
-        table.integer('updated_by').nullable();
-      });
-    }
->>>>>>> origin/main
   }
 
   // 3. kpis
@@ -75,31 +52,12 @@ exports.up = async function(knex) {
       table.string('weightage', 100).nullable();
       table.string('target_value', 255).notNullable();
       table.text('description').nullable();
-<<<<<<< HEAD
       table.enum('status', ['Active', 'Inactive']).defaultTo('Active');
-=======
-      table.string('status', 100).defaultTo('Active');
->>>>>>> origin/main
       table.integer('created_by').nullable();
       table.integer('updated_by').nullable();
       table.timestamp('created_at').defaultTo(knex.fn.now());
       table.timestamp('updated_at').defaultTo(knex.raw('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'));
     });
-<<<<<<< HEAD
-=======
-  } else {
-    const hasKpiName = await knex.schema.hasColumn('kpis', 'kpi_name');
-    if (!hasKpiName) {
-      await knex.schema.alterTable('kpis', (table) => {
-        table.string('kpi_name', 255).nullable();
-        table.integer('department_id').nullable();
-        table.text('description').nullable();
-        table.string('status', 100).defaultTo('Active');
-        table.integer('created_by').nullable();
-        table.integer('updated_by').nullable();
-      });
-    }
->>>>>>> origin/main
   }
 
   // 4. kras
@@ -110,34 +68,13 @@ exports.up = async function(knex) {
       table.integer('department_id').notNullable();
       table.string('role_id', 255).notNullable();
       table.string('weightage', 100).nullable();
-<<<<<<< HEAD
       table.enum('status', ['Active', 'Inactive']).defaultTo('Active');
-=======
-      table.string('status', 100).defaultTo('Active');
->>>>>>> origin/main
       table.text('description').nullable();
       table.integer('created_by').nullable();
       table.integer('updated_by').nullable();
       table.timestamp('created_at').defaultTo(knex.fn.now());
       table.timestamp('updated_at').defaultTo(knex.raw('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'));
     });
-<<<<<<< HEAD
-=======
-  } else {
-    const hasKraTitle = await knex.schema.hasColumn('kras', 'kra_title');
-    if (!hasKraTitle) {
-      await knex.schema.alterTable('kras', (table) => {
-        table.string('kra_title', 255).nullable();
-        table.integer('department_id').nullable();
-        table.string('role_id', 255).nullable();
-        table.string('weightage', 100).nullable();
-        table.string('status', 100).defaultTo('Active');
-        table.text('description').nullable();
-        table.integer('created_by').nullable();
-        table.integer('updated_by').nullable();
-      });
-    }
->>>>>>> origin/main
   }
 
   // 5. appraisals
@@ -150,33 +87,12 @@ exports.up = async function(knex) {
       table.date('effective_date').notNullable();
       table.decimal('appraisal_percentage', 5, 2).nullable();
       table.text('remarks').nullable();
-<<<<<<< HEAD
       table.enum('status', ['In Progress', 'Approved', 'Rejected']).defaultTo('In Progress');
-=======
-      table.string('status', 100).defaultTo('In Progress');
->>>>>>> origin/main
       table.integer('created_by').nullable();
       table.integer('updated_by').nullable();
       table.timestamp('created_at').defaultTo(knex.fn.now());
       table.timestamp('updated_at').defaultTo(knex.raw('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'));
     });
-<<<<<<< HEAD
-=======
-  } else {
-    const hasCurrentSalary = await knex.schema.hasColumn('appraisals', 'current_salary');
-    if (!hasCurrentSalary) {
-      await knex.schema.alterTable('appraisals', (table) => {
-        table.decimal('current_salary', 15, 2).nullable();
-        table.decimal('proposed_salary', 15, 2).nullable();
-        table.date('effective_date').nullable();
-        table.decimal('appraisal_percentage', 5, 2).nullable();
-        table.text('remarks').nullable();
-        table.string('status', 100).defaultTo('In Progress');
-        table.integer('created_by').nullable();
-        table.integer('updated_by').nullable();
-      });
-    }
->>>>>>> origin/main
   }
 
   // 6. reviews
@@ -192,34 +108,12 @@ exports.up = async function(knex) {
       table.text('improvement').nullable();
       table.text('goals').nullable();
       table.text('comments').nullable();
-<<<<<<< HEAD
       table.enum('status', ['Completed', 'In Progress', 'Pending']).defaultTo('In Progress');
-=======
-      table.string('status', 100).defaultTo('In Progress');
->>>>>>> origin/main
       table.integer('created_by').nullable();
       table.integer('updated_by').nullable();
       table.timestamp('created_at').defaultTo(knex.fn.now());
       table.timestamp('updated_at').defaultTo(knex.raw('CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP'));
     });
-<<<<<<< HEAD
-=======
-  } else {
-    const hasReviewPeriod = await knex.schema.hasColumn('reviews', 'review_period');
-    if (!hasReviewPeriod) {
-      await knex.schema.alterTable('reviews', (table) => {
-        table.string('review_period', 255).nullable();
-        table.string('type', 255).nullable();
-        table.string('overall_rating', 100).nullable();
-        table.text('strengths').nullable();
-        table.text('improvement').nullable();
-        table.text('goals').nullable();
-        table.string('status', 100).defaultTo('In Progress');
-        table.integer('created_by').nullable();
-        table.integer('updated_by').nullable();
-      });
-    }
->>>>>>> origin/main
   }
 
   // 7. feedbacks

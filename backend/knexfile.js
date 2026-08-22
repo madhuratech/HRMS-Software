@@ -1,7 +1,5 @@
 require('dotenv').config();
 
-<<<<<<< HEAD
-=======
 const poolConfig = {
   min: 0,
   max: 10,
@@ -12,8 +10,6 @@ const poolConfig = {
   reapIntervalMillis: 1000,
   createRetryIntervalMillis: 200
 };
-
->>>>>>> origin/main
 module.exports = {
   development: {
     client: 'mysql2',
@@ -24,10 +20,7 @@ module.exports = {
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
     },
-<<<<<<< HEAD
-=======
     pool: poolConfig,
->>>>>>> origin/main
     migrations: {
       directory: './migrations',
       tableName: 'knex_migrations'
@@ -42,10 +35,7 @@ module.exports = {
       password: process.env.DB_PASSWORD,
       database: process.env.DB_NAME,
     },
-<<<<<<< HEAD
-=======
     pool: poolConfig,
->>>>>>> origin/main
     migrations: {
       directory: './migrations',
       tableName: 'knex_migrations'

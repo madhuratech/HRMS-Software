@@ -56,11 +56,7 @@
             "vite": "6.3.5"
       },
       "scripts": {
-<<<<<<< HEAD
-            "dev": "vite",
-=======
             "dev": "node --max-http-header-size=1048576 node_modules/vite/bin/vite.js",
->>>>>>> origin/main
             "build": "vite build"
       }
 }

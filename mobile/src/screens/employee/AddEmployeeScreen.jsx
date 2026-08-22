@@ -7,7 +7,7 @@ import {
   Alert,
   TouchableOpacity
 } from 'react-native';
-import { ChevronRight, ChevronLeft, Check, UploadCloud, ShieldCheck, User, ArrowLeft } from 'lucide-react-native';
+import { ChevronRight, ChevronLeft, Check, UploadCloud, ShieldCheck, User } from 'lucide-react-native';
 import { COLORS, SIZES, FONTS } from '../../components/ui/theme';
 import { HRMSCard } from '../../components/ui/HRMSCard';
 import { HRMSButton } from '../../components/ui/HRMSButton';
@@ -49,6 +49,13 @@ export default function AddEmployeeScreen({ navigation }) {
     phone: '',
     salary: '60000',
     address: '',
+    emergencyContact: '',
+    bankName: '',
+    accountNumber: '',
+    ifscCode: '',
+    managerName: '',
+    teamName: '',
+    employmentType: 'Full-time',
     photo: ''
   });
 
@@ -90,12 +97,17 @@ export default function AddEmployeeScreen({ navigation }) {
         dob: formData.dob,
         joinDate: formData.joinDate,
         gender: formData.gender,
+        employmentType: formData.employmentType,
         salary: parseFloat(formData.salary) || 0,
         address: formData.address,
+        emergencyContact: formData.emergencyContact,
+        bankDetails: JSON.stringify({ bankName: formData.bankName, accountNumber: formData.accountNumber, ifscCode: formData.ifscCode }),
         branch: formData.branch,
         department: formData.department,
         designation: activeTab === 'ADMIN' ? 'Admin' : formData.designation,
         role_name: activeTab === 'ADMIN' ? formData.designation : 'Employee',
+        managerName: formData.managerName,
+        teamName: formData.teamName
       };
 
       await apiClient.post('/employees', payload);
@@ -121,7 +133,7 @@ export default function AddEmployeeScreen({ navigation }) {
                 activeStep >= step.id ? styles.stepCircleActive : null
               ]}>
                 {activeStep > step.id ? (
-                  <Check size={14} color="#fff" />
+                  <Check size={14} color='#FFFFFF' />
                 ) : (
                   <Text style={[styles.stepCircleText, activeStep >= step.id && styles.stepCircleTextActive]}>
                     {step.id}
@@ -149,14 +161,14 @@ export default function AddEmployeeScreen({ navigation }) {
           style={[styles.tabButton, activeTab === 'ADMIN' && styles.tabButtonActive]}
           onPress={() => setActiveTab('ADMIN')}
         >
-          <ShieldCheck size={18} color={activeTab === 'ADMIN' ? '#4F46E5' : '#64748B'} />
+          <ShieldCheck size={18} color={activeTab === 'ADMIN' ? '#2563EB' : '#6B7280'} />
           <Text style={[styles.tabText, activeTab === 'ADMIN' && styles.tabTextActive]}>Admin</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           style={[styles.tabButton, activeTab === 'EMPLOYEE' && styles.tabButtonActive]}
           onPress={() => setActiveTab('EMPLOYEE')}
         >
-          <User size={18} color={activeTab === 'EMPLOYEE' ? '#4F46E5' : '#64748B'} />
+          <User size={18} color={activeTab === 'EMPLOYEE' ? '#2563EB' : '#6B7280'} />
           <Text style={[styles.tabText, activeTab === 'EMPLOYEE' && styles.tabTextActive]}>Employee</Text>
         </TouchableOpacity>
       </View>
@@ -252,10 +264,10 @@ export default function AddEmployeeScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.pageHeader}>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.pageHeader}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
           <TouchableOpacity onPress={() => navigation.navigate('EmployeeList')} style={{ marginRight: 16, padding: 4 }}>
-            <ArrowLeft size={24} color="#0F172A" />
+            <ChevronLeft size={24} color='#111827' />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.pageTitle}>Add Employee</Text>
@@ -270,14 +282,14 @@ export default function AddEmployeeScreen({ navigation }) {
             style={[styles.tabButton, activeTab === 'ADMIN' && styles.tabButtonActive]}
             onPress={() => setActiveTab('ADMIN')}
           >
-            <ShieldCheck size={18} color={activeTab === 'ADMIN' ? '#4F46E5' : '#64748B'} />
+            <ShieldCheck size={18} color={activeTab === 'ADMIN' ? '#2563EB' : '#6B7280'} />
             <Text style={[styles.tabText, activeTab === 'ADMIN' && styles.tabTextActive]}>Admin</Text>
           </TouchableOpacity>
           <TouchableOpacity 
             style={[styles.tabButton, activeTab === 'EMPLOYEE' && styles.tabButtonActive]}
             onPress={() => setActiveTab('EMPLOYEE')}
           >
-            <User size={18} color={activeTab === 'EMPLOYEE' ? '#4F46E5' : '#64748B'} />
+            <User size={18} color={activeTab === 'EMPLOYEE' ? '#2563EB' : '#6B7280'} />
             <Text style={[styles.tabText, activeTab === 'EMPLOYEE' && styles.tabTextActive]}>Employee</Text>
           </TouchableOpacity>
         </View>
@@ -307,7 +319,7 @@ export default function AddEmployeeScreen({ navigation }) {
         ) : (
           <TouchableOpacity onPress={handleSubmit} disabled={loading} style={{ flex: 1, marginLeft: 8, borderRadius: 10, overflow: 'hidden' }}>
             <LinearGradient colors={['#2563EB', '#1D4ED8']} style={{ padding: 16, alignItems: 'center' }}>
-              <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 14 }}>
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>
                 {loading ? 'Submitting...' : 'Submit'}
               </Text>
             </LinearGradient>
@@ -332,23 +344,23 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#0F172A',
+    color: '#111827',
     fontWeight: '600',
     textAlign: 'center',
   },
   pageHeader: { 
     padding: 24, 
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#E5E7EB',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
   },
   headerTextContainer: { flex: 1 },
-  pageTitle: { fontSize: 24, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
-  pageSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
+  pageTitle: { fontSize: 24, fontWeight: '900', color: '#111827', letterSpacing: -0.5 },
+  pageSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
 
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#EFF6FF',
     borderRadius: 16,
     padding: 6,
     marginHorizontal: 24,
@@ -360,17 +372,17 @@ const styles = StyleSheet.create({
     paddingVertical: 12, borderRadius: 12, gap: 8
   },
   tabButtonActive: {
-    backgroundColor: '#FFF',
-    shadowColor: '#4F46E5', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 2
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 2
   },
-  tabText: { fontSize: 15, fontWeight: '700', color: '#64748B' },
-  tabTextActive: { color: '#4F46E5' },
+  tabText: { fontSize: 15, fontWeight: '700', color: '#6B7280' },
+  tabTextActive: { color: '#2563EB' },
 
   stepContainer: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#E5E7EB',
     marginTop: 8,
   },
   stepScroll: {
@@ -403,7 +415,7 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
   },
   stepCircleTextActive: {
-    color: '#fff',
+    color: '#FFFFFF',
   },
   stepLabel: {
     fontSize: 10,
@@ -422,18 +434,18 @@ const styles = StyleSheet.create({
     marginTop: -16,
   },
   stepLineActive: {
-    backgroundColor: '#4F46E5',
+    backgroundColor: '#2563EB',
   },
   scrollContent: {
     padding: 24,
     paddingBottom: 100,
   },
   card: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
     padding: 24,
     borderRadius: 24,
-    borderWidth: 1, borderColor: '#F1F5F9',
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 16, elevation: 3,
+    borderWidth: 1, borderColor: '#E5E7EB',
+    shadowColor: '#111827', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.04, shadowRadius: 16, elevation: 3,
   },
   avatarSection: {
     alignItems: 'center',

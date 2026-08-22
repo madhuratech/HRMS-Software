@@ -24,7 +24,7 @@ export default function FeedbackScreen() {
   const fetchFeedbacks = async () => {
     try {
       setLoading(true);
-      const res = await apiClient.get('/performance/feedback');
+      const res = await apiClient.get('/feedback');
       if (Array.isArray(res.data)) {
         setFeedbacks(res.data);
       }
@@ -42,7 +42,7 @@ export default function FeedbackScreen() {
     }
     try {
       setSubmitting(true);
-      await apiClient.post('/performance/feedback', { 
+      await apiClient.post('/feedback', { 
         employee_id: parseInt(employeeId), provider_id: parseInt(providerId), feedback_text: feedbackText, feedback_type: feedbackType 
       });
       setEmployeeId(''); setProviderId(''); setFeedbackText(''); setFeedbackType('positive');
@@ -82,7 +82,7 @@ export default function FeedbackScreen() {
         <View style={styles.divider} />
 
         <View style={styles.footer}>
-          <User size={14} color="#64748B" style={{marginRight: 6}} />
+          <User size={14} color='#6B7280' style={{marginRight: 6}} />
           <Text style={styles.footerText}>From: {item.prov_first_name ? `${item.prov_first_name} ${item.prov_last_name}` : `Emp #${item.provider_id}`}</Text>
         </View>
       </View>
@@ -98,7 +98,7 @@ export default function FeedbackScreen() {
         </View>
         <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
           <LinearGradient colors={['#10B981', '#059669']} style={styles.gradientBtn}>
-            <Plus size={18} color="#FFF" />
+            <Plus size={18} color='#FFFFFF' />
             <Text style={styles.addButtonText}>Give Feedback</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -106,7 +106,7 @@ export default function FeedbackScreen() {
 
       <View style={styles.toolbar}>
         <View style={styles.searchBox}>
-          <Search size={20} color="#64748B" />
+          <Search size={20} color='#6B7280' />
           <TextInput 
             style={styles.searchInput} 
             placeholder="Search feedback..." 
@@ -143,7 +143,7 @@ export default function FeedbackScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Give Feedback</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color="#64748B" />
+                <X size={24} color='#6B7280' />
               </TouchableOpacity>
             </View>
             <View style={styles.modalBody}>
@@ -155,15 +155,15 @@ export default function FeedbackScreen() {
                   style={[styles.typeBtn, feedbackType === 'positive' && styles.typeBtnActivePositive]} 
                   onPress={() => setFeedbackType('positive')}
                 >
-                  <ThumbsUp size={16} color={feedbackType === 'positive' ? '#FFF' : '#64748B'} />
-                  <Text style={[styles.typeBtnText, feedbackType === 'positive' && {color: '#FFF'}]}>Positive</Text>
+                  <ThumbsUp size={16} color={feedbackType === 'positive' ? '#FFFFFF' : '#6B7280'} />
+                  <Text style={[styles.typeBtnText, feedbackType === 'positive' && {color: '#FFFFFF'}]}>Positive</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={[styles.typeBtn, feedbackType === 'constructive' && styles.typeBtnActiveConstructive]} 
                   onPress={() => setFeedbackType('constructive')}
                 >
-                  <ThumbsDown size={16} color={feedbackType === 'constructive' ? '#FFF' : '#64748B'} />
-                  <Text style={[styles.typeBtnText, feedbackType === 'constructive' && {color: '#FFF'}]}>Constructive</Text>
+                  <ThumbsDown size={16} color={feedbackType === 'constructive' ? '#FFFFFF' : '#6B7280'} />
+                  <Text style={[styles.typeBtnText, feedbackType === 'constructive' && {color: '#FFFFFF'}]}>Constructive</Text>
                 </TouchableOpacity>
               </View>
 
@@ -188,41 +188,41 @@ export default function FeedbackScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { padding: 20, backgroundColor: '#FFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  header: { padding: 20, backgroundColor: '#FFFFFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
   headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
-  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
   addButton: { borderRadius: 10, overflow: 'hidden' },
   gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 6 },
-  addButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  addButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   toolbar: { padding: 20 },
-  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 16, height: 48 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 16, height: 48 },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: '#1E293B', fontWeight: '500' },
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   listContent: { paddingHorizontal: 20, paddingBottom: 24 },
-  card: { backgroundColor: '#FFF', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  titleText: { fontSize: 15, fontWeight: '700', color: '#0F172A' },
+  titleText: { fontSize: 15, fontWeight: '700', color: '#111827' },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   badgeText: { fontSize: 10, fontWeight: '700' },
   feedbackText: { fontSize: 14, color: '#475569', lineHeight: 22, fontStyle: 'italic' },
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 },
+  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 12 },
   footer: { flexDirection: 'row', alignItems: 'center' },
-  footerText: { fontSize: 12, color: '#64748B', fontWeight: '600' },
+  footerText: { fontSize: 12, color: '#6B7280', fontWeight: '600' },
   emptyBox: { padding: 40, alignItems: 'center' },
   emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '500' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#0F172A' },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
   modalBody: { gap: 12 },
   modalInput: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, fontSize: 16, color: '#1E293B', backgroundColor: '#F8FAFC' },
   typeSelector: { flexDirection: 'row', gap: 12, marginBottom: 4 },
   typeBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E2E8F0', gap: 8 },
   typeBtnActivePositive: { backgroundColor: '#10B981', borderColor: '#10B981' },
   typeBtnActiveConstructive: { backgroundColor: '#F59E0B', borderColor: '#F59E0B' },
-  typeBtnText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
+  typeBtnText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
   submitButton: { backgroundColor: '#10B981', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 10 },
-  submitButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700' }
+  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' }
 });

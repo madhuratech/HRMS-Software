@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
-import { Network, User, Briefcase, Calendar, ChevronDown, ChevronRight, Users, ArrowLeft } from 'lucide-react-native';
+import { Network, User, Briefcase, Calendar, ChevronDown, ChevronRight, Users, ChevronLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import apiClient from '../../api/client';
 
 const ROLE_ORDER = ['SUPER_ADMIN', 'ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'];
 const ROLE_CONFIG = {
-  SUPER_ADMIN: { label: 'Super Admin', color: '#4F46E5', bg: '#EEF2FF', border: '#4F46E5', borderWidth: 2 },
+  SUPER_ADMIN: { label: 'Super Admin', color: '#2563EB', bg: '#EFF6FF', border: '#2563EB', borderWidth: 2 },
   ADMIN:       { label: 'Admin',       color: '#0EA5E9', bg: '#E0F2FE', border: '#0EA5E9', borderWidth: 2 },
   HR:          { label: 'HR',          color: '#10B981', bg: '#D1FAE5', border: '#10B981', borderWidth: 1.5 },
   MANAGER:     { label: 'Manager',     color: '#F59E0B', bg: '#FEF3C7', border: '#F59E0B', borderWidth: 1.5 },
-  EMPLOYEE:    { label: 'Employee',    color: '#64748B', bg: '#F1F5F9', border: '#CBD5E1', borderWidth: 1 },
+  EMPLOYEE:    { label: 'Employee',    color: '#6B7280', bg: '#E5E7EB', border: '#CBD5E1', borderWidth: 1 },
 };
 
 function getRoleKey(emp) {
@@ -148,10 +148,10 @@ export default function OrganizationChartScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
         <View style={styles.headerTop}>
           <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
-            <ArrowLeft size={24} color="#0F172A" />
+            <ChevronLeft size={24} color='#111827' />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Organization Chart</Text>
@@ -176,7 +176,7 @@ export default function OrganizationChartScreen() {
 
       {loading ? (
         <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color='#2563EB' />
           <Text style={styles.loadingText}>Loading organization chart...</Text>
         </View>
       ) : total === 0 ? (
@@ -189,7 +189,7 @@ export default function OrganizationChartScreen() {
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#4F46E5']} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563EB']} />}
           showsVerticalScrollIndicator={false}
         >
           {ROLE_ORDER.map(rk => (
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
   header: { 
     padding: 24, 
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#E5E7EB',
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
@@ -220,31 +220,31 @@ const styles = StyleSheet.create({
   },
   headerTop: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
-  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
 
   summaryBar: {
-    flexDirection: 'row', backgroundColor: '#FFF', paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    flexDirection: 'row', backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 14,
+    borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
     gap: 8, flexWrap: 'wrap'
   },
   summaryItem: { alignItems: 'center', minWidth: 54 },
-  summaryNum: { fontSize: 22, fontWeight: '900', color: '#0F172A' },
-  summaryLabel: { fontSize: 11, color: '#64748B', fontWeight: '600', marginTop: 2 },
+  summaryNum: { fontSize: 22, fontWeight: '900', color: '#111827' },
+  summaryLabel: { fontSize: 11, color: '#6B7280', fontWeight: '600', marginTop: 2 },
 
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  loadingText: { fontSize: 15, color: '#64748B', fontWeight: '500' },
+  loadingText: { fontSize: 15, color: '#6B7280', fontWeight: '500' },
   emptyBox: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 12 },
-  emptyTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
-  emptyText: { fontSize: 14, color: '#64748B', textAlign: 'center' },
+  emptyTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
+  emptyText: { fontSize: 14, color: '#6B7280', textAlign: 'center' },
 
   scroll: { flex: 1 },
   scrollContent: { padding: 16, paddingBottom: 32 },
 
   groupContainer: { marginBottom: 16 },
   groupHeader: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF',
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF',
     borderRadius: 16, padding: 16, borderLeftWidth: 4,
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
     gap: 10
@@ -262,14 +262,14 @@ const styles = StyleSheet.create({
 
   cardWrapper: { flex: 1, marginBottom: 8 },
   empCard: {
-    flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 14, padding: 14,
+    flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14,
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
     alignItems: 'center',
   },
   avatarBox: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
-  avatarText: { fontSize: 18, fontWeight: '900', color: '#FFF' },
+  avatarText: { fontSize: 18, fontWeight: '900', color: '#FFFFFF' },
   empInfo: { flex: 1 },
-  empName: { fontSize: 15, fontWeight: '800', color: '#0F172A', marginBottom: 2 },
+  empName: { fontSize: 15, fontWeight: '800', color: '#111827', marginBottom: 2 },
   empDesig: { fontSize: 13, color: '#475569', fontWeight: '600', marginBottom: 2 },
   empDept: { fontSize: 12, color: '#94A3B8', fontWeight: '500', marginBottom: 6 },
   bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },

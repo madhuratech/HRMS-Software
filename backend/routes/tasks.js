@@ -17,8 +17,4 @@ router.put('/:id', authenticateJWT, checkRole(writeRoles), validationMiddleware(
 router.put('/:id/status', authenticateJWT, checkRole(writeRoles), TaskController.updateStatus);
 router.delete('/:id', authenticateJWT, checkRole(writeRoles), TaskController.delete);
 
-<<<<<<< HEAD
 module.exports = router;
-=======
-module.exports = router;
->>>>>>> origin/main

@@ -12,21 +12,7 @@ import {
   Image,
   Alert
 } from 'react-native';
-import { 
-  User, 
-  Lock, 
-  TrendingUp, 
-  Mail, 
-  Phone, 
-  ShieldCheck, 
-  ArrowRight,
-  ArrowLeft,
-  CheckCircle2,
-  Briefcase,
-  BadgeCheck,
-  Eye,
-  EyeOff
-} from 'lucide-react-native';
+import { User, Lock, TrendingUp, Mail, Phone, ShieldCheck, ArrowRight, ChevronLeft, CheckCircle2, Briefcase, BadgeCheck, Eye, EyeOff } from 'lucide-react-native';
 import { COLORS, SIZES, FONTS } from '../../components/ui/theme';
 import { useAuth } from '../../context/AuthContext';
 
@@ -263,7 +249,7 @@ export default function RegisterScreen({ navigation }) {
   const renderStep2 = () => (
     <>
       <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-        <ArrowLeft size={16} color="#1A2B4C" />
+        <ChevronLeft size={16} color="#1A2B4C" />
         <Text style={styles.backButtonText}>Back to Step 1</Text>
       </TouchableOpacity>
 
@@ -433,13 +419,13 @@ export default function RegisterScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF6E8',
+    backgroundColor: '#111827', // slate-900
   },
   scrollContent: {
     flexGrow: 1,
   },
   headerSection: {
-    backgroundColor: '#FAF6E8',
+    backgroundColor: '#2563EB', // blue-600
     paddingTop: 80,
     paddingHorizontal: 24,
     paddingBottom: 60,
@@ -453,8 +439,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   logoIcon: {
-    width: 56,
-    height: 56,
+    width: 40,
+    height: 40,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -462,37 +450,35 @@ const styles = StyleSheet.create({
   logoText: {
     fontFamily: FONTS.bold,
     fontSize: 24,
-    color: '#1A2B4C',
+    color: '#FFFFFF',
     letterSpacing: -0.5,
   },
   heroTitle: {
     fontFamily: FONTS.bold,
-    fontSize: 28,
-    color: '#1A2B4C',
+    fontSize: 32,
+    color: '#FFFFFF',
     marginBottom: 12,
-    lineHeight: 36,
+    lineHeight: 40,
   },
   heroSubtitle: {
     fontFamily: FONTS.regular,
-    fontSize: 14,
-    color: '#5C6B83',
-    lineHeight: 20,
+    fontSize: 16,
+    color: '#DBEAFE', // blue-100
+    lineHeight: 24,
     marginBottom: 10,
   },
   formSection: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
     padding: 24,
     borderRadius: 24,
     marginHorizontal: 16,
     marginBottom: 24,
     marginTop: -40,
-    shadowColor: '#1A2B4C',
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.1,
     shadowRadius: 20,
     elevation: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(26, 43, 76, 0.05)',
   },
   welcomeBox: {
     marginBottom: 24,
@@ -500,20 +486,20 @@ const styles = StyleSheet.create({
   welcomeTitle: {
     fontFamily: FONTS.bold,
     fontSize: 24,
-    color: '#1A2B4C',
+    color: '#1E293B', // slate-800
     marginBottom: 8,
   },
   welcomeSubtitle: {
     fontFamily: FONTS.regular,
-    fontSize: SIZES.md,
-    color: '#5C6B83',
+    fontSize: 14,
+    color: '#6B7280', // slate-500
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: COLORS.background,
+    backgroundColor: '#E5E7EB', // slate-100
     borderRadius: 12,
     padding: 4,
-    marginBottom: 8,
+    marginBottom: 16,
   },
   tabButton: {
     flex: 1,
@@ -525,7 +511,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   tabButtonActive: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
@@ -534,36 +520,31 @@ const styles = StyleSheet.create({
   },
   tabText: {
     fontFamily: FONTS.medium,
-    fontSize: SIZES.sm,
-    color: COLORS.textMuted,
+    fontSize: 14,
+    color: '#6B7280', // slate-500
     fontWeight: '600',
   },
   tabTextActive: {
-    color: '#1A2B4C',
+    color: '#111827', // slate-900
   },
   formGroup: {
     marginBottom: 20,
   },
   label: {
     fontFamily: FONTS.medium,
-    fontSize: SIZES.sm,
-    color: '#1A2B4C',
+    fontSize: 14,
+    color: '#334155', // slate-700
     marginBottom: 8,
     fontWeight: '500',
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0', // slate-200
     borderRadius: 12,
-    height: 52,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 4,
-    elevation: 1,
+    height: 48,
   },
   inputIcon: {
     marginLeft: 12,
@@ -572,28 +553,28 @@ const styles = StyleSheet.create({
   inputText: {
     flex: 1,
     fontFamily: FONTS.regular,
-    fontSize: SIZES.md,
-    color: COLORS.text,
+    fontSize: 14,
+    color: '#111827', // slate-900
     height: '100%',
   },
   primaryButton: {
-    backgroundColor: '#1A2B4C',
+    backgroundColor: '#2563EB', // blue-600
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 56,
-    borderRadius: 14,
+    height: 48,
+    borderRadius: 12,
     marginTop: 16,
-    shadowColor: '#1A2B4C',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     elevation: 4,
   },
   primaryButtonText: {
     fontFamily: FONTS.bold,
-    fontSize: SIZES.md,
-    color: '#ffffff',
+    fontSize: 14,
+    color: '#FFFFFF',
   },
   registerPrompt: {
     flexDirection: 'row',
@@ -602,18 +583,18 @@ const styles = StyleSheet.create({
   },
   registerText: {
     fontFamily: FONTS.regular,
-    fontSize: SIZES.sm,
-    color: COLORS.textMuted,
+    fontSize: 14,
+    color: '#6B7280', // slate-500
   },
   registerLink: {
     fontFamily: FONTS.bold,
-    fontSize: SIZES.sm,
-    color: '#1A2B4C',
+    fontSize: 14,
+    color: '#2563EB', // blue-600
   },
   footerText: {
     fontFamily: FONTS.regular,
     fontSize: 11,
-    color: COLORS.textLight,
+    color: '#94A3B8', // slate-400
     textAlign: 'center',
     marginTop: 32,
   },
@@ -625,7 +606,7 @@ const styles = StyleSheet.create({
   },
   backButtonText: {
     fontFamily: FONTS.medium,
-    color: '#1A2B4C',
+    color: '#1E293B', // slate-800
     marginLeft: 4,
   },
   roleGrid: {
@@ -640,22 +621,22 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.card,
+    borderColor: '#E2E8F0', // slate-200
+    backgroundColor: '#FFFFFF',
   },
   roleButtonActive: {
-    borderColor: '#3b82f6',
-    backgroundColor: '#eff6ff',
+    borderColor: '#3B82F6', // blue-500
+    backgroundColor: '#EFF6FF', // blue-50
   },
   roleButtonText: {
     fontFamily: FONTS.medium,
     fontSize: 12,
-    color: COLORS.textMuted,
+    color: '#475569', // slate-600
     marginLeft: 8,
     flex: 1,
   },
   roleButtonTextActive: {
-    color: '#1d4ed8',
+    color: '#1D4ED8', // blue-700
   },
   modalOverlay: {
     flex: 1,
@@ -665,7 +646,7 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modalCard: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF',
     borderRadius: 24,
     padding: 32,
     width: '100%',
@@ -683,20 +664,20 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#111827', // slate-900
     marginBottom: 12,
   },
   modalDesc: {
     fontSize: 14,
-    color: '#64748B',
+    color: '#6B7280', // slate-500
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 24,
   },
   empIdBox: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#F8FAFC', // slate-50
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E2E8F0', // slate-200
     borderRadius: 12,
     paddingVertical: 16,
     paddingHorizontal: 32,
@@ -707,7 +688,7 @@ const styles = StyleSheet.create({
   empIdText: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#2563EB',
+    color: '#2563EB', // blue-600
     letterSpacing: 1,
   }
 });

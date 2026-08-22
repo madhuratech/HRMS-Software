@@ -51,7 +51,7 @@ export default function ExpenseReportsScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Expense Reports</Text>
@@ -62,7 +62,7 @@ export default function ExpenseReportsScreen() {
 
       {loading && !refreshing ? (
         <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#4F46E5" />
+          <ActivityIndicator size="large" color='#2563EB' />
         </View>
       ) : data ? (
         <ScrollView 
@@ -72,17 +72,17 @@ export default function ExpenseReportsScreen() {
         >
           {/* KPI Cards */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.kpiScroll}>
-            {renderStatCard('Total Reimbursed', `₹${data.kpis?.totalReimbursement?.toLocaleString('en-IN') || 0}`, 'All Time Paid', <DollarSign size={24} color="#FFF" />, ['#10B981', '#059669'])}
-            {renderStatCard('Pending Claims', data.kpis?.pendingClaims || 0, 'Awaiting Review', <Clock size={24} color="#FFF" />, ['#F59E0B', '#D97706'])}
-            {renderStatCard('Approved Claims', data.kpis?.approvedClaims || 0, 'Ready for Payment', <CheckCircle size={24} color="#FFF" />, ['#3B82F6', '#2563EB'])}
-            {renderStatCard('Total Claims', data.kpis?.totalClaims || 0, 'Submitted overall', <FileText size={24} color="#FFF" />, ['#8B5CF6', '#7C3AED'])}
+            {renderStatCard('Total Reimbursed', `₹${data.kpis?.totalReimbursement?.toLocaleString('en-IN') || 0}`, 'All Time Paid', <DollarSign size={24} color='#FFFFFF' />, ['#10B981', '#059669'])}
+            {renderStatCard('Pending Claims', data.kpis?.pendingClaims || 0, 'Awaiting Review', <Clock size={24} color='#FFFFFF' />, ['#F59E0B', '#D97706'])}
+            {renderStatCard('Approved Claims', data.kpis?.approvedClaims || 0, 'Ready for Payment', <CheckCircle size={24} color='#FFFFFF' />, ['#3B82F6', '#2563EB'])}
+            {renderStatCard('Total Claims', data.kpis?.totalClaims || 0, 'Submitted overall', <FileText size={24} color='#FFFFFF' />, ['#8B5CF6', '#7C3AED'])}
           </ScrollView>
 
           {/* Category Distribution */}
           {data.categoryPie && data.categoryPie.length > 0 && (
             <View style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
-                <PieChart size={20} color="#4F46E5" />
+                <PieChart size={20} color='#2563EB' />
                 <Text style={styles.sectionTitle}>Category Distribution</Text>
               </View>
               <View style={styles.divider} />
@@ -94,7 +94,7 @@ export default function ExpenseReportsScreen() {
                       <Text style={styles.barAmount}>₹{cat.value.toLocaleString('en-IN')} ({cat.percent})</Text>
                     </View>
                     <View style={styles.barTrack}>
-                      <View style={[styles.barFill, { width: cat.percent, backgroundColor: cat.color || '#4F46E5' }]} />
+                      <View style={[styles.barFill, { width: cat.percent, backgroundColor: cat.color || '#2563EB' }]} />
                     </View>
                   </View>
                 ))}
@@ -163,14 +163,14 @@ export default function ExpenseReportsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: { 
-    padding: 24, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    padding: 24, borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
   },
   headerTop: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
-  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
+  headerTitle: { fontSize: 24, fontWeight: '900', color: '#111827', letterSpacing: -1 },
+  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
   
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
@@ -180,25 +180,25 @@ const styles = StyleSheet.create({
   statCard: { width: 160, padding: 20, borderRadius: 24, marginRight: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.1, shadowRadius: 16, elevation: 4 },
   statTop: { marginBottom: 16 },
   statIconBox: { width: 48, height: 48, borderRadius: 16, backgroundColor: 'rgba(255, 255, 255, 0.2)', alignItems: 'center', justifyContent: 'center' },
-  statValue: { fontSize: 28, fontWeight: '900', color: '#FFF', marginBottom: 4, letterSpacing: -1 },
+  statValue: { fontSize: 28, fontWeight: '900', color: '#FFFFFF', marginBottom: 4, letterSpacing: -1 },
   statTitle: { fontSize: 14, color: 'rgba(255,255,255,0.9)', fontWeight: '600' },
   statSubtitle: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 4 },
 
-  sectionCard: { backgroundColor: '#FFF', marginHorizontal: 20, marginBottom: 20, padding: 24, borderRadius: 24, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.03, shadowRadius: 16, elevation: 2 },
+  sectionCard: { backgroundColor: '#FFFFFF', marginHorizontal: 20, marginBottom: 20, padding: 24, borderRadius: 24, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#111827', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.03, shadowRadius: 16, elevation: 2 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 16 },
+  sectionTitle: { fontSize: 18, fontWeight: '800', color: '#111827' },
+  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 16 },
   
   barsContainer: { gap: 16 },
   barWrapper: { width: '100%' },
   barLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   barLabel: { fontSize: 14, fontWeight: '600', color: '#1E293B' },
-  barAmount: { fontSize: 14, fontWeight: '700', color: '#64748B' },
-  barTrack: { height: 8, backgroundColor: '#F1F5F9', borderRadius: 4, overflow: 'hidden' },
+  barAmount: { fontSize: 14, fontWeight: '700', color: '#6B7280' },
+  barTrack: { height: 8, backgroundColor: '#E5E7EB', borderRadius: 4, overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: 4 },
 
   trendList: { gap: 12 },
   trendRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: '#F8FAFC' },
   trendMonth: { fontSize: 15, fontWeight: '600', color: '#334155' },
-  trendAmount: { fontSize: 16, fontWeight: '800', color: '#0F172A' }
+  trendAmount: { fontSize: 16, fontWeight: '800', color: '#111827' }
 });

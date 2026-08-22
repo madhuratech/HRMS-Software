@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Modal, TextInput } from 'react-native';
-import { Clock, ArrowLeft, Plus, X, CheckCircle, XCircle } from 'lucide-react-native';
+import { Clock, ChevronLeft, Plus, X, CheckCircle, XCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
 
@@ -28,6 +28,15 @@ export default function OvertimeScreen({ navigation }) {
       console.error('Error fetching overtime:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (id, status) => {
+    try {
+      await apiClient.put(`/attendance/overtime/${id}/status`, { status });
+      fetchRecords();
+    } catch (err) {
+      console.error('Error updating overtime status:', err);
     }
   };
 
@@ -61,15 +70,33 @@ export default function OvertimeScreen({ navigation }) {
         <Text style={styles.hoursText}>{item.hours} Hours</Text>
         {item.reason && <Text style={styles.reasonText}>{item.reason}</Text>}
       </View>
+      {item.status === 'Pending' && (
+        <View style={{ flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#E2E8F0', marginTop: 12 }}>
+          <TouchableOpacity 
+            style={{ flex: 1, paddingVertical: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', borderRightWidth: 1, borderRightColor: '#E2E8F0' }}
+            onPress={() => handleUpdateStatus(item.id, 'Approved')}
+          >
+            <CheckCircle size={16} color="#10B981" />
+            <Text style={{ marginLeft: 6, color: '#10B981', fontWeight: '600' }}>Approve</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={{ flex: 1, paddingVertical: 12, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' }}
+            onPress={() => handleUpdateStatus(item.id, 'Rejected')}
+          >
+            <XCircle size={16} color="#EF4444" />
+            <Text style={{ marginLeft: 6, color: '#EF4444', fontWeight: '600' }}>Reject</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
           <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
-            <ArrowLeft size={24} color="#0F172A" />
+            <ChevronLeft size={24} color='#111827' />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Overtime</Text>
@@ -78,7 +105,7 @@ export default function OvertimeScreen({ navigation }) {
         </View>
         <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
           <LinearGradient colors={['#3B82F6', '#2563EB']} style={styles.gradientBtn}>
-            <Plus size={18} color="#FFF" />
+            <Plus size={18} color='#FFFFFF' />
             <Text style={styles.addButtonText}>Request</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -110,7 +137,7 @@ export default function OvertimeScreen({ navigation }) {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Request Overtime</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color="#64748B" />
+                <X size={24} color='#6B7280' />
               </TouchableOpacity>
             </View>
             <View style={styles.modalBody}>
@@ -140,19 +167,19 @@ export default function OvertimeScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { padding: 20, paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  header: { padding: 20, paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
   headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
-  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
   addButton: { borderRadius: 10, overflow: 'hidden', shadowColor: '#3B82F6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 6 },
-  addButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  addButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   listContent: { padding: 20 },
-  card: { backgroundColor: '#FFF', borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0', overflow: 'hidden' },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0', overflow: 'hidden' },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: 16, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
   infoCol: { flex: 1 },
-  empName: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
-  dateText: { fontSize: 13, color: '#64748B', marginTop: 2 },
+  empName: { fontSize: 16, fontWeight: '700', color: '#111827' },
+  dateText: { fontSize: 13, color: '#6B7280', marginTop: 2 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   statusApproved: { backgroundColor: '#ECFDF5' },
   statusRejected: { backgroundColor: '#FEF2F2' },
@@ -165,15 +192,15 @@ const styles = StyleSheet.create({
   hoursText: { fontSize: 18, fontWeight: '700', color: '#3B82F6', marginBottom: 4 },
   reasonText: { fontSize: 14, color: '#475569' },
   emptyBox: { padding: 40, alignItems: 'center', marginTop: 40 },
-  title: { fontSize: 20, fontWeight: '700', color: '#0F172A', marginTop: 16 },
-  subtitle: { fontSize: 14, color: '#64748B', marginTop: 8, textAlign: 'center' },
+  title: { fontSize: 20, fontWeight: '700', color: '#111827', marginTop: 16 },
+  subtitle: { fontSize: 14, color: '#6B7280', marginTop: 8, textAlign: 'center' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A' },
+  modalTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
   modalBody: { gap: 16 },
   inputLabel: { fontSize: 14, fontWeight: '600', color: '#475569', marginBottom: 6 },
   modalInput: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, fontSize: 15, color: '#1E293B', backgroundColor: '#F8FAFC' },
   submitBtn: { backgroundColor: '#3B82F6', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 10 },
-  submitBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' }
+  submitBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' }
 });

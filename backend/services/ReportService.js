@@ -257,7 +257,6 @@ class ReportService {
 
   static async getPayrollReport(filters = {}) {
     // Total runs costs
-<<<<<<< HEAD
     const costRow = await query("SELECT COALESCE(SUM(net_salary + total_deductions), 0) as c FROM payslips");
     const netRow = await query("SELECT COALESCE(SUM(net_salary), 0) as c FROM payslips");
     const dedRow = await query("SELECT COALESCE(SUM(total_deductions), 0) as c FROM payslips");
@@ -269,28 +268,12 @@ class ReportService {
     const net = formatCurrency(netRow[0].c);
     const ded = formatCurrency(dedRow[0].c);
     const tax = formatCurrency(taxRow[0].c);
-=======
-    const costRow = await query("SELECT COALESCE(SUM(net_salary + COALESCE(total_deductions, 0)), 0) as c FROM payslips");
-    const netRow = await query("SELECT COALESCE(SUM(net_salary), 0) as c FROM payslips");
-    const dedRow = await query("SELECT COALESCE(SUM(COALESCE(total_deductions, 0)), 0) as c FROM payslips");
-
-    const formatCurrency = (val) => `₹ ${parseFloat(val || 0).toLocaleString('en-IN')}`;
-
-    const cost = formatCurrency(costRow[0]?.c);
-    const net = formatCurrency(netRow[0]?.c);
-    const ded = formatCurrency(dedRow[0]?.c);
-    const tax = formatCurrency(0);
->>>>>>> origin/main
 
     // Department wise payroll cost
     const deptCosts = await query(`
       SELECT 
         COALESCE(d.dept_name, 'Unassigned') as name,
-<<<<<<< HEAD
         COALESCE(SUM(p.net_salary + p.total_deductions), 0) as value
-=======
-        COALESCE(SUM(p.net_salary + COALESCE(p.total_deductions, 0)), 0) as value
->>>>>>> origin/main
       FROM payslips p
       JOIN employees e ON p.employee_id = e.id
       LEFT JOIN departments d ON e.department_id = d.id
@@ -312,16 +295,10 @@ class ReportService {
       SELECT 
         COALESCE(d.dept_name, 'Unassigned') as dept,
         COUNT(DISTINCT e.id) as emp,
-<<<<<<< HEAD
         COALESCE(SUM(p.net_salary + p.total_deductions), 0) as cost,
         COALESCE(SUM(p.net_salary), 0) as net,
         COALESCE(SUM(p.total_deductions), 0) as ded,
         COALESCE(SUM(p.tax_deductions), 0) as tax
-=======
-        COALESCE(SUM(p.net_salary + COALESCE(p.total_deductions, 0)), 0) as cost,
-        COALESCE(SUM(p.net_salary), 0) as net,
-        COALESCE(SUM(COALESCE(p.total_deductions, 0)), 0) as ded
->>>>>>> origin/main
       FROM payslips p
       JOIN employees e ON p.employee_id = e.id
       LEFT JOIN departments d ON e.department_id = d.id
@@ -337,11 +314,7 @@ class ReportService {
         cost: formatCurrency(r.cost),
         net: formatCurrency(r.net),
         ded: formatCurrency(r.ded),
-<<<<<<< HEAD
         tax: formatCurrency(r.tax)
-=======
-        tax: '₹ 0'
->>>>>>> origin/main
       }))
     };
   }
@@ -349,29 +322,17 @@ class ReportService {
   static async getRecruitmentReport(filters = {}) {
     const openingsRow = await query("SELECT COUNT(*) as c FROM requirements WHERE status = 'Open'");
     const candidatesRow = await query("SELECT COUNT(*) as c FROM candidates");
-<<<<<<< HEAD
     const hiredRow = await query("SELECT COUNT(*) as c FROM candidates WHERE status = 'Hired'");
 
     const openings = openingsRow[0].c || 0;
     const candidates = candidatesRow[0].c || 0;
     const hired = hiredRow[0].c || 0;
-=======
-    const hiredRow = await query("SELECT COUNT(*) as c FROM candidates WHERE status IN ('Hired', 'hired', 'Moved to Onboarding')");
-
-    const openings = openingsRow[0]?.c || 0;
-    const candidates = candidatesRow[0]?.c || 0;
-    const hired = hiredRow[0]?.c || 0;
->>>>>>> origin/main
     const rateVal = candidates > 0 ? (hired / candidates) * 100 : 0;
     const rate = `${rateVal.toFixed(1)}%`;
 
     // Recruitment Sources
     const sourceRows = await query(`
-<<<<<<< HEAD
       SELECT COALESCE(source_name, 'Other') as name, COUNT(*) as value
-=======
-      SELECT COALESCE(rs.source_name, 'Direct / Portal') as name, COUNT(c.id) as value
->>>>>>> origin/main
       FROM candidates c
       LEFT JOIN recruitment_sources rs ON c.source_id = rs.id
       GROUP BY rs.id, rs.source_name
@@ -391,22 +352,12 @@ class ReportService {
       SELECT status, COUNT(*) as c FROM candidates GROUP BY status
     `);
     const funnelMap = {};
-<<<<<<< HEAD
     funnelRows.forEach(r => { funnelMap[r.status] = r.c; });
 
     let accum = 0;
     const funnel = funnelStages.map(stage => {
       const count = funnelMap[stage] || 0;
       accum += count;
-=======
-    funnelRows.forEach(r => { 
-      const st = (r.status || 'Applied').trim();
-      funnelMap[st] = (funnelMap[st] || 0) + r.c; 
-    });
-
-    const funnel = funnelStages.map(stage => {
-      const count = funnelMap[stage] || (stage === 'Applied' ? candidates : 0);
->>>>>>> origin/main
       return {
         stage,
         count: count,
@@ -420,14 +371,9 @@ class ReportService {
         COALESCE(d.dept_name, 'Unassigned') as dept,
         COUNT(c.id) as count
       FROM candidates c
-<<<<<<< HEAD
       LEFT JOIN requirements r ON c.requirement_id = r.id
       LEFT JOIN departments d ON r.department_id = d.id
       WHERE c.status = 'Hired'
-=======
-      LEFT JOIN departments d ON c.department_id = d.id
-      WHERE c.status IN ('Hired', 'hired', 'Moved to Onboarding')
->>>>>>> origin/main
       GROUP BY d.id, d.dept_name
     `);
 
@@ -443,7 +389,6 @@ class ReportService {
   }
 
   static async getPerformanceReport(filters = {}) {
-<<<<<<< HEAD
     const scoreRow = await query("SELECT COALESCE(ROUND(AVG(appraisal_rating), 2), 0) as c FROM appraisals");
     const appraisalsRow = await query("SELECT COUNT(*) as c FROM appraisals");
     const promotionsRow = await query("SELECT COUNT(*) as c FROM promotions");
@@ -470,50 +415,6 @@ class ReportService {
       else if (val >= 3.0) ratingMap['Meets Expectations'] += r.c;
       else if (val >= 2.0) ratingMap['Needs Improvement'] += r.c;
       else ratingMap['Unsatisfactory'] += r.c;
-=======
-    const avgRatingRow = await query(`
-      SELECT ROUND(AVG(r_rating), 2) as score, COUNT(*) as total_ratings FROM (
-        SELECT CAST(rating AS DECIMAL(3,2)) as r_rating FROM appraisals WHERE rating IS NOT NULL AND rating != ''
-        UNION ALL
-        SELECT CAST(COALESCE(overall_rating, rating) AS DECIMAL(3,2)) as r_rating FROM reviews WHERE COALESCE(overall_rating, rating) IS NOT NULL AND COALESCE(overall_rating, rating) != ''
-      ) combined
-    `);
-
-    const score = avgRatingRow[0]?.score ? String(avgRatingRow[0].score) : '0.00';
-
-    const appraisalsRow = await query("SELECT COUNT(*) as c FROM appraisals");
-    const reviewsRow = await query("SELECT COUNT(*) as c FROM reviews");
-    const appraisals = (appraisalsRow[0]?.c || 0) + (reviewsRow[0]?.c || 0);
-
-    const promotionsRow = await query("SELECT COUNT(*) as c FROM promotions");
-    const promotions = promotionsRow[0]?.c || 0;
-
-    const goalsRow = await query(`
-      SELECT 
-        COALESCE(ROUND(AVG(COALESCE(completion_percentage, progress, 0)), 1), 0) as avg_progress
-      FROM goals
-    `);
-    const goalRate = goalsRow[0]?.avg_progress || 0;
-    const goals = `${goalRate}%`;
-
-    // Rating distribution
-    const ratingRows = await query(`
-      SELECT r_rating FROM (
-        SELECT CAST(rating AS DECIMAL(3,2)) as r_rating FROM appraisals WHERE rating IS NOT NULL AND rating != ''
-        UNION ALL
-        SELECT CAST(COALESCE(overall_rating, rating) AS DECIMAL(3,2)) as r_rating FROM reviews WHERE COALESCE(overall_rating, rating) IS NOT NULL AND COALESCE(overall_rating, rating) != ''
-      ) combined
-    `);
-
-    const ratingMap = { 'Outstanding': 0, 'Exceeds Expectations': 0, 'Meets Expectations': 0, 'Needs Improvement': 0, 'Unsatisfactory': 0 };
-    ratingRows.forEach(r => {
-      const val = parseFloat(r.r_rating);
-      if (val >= 4.5) ratingMap['Outstanding']++;
-      else if (val >= 4.0) ratingMap['Exceeds Expectations']++;
-      else if (val >= 3.0) ratingMap['Meets Expectations']++;
-      else if (val >= 2.0) ratingMap['Needs Improvement']++;
-      else ratingMap['Unsatisfactory']++;
->>>>>>> origin/main
     });
 
     const totalRatings = Object.values(ratingMap).reduce((s, c) => s + c, 0);
@@ -529,7 +430,6 @@ class ReportService {
     const summaryRows = await query(`
       SELECT 
         COALESCE(d.dept_name, 'Unassigned') as dept,
-<<<<<<< HEAD
         ROUND(AVG(a.appraisal_rating), 2) as avg,
         SUM(CASE WHEN a.appraisal_rating >= 4.5 THEN 1 ELSE 0 END) as out_count,
         SUM(CASE WHEN a.appraisal_rating >= 4.0 AND a.appraisal_rating < 4.5 THEN 1 ELSE 0 END) as exc,
@@ -538,25 +438,10 @@ class ReportService {
         SUM(CASE WHEN a.appraisal_rating < 2.0 THEN 1 ELSE 0 END) as un
       FROM appraisals a
       JOIN employees e ON a.employee_id = e.id
-=======
-        ROUND(AVG(combined.r_rating), 2) as avg,
-        SUM(CASE WHEN combined.r_rating >= 4.5 THEN 1 ELSE 0 END) as out_count,
-        SUM(CASE WHEN combined.r_rating >= 4.0 AND combined.r_rating < 4.5 THEN 1 ELSE 0 END) as exc,
-        SUM(CASE WHEN combined.r_rating >= 3.0 AND combined.r_rating < 4.0 THEN 1 ELSE 0 END) as meets,
-        SUM(CASE WHEN combined.r_rating >= 2.0 AND combined.r_rating < 3.0 THEN 1 ELSE 0 END) as needs,
-        SUM(CASE WHEN combined.r_rating < 2.0 THEN 1 ELSE 0 END) as un
-      FROM (
-        SELECT employee_id, CAST(rating AS DECIMAL(3,2)) as r_rating FROM appraisals WHERE rating IS NOT NULL AND rating != ''
-        UNION ALL
-        SELECT employee_id, CAST(COALESCE(overall_rating, rating) AS DECIMAL(3,2)) as r_rating FROM reviews WHERE COALESCE(overall_rating, rating) IS NOT NULL AND COALESCE(overall_rating, rating) != ''
-      ) combined
-      JOIN employees e ON combined.employee_id = e.id
->>>>>>> origin/main
       LEFT JOIN departments d ON e.department_id = d.id
       GROUP BY d.id, d.dept_name
     `);
 
-<<<<<<< HEAD
     return {
       kpis: { score, appraisals, promotions, goals },
       ratingPie,
@@ -569,31 +454,6 @@ class ReportService {
         needs: parseInt(r.needs) || 0,
         un: parseInt(r.un) || 0
       }))
-=======
-    let summary = summaryRows.map(r => ({
-      dept: r.dept,
-      avg: r.avg ? String(r.avg) : '0.00',
-      out: parseInt(r.out_count) || 0,
-      exc: parseInt(r.exc) || 0,
-      meets: parseInt(r.meets) || 0,
-      needs: parseInt(r.needs) || 0,
-      un: parseInt(r.un) || 0
-    }));
-
-    if (summary.length === 0) {
-      const allDepts = await query('SELECT dept_name FROM departments ORDER BY dept_name');
-      summary = allDepts.map(d => ({
-        dept: d.dept_name,
-        avg: '0.00',
-        out: 0, exc: 0, meets: 0, needs: 0, un: 0
-      }));
-    }
-
-    return {
-      kpis: { score, appraisals, promotions, goals },
-      ratingPie,
-      summary
->>>>>>> origin/main
     };
   }
 

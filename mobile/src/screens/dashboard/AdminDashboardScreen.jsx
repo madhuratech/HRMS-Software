@@ -2,9 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions, Animated, Easing, ActivityIndicator
 } from 'react-native';
-import { 
-  DollarSign, Users, Briefcase, CheckCircle2, UserCheck, Calendar, Bell, ChevronRight, Activity
-} from 'lucide-react-native';
+import { DollarSign, Users, Briefcase, CheckCircle2, UserCheck, Calendar, Bell, ChevronRight, Activity } from 'lucide-react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
@@ -262,9 +260,9 @@ export default function DashboardScreen({ navigation }) {
           </View>
           {holidayList.length > 0 ? holidayList.map((h, i) => (
             <View key={i} style={styles.holidayRow}>
-              <Calendar size={14} color="#64748B" />
+              <Calendar size={14} color='#6B7280' />
               <Text style={{ fontSize: 12, fontWeight: '700', color: '#1E293B', width: 55 }}>{h.date}</Text>
-              <Text style={{ fontSize: 11, color: '#64748B', width: 75 }}>{h.day}</Text>
+              <Text style={{ fontSize: 11, color: '#6B7280', width: 75 }}>{h.day}</Text>
               <Text style={{ fontSize: 12, fontWeight: '700', color: '#1E293B', flex: 1 }}>{h.name}</Text>
             </View>
           )) : <EmptyState message="No upcoming holidays" />}
@@ -282,7 +280,7 @@ export default function DashboardScreen({ navigation }) {
                 <Text style={styles.perfName}>{b.name}</Text>
                 <Text style={styles.perfDept}>{b.role}</Text>
               </View>
-              <Text style={{ fontSize: 11, fontWeight: '600', color: '#64748B' }}>{b.date}</Text>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: '#6B7280' }}>{b.date}</Text>
             </View>
           )) : <EmptyState message="No upcoming birthdays" />}
         </Animated.View>
@@ -325,16 +323,16 @@ const styles = StyleSheet.create({
   },
   kpiCard: {
     width: width * 0.42,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     padding: 16,
     marginRight: 16,
-    shadowColor: '#2563EB',
+    shadowColor: '#111827',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.04,
     shadowRadius: 16,
-    elevation: 4,
+    elevation: 2,
   },
   kpiTopRow: {
     flexDirection: 'row',
@@ -348,9 +346,9 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   kpiValue: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#111827',
   },
   kpiIconBox: {
     width: 32,
@@ -376,15 +374,15 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 20,
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#E5E7EB',
     padding: 24,
     marginHorizontal: 16,
-    marginBottom: 16,
-    shadowColor: '#64748B',
+    marginBottom: 24,
+    shadowColor: '#111827',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 24,
     elevation: 3,
   },
@@ -402,7 +400,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   linkText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
     color: '#2563EB',
   },
@@ -435,11 +433,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#E5E7EB',
   },
   perfName: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#111827',
   },
   perfDept: {
@@ -465,23 +463,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#E5E7EB',
     gap: 8,
   },
   emptyStateContainer: {
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 8,
+    backgroundColor: '#FAFAFA',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
     borderStyle: 'dashed',
   },
   emptyStateText: {
-    color: '#64748B',
+    color: '#6B7280',
     fontSize: 13,
     fontWeight: '500',
   }
 });
-

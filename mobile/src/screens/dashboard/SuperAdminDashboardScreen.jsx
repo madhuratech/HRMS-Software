@@ -2,9 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Dimensions, Animated, Easing, ActivityIndicator
 } from 'react-native';
-import { 
-  DollarSign, Users, Briefcase, CheckCircle2, UserCheck, Calendar, Bell, ChevronRight, Activity, Building2, CalendarOff
-} from 'lucide-react-native';
+import { DollarSign, Users, Briefcase, CheckCircle2, UserCheck, Calendar, Bell, ChevronRight, Activity, Building2, CalendarOff } from 'lucide-react-native';
 import Svg, { Circle } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
@@ -207,8 +205,8 @@ export default function DashboardScreen({ navigation }) {
                       <Text style={{ fontSize: 12, color: '#6B7280' }}>{item.dept}</Text>
                       <Text style={{ fontSize: 12, fontWeight: '600', color: '#111827' }}>{item.emp} ({pct}%)</Text>
                     </View>
-                    <View style={{ height: 8, backgroundColor: '#F1F5F9', borderRadius: 16, overflow: 'hidden' }}>
-                      <View style={{ width: `${pct}%`, height: '100%', backgroundColor: '#4F46E5', borderRadius: 16 }} />
+                    <View style={{ height: 8, backgroundColor: '#E5E7EB', borderRadius: 16, overflow: 'hidden' }}>
+                      <View style={{ width: `${pct}%`, height: '100%', backgroundColor: '#2563EB', borderRadius: 16 }} />
                     </View>
                   </View>
                 );
@@ -310,9 +308,9 @@ export default function DashboardScreen({ navigation }) {
           </View>
           {holidayList.length > 0 ? holidayList.map((h, i) => (
             <View key={i} style={styles.holidayRow}>
-              <Calendar size={14} color="#64748B" />
+              <Calendar size={14} color='#6B7280' />
               <Text style={{ fontSize: 12, fontWeight: '700', color: '#1E293B', width: 55 }}>{h.date}</Text>
-              <Text style={{ fontSize: 11, color: '#64748B', width: 75 }}>{h.day}</Text>
+              <Text style={{ fontSize: 11, color: '#6B7280', width: 75 }}>{h.day}</Text>
               <Text style={{ fontSize: 12, fontWeight: '700', color: '#1E293B', flex: 1 }}>{h.name}</Text>
             </View>
           )) : <EmptyState message="No upcoming holidays" />}
@@ -330,7 +328,7 @@ export default function DashboardScreen({ navigation }) {
                 <Text style={styles.perfName}>{b.name}</Text>
                 <Text style={styles.perfDept}>{b.role}</Text>
               </View>
-              <Text style={{ fontSize: 11, fontWeight: '600', color: '#64748B' }}>{b.date}</Text>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: '#6B7280' }}>{b.date}</Text>
             </View>
           )) : <EmptyState message="No upcoming birthdays" />}
         </Animated.View>
@@ -373,16 +371,16 @@ const styles = StyleSheet.create({
   },
   kpiCard: {
     width: width * 0.42,
-    borderRadius: 16,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: '#E5E7EB', // slate-200
     padding: 16,
     marginRight: 16,
-    shadowColor: '#2563EB',
+    shadowColor: '#111827', // slate-900
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0.04,
     shadowRadius: 16,
-    elevation: 4,
+    elevation: 2,
   },
   kpiTopRow: {
     flexDirection: 'row',
@@ -392,18 +390,18 @@ const styles = StyleSheet.create({
   kpiLabel: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#6B7280',
+    color: '#6B7280', // gray-500
     marginBottom: 4,
   },
   kpiValue: {
-    fontSize: 24,
+    fontSize: 22, // adjusted to match web's 22px
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#111827',
   },
   kpiIconBox: {
     width: 32,
     height: 32,
-    borderRadius: 16,
+    borderRadius: 8, // adjusted to match web's 8px
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -426,13 +424,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: '#F1F5F9',
+    borderColor: '#E5E7EB', // slate-200
     padding: 24,
     marginHorizontal: 16,
-    marginBottom: 16,
-    shadowColor: '#64748B',
+    marginBottom: 24, // adjusted to match web
+    shadowColor: '#111827',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.06,
     shadowRadius: 24,
     elevation: 3,
   },
@@ -450,22 +448,22 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   linkText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: '600',
-    color: '#2563EB',
+    color: '#2563EB', // blue-600
   },
   attStatBox: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 10,
-    borderRadius: 16,
+    borderRadius: 12, // adjusted to match web's 12px
     borderWidth: 1,
     gap: 10,
   },
   attIconBox: {
     width: 28,
     height: 28,
-    borderRadius: 16,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -483,11 +481,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#E5E7EB', // slate-100
   },
   perfName: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600', // matches web's 600
     color: '#111827',
   },
   perfDept: {
@@ -501,7 +499,7 @@ const styles = StyleSheet.create({
     borderColor: '#A7F3D0',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 16,
+    borderRadius: 12, // matches web's 12px
   },
   perfScore: {
     fontSize: 12,
@@ -513,21 +511,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#E5E7EB',
     gap: 8,
   },
   emptyStateContainer: {
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 16,
+    backgroundColor: '#FAFAFA', // matches web's FAFAFA for empty/striped rows
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E7EB',
     borderStyle: 'dashed',
   },
   emptyStateText: {
-    color: '#64748B',
+    color: '#6B7280',
     fontSize: 13,
     fontWeight: '500',
   }

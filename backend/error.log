@@ -4097,3 +4097,83 @@
 [2026-08-21T04:27:45.087Z] 500 Error: Failed to generate performance report.. Details: "Unknown column 'appraisal_rating' in 'field list'"
 [2026-08-21T04:27:52.143Z] 500 Error: Failed to generate performance report.. Details: "Unknown column 'appraisal_rating' in 'field list'"
 >>>>>>> origin/main
+[2026-08-22T05:32:19.758Z] Uncaught Exception: C:\Users\arune\OneDrive\Documents\GitHub\HRMS-Software\backend\knexfile.js:3
+<<<<<<< HEAD
+^^
+
+SyntaxError: Unexpected token '<<'
+    at wrapSafe (node:internal/modules/cjs/loader:1464:18)
+    at Module._compile (node:internal/modules/cjs/loader:1495:20)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Module.require (node:internal/modules/cjs/loader:1289:19)
+    at require (node:internal/modules/helpers:182:18)
+    at Object.<anonymous> (C:\Users\arune\OneDrive\Documents\GitHub\HRMS-Software\backend\server.js:27:20)
+    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+
+[2026-08-22T05:32:58.250Z] Uncaught Exception: C:\Users\arune\OneDrive\Documents\GitHub\HRMS-Software\backend\routes\attendanceRoute.js:1
+<<<<<<< HEAD
+^^
+
+SyntaxError: Unexpected token '<<'
+    at wrapSafe (node:internal/modules/cjs/loader:1464:18)
+    at Module._compile (node:internal/modules/cjs/loader:1495:20)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Module.require (node:internal/modules/cjs/loader:1289:19)
+    at require (node:internal/modules/helpers:182:18)
+    at Object.<anonymous> (C:\Users\arune\OneDrive\Documents\GitHub\HRMS-Software\backend\server.js:48:28)
+    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+
+[2026-08-22T05:33:50.784Z] Uncaught Exception: C:\Users\arune\OneDrive\Documents\GitHub\HRMS-Software\backend\controllers\attendanceController.js:10
+<<<<<<< HEAD
+^^
+
+SyntaxError: Unexpected token '<<'
+    at wrapSafe (node:internal/modules/cjs/loader:1464:18)
+    at Module._compile (node:internal/modules/cjs/loader:1495:20)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Module.require (node:internal/modules/cjs/loader:1289:19)
+    at require (node:internal/modules/helpers:182:18)
+    at Object.<anonymous> (C:\Users\arune\OneDrive\Documents\GitHub\HRMS-Software\backend\routes\attendanceRoute.js:3:30)
+    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+
+[2026-08-22T05:34:47.455Z] Uncaught Exception: C:\Users\arune\OneDrive\Documents\GitHub\HRMS-Software\backend\services\GPSAttendanceService.js:59
+<<<<<<< HEAD
+^^
+
+SyntaxError: Unexpected token '<<'
+    at wrapSafe (node:internal/modules/cjs/loader:1464:18)
+    at Module._compile (node:internal/modules/cjs/loader:1495:20)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Module.require (node:internal/modules/cjs/loader:1289:19)
+    at require (node:internal/modules/helpers:182:18)
+    at Object.<anonymous> (C:\Users\arune\OneDrive\Documents\GitHub\HRMS-Software\backend\controllers\attendanceController.js:2:30)
+    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+
+[2026-08-22T05:35:54.907Z] Uncaught Exception: C:\Users\arune\OneDrive\Documents\GitHub\HRMS-Software\backend\middlewares\auth.js:52
+<<<<<<< HEAD
+^^
+
+SyntaxError: Unexpected token '<<'
+    at wrapSafe (node:internal/modules/cjs/loader:1464:18)
+    at Module._compile (node:internal/modules/cjs/loader:1495:20)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+    at Module.load (node:internal/modules/cjs/loader:1266:32)
+    at Module._load (node:internal/modules/cjs/loader:1091:12)
+    at Module.require (node:internal/modules/cjs/loader:1289:19)
+    at require (node:internal/modules/helpers:182:18)
+    at Object.<anonymous> (C:\Users\arune\OneDrive\Documents\GitHub\HRMS-Software\backend\routes\attendanceRoute.js:4:29)
+    at Module._compile (node:internal/modules/cjs/loader:1521:14)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1623:10)
+

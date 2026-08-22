@@ -16,8 +16,4 @@ router.post('/', authenticateJWT, checkRole(writeRoles), validationMiddleware(va
 router.put('/:id', authenticateJWT, checkRole(writeRoles), validationMiddleware(validateTimesheet), TimesheetController.update);
 router.delete('/:id', authenticateJWT, checkRole(writeRoles), TimesheetController.delete);
 
-<<<<<<< HEAD
 module.exports = router;
-=======
-module.exports = router;
->>>>>>> origin/main

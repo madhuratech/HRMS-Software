@@ -3,11 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DrawerContentScrollView } from '@react-navigation/drawer';
-import { 
-  LayoutDashboard, Building2, Users, CalendarCheck, CalendarOff, DollarSign, 
-  UserPlus, ClipboardList, BarChart3, FolderKanban, FileBarChart, Receipt, 
-  FileText, LifeBuoy, Settings, ChevronDown, ChevronRight, LogOut, Bird, BookOpen 
-} from 'lucide-react-native';
+import { LayoutDashboard, Building2, Users, CalendarCheck, CalendarOff, DollarSign, UserPlus, ClipboardList, BarChart3, FolderKanban, FileBarChart, Receipt, FileText, LifeBuoy, Settings, ChevronDown, ChevronRight, LogOut, Bird, BookOpen } from 'lucide-react-native';
 
 const superAdminMenuItems = [
   { id: 'DashboardMain', label: 'Dashboard', icon: LayoutDashboard, path: 'DashboardMain' },
@@ -222,30 +218,18 @@ export default function CustomDrawerContent(props) {
   
   // Filter menu items based on role
   const getFilteredMenu = () => {
-    // Determine the role, defaulting to empty string if undefined
-    const role = user?.role || user?.role_name || '';
+    // Normalize role string to handle "Super Admin", "SUPER_ADMIN", "Admin", etc.
+    const rawRole = user?.role || user?.role_name || '';
+    const role = rawRole.toUpperCase().replace(' ', '_');
     
-    // For Super Admin and Admin, grant full access (Super Admin hides GpsAttendance)
+    // For Super Admin and Admin, grant full access to all menus including Mark Attendance
     if (role === 'SUPER_ADMIN' || role === 'ADMIN') {
-      if (role === 'SUPER_ADMIN') {
-        return menuItems.map(item => {
-          if (item.id === 'attendance') {
-            return {
-              ...item,
-              children: item.children.filter(child => child.id !== 'GpsAttendance')
-            };
-          }
-          return item;
-        });
-      }
       return menuItems;
     }
     
     // For Employees, and any other unrecognized roles (Default fallback)
     return [
       { id: 'EmployeeDashboard', label: 'Dashboard', icon: LayoutDashboard, path: 'EmployeeDashboard' },
-      menuItems.find(i => i.id === 'attendance'),
-      menuItems.find(i => i.id === 'leave-management'),
       {
         id: 'employees', label: 'My Profile', icon: Users,
         children: [
@@ -253,7 +237,44 @@ export default function CustomDrawerContent(props) {
           { id: 'EmployeeDocuments', label: 'My Documents', path: 'EmployeeDocuments' }
         ]
       },
-      menuItems.find(i => i.id === 'settings'),
+      {
+        id: 'attendance', label: 'My Attendance', icon: CalendarCheck,
+        children: [
+          { id: 'GpsAttendance', label: 'Mark Attendance', path: 'AttendanceMain' },
+          { id: 'Regularization', label: 'Request Regularization', path: 'Regularization' },
+          { id: 'Overtime', label: 'My Overtime', path: 'Overtime' }
+        ]
+      },
+      {
+        id: 'leave-management', label: 'My Leaves', icon: CalendarOff,
+        children: [
+          { id: 'LeaveDashboard', label: 'Leave Dashboard', path: 'LeaveMain' },
+          { id: 'LeaveBalance', label: 'Leave Balance', path: 'LeaveBalance' },
+          { id: 'HolidayList', label: 'Holiday List', path: 'HolidayList' }
+        ]
+      },
+      {
+        id: 'payroll', label: 'My Payroll', icon: DollarSign,
+        children: [
+          { id: 'SalaryStructure', label: 'Salary Structure', path: 'SalaryStructure' },
+          { id: 'GeneratePayslips', label: 'My Payslips', path: 'GeneratePayslips' },
+          { id: 'Reimbursements', label: 'Reimbursements', path: 'Reimbursements' },
+          { id: 'TaxManagement', label: 'Tax Management', path: 'TaxManagement' }
+        ]
+      },
+      {
+        id: 'expenses', label: 'My Expenses', icon: Receipt,
+        children: [
+          { id: 'ExpenseClaims', label: 'Expense Claims', path: 'ExpenseClaims' }
+        ]
+      },
+      {
+        id: 'projects', label: 'My Work', icon: FolderKanban,
+        children: [
+          { id: 'Tasks', label: 'My Tasks', path: 'Tasks' },
+          { id: 'Timesheets', label: 'Timesheets', path: 'Timesheets' }
+        ]
+      }
     ].filter(Boolean); // removes undefined if not found
   };
 
@@ -293,16 +314,16 @@ export default function CustomDrawerContent(props) {
           </TouchableOpacity>
           
           {isExpanded && (
-            <View style={styles.childContainer}>
+            <View style={styles.submenu}>
               {item.children.map(child => {
                 const isChildActive = currentRouteName === child.path;
                 return (
                   <TouchableOpacity
                     key={child.id}
-                    style={[styles.childItem, isChildActive && styles.menuItemActive]}
+                    style={[styles.submenuItem, isChildActive && styles.submenuItemActive]}
                     onPress={() => props.navigation.navigate(child.path)}
                   >
-                    <Text style={[styles.childLabel, isChildActive && styles.menuLabelActive]}>
+                    <Text style={[styles.submenuLabel, isChildActive && styles.submenuLabelActive]}>
                       {child.label}
                     </Text>
                   </TouchableOpacity>
@@ -353,8 +374,8 @@ export default function CustomDrawerContent(props) {
       </ScrollView>
 
       {/* Need Help Support Card */}
-      <View style={styles.supportCardContainer}>
-        <View style={styles.supportCard}>
+      <View style={styles.supportBox}>
+        <View style={styles.supportInner}>
           <View style={styles.supportHeader}>
             <Text style={styles.supportTitle}>Need Help?</Text>
             <View style={styles.supportIconBox}>
@@ -393,12 +414,12 @@ export default function CustomDrawerContent(props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a', // slate-900
+    backgroundColor: '#0F172A', // slate-900
   },
   header: {
     padding: 20,
     borderBottomWidth: 1,
-    borderBottomColor: '#1e293b', // slate-800
+    borderBottomColor: '#1E293B', // slate-800
   },
   headerContent: {
     flexDirection: 'row',
@@ -408,18 +429,20 @@ const styles = StyleSheet.create({
   logoBox: {
     width: 40,
     height: 40,
+    backgroundColor: '#2563EB', // blue-600 matches web logo bg
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   brandTitle: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#FFFFFF',
     letterSpacing: 0.5,
   },
   brandSubtitle: {
     fontSize: 10,
-    color: '#94a3b8',
+    color: '#94A3B8', // slate-400
     textTransform: 'uppercase',
     letterSpacing: 1.5,
   },
@@ -441,11 +464,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   menuItemActive: {
-    backgroundColor: '#1d4ed8', // .custom-sidebar-btn-active
-    shadowColor: '#1e3a8a',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
+    backgroundColor: '#2563EB', // blue-600
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
     elevation: 3,
   },
   menuIcon: {
@@ -455,35 +478,43 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     fontWeight: '500',
-    color: '#94a3b8',
+    color: '#94A3B8', // slate-400
   },
   menuLabelActive: {
-    color: '#ffffff',
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
-  childContainer: {
-    marginLeft: 16,
-    marginTop: 4,
-    gap: 2,
+  submenu: {
+    marginTop: 2,
+    marginBottom: 4,
   },
-  childItem: {
-    paddingLeft: 40,
-    paddingRight: 16,
+  submenuItem: {
     paddingVertical: 8,
+    paddingLeft: 44,
+    paddingRight: 16,
     borderRadius: 8,
+    marginBottom: 2,
   },
-  childLabel: {
+  submenuItemActive: {
+    backgroundColor: '#2563EB', // blue-600
+  },
+  submenuLabel: {
     fontSize: 14,
-    color: '#94a3b8',
+    color: '#94A3B8', // slate-400
   },
-  supportCardContainer: {
+  submenuLabelActive: {
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+  supportBox: {
     padding: 12,
   },
-  supportCard: {
-    backgroundColor: '#1E293B',
+  supportInner: {
+    backgroundColor: '#1E293B', // slate-800
     borderRadius: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#334155',
+    borderColor: '#334155', // slate-700
   },
   supportHeader: {
     flexDirection: 'row',
@@ -494,7 +525,7 @@ const styles = StyleSheet.create({
   supportTitle: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#ffffff',
+    color: '#FFFFFF',
   },
   supportIconBox: {
     width: 26,
@@ -506,32 +537,32 @@ const styles = StyleSheet.create({
   },
   supportText: {
     fontSize: 11,
-    color: '#94a3b8',
+    color: '#94A3B8', // slate-400
     marginBottom: 10,
-    lineHeight: 15,
+    lineHeight: 16,
   },
   supportBtn: {
     width: '100%',
     height: 32,
-    backgroundColor: '#2952E3',
+    backgroundColor: '#2563EB', // blue-600
     borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },
   supportBtnText: {
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
-    color: '#ffffff',
   },
   footer: {
     padding: 12,
     borderTopWidth: 1,
-    borderTopColor: '#1e293b', // slate-800
+    borderTopColor: '#1E293B', // slate-800
   },
   profileBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1e293b', // slate-800
+    backgroundColor: '#1E293B', // slate-800
     padding: 12,
     borderRadius: 8,
     gap: 12,
@@ -540,26 +571,26 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#1d4ed8', // .custom-sidebar-profile-avatar-bg
+    backgroundColor: '#334155', // slate-700
     alignItems: 'center',
     justifyContent: 'center',
   },
   profileInitials: {
+    color: '#FFFFFF',
     fontSize: 12,
     fontWeight: 'bold',
-    color: '#ffffff',
   },
   profileInfo: {
     flex: 1,
   },
   profileName: {
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '500',
-    color: '#ffffff',
   },
   profileRole: {
+    color: '#94A3B8', // slate-400
     fontSize: 12,
-    color: '#94a3b8',
   },
   logoutBtn: {
     padding: 4,

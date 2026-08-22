@@ -23,7 +23,7 @@ export default function RegularizationScreen() {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const res = await apiClient.get('/attendance/regularization');
+      const res = await apiClient.get('/attendance/regularization?status=pending');
       if (Array.isArray(res.data)) {
         setRequests(res.data);
       }
@@ -31,6 +31,15 @@ export default function RegularizationScreen() {
       console.error('Error fetching regularization:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (id, status) => {
+    try {
+      await apiClient.put(`/attendance/regularization/${id}/status`, { status });
+      fetchRequests();
+    } catch (err) {
+      console.error('Error updating status:', err);
     }
   };
 
@@ -73,7 +82,7 @@ export default function RegularizationScreen() {
           <Text style={styles.empName}>{item.employee_name}</Text>
           <Text style={styles.dateText}>For Date: {new Date(item.date).toLocaleDateString()}</Text>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: `${getStatusColor(item.status)}15` }]}>
+        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '15' }]}>
           <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>{item.status}</Text>
         </View>
       </View>
@@ -96,12 +105,18 @@ export default function RegularizationScreen() {
       </View>
       {item.status === 'Pending' && (
         <View style={styles.cardFooter}>
-          <TouchableOpacity style={[styles.actionBtn, styles.approveBtn]}>
-            <CheckCircle size={16} color="#FFF" />
+          <TouchableOpacity 
+            style={[styles.actionBtn, styles.approveBtn]}
+            onPress={() => handleUpdateStatus(item.id, 'Approved')}
+          >
+            <CheckCircle size={16} color='#FFFFFF' />
             <Text style={styles.actionBtnText}>Approve</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.actionBtn, styles.rejectBtn]}>
-            <XCircle size={16} color="#FFF" />
+          <TouchableOpacity 
+            style={[styles.actionBtn, styles.rejectBtn]}
+            onPress={() => handleUpdateStatus(item.id, 'Rejected')}
+          >
+            <XCircle size={16} color='#FFFFFF' />
             <Text style={styles.actionBtnText}>Reject</Text>
           </TouchableOpacity>
         </View>
@@ -118,7 +133,7 @@ export default function RegularizationScreen() {
         </View>
         <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
           <LinearGradient colors={['#3B82F6', '#2563EB']} style={styles.gradientBtn}>
-            <Plus size={18} color="#FFF" />
+            <Plus size={18} color='#FFFFFF' />
             <Text style={styles.addButtonText}>Request</Text>
           </LinearGradient>
         </TouchableOpacity>
@@ -148,7 +163,7 @@ export default function RegularizationScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Request Regularization</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color="#64748B" />
+                <X size={24} color='#6B7280' />
               </TouchableOpacity>
             </View>
             <View style={styles.modalBody}>
@@ -182,20 +197,20 @@ export default function RegularizationScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { padding: 20, backgroundColor: '#FFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A', letterSpacing: -0.5 },
-  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
+  header: { padding: 20, backgroundColor: '#FFFFFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
   addButton: { borderRadius: 10, overflow: 'hidden', shadowColor: '#3B82F6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
   gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 6 },
-  addButtonText: { color: '#FFF', fontSize: 14, fontWeight: '700' },
+  addButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   listContent: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 24 },
-  card: { backgroundColor: '#FFF', borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0', overflow: 'hidden', shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
-  cardHeader: { padding: 16, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E2E8F0', overflow: 'hidden', shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
+  cardHeader: { padding: 16, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
   avatarBox: { width: 42, height: 42, borderRadius: 12, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 15, fontWeight: '700', color: '#3B82F6' },
   infoCol: { flex: 1, marginLeft: 12 },
-  empName: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
-  dateText: { fontSize: 12, color: '#64748B', marginTop: 2 },
+  empName: { fontSize: 16, fontWeight: '700', color: '#111827' },
+  dateText: { fontSize: 12, color: '#6B7280', marginTop: 2 },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
   statusText: { fontSize: 11, fontWeight: '700' },
   cardBody: { padding: 16 },
@@ -205,20 +220,20 @@ const styles = StyleSheet.create({
   timeValue: { fontSize: 15, fontWeight: '700', color: '#1E293B' },
   reasonBox: { backgroundColor: '#F8FAFC', padding: 12, borderRadius: 8 },
   reasonText: { fontSize: 13, color: '#475569' },
-  cardFooter: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  cardFooter: { flexDirection: 'row', borderTopWidth: 1, borderTopColor: '#E5E7EB' },
   actionBtn: { flex: 1, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
   approveBtn: { backgroundColor: '#10B981' },
   rejectBtn: { backgroundColor: '#EF4444' },
-  actionBtnText: { color: '#FFF', fontWeight: '600', fontSize: 14 },
+  actionBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
   emptyBox: { padding: 40, alignItems: 'center' },
   emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '500' },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#0F172A' },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
   modalBody: { gap: 16 },
   inputLabel: { fontSize: 14, fontWeight: '600', color: '#475569' },
   modalInput: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, fontSize: 16, color: '#1E293B', backgroundColor: '#F8FAFC' },
   submitButton: { backgroundColor: '#3B82F6', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 10 },
-  submitButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700' }
+  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' }
 });

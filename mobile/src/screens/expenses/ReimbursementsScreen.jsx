@@ -61,6 +61,33 @@ export default function ReimbursementsScreen() {
     }
   };
 
+  const [kpis, setKpis] = useState({ totalApproved: 0, paidCount: 0, pendingCount: 0, totalValue: 0 });
+
+  useEffect(() => {
+    let totApp = reimbursements.length;
+    let pCount = 0, penCount = 0, tValue = 0;
+    reimbursements.forEach(r => {
+      const s = r.status || 'Pending';
+      if (s === 'Paid') pCount++;
+      if (s === 'Pending') penCount++;
+      
+      tValue += Number(r.amount || 0);
+    });
+    setKpis({ totalApproved: totApp, paidCount: pCount, pendingCount: penCount, totalValue: tValue });
+  }, [reimbursements]);
+
+  const KPICard = ({ label, value, color, icon: Icon, bg }) => (
+    <View style={[styles.kpiCard, { borderColor: bg }]}>
+      <View style={[styles.kpiIconBox, { backgroundColor: bg }]}>
+        <Icon size={18} color={color} />
+      </View>
+      <View>
+        <Text style={styles.kpiValue}>{value}</Text>
+        <Text style={styles.kpiLabel}>{label}</Text>
+      </View>
+    </View>
+  );
+
   const filtered = reimbursements.filter(r => 
     (r.status || 'Pending') === activeTab &&
     (r.employee_name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -69,7 +96,7 @@ export default function ReimbursementsScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFF', '#F8FAFC']} style={styles.header}>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
         <View style={styles.headerTop}>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Reimbursements</Text>
@@ -78,9 +105,16 @@ export default function ReimbursementsScreen() {
         </View>
       </LinearGradient>
 
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kpiScroll}>
+        <KPICard label="Total Claims" value={kpis.totalApproved} color="#2563EB" bg="#EFF6FF" icon={Banknote} />
+        <KPICard label="Paid" value={kpis.paidCount} color="#059669" bg="#ECFDF5" icon={CheckCircle} />
+        <KPICard label="Pending" value={kpis.pendingCount} color="#D97706" bg="#FEF3C7" icon={Clock} />
+        <KPICard label="Total Value" value={'₹' + kpis.totalValue.toLocaleString('en-IN')} color="#2563EB" bg="#EFF6FF" icon={Banknote} />
+      </ScrollView>
+
       <View style={styles.toolbar}>
         <View style={styles.searchBox}>
-          <Search size={20} color="#64748B" />
+          <Search size={20} color='#6B7280' />
           <TextInput 
             style={styles.searchInput} 
             placeholder="Search by employee or title..." 
@@ -133,7 +167,7 @@ export default function ReimbursementsScreen() {
                 
                 <View style={styles.cardDetails}>
                   <View style={styles.detailRow}>
-                    <Calendar size={14} color="#64748B" />
+                    <Calendar size={14} color='#6B7280' />
                     <Text style={styles.detailText}>{new Date(item.claim_date || item.created_at).toLocaleDateString()}</Text>
                   </View>
                   
@@ -169,7 +203,7 @@ export default function ReimbursementsScreen() {
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Process Payment</Text>
               <TouchableOpacity onPress={() => setSelectedItem(null)}>
-                <X size={24} color="#64748B" />
+                <X size={24} color='#6B7280' />
               </TouchableOpacity>
             </View>
             
@@ -184,7 +218,7 @@ export default function ReimbursementsScreen() {
 
                 <View style={styles.inputGroup}>
                   <Text style={styles.inputLabel}>Payment Method</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', paddingVertical: 4 }}>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ flexDirection: 'row', paddingVertical: 4 }}>
                     {['Bank Transfer', 'Cash', 'Cheque', 'UPI'].map(method => (
                       <TouchableOpacity 
                         key={method} 
@@ -246,27 +280,64 @@ export default function ReimbursementsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: { 
-    padding: 24, borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    padding: 24, borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
   },
   headerTop: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '900', color: '#0F172A', letterSpacing: -1 },
-  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4, fontWeight: '500' },
+  headerTitle: { fontSize: 24, fontWeight: '900', color: '#111827', letterSpacing: -1 },
+  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
   
   toolbar: { flexDirection: 'row', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 10, gap: 12 },
   searchBox: { 
-    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', 
-    borderWidth: 1, borderColor: '#F1F5F9', borderRadius: 16, paddingHorizontal: 16, height: 52,
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
+    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', 
+    borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, paddingHorizontal: 16, height: 52,
+    shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
   },
   searchInput: { flex: 1, marginLeft: 10, fontSize: 16, color: '#1E293B', fontWeight: '500' },
   
-  tabs: { flexDirection: 'row', paddingHorizontal: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  kpiScroll: {
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    gap: 12,
+  },
+  kpiCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    minWidth: 140,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  kpiIconBox: {
+    width: 36,
+    height: 36,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  kpiValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  kpiLabel: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  tabs: { flexDirection: 'row', paddingHorizontal: 24, paddingBottom: 16, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 12, borderBottomWidth: 2, borderBottomColor: 'transparent' },
   tabActive: { borderBottomColor: '#10B981' },
-  tabText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
+  tabText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
   tabTextActive: { color: '#10B981', fontWeight: '800' },
 
   centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
@@ -274,37 +345,37 @@ const styles = StyleSheet.create({
   emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
   content: { paddingHorizontal: 24, paddingTop: 16 },
   card: { 
-    backgroundColor: '#FFF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9',
-    shadowColor: '#0F172A', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.05, shadowRadius: 24, elevation: 4,
+    backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB',
+    shadowColor: '#111827', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.05, shadowRadius: 24, elevation: 4,
   },
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   iconBox: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#ECFDF5', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#A7F3D0' },
   cardTitleCol: { flex: 1 },
-  empName: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
-  claimTitle: { fontSize: 13, fontWeight: '500', color: '#64748B', marginTop: 2 },
-  amountBox: { backgroundColor: '#F8FAFC', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+  empName: { fontSize: 16, fontWeight: '800', color: '#111827' },
+  claimTitle: { fontSize: 13, fontWeight: '500', color: '#6B7280', marginTop: 2 },
+  amountBox: { backgroundColor: '#F8FAFC', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB' },
   amountText: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
-  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 16 },
+  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 16 },
   cardDetails: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   detailRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  detailText: { fontSize: 14, color: '#64748B', fontWeight: '500' },
+  detailText: { fontSize: 14, color: '#6B7280', fontWeight: '500' },
   
   processBtn: { backgroundColor: '#10B981', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12 },
-  processBtnText: { color: '#FFF', fontSize: 13, fontWeight: '700' },
+  processBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
   
   txBox: { marginTop: 16, backgroundColor: '#F8FAFC', padding: 12, borderRadius: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0' },
-  txText: { fontSize: 12, color: '#64748B', fontWeight: '600', fontFamily: 'monospace' },
+  txText: { fontSize: 12, color: '#6B7280', fontWeight: '600', fontFamily: 'monospace' },
   txMethod: { fontSize: 12, color: '#10B981', fontWeight: '700' },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 50, maxHeight: '85%' },
+  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 50, maxHeight: '85%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  modalTitle: { fontSize: 24, fontWeight: '800', color: '#0F172A' },
+  modalTitle: { fontSize: 24, fontWeight: '800', color: '#111827' },
   modalBody: { gap: 20 },
-  summaryBox: { backgroundColor: '#F8FAFC', padding: 20, borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: '#F1F5F9', marginBottom: 8 },
-  summaryLabel: { fontSize: 14, color: '#64748B', fontWeight: '600', marginBottom: 8 },
+  summaryBox: { backgroundColor: '#F8FAFC', padding: 20, borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: '#E5E7EB', marginBottom: 8 },
+  summaryLabel: { fontSize: 14, color: '#6B7280', fontWeight: '600', marginBottom: 8 },
   summaryAmount: { fontSize: 32, fontWeight: '900', color: '#10B981', marginBottom: 4 },
-  summaryTitle: { fontSize: 14, color: '#0F172A', fontWeight: '500' },
+  summaryTitle: { fontSize: 14, color: '#111827', fontWeight: '500' },
   
   inputGroup: { gap: 8 },
   inputLabel: { fontSize: 14, fontWeight: '700', color: '#475569' },
@@ -312,11 +383,11 @@ const styles = StyleSheet.create({
   inputIcon: { position: 'absolute', left: 14, zIndex: 1 },
   modalInput: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 14, padding: 16, fontSize: 16, color: '#1E293B', backgroundColor: '#F8FAFC' },
   
-  pill: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: '#F1F5F9', marginRight: 8, borderWidth: 1, borderColor: 'transparent' },
+  pill: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, backgroundColor: '#E5E7EB', marginRight: 8, borderWidth: 1, borderColor: 'transparent' },
   pillActive: { backgroundColor: '#ECFDF5', borderColor: '#10B981' },
-  pillText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
+  pillText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
   pillTextActive: { color: '#10B981', fontWeight: '700' },
   
   submitButton: { backgroundColor: '#10B981', borderRadius: 14, padding: 18, alignItems: 'center', marginTop: 10, shadowColor: '#10B981', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  submitButtonText: { color: '#FFF', fontSize: 16, fontWeight: '700' },
+  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
 });

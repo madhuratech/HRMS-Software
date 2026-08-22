@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions } from 'react-native';
-import { ArrowLeft, TrendingUp, Award, BarChart3, Star, ArrowUpRight, ArrowDownRight , Menu} from 'lucide-react-native';
+import { ChevronLeft, TrendingUp, Award, BarChart3, Star, ArrowUpRight, ArrowDownRight, Menu } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 
@@ -57,7 +57,7 @@ export default function PerformanceReportsScreen() {
         {/* Top Performers List */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <Award size={20} color="#4F46E5" />
+            <Award size={20} color='#2563EB' />
             <Text style={styles.cardTitle}>Top Performers (This Quarter)</Text>
           </View>
 
@@ -85,13 +85,13 @@ export default function PerformanceReportsScreen() {
         {/* Chart Placeholder for Professional Look */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
-            <BarChart3 size={20} color="#0F172A" />
+            <BarChart3 size={20} color='#111827' />
             <Text style={styles.cardTitle}>Department Performance</Text>
           </View>
           <View style={styles.chartPlaceholder}>
             {/* Simulating a bar chart with simple views */}
             <View style={styles.barGroup}>
-              <View style={[styles.bar, { height: 120, backgroundColor: '#4F46E5' }]} />
+              <View style={[styles.bar, { height: 120, backgroundColor: '#2563EB' }]} />
               <Text style={styles.barLabel}>Eng</Text>
             </View>
             <View style={styles.barGroup}>
@@ -99,7 +99,7 @@ export default function PerformanceReportsScreen() {
               <Text style={styles.barLabel}>Sales</Text>
             </View>
             <View style={styles.barGroup}>
-              <View style={[styles.bar, { height: 100, backgroundColor: '#4F46E5' }]} />
+              <View style={[styles.bar, { height: 100, backgroundColor: '#2563EB' }]} />
               <Text style={styles.barLabel}>Mkt</Text>
             </View>
             <View style={styles.barGroup}>
@@ -107,7 +107,7 @@ export default function PerformanceReportsScreen() {
               <Text style={styles.barLabel}>Ops</Text>
             </View>
             <View style={styles.barGroup}>
-              <View style={[styles.bar, { height: 110, backgroundColor: '#4F46E5' }]} />
+              <View style={[styles.bar, { height: 110, backgroundColor: '#2563EB' }]} />
               <Text style={styles.barLabel}>HR</Text>
             </View>
           </View>
@@ -126,9 +126,9 @@ const styles = StyleSheet.create({
   },
   header: {
     padding: 24,
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#E5E7EB',
     shadowColor: '#000', 
     shadowOffset: { width: 0, height: 2 }, 
     shadowOpacity: 0.03, 
@@ -143,7 +143,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#E5E7EB',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 16,
@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#111827',
   },
   content: {
     padding: 16,
@@ -164,13 +164,13 @@ const styles = StyleSheet.create({
   },
   metricCard: {
     width: (width - 48) / 2,
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    shadowColor: '#64748B',
+    shadowColor: '#6B7280',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
@@ -178,14 +178,14 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 13,
-    color: '#64748B',
+    color: '#6B7280',
     fontWeight: '500',
     marginBottom: 8,
   },
   metricValue: {
     fontSize: 24,
     fontWeight: '800',
-    color: '#0F172A',
+    color: '#111827',
     marginBottom: 8,
   },
   trendRow: {
@@ -198,13 +198,13 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   card: {
-    backgroundColor: '#FFF',
+    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    shadowColor: '#64748B',
+    shadowColor: '#6B7280',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.05,
     shadowRadius: 16,
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#111827',
   },
   listContainer: {
     gap: 16,
@@ -229,7 +229,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    borderBottomColor: '#E5E7EB',
   },
   lastItem: {
     borderBottomWidth: 0,
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#EFF6FF',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#4F46E5',
+    color: '#2563EB',
   },
   userInfo: {
     flex: 1,
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   },
   userDept: {
     fontSize: 13,
-    color: '#64748B',
+    color: '#6B7280',
   },
   scoreContainer: {
     alignItems: 'flex-end',
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 11,
-    color: '#64748B',
+    color: '#6B7280',
     fontWeight: '500',
   },
   chartPlaceholder: {
@@ -303,7 +303,7 @@ const styles = StyleSheet.create({
   },
   barLabel: {
     fontSize: 12,
-    color: '#64748B',
+    color: '#6B7280',
     fontWeight: '500',
   },
 });
