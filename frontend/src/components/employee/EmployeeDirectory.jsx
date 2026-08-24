@@ -26,7 +26,7 @@ export default function EmployeeDirectory() {
       status: statusFilter
     }).toString();
 
-    fetch(`http://localhost:3000/app/employees?${query}`)
+    fetch(`/app/employees?${query}`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {

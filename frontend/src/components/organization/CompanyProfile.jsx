@@ -347,7 +347,7 @@ export function CompanyProfile() {
     setExporting(true);
     addToast("Generating company profile report...", "info");
 
-    fetch("http://localhost:3000/app/organization/export-pdf", {
+    fetch("/app/organization/export-pdf", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"

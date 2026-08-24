@@ -20,7 +20,7 @@ export default function PromotionsContent() {
   // Load promotions list, employees dropdown, and designations dropdown
   const loadData = () => {
     setLoading(true);
-    fetch("http://localhost:3000/app/employees/promotions")
+    fetch("/app/employees/promotions")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -35,12 +35,12 @@ export default function PromotionsContent() {
         setLoading(false);
       });
 
-    fetch("http://localhost:3000/app/employees?status=Active")
+    fetch("/app/employees?status=Active")
       .then(res => res.json())
       .then(data => setEmployees(data))
       .catch(err => console.error(err));
 
-    fetch("http://localhost:3000/app/organization/designations")
+    fetch("/app/organization/designations")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setDesignations(data);
@@ -59,7 +59,7 @@ export default function PromotionsContent() {
       return;
     }
 
-    fetch("http://localhost:3000/app/employees/promotions", {
+    fetch("/app/employees/promotions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ employeeId, newDesignationName, effectiveDate })
@@ -81,7 +81,7 @@ export default function PromotionsContent() {
   };
 
   const handleApprove = (promoId) => {
-    fetch(`http://localhost:3000/app/employees/promotions/${promoId}/approve`, {
+    fetch(`/app/employees/promotions/${promoId}/approve`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ approverId: 1 }) // Default Admin

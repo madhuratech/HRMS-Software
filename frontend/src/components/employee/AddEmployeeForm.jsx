@@ -64,13 +64,13 @@ export default function AddEmployeeForm() {
   const [teams, setTeams] = useState([]);
 
   useEffect(() => {
-    fetch('http://localhost:3000/app/employees/lookup/designations')
+    fetch('/app/employees/lookup/designations')
       .then(res => res.json()).then(data => { if (Array.isArray(data)) { setDesignations(data); if (data.length > 0 && !formData.designation) setFormData(prev => ({ ...prev, designation: data[0].role_name })); } }).catch(() => { });
-    fetch('http://localhost:3000/app/employees/lookup/departments')
+    fetch('/app/employees/lookup/departments')
       .then(res => res.json()).then(data => { if (Array.isArray(data)) { setDepartments(data); if (data.length > 0 && !formData.department) setFormData(prev => ({ ...prev, department: data[0].dept_name })); } }).catch(() => { });
-    fetch('http://localhost:3000/app/employees/lookup/branches')
+    fetch('/app/employees/lookup/branches')
       .then(res => res.json()).then(data => { if (Array.isArray(data)) { setBranches(data); if (data.length > 0 && !formData.branch) setFormData(prev => ({ ...prev, branch: data[0].branch_name })); } }).catch(() => { });
-    fetch('http://localhost:3000/app/employees/lookup/teams')
+    fetch('/app/employees/lookup/teams')
       .then(res => res.json()).then(data => { if (Array.isArray(data)) { setTeams(data); if (data.length > 0 && !formData.teamName) setFormData(prev => ({ ...prev, teamName: data[0].name })); } }).catch(() => { });
   }, []);
 
@@ -114,7 +114,7 @@ export default function AddEmployeeForm() {
       teamName: formData.teamName
     };
 
-    fetch("http://localhost:3000/app/employees", {
+    fetch("/app/employees", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)

@@ -152,7 +152,17 @@ exports.submitApplication = (req, res) => {
       console.error(err);
       return res.status(500).json({ message: "Leave submission failed" });
     }
-    res.json({ message: "Leave application submitted successfully", id: result.insertId });
+    const leaveId = result.insertId;
+
+    // Trigger Notification
+    db.query("SELECT name FROM leave_types WHERE code = ?", [leave_type_code], (errType, typeRows) => {
+      const leaveTypeName = typeRows && typeRows.length > 0 ? typeRows[0].name : leave_type_code;
+      const NotificationService = require("../services/NotificationService");
+      NotificationService.triggerLeaveRequest(leaveId, employee_id, leaveTypeName, start_date, end_date)
+        .catch(e => console.error("Error triggering leave request notification:", e));
+    });
+
+    res.json({ message: "Leave application submitted successfully", id: leaveId });
   });
 };
 
@@ -164,10 +174,28 @@ exports.updateStatus = (req, res) => {
     return res.status(400).json({ message: "Status is required" });
   }
 
-  const sql = "UPDATE leave_applications SET status = ?, approved_by = ? WHERE id = ?";
-  db.query(sql, [status, approved_by, id], (err, result) => {
-    if (err) return res.status(500).json(err);
-    res.json({ message: "Leave application updated successfully" });
+  const fetchSql = `
+    SELECT la.*, lt.name as leave_name 
+    FROM leave_applications la 
+    JOIN leave_types lt ON la.leave_type_id = lt.id 
+    WHERE la.id = ?
+  `;
+  db.query(fetchSql, [id], (errFetch, fetchRows) => {
+    const app = fetchRows && fetchRows.length > 0 ? fetchRows[0] : null;
+    const sql = "UPDATE leave_applications SET status = ?, approved_by = ? WHERE id = ?";
+    db.query(sql, [status, approved_by, id], (err) => {
+      if (err) return res.status(500).json(err);
+
+      if (app) {
+        const NotificationService = require("../services/NotificationService");
+        const startStr = new Date(app.start_date).toISOString().split('T')[0];
+        const endStr = new Date(app.end_date).toISOString().split('T')[0];
+        NotificationService.triggerLeaveStatusUpdate(id, app.employee_id, app.leave_name, status, startStr, endStr)
+          .catch(e => console.error("Error triggering leave status update notification:", e));
+      }
+
+      res.json({ message: "Leave application updated successfully" });
+    });
   });
 };
 

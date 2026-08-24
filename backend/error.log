@@ -4153,3 +4153,205 @@
 [2026-08-22T09:31:01.523Z] 403 Error: Forbidden: Insufficient permissions. Details: null
 [2026-08-22T09:31:02.463Z] 403 Error: Forbidden: Insufficient permissions. Details: null
 >>>>>>> 87f4782 (Verifeid Commit)
+[2026-08-22T10:05:44.206Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T10:05:46.205Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T10:07:49.491Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T10:58:10.940Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T10:58:13.174Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T10:59:55.060Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:00:04.387Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:00:20.378Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:06:46.835Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:06:51.999Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:06:54.341Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:06:56.617Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:07:00.546Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:07:09.613Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:07:13.421Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:07:16.126Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:07:17.738Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:07:20.776Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:07:21.026Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:07:21.772Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:07:24.760Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:32:41.626Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:32:43.242Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:37:05.343Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:37:08.123Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:37:14.950Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:39:44.868Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:39:46.702Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:39:52.015Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:40:19.576Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:40:21.045Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:41:42.223Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:41:43.902Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:43:13.459Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:43:18.802Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:43:52.115Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:43:53.941Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:44:30.411Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:51:23.835Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:51:35.430Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:52:13.882Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:52:28.182Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:53:21.787Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-22T11:53:23.675Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T05:11:51.176Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T05:11:52.718Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T05:11:57.533Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T05:45:38.984Z] 500 Error: Failed to retrieve user permissions. Details: "read ECONNRESET"
+[2026-08-24T05:45:47.602Z] 500 Error: Failed to fetch probation records. Details: "connect EHOSTUNREACH 185.199.53.201:3306"
+[2026-08-24T05:45:47.609Z] 500 Error: Failed to fetch dashboard stats. Details: "connect EHOSTUNREACH 185.199.53.201:3306"
+[2026-08-24T05:45:48.515Z] 500 Error: Failed to retrieve eligible joiners. Details: "connect EHOSTUNREACH 185.199.53.201:3306"
+[2026-08-24T05:45:48.521Z] 500 Error: Failed to fetch orientations schedule. Details: "connect EHOSTUNREACH 185.199.53.201:3306"
+[2026-08-24T05:45:48.527Z] 500 Error: Failed to fetch dashboard stats. Details: "connect EHOSTUNREACH 185.199.53.201:3306"
+[2026-08-24T05:45:50.860Z] 500 Error: Failed to fetch new joiners onboarding list. Details: "connect EHOSTUNREACH 185.199.53.201:3306"
+[2026-08-24T05:45:50.864Z] 500 Error: Failed to retrieve onboarding stats. Details: "connect EHOSTUNREACH 185.199.53.201:3306"
+[2026-08-24T05:45:50.905Z] 500 Error: Failed to fetch offer letters. Details: "connect EHOSTUNREACH 185.199.53.201:3306"
+[2026-08-24T07:41:32.530Z] Uncaught Exception: C:\Users\Hp\Desktop\HRMs-main\HRMs-main\backend\routes\employee.js:1000
+  });
+  ^
+
+SyntaxError: Unexpected token '}'
+    at wrapSafe (node:internal/modules/cjs/loader:1692:18)
+    at Module._compile (node:internal/modules/cjs/loader:1735:20)
+    at Object..js (node:internal/modules/cjs/loader:1893:10)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.require (node:internal/modules/cjs/loader:1504:12)
+    at require (node:internal/modules/helpers:152:16)
+    at Object.<anonymous> (C:\Users\Hp\Desktop\HRMs-main\HRMs-main\backend\server.js:52:27)
+
+[2026-08-24T07:47:50.196Z] Uncaught Exception: C:\Users\Hp\Desktop\HRMs-main\HRMs-main\backend\routes\employee.js:1026
+  });
+  ^
+
+SyntaxError: Unexpected token '}'
+    at wrapSafe (node:internal/modules/cjs/loader:1692:18)
+    at Module._compile (node:internal/modules/cjs/loader:1735:20)
+    at Object..js (node:internal/modules/cjs/loader:1893:10)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.require (node:internal/modules/cjs/loader:1504:12)
+    at require (node:internal/modules/helpers:152:16)
+    at Object.<anonymous> (C:\Users\Hp\Desktop\HRMs-main\HRMs-main\backend\server.js:52:27)
+
+[2026-08-24T07:49:26.481Z] Uncaught Exception: C:\Users\Hp\Desktop\HRMs-main\HRMs-main\backend\routes\employee.js:1026
+  });
+  ^
+
+SyntaxError: Unexpected token '}'
+    at wrapSafe (node:internal/modules/cjs/loader:1692:18)
+    at Module._compile (node:internal/modules/cjs/loader:1735:20)
+    at Object..js (node:internal/modules/cjs/loader:1893:10)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.require (node:internal/modules/cjs/loader:1504:12)
+    at require (node:internal/modules/helpers:152:16)
+    at Object.<anonymous> (C:\Users\Hp\Desktop\HRMs-main\HRMs-main\backend\server.js:52:27)
+
+[2026-08-24T07:49:49.720Z] Uncaught Exception: C:\Users\Hp\Desktop\HRMs-main\HRMs-main\backend\routes\employee.js:1026
+  });
+  ^
+
+SyntaxError: Unexpected token '}'
+    at wrapSafe (node:internal/modules/cjs/loader:1692:18)
+    at Module._compile (node:internal/modules/cjs/loader:1735:20)
+    at Object..js (node:internal/modules/cjs/loader:1893:10)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.require (node:internal/modules/cjs/loader:1504:12)
+    at require (node:internal/modules/helpers:152:16)
+    at Object.<anonymous> (C:\Users\Hp\Desktop\HRMs-main\HRMs-main\backend\server.js:52:27)
+
+[2026-08-24T07:50:21.259Z] Uncaught Exception: C:\Users\Hp\Desktop\HRMs-main\HRMs-main\backend\routes\employee.js:1026
+  });
+  ^
+
+SyntaxError: Unexpected token '}'
+    at wrapSafe (node:internal/modules/cjs/loader:1692:18)
+    at Module._compile (node:internal/modules/cjs/loader:1735:20)
+    at Object..js (node:internal/modules/cjs/loader:1893:10)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.require (node:internal/modules/cjs/loader:1504:12)
+    at require (node:internal/modules/helpers:152:16)
+    at Object.<anonymous> (C:\Users\Hp\Desktop\HRMs-main\HRMs-main\backend\server.js:52:27)
+
+[2026-08-24T07:50:44.183Z] Uncaught Exception: C:\Users\Hp\Desktop\HRMs-main\HRMs-main\backend\routes\employee.js:1026
+  });
+  ^
+
+SyntaxError: Unexpected token '}'
+    at wrapSafe (node:internal/modules/cjs/loader:1692:18)
+    at Module._compile (node:internal/modules/cjs/loader:1735:20)
+    at Object..js (node:internal/modules/cjs/loader:1893:10)
+    at Module.load (node:internal/modules/cjs/loader:1481:32)
+    at Module._load (node:internal/modules/cjs/loader:1300:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.require (node:internal/modules/cjs/loader:1504:12)
+    at require (node:internal/modules/helpers:152:16)
+    at Object.<anonymous> (C:\Users\Hp\Desktop\HRMs-main\HRMs-main\backend\server.js:52:27)
+
+[2026-08-24T08:05:42.022Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:05:43.362Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:05:48.178Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:06:11.688Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:06:16.431Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:14:09.602Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:14:21.180Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:14:25.450Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:14:31.232Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:14:43.969Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:14:46.046Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:15:01.642Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:15:03.852Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:15:26.015Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:15:27.984Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:16:04.666Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:18:07.739Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:18:13.004Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:18:47.571Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:18:49.812Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:18:53.088Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:24:49.756Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:24:53.994Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:30:34.042Z] Middleware Error: Error: Cannot find module '../utils/teamScope'
+Require stack:
+- C:\Users\Hp\Desktop\HRMs-main\HRMs-main\backend\routes\attendanceRoute.js
+- C:\Users\Hp\Desktop\HRMs-main\HRMs-main\backend\server.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1421:15)
+    at defaultResolveImpl (node:internal/modules/cjs/loader:1059:19)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1064:22)
+    at Module._load (node:internal/modules/cjs/loader:1227:37)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:245:24)
+    at Module.require (node:internal/modules/cjs/loader:1504:12)
+    at require (node:internal/modules/helpers:152:16)
+    at C:\Users\Hp\Desktop\HRMs-main\HRMs-main\backend\routes\attendanceRoute.js:16:28
+    at Layer.handleRequest (C:\Users\Hp\Desktop\HRMs-main\HRMs-main\backend\node_modules\router\lib\layer.js:152:17)
+
+[2026-08-24T08:31:05.581Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:31:09.335Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:31:10.814Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:31:28.327Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:33:22.559Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:37:49.617Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:38:06.251Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:38:10.721Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:41:26.994Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T08:47:52.872Z] 403 Error: Forbidden: Insufficient permissions. Details: null
+[2026-08-24T09:04:46.816Z] 500 Error: Failed to retrieve user permissions. Details: "connect ENETUNREACH 185.199.53.201:3306"
+[2026-08-24T09:20:29.503Z] 403 Error: Forbidden: Insufficient permissions. Details: null

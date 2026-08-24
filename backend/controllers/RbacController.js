@@ -44,6 +44,23 @@ const RbacController = {
       const { roleKey } = req.params;
       const { permissions, roleInfo } = req.body;
       await RbacService.updateRolePermissions(roleKey, permissions, roleInfo);
+
+      // Notify all users under this role of permission changes
+      const db = require('../config/database');
+      db.query(
+        `SELECT e.id FROM employees e JOIN roles r ON e.role_id = r.id WHERE UPPER(r.role_key) = ?`,
+        [(roleKey || '').toUpperCase()],
+        (err, rows) => {
+          if (!err && rows && rows.length > 0) {
+            const NotificationService = require('../services/NotificationService');
+            rows.forEach(user => {
+              NotificationService.triggerPermissionUpdate(user.id, 'user roles')
+                .catch(e => console.error("Error triggering permission update notification:", e));
+            });
+          }
+        }
+      );
+
       return response(res, true, 200, 'Role permissions updated successfully');
     } catch (e) {
       return response(res, false, 500, 'Failed to update role permissions', null, e.message);

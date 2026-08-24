@@ -73,6 +73,8 @@ app.use("/app/organization", require("./routes/organizationRoute"));
 app.use("/app/payroll", require("./routes/payroll"));
 app.use("/app/tickets", require("./routes/tickets"));
 app.use("/app/rbac", require("./routes/rbacRoute"));
+app.use("/app/notifications", require("./routes/notifications"));
+app.use("/api/notifications", require("./routes/notifications"));
 
 // Projects Management Module
 app.use("/app/projects", require("./routes/projects"));

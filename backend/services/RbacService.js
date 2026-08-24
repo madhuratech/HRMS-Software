@@ -14,8 +14,13 @@ const MODULE_LIST = [
   { key: 'reports', label: 'Reports & Analytics', category: 'Analytics' },
   { key: 'expenses', label: 'Expense Claims', category: 'Finance' },
   { key: 'documents', label: 'Document Management', category: 'Compliance' },
-  { key: 'tickets', label: 'Support & Helpdesk', category: 'Support' }
+  { key: 'helpdesk', label: 'Support & Helpdesk', category: 'Support' },
+  { key: 'settings', label: 'Settings & Configurations', category: 'Administration' },
+  { key: 'ai_assistant', label: 'AI Assistant', category: 'Tools' },
+  { key: 'user_roles', label: 'User Roles & Permissions', category: 'Administration' }
 ];
+
+const STANDARD_ROLE_KEYS = ['SUPER_ADMIN', 'HR_MANAGER', 'TEAM_LEADER', 'EMPLOYEE'];
 
 class RbacService {
   static getModules() {
@@ -38,47 +43,80 @@ class RbacService {
       });
     });
 
-    const formatTitle = (str) => {
-      if (!str) return 'Role';
-      if (str.includes('_') || str === str.toUpperCase()) {
-        return str.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+    const standardRolesMap = {
+      'SUPER_ADMIN': {
+        role_key: 'SUPER_ADMIN',
+        role_name: 'Admin',
+        name: 'Admin',
+        description: 'Full HRMS administrative access across all system modules and settings.',
+        is_system: 1
+      },
+      'HR_MANAGER': {
+        role_key: 'HR_MANAGER',
+        role_name: 'HR',
+        name: 'HR',
+        description: 'HR management access for employees, recruitment, onboarding, and performance.',
+        is_system: 1
+      },
+      'TEAM_LEADER': {
+        role_key: 'TEAM_LEADER',
+        role_name: 'Team Leader',
+        name: 'Team Leader',
+        description: 'Team management access for assigned team members, attendance, tasks, and reviews.',
+        is_system: 1
+      },
+      'EMPLOYEE': {
+        role_key: 'EMPLOYEE',
+        role_name: 'Employee',
+        name: 'Employee',
+        description: 'Employee self-service portal for personal attendance, leave, payslips, and tasks.',
+        is_system: 1
       }
-      return str;
     };
 
-    const seen = new Set();
-    const uniqueRoles = [];
+    const finalRoles = [];
 
-    for (const r of roles) {
-      const roleKey = (r.role_key || r.name || `ROLE_${r.id}`).toUpperCase();
-      if (!seen.has(roleKey)) {
-        seen.add(roleKey);
-        const roleName = r.role_name && !r.role_name.includes('_') && r.role_name !== r.role_name.toUpperCase()
-          ? r.role_name
-          : formatTitle(r.role_name || r.name);
-
-        uniqueRoles.push({
-          ...r,
-          role_key: roleKey,
-          role_name: roleName || `Role ${r.id}`,
-          description: r.description || `Permissions and access control for ${roleName || 'this role'}.`
-        });
-      }
+    // 1. Add the 4 Standard System Roles
+    for (const key of STANDARD_ROLE_KEYS) {
+      const dbMatch = roles.find(r => (r.role_key || '').toUpperCase() === key);
+      const stdRole = standardRolesMap[key];
+      finalRoles.push({
+        id: dbMatch ? dbMatch.id : (key === 'SUPER_ADMIN' ? 1 : key === 'HR_MANAGER' ? 20 : key === 'TEAM_LEADER' ? 19 : 12),
+        role_key: key,
+        role_name: stdRole.role_name,
+        name: stdRole.name,
+        description: stdRole.description,
+        is_system: 1,
+        user_count: dbMatch ? dbMatch.user_count : 0
+      });
     }
 
-    return uniqueRoles;
+    // 2. Add Custom Roles created by Admin (is_system = 0)
+    const customRoles = roles.filter(r => !r.is_system && !STANDARD_ROLE_KEYS.includes((r.role_key || '').toUpperCase()));
+    for (const r of customRoles) {
+      const roleKey = (r.role_key || r.name || `ROLE_${r.id}`).toUpperCase();
+      finalRoles.push({
+        ...r,
+        role_key: roleKey,
+        role_name: r.role_name || r.name || `Role ${r.id}`,
+        description: r.description || `Custom role permissions for ${r.role_name || r.name}.`,
+        is_system: 0
+      });
+    }
+
+    return finalRoles;
   }
 
   static async getRolePermissions(roleKey) {
+    const keyUpper = (roleKey || 'EMPLOYEE').toUpperCase();
     const permissions = await new Promise((resolve, reject) => {
-      const sql = `SELECT * FROM role_permissions WHERE role_key = ?`;
-      db.query(sql, [roleKey], (err, rows) => {
+      const sql = `SELECT * FROM role_permissions WHERE UPPER(role_key) = ?`;
+      db.query(sql, [keyUpper], (err, rows) => {
         if (err) return reject(err);
         resolve(rows);
       });
     });
 
-    // Map rows into a full matrix with defaults for any missing modules
     const permMap = {};
     permissions.forEach(p => {
       permMap[p.module_key] = {
@@ -89,14 +127,28 @@ class RbacService {
       };
     });
 
+    const getDefaultView = (mKey) => {
+      if (keyUpper === 'SUPER_ADMIN' || keyUpper === 'ADMIN') return true;
+      if (keyUpper === 'HR_MANAGER' || keyUpper === 'HR') {
+        return ['dashboard', 'organization', 'employees', 'attendance', 'leave', 'recruitment', 'onboarding', 'performance', 'reports', 'documents', 'helpdesk'].includes(mKey);
+      }
+      if (keyUpper === 'TEAM_LEADER') {
+        return ['dashboard', 'employees', 'attendance', 'leave', 'projects', 'performance', 'reports', 'documents', 'helpdesk'].includes(mKey);
+      }
+      if (keyUpper === 'EMPLOYEE') {
+        return ['dashboard', 'employees', 'attendance', 'leave', 'payroll', 'projects', 'performance', 'documents', 'helpdesk'].includes(mKey);
+      }
+      return true;
+    };
+
     const fullMatrix = MODULE_LIST.map(m => ({
       module_key: m.key,
       module_label: m.label,
       category: m.category,
-      can_view: permMap[m.key] ? permMap[m.key].can_view : (roleKey === 'SUPER_ADMIN'),
-      can_create: permMap[m.key] ? permMap[m.key].can_create : (roleKey === 'SUPER_ADMIN'),
-      can_edit: permMap[m.key] ? permMap[m.key].can_edit : (roleKey === 'SUPER_ADMIN'),
-      can_delete: permMap[m.key] ? permMap[m.key].can_delete : (roleKey === 'SUPER_ADMIN')
+      can_view: permMap[m.key] ? permMap[m.key].can_view : getDefaultView(m.key),
+      can_create: permMap[m.key] ? permMap[m.key].can_create : (keyUpper === 'SUPER_ADMIN' || keyUpper === 'ADMIN'),
+      can_edit: permMap[m.key] ? permMap[m.key].can_edit : (keyUpper === 'SUPER_ADMIN' || keyUpper === 'ADMIN'),
+      can_delete: permMap[m.key] ? permMap[m.key].can_delete : (keyUpper === 'SUPER_ADMIN' || keyUpper === 'ADMIN')
     }));
 
     return fullMatrix;
@@ -112,7 +164,7 @@ class RbacService {
 
     // Check existing
     const existing = await new Promise((resolve, reject) => {
-      db.query('SELECT id FROM roles WHERE role_key = ? OR role_name = ?', [roleKey, role_name.trim()], (err, rows) => {
+      db.query('SELECT id FROM roles WHERE UPPER(role_key) = ? OR LOWER(role_name) = LOWER(?)', [roleKey, role_name.trim()], (err, rows) => {
         if (err) return reject(err);
         resolve(rows);
       });
@@ -122,7 +174,7 @@ class RbacService {
       throw new Error('A role with this name already exists');
     }
 
-    // Insert role
+    // Insert custom role
     await new Promise((resolve, reject) => {
       const sql = 'INSERT INTO roles (role_key, role_name, name, description, is_system) VALUES (?, ?, ?, ?, 0)';
       db.query(sql, [roleKey, role_name.trim(), role_name.trim(), description || 'Custom user role'], (err, res) => {
@@ -155,10 +207,12 @@ class RbacService {
   }
 
   static async updateRolePermissions(roleKey, matrix, roleInfo) {
+    const keyUpper = (roleKey || '').toUpperCase();
+
     if (roleInfo && roleInfo.role_name) {
       await new Promise((resolve, reject) => {
-        const sql = 'UPDATE roles SET role_name = ?, description = ? WHERE role_key = ?';
-        db.query(sql, [roleInfo.role_name, roleInfo.description || '', roleKey], (err) => {
+        const sql = 'UPDATE roles SET role_name = ?, description = ? WHERE UPPER(role_key) = ?';
+        db.query(sql, [roleInfo.role_name, roleInfo.description || '', keyUpper], (err) => {
           if (err) return reject(err);
           resolve();
         });
@@ -178,7 +232,7 @@ class RbacService {
               can_delete = VALUES(can_delete)
           `;
           db.query(sql, [
-            roleKey,
+            keyUpper,
             item.module_key,
             item.can_view ? 1 : 0,
             item.can_create ? 1 : 0,
@@ -196,8 +250,13 @@ class RbacService {
   }
 
   static async deleteRole(roleKey) {
+    const keyUpper = (roleKey || '').toUpperCase();
+    if (STANDARD_ROLE_KEYS.includes(keyUpper)) {
+      throw new Error('Standard system roles cannot be deleted');
+    }
+
     const roleRows = await new Promise((resolve, reject) => {
-      db.query('SELECT * FROM roles WHERE role_key = ?', [roleKey], (err, rows) => {
+      db.query('SELECT * FROM roles WHERE UPPER(role_key) = ?', [keyUpper], (err, rows) => {
         if (err) return reject(err);
         resolve(rows);
       });
@@ -212,14 +271,14 @@ class RbacService {
     }
 
     await new Promise((resolve, reject) => {
-      db.query('DELETE FROM role_permissions WHERE role_key = ?', [roleKey], (err) => {
+      db.query('DELETE FROM role_permissions WHERE UPPER(role_key) = ?', [keyUpper], (err) => {
         if (err) return reject(err);
         resolve();
       });
     });
 
     await new Promise((resolve, reject) => {
-      db.query('DELETE FROM roles WHERE role_key = ?', [roleKey], (err) => {
+      db.query('DELETE FROM roles WHERE UPPER(role_key) = ?', [keyUpper], (err) => {
         if (err) return reject(err);
         resolve();
       });
@@ -230,16 +289,29 @@ class RbacService {
 
   static async getUserPermissions(roleNameOrKey) {
     if (!roleNameOrKey) return {};
+    const inputUpper = roleNameOrKey.trim().toUpperCase();
 
-    const roles = await new Promise((resolve, reject) => {
-      db.query('SELECT role_key FROM roles WHERE LOWER(role_key) = LOWER(?) OR LOWER(role_name) = LOWER(?)', [roleNameOrKey, roleNameOrKey], (err, rows) => {
-        if (err) return reject(err);
-        resolve(rows);
+    // Map input to standard role key if matched
+    let resolvedKey = inputUpper;
+    if (inputUpper === 'ADMIN' || inputUpper === 'SUPER_ADMIN' || inputUpper === 'SUPER ADMIN') {
+      resolvedKey = 'SUPER_ADMIN';
+    } else if (inputUpper === 'HR' || inputUpper === 'HR_MANAGER' || inputUpper === 'HR MANAGER') {
+      resolvedKey = 'HR_MANAGER';
+    } else if (inputUpper === 'TEAM_LEADER' || inputUpper === 'TEAM LEADER') {
+      resolvedKey = 'TEAM_LEADER';
+    } else if (inputUpper === 'EMPLOYEE') {
+      resolvedKey = 'EMPLOYEE';
+    } else {
+      const roles = await new Promise((resolve, reject) => {
+        db.query('SELECT role_key FROM roles WHERE UPPER(role_key) = ? OR LOWER(role_name) = LOWER(?)', [inputUpper, roleNameOrKey.trim()], (err, rows) => {
+          if (err) return reject(err);
+          resolve(rows);
+        });
       });
-    });
+      resolvedKey = roles.length > 0 ? roles[0].role_key : 'EMPLOYEE';
+    }
 
-    const key = roles.length > 0 ? roles[0].role_key : 'EMPLOYEE';
-    const matrix = await this.getRolePermissions(key);
+    const matrix = await this.getRolePermissions(resolvedKey);
 
     const permObj = {};
     matrix.forEach(m => {

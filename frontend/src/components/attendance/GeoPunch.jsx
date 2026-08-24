@@ -223,10 +223,28 @@ export function GeoPunch() {
               <button
                 onClick={() => handlePunch('IN')}
                 style={{
+                  width: '100%',
+                  padding: '14px 24px',
+                  borderRadius: '12px',
+                  border: 'none',
                   background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
-                  boxShadow: '0 8px 20px -4px rgba(37, 99, 235, 0.4)'
+                  boxShadow: '0 8px 20px -4px rgba(37, 99, 235, 0.40)',
+                  color: '#FFFFFF',
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  letterSpacing: '0.02em',
+                  transition: 'opacity 0.15s, transform 0.1s',
+                  fontFamily: "'Inter', sans-serif",
                 }}
-                className="w-full py-3.5 px-6 rounded-xl text-white font-bold text-sm hover:opacity-95 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.92'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
+                onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
               >
                 <Camera size={18} /> Punch IN Now
               </button>
@@ -235,25 +253,34 @@ export function GeoPunch() {
 
           {/* Idle State: Currently Punched In -> Ready for Punch Out */}
           {status === 'idle' && todayRecord?.status === 'PUNCHED_IN' && (
-            <div className="space-y-5">
-              
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
               {/* Shift Stats Card */}
-              <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5 text-xs">
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Punch In Time:</span>
-                  <strong className="text-slate-900 font-bold">{todayRecord.punchInTime || '09:12 AM'}</strong>
+              <div style={{
+                background: '#F8FAFC',
+                border: '1.5px solid #E2E8F0',
+                borderRadius: '14px',
+                overflow: 'hidden',
+              }}>
+                {/* Row: Punch In Time */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Punch In Time</span>
+                  <strong style={{ fontSize: '13px', color: '#0F172A', fontWeight: '700' }}>{todayRecord.punchInTime || '09:12 AM'}</strong>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Working Hours:</span>
-                  <strong className="text-blue-600 font-mono text-sm font-extrabold">{elapsed}</strong>
+                {/* Row: Working Hours */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #E2E8F0', background: '#EFF6FF' }}>
+                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Working Hours</span>
+                  <strong style={{ fontSize: '15px', color: '#2563EB', fontWeight: '800', fontFamily: 'monospace', letterSpacing: '0.05em' }}>{elapsed}</strong>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-slate-500">Geofence Location:</span>
-                  <strong className="text-slate-900 font-medium truncate max-w-[180px]">{todayRecord.locationName || 'HQ Office'}</strong>
+                {/* Row: Geofence Location */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Geofence Location</span>
+                  <strong style={{ fontSize: '13px', color: '#0F172A', fontWeight: '600', maxWidth: '180px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{todayRecord.locationName || 'HQ Office'}</strong>
                 </div>
-                <div className="flex justify-between items-center pt-1 border-t border-slate-200">
-                  <span className="text-slate-500">Status:</span>
-                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[11px] font-bold rounded-md">
+                {/* Row: Status */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
+                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Status</span>
+                  <span style={{ padding: '3px 10px', background: '#DCFCE7', color: '#15803D', fontSize: '11px', fontWeight: '700', borderRadius: '20px', letterSpacing: '0.03em' }}>
                     {todayRecord.statusLabel || 'PUNCHED IN'}
                   </span>
                 </div>
@@ -263,10 +290,28 @@ export function GeoPunch() {
               <button
                 onClick={() => handlePunch('OUT')}
                 style={{
+                  width: '100%',
+                  padding: '14px 24px',
+                  borderRadius: '12px',
+                  border: 'none',
                   background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)',
-                  boxShadow: '0 8px 20px -4px rgba(220, 38, 38, 0.35)'
+                  boxShadow: '0 8px 20px -4px rgba(220, 38, 38, 0.35)',
+                  color: '#FFFFFF',
+                  fontSize: '14px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  letterSpacing: '0.02em',
+                  transition: 'opacity 0.15s, transform 0.1s',
+                  fontFamily: "'Inter', sans-serif",
                 }}
-                className="w-full py-3.5 px-6 rounded-xl text-white font-bold text-sm hover:opacity-95 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                onMouseEnter={e => e.currentTarget.style.opacity = '0.92'}
+                onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
+                onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
               >
                 <Camera size={18} /> Punch OUT Now
               </button>
@@ -275,22 +320,45 @@ export function GeoPunch() {
 
           {/* Idle State: Punched Out Completed */}
           {status === 'idle' && todayRecord?.status === 'PUNCHED_OUT' && (
-            <div className="text-center space-y-4">
-              <div style={{ width: '64px', height: '64px', background: '#ECFDF5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', border: '4px solid #D1FAE5' }}>
-                <CheckCircle className="text-emerald-600" size={32} />
-              </div>
-              <div>
-                <h3 className="text-lg font-extrabold text-slate-900">Attendance Completed</h3>
-                <div className="mt-3 bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2 text-xs text-left">
-                  <div className="flex justify-between"><span>Punch In:</span> <strong className="text-slate-800">{todayRecord.punchInTime}</strong></div>
-                  <div className="flex justify-between"><span>Punch Out:</span> <strong className="text-slate-800">{todayRecord.punchOutTime}</strong></div>
-                  <div className="flex justify-between"><span>Working Hours:</span> <strong className="text-blue-600 font-bold">{todayRecord.workingHours}</strong></div>
-                  <div className="flex justify-between items-center pt-1 border-t border-slate-200">
-                    <span>Status:</span>
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[11px] font-bold rounded-md">{todayRecord.statusLabel || 'Completed'}</span>
-                  </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+
+              {/* Check icon + title */}
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ width: '56px', height: '56px', background: '#ECFDF5', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 10px', border: '3px solid #D1FAE5' }}>
+                  <CheckCircle className="text-emerald-600" size={28} />
                 </div>
-                <p className="text-emerald-600 text-xs font-bold mt-3">✓ Attendance successfully recorded for today!</p>
+                <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#0F172A', margin: 0 }}>Attendance Completed</h3>
+              </div>
+
+              {/* Stats rows */}
+              <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '14px', overflow: 'hidden' }}>
+                {/* Punch In */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Punch In</span>
+                  <strong style={{ fontSize: '13px', color: '#0F172A', fontWeight: '700' }}>{todayRecord.punchInTime}</strong>
+                </div>
+                {/* Punch Out */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #E2E8F0' }}>
+                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Punch Out</span>
+                  <strong style={{ fontSize: '13px', color: '#0F172A', fontWeight: '700' }}>{todayRecord.punchOutTime}</strong>
+                </div>
+                {/* Working Hours */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #E2E8F0', background: '#EFF6FF' }}>
+                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Working Hours</span>
+                  <strong style={{ fontSize: '15px', color: '#2563EB', fontWeight: '800', fontFamily: 'monospace', letterSpacing: '0.05em' }}>{todayRecord.workingHours}</strong>
+                </div>
+                {/* Status */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
+                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Status</span>
+                  <span style={{ padding: '3px 10px', background: '#DBEAFE', color: '#1D4ED8', fontSize: '11px', fontWeight: '700', borderRadius: '20px', letterSpacing: '0.03em' }}>
+                    {todayRecord.statusLabel || 'Completed'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Success note */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '12px', fontWeight: '700', color: '#16A34A' }}>
+                <CheckCircle size={14} /> Attendance successfully recorded for today!
               </div>
             </div>
           )}
@@ -356,26 +424,54 @@ export function GeoPunch() {
         background: '#FFFFFF',
         borderRadius: '16px',
         border: '1px solid #E2E8F0',
-        padding: '16px',
+        padding: '20px',
         boxShadow: '0 4px 12px rgba(15,23,42,0.03)'
       }}>
-        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Recent Punch Logs</h4>
-        <div className="space-y-2 max-h-48 overflow-y-auto">
+        <h4 style={{ fontSize: '11px', fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>Recent Punch Logs</h4>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '192px', overflowY: 'auto' }}>
           {recent.length === 0 ? (
-            <div className="text-center py-3 text-xs text-slate-400">No recent punch activity.</div>
+            <div style={{ textAlign: 'center', padding: '16px 0', fontSize: '12px', color: '#94A3B8' }}>No recent punch activity.</div>
           ) : (
             recent.map((item, idx) => (
-              <div key={idx} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${item.punch_type === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
+              <div key={idx} style={{
+                padding: '12px 14px',
+                borderRadius: '12px',
+                background: '#F8FAFC',
+                border: '1px solid #E2E8F0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    width: '34px',
+                    height: '34px',
+                    borderRadius: '8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontWeight: '700',
+                    fontSize: '11px',
+                    flexShrink: 0,
+                    background: item.punch_type === 'IN' ? '#DCFCE7' : '#DBEAFE',
+                    color: item.punch_type === 'IN' ? '#15803D' : '#1D4ED8',
+                  }}>
                     {item.punch_type}
                   </div>
                   <div>
-                    <span className="text-xs font-bold text-slate-800 block">Punch {item.punch_type}</span>
-                    <span className="text-[11px] text-slate-400">{new Date(item.punch_time).toLocaleString()}</span>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B', display: 'block' }}>Punch {item.punch_type}</span>
+                    <span style={{ fontSize: '11px', color: '#94A3B8' }}>{new Date(item.punch_time).toLocaleString()}</span>
                   </div>
                 </div>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-50 text-emerald-600">
+                <span style={{
+                  padding: '3px 10px',
+                  borderRadius: '20px',
+                  fontSize: '10px',
+                  fontWeight: '700',
+                  background: '#DCFCE7',
+                  color: '#15803D',
+                  whiteSpace: 'nowrap',
+                }}>
                   Recorded
                 </span>
               </div>

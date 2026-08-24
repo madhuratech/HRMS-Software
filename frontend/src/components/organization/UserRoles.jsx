@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Shield, Plus, Check, Save, Trash2, Lock, Users, AlertCircle, RefreshCw, Layers } from 'lucide-react';
+import { Shield, Plus, Save, Trash2, Lock, Users, RefreshCw, Layers, ShieldCheck, UserCheck, Users2, User } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 
 export function UserRoles() {
@@ -85,8 +85,8 @@ export function UserRoles() {
   }, [selectedRole, fetchRolePermissions]);
 
   const handleCheckboxChange = (moduleKey, field) => {
-    if (selectedRole?.role_key === 'SUPER_ADMIN') {
-      addToast('Super Admin permissions are protected and cannot be disabled', 'info');
+    if (selectedRole?.role_key === 'SUPER_ADMIN' || selectedRole?.role_key === 'ADMIN') {
+      addToast('Admin permissions are protected and cannot be disabled', 'info');
       return;
     }
     setPermissionsMatrix(prev =>
@@ -111,7 +111,7 @@ export function UserRoles() {
   };
 
   const handleRowToggle = (moduleKey) => {
-    if (selectedRole?.role_key === 'SUPER_ADMIN') return;
+    if (selectedRole?.role_key === 'SUPER_ADMIN' || selectedRole?.role_key === 'ADMIN') return;
     setPermissionsMatrix(prev =>
       prev.map(item => {
         if (item.module_key === moduleKey) {
@@ -150,6 +150,7 @@ export function UserRoles() {
       const data = await res.json();
       if (data.success) {
         addToast(`Permission matrix updated for ${selectedRole.role_name}!`, 'success');
+        window.dispatchEvent(new Event('permissionsUpdated'));
       } else {
         addToast(data.message || 'Failed to save permissions', 'error');
       }
@@ -212,6 +213,17 @@ export function UserRoles() {
     }
   };
 
+  const getRoleIcon = (roleKey) => {
+    const key = (roleKey || '').toUpperCase();
+    if (key === 'SUPER_ADMIN' || key === 'ADMIN') return <ShieldCheck size={20} className="text-blue-600" />;
+    if (key === 'HR_MANAGER' || key === 'HR') return <UserCheck size={20} className="text-indigo-600" />;
+    if (key === 'TEAM_LEADER') return <Users2 size={20} className="text-cyan-600" />;
+    return <User size={20} className="text-slate-600" />;
+  };
+
+  const standardRoles = roles.filter(r => r.is_system);
+  const customRoles = roles.filter(r => !r.is_system);
+
   return (
     <div style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
       {/* Header */}
@@ -224,7 +236,7 @@ export function UserRoles() {
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0F172A' }}>User Roles & Access Control</h1>
           </div>
           <p style={{ margin: '4px 0 0 46px', fontSize: 14, color: '#64748B' }}>
-            Configure custom user roles and manage fine-grained permission matrices across all HRMS modules.
+            Configure user roles and manage fine-grained permission matrices across all HRMS modules.
           </p>
         </div>
         <button
@@ -241,20 +253,20 @@ export function UserRoles() {
         </button>
       </div>
 
-      {/* Role Cards List */}
+      {/* Standard System Roles Section */}
       <div style={{ marginBottom: 28 }}>
         <h3 style={{ margin: '0 0 12px 0', fontSize: 15, fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Layers size={18} color="#2563EB" /> Select Active Role
+          <Layers size={18} color="#2563EB" /> Standard System Roles
         </h3>
 
         {loadingRoles ? (
           <div style={{ padding: 20, textAlign: 'center', color: '#64748B', background: '#FFFFFF', borderRadius: 12, border: '1px solid #E2E8F0' }}>
             <RefreshCw size={20} className="animate-spin" style={{ margin: '0 auto 8px' }} />
-            Loading system roles...
+            Loading standard system roles...
           </div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
-            {roles.map(r => {
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 14 }}>
+            {standardRoles.map(r => {
               const isSelected = selectedRole?.role_key === r.role_key;
               return (
                 <div
@@ -272,48 +284,97 @@ export function UserRoles() {
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <span style={{
-                      fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12,
-                      background: r.is_system ? '#F1F5F9' : '#FEF3C7',
-                      color: r.is_system ? '#475569' : '#D97706',
-                      textTransform: 'uppercase'
-                    }}>
-                      {r.is_system ? 'System Default' : 'Custom Role'}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {getRoleIcon(r.role_key)}
+                      <span style={{
+                        fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12,
+                        background: '#F1F5F9', color: '#475569', textTransform: 'uppercase'
+                      }}>
+                        System Default
+                      </span>
+                    </div>
                     <span style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}>
                       <Users size={13} /> {r.user_count || 0}
                     </span>
                   </div>
 
-                  <h4 style={{ margin: '0 0 4px 0', fontSize: 15, fontWeight: 700, color: isSelected ? '#1E40AF' : '#0F172A' }}>
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: 16, fontWeight: 700, color: isSelected ? '#1E40AF' : '#0F172A' }}>
                     {r.role_name}
                   </h4>
                   <p style={{ margin: 0, fontSize: 12, color: '#64748B', lineHeight: 1.4, height: 34, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
                     {r.description}
                   </p>
-
-                  {!r.is_system && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteRole(r.role_key, r.role_name);
-                      }}
-                      style={{
-                        position: 'absolute', top: 12, right: 12,
-                        background: 'none', border: 'none', color: '#94A3B8',
-                        cursor: 'pointer', padding: 4
-                      }}
-                      title="Delete Custom Role"
-                    >
-                      <Trash2 size={15} className="hover:text-red-600 transition-colors" />
-                    </button>
-                  )}
                 </div>
               );
             })}
           </div>
         )}
       </div>
+
+      {/* Custom Roles Section (if any created) */}
+      {customRoles.length > 0 && (
+        <div style={{ marginBottom: 28 }}>
+          <h3 style={{ margin: '0 0 12px 0', fontSize: 15, fontWeight: 700, color: '#334155', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Users size={18} color="#D97706" /> Custom Roles
+          </h3>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: 14 }}>
+            {customRoles.map(r => {
+              const isSelected = selectedRole?.role_key === r.role_key;
+              return (
+                <div
+                  key={r.id || r.role_key}
+                  onClick={() => setSelectedRole(r)}
+                  style={{
+                    background: isSelected ? '#FEF3C7' : '#FFFFFF',
+                    border: isSelected ? '2px solid #D97706' : '1px solid #E2E8F0',
+                    borderRadius: 12,
+                    padding: '16px',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                    boxShadow: isSelected ? '0 4px 14px rgba(217,119,6,0.12)' : '0 1px 3px rgba(0,0,0,0.04)',
+                    position: 'relative'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 12,
+                      background: '#FEF3C7', color: '#D97706', textTransform: 'uppercase'
+                    }}>
+                      Custom Role
+                    </span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#64748B', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <Users size={13} /> {r.user_count || 0}
+                    </span>
+                  </div>
+
+                  <h4 style={{ margin: '0 0 4px 0', fontSize: 15, fontWeight: 700, color: isSelected ? '#92400E' : '#0F172A' }}>
+                    {r.role_name}
+                  </h4>
+                  <p style={{ margin: 0, fontSize: 12, color: '#64748B', lineHeight: 1.4, height: 34, overflow: 'hidden', textOverflow: 'ellipsis', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>
+                    {r.description}
+                  </p>
+
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteRole(r.role_key, r.role_name);
+                    }}
+                    style={{
+                      position: 'absolute', top: 12, right: 12,
+                      background: 'none', border: 'none', color: '#94A3B8',
+                      cursor: 'pointer', padding: 4
+                    }}
+                    title="Delete Custom Role"
+                  >
+                    <Trash2 size={15} className="hover:text-red-600 transition-colors" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Permission Matrix */}
       {selectedRole && (
@@ -325,7 +386,7 @@ export function UserRoles() {
                 <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0F172A' }}>
                   Permission Matrix: <span style={{ color: '#2563EB' }}>{selectedRole.role_name}</span>
                 </h2>
-                {selectedRole.role_key === 'SUPER_ADMIN' && (
+                {(selectedRole.role_key === 'SUPER_ADMIN' || selectedRole.role_key === 'ADMIN') && (
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: '#ECFDF5', color: '#059669', fontSize: 12, fontWeight: 700, padding: '3px 10px', borderRadius: 20 }}>
                     <Lock size={12} /> Protected Full Access
                   </span>
@@ -338,17 +399,17 @@ export function UserRoles() {
 
             <button
               onClick={handleSavePermissions}
-              disabled={saving || selectedRole.role_key === 'SUPER_ADMIN'}
+              disabled={saving || selectedRole.role_key === 'SUPER_ADMIN' || selectedRole.role_key === 'ADMIN'}
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
-                padding: '10px 20px', background: selectedRole.role_key === 'SUPER_ADMIN' ? '#94A3B8' : '#10B981',
+                padding: '10px 20px', background: (selectedRole.role_key === 'SUPER_ADMIN' || selectedRole.role_key === 'ADMIN') ? '#94A3B8' : '#10B981',
                 color: '#FFFFFF', borderRadius: 10, fontWeight: 600, fontSize: 14,
-                border: 'none', cursor: selectedRole.role_key === 'SUPER_ADMIN' || saving ? 'not-allowed' : 'pointer',
-                boxShadow: selectedRole.role_key === 'SUPER_ADMIN' ? 'none' : '0 2px 8px rgba(16,185,129,0.25)'
+                border: 'none', cursor: (selectedRole.role_key === 'SUPER_ADMIN' || selectedRole.role_key === 'ADMIN') || saving ? 'not-allowed' : 'pointer',
+                boxShadow: (selectedRole.role_key === 'SUPER_ADMIN' || selectedRole.role_key === 'ADMIN') ? 'none' : '0 2px 8px rgba(16,185,129,0.25)'
               }}
             >
               {saving ? <RefreshCw size={16} className="animate-spin" /> : <Save size={16} />}
-              {saving ? 'Saving...' : 'Save Matrix Settings'}
+              {saving ? 'Saving...' : 'Save Permissions'}
             </button>
           </div>
 
@@ -386,6 +447,7 @@ export function UserRoles() {
                 <tbody>
                   {permissionsMatrix.map((item, idx) => {
                     const allSelected = item.can_view && item.can_create && item.can_edit && item.can_delete;
+                    const isProtectedAdmin = selectedRole.role_key === 'SUPER_ADMIN' || selectedRole.role_key === 'ADMIN';
                     return (
                       <tr key={item.module_key} style={{ borderBottom: '1px solid #F1F5F9', background: idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA' }}>
                         <td style={{ padding: '14px 24px' }}>
@@ -398,10 +460,10 @@ export function UserRoles() {
                             <input
                               type="checkbox"
                               checked={item[field]}
-                              disabled={selectedRole.role_key === 'SUPER_ADMIN'}
+                              disabled={isProtectedAdmin}
                               onChange={() => handleCheckboxChange(item.module_key, field)}
                               style={{
-                                width: 18, height: 18, accentColor: '#2563EB', cursor: selectedRole.role_key === 'SUPER_ADMIN' ? 'not-allowed' : 'pointer'
+                                width: 18, height: 18, accentColor: '#2563EB', cursor: isProtectedAdmin ? 'not-allowed' : 'pointer'
                               }}
                             />
                           </td>
@@ -410,12 +472,12 @@ export function UserRoles() {
                         <td style={{ padding: '14px 20px', textAlign: 'center' }}>
                           <button
                             onClick={() => handleRowToggle(item.module_key)}
-                            disabled={selectedRole.role_key === 'SUPER_ADMIN'}
+                            disabled={isProtectedAdmin}
                             style={{
                               padding: '4px 10px', fontSize: 11, fontWeight: 600,
                               background: allSelected ? '#F1F5F9' : '#EFF6FF',
                               color: allSelected ? '#475569' : '#2563EB',
-                              border: 'none', borderRadius: 6, cursor: selectedRole.role_key === 'SUPER_ADMIN' ? 'not-allowed' : 'pointer'
+                              border: 'none', borderRadius: 6, cursor: isProtectedAdmin ? 'not-allowed' : 'pointer'
                             }}
                           >
                             {allSelected ? 'Deselect All' : 'Select All'}
@@ -450,7 +512,7 @@ export function UserRoles() {
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Regional Auditor"
+                  placeholder="e.g. Finance Manager"
                   value={newRoleData.role_name}
                   onChange={(e) => setNewRoleData(prev => ({ ...prev, role_name: e.target.value }))}
                   required
@@ -486,10 +548,9 @@ export function UserRoles() {
                     width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 14, outline: 'none', background: '#FFFFFF'
                   }}
                 >
-                  <option value="EMPLOYEE">Employee (Basic Permissions)</option>
-                  <option value="HR_MANAGER">HR Manager (HR & Employee Permissions)</option>
-                  <option value="DEPT_MANAGER">Department Manager (Team Permissions)</option>
-                  <option value="FINANCE_ADMIN">Finance Admin (Financial Permissions)</option>
+                  <option value="EMPLOYEE">Employee (Self-Service)</option>
+                  <option value="HR_MANAGER">HR (Human Resources Management)</option>
+                  <option value="TEAM_LEADER">Team Leader (Team Management)</option>
                 </select>
               </div>
 

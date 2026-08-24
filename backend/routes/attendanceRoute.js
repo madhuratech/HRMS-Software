@@ -13,20 +13,16 @@ router.get("/gps-feed", authenticateJWT, attendanceController.getGPSFeed);
 // Team Attendance Endpoint for Team Leader
 router.get("/team-attendance", authenticateJWT, (req, res) => {
   const db = require("../config/database");
-  const teamLeaderId = req.query.leader_id || (req.user && req.user.id) || 11;
+  const { getTeamScope } = require("../utils/teamScope");
   const dateStr = req.query.date || new Date().toISOString().split('T')[0];
 
-  const sqlTeam = `
-    SELECT e.id, e.name, e.department_id, d.dept_name
-    FROM employees e
-    LEFT JOIN departments d ON e.department_id = d.id
-    WHERE e.id != ? AND e.status = 'Active'
-    LIMIT 20
-  `;
-  
-  db.query(sqlTeam, [teamLeaderId], (err, teamMembers) => {
-    if (err) return res.status(500).json(err);
-    if (!teamMembers || teamMembers.length === 0) return res.json([]);
+  getTeamScope(req, (errScope, scope) => {
+    if (errScope || !scope || scope.noTeamAssigned) {
+      return res.json([]);
+    }
+
+    const teamMembers = scope.members || [];
+    if (teamMembers.length === 0) return res.json([]);
 
     const empIds = teamMembers.map(m => m.id);
 
@@ -71,8 +67,8 @@ router.get("/team-attendance", authenticateJWT, (req, res) => {
         return {
           id: m.id,
           name: m.name,
-          employee_id: `EMP${String(m.id).padStart(4, '0')}`,
-          dept_name: m.dept_name || 'Engineering',
+          employee_id: m.employeeId || `EMP${String(m.id).padStart(4, '0')}`,
+          dept_name: m.department || 'Software Development',
           shift: 'Morning Shift',
           checkIn,
           checkOut,
