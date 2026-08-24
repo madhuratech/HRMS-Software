@@ -28,7 +28,7 @@ export function GeoPunch() {
           const parsed = JSON.parse(auth);
           const userObj = parsed.user || parsed;
           if (userObj && userObj.id) userId = userObj.id;
-        } catch (e) {}
+        } catch (e) { }
       }
       const data = await apiFetch(`/attendance/recent/${userId}`);
       if (Array.isArray(data)) {
@@ -161,7 +161,7 @@ export function GeoPunch() {
 
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif" }} className="max-w-md mx-auto space-y-5">
-      
+
       {/* Premium Main Card */}
       <div style={{
         background: '#FFFFFF',
@@ -236,7 +236,7 @@ export function GeoPunch() {
           {/* Idle State: Currently Punched In -> Ready for Punch Out */}
           {status === 'idle' && todayRecord?.status === 'PUNCHED_IN' && (
             <div className="space-y-5">
-              
+
               {/* Shift Stats Card */}
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-2.5 text-xs">
                 <div className="flex justify-between items-center">
@@ -253,7 +253,7 @@ export function GeoPunch() {
                 </div>
                 <div className="flex justify-between items-center pt-1 border-t border-slate-200">
                   <span className="text-slate-500">Status:</span>
-                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[11px] font-bold rounded-md">
+                  <span className="px-2 py-0.5 mt-2 bg-emerald-100 text-emerald-700 text-[11px] font-bold rounded-md">
                     {todayRecord.statusLabel || 'PUNCHED IN'}
                   </span>
                 </div>
@@ -285,7 +285,7 @@ export function GeoPunch() {
                   <div className="flex justify-between"><span>Punch In:</span> <strong className="text-slate-800">{todayRecord.punchInTime}</strong></div>
                   <div className="flex justify-between"><span>Punch Out:</span> <strong className="text-slate-800">{todayRecord.punchOutTime}</strong></div>
                   <div className="flex justify-between"><span>Working Hours:</span> <strong className="text-blue-600 font-bold">{todayRecord.workingHours}</strong></div>
-                  <div className="flex justify-between items-center pt-1 border-t border-slate-200">
+                  <div className="flex justify-between items-center pt-3 border-t border-slate-200">
                     <span>Status:</span>
                     <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[11px] font-bold rounded-md">{todayRecord.statusLabel || 'Completed'}</span>
                   </div>
@@ -365,7 +365,7 @@ export function GeoPunch() {
             <div className="text-center py-3 text-xs text-slate-400">No recent punch activity.</div>
           ) : (
             recent.map((item, idx) => (
-              <div key={idx} className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
+              <div key={idx} className="pl-2 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${item.punch_type === 'IN' ? 'bg-emerald-100 text-emerald-700' : 'bg-blue-100 text-blue-700'}`}>
                     {item.punch_type}
