@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ path: require('path').join(__dirname, '.env') });
 
 const poolConfig = {
   min: 0,
@@ -15,11 +15,11 @@ module.exports = {
   development: {
     client: 'mysql2',
     connection: {
-      host: process.env.DB_HOST,
+      host: process.env.DB_HOST || '185.199.53.201',
       port: parseInt(process.env.DB_PORT) || 3306,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
+      user: process.env.DB_USER || 'Madhura',
+      password: process.env.DB_PASSWORD || 'Madhura2026',
+      database: process.env.DB_NAME || 'madhurahrms',
     },
     pool: poolConfig,
     migrations: {
@@ -30,11 +30,11 @@ module.exports = {
   production: {
     client: 'mysql2',
     connection: {
-      host: process.env.DB_HOST,
+      host: process.env.DB_HOST || '185.199.53.201',
       port: parseInt(process.env.DB_PORT) || 3306,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
+      user: process.env.DB_USER || 'Madhura',
+      password: process.env.DB_PASSWORD || 'Madhura2026',
+      database: process.env.DB_NAME || 'madhurahrms',
     },
     pool: poolConfig,
     migrations: {

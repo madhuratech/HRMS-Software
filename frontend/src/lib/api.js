@@ -24,8 +24,9 @@ export const apiFetch = async (path, options = {}) => {
     } catch (e) {}
   }
 
+  const isFormData = options.body instanceof FormData;
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     'Authorization': `Bearer ${getAuthToken()}`,
     ...(empHeaderId ? { 'x-employee-id': String(empHeaderId) } : {}),
     ...(options.headers || {})

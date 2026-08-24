@@ -24,7 +24,7 @@ import {
   Sparkles,
   Calendar
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, getAvatarUrl } from '../../lib/utils';
 import { apiFetch } from '../../lib/api';
 
 export function Sidebar({ userRole, onLogout }) {
@@ -52,6 +52,41 @@ export function Sidebar({ userRole, onLogout }) {
     window.addEventListener('permissionsUpdated', handlePermUpdate);
     return () => window.removeEventListener('permissionsUpdated', handlePermUpdate);
   }, [userRole]);
+
+  const getAuthUser = () => {
+    try {
+      const authRaw = localStorage.getItem('hrms_auth');
+      if (authRaw) {
+        const parsed = JSON.parse(authRaw);
+        if (parsed) {
+          const userObj = parsed.user || {};
+          const name = parsed.name || userObj.name || localStorage.getItem('userName') || 'Admin User';
+          const role = parsed.role || userObj.role || localStorage.getItem('userRole') || userRole || 'SUPER_ADMIN';
+          const photo = userObj.profile_photo || userObj.avatar || null;
+          
+          return {
+            name,
+            role,
+            initials: name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
+            photoUrl: photo ? getAvatarUrl(photo) : null
+          };
+        }
+      }
+    } catch (e) {
+      console.error('Error parsing auth user for sidebar:', e);
+    }
+    
+    // Fallback
+    const storedName = localStorage.getItem('userName') || 'Admin User';
+    return {
+      name: storedName,
+      role: localStorage.getItem('userRole') || userRole || 'SUPER_ADMIN',
+      initials: storedName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
+      photoUrl: null
+    };
+  };
+
+  const userInfo = getAuthUser();
 
   const handleProfileClick = () => {
     let userId = 1;
@@ -454,37 +489,25 @@ export function Sidebar({ userRole, onLogout }) {
               style={{ cursor: 'pointer' }}
               className="flex flex-1 items-center gap-3 min-w-0 hover:opacity-85 transition-opacity"
             >
-              <div className="w-9 h-9 rounded-full custom-sidebar-profile-avatar-bg flex items-center justify-center text-xs font-bold flex-shrink-0">
-                {(() => {
-                  let displayUser = localStorage.getItem('userName');
-                  if (!displayUser) {
-                    try {
-                      const a = JSON.parse(localStorage.getItem('hrms_auth') || '{}');
-                      displayUser = a.name || (a.user && a.user.name);
-                    } catch (e) { }
-                  }
-                  displayUser = displayUser || 'User';
-                  return displayUser.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
-                })()}
-              </div>
+              {userInfo.photoUrl ? (
+                <img 
+                  src={userInfo.photoUrl} 
+                  alt={userInfo.name} 
+                  className="w-9 h-9 rounded-full object-cover flex-shrink-0" 
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full custom-sidebar-profile-avatar-bg flex items-center justify-center text-xs font-bold flex-shrink-0 text-white">
+                  {userInfo.initials}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">
-                  {(() => {
-                    let displayUser = localStorage.getItem('userName');
-                    if (!displayUser) {
-                      try {
-                        const a = JSON.parse(localStorage.getItem('hrms_auth') || '{}');
-                        displayUser = a.name || (a.user && a.user.name);
-                      } catch (e) { }
-                    }
-                    return displayUser || 'User';
-                  })()}
-                </p>
-                <p className="text-xs text-slate-400 truncate">{userRole || 'Employee'}</p>
+                <p className="text-sm font-medium text-white truncate">{userInfo.name}</p>
+                <p className="text-xs text-slate-400 truncate">{userInfo.role}</p>
               </div>
             </div>
             <button
               onClick={onLogout}
+              title="Logout"
               className="text-slate-400 hover:text-red-400 transition-colors p-1 flex-shrink-0"
               title="Sign Out"
             >
