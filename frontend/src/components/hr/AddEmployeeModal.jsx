@@ -1,29 +1,56 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { X, User, Mail, Briefcase, MapPin, Calendar, Phone } from 'lucide-react';
-
+import { X, User, Mail, Briefcase, MapPin, Calendar, Phone, UploadCloud } from 'lucide-react';
+import { apiFetch } from '../../lib/api';
+import EmployeeAvatar from '../employee/EmployeeAvatar';
 
 export function AddEmployeeModal({ isOpen, onClose, onSubmit }) {
-  const { register, handleSubmit, formState: { errors }, reset } = useForm();
+  const { register, handleSubmit, formState: { errors }, watch, reset } = useForm();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
+  const photoInputRef = useRef(null);
 
   if (!isOpen) return null;
 
- const handleFormSubmit = async (data) => {
+  const handlePhotoChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.size > 2 * 1024 * 1024) {
+        alert('Photo must be under 2MB');
+        return;
+      }
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleFormSubmit = async (data) => {
     setIsSubmitting(true);
     try {
-      const response = await fetch('/api/employees', {
+      const response = await apiFetch('/employees', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Something went wrong');
+      if (!response || response.message === 'Employee creation failed' || response.error) {
+        throw new Error(response?.message || response?.error || 'Failed to create employee');
       }
-      const newEmployee = await response.json();
-      onSubmit(newEmployee); 
+
+      const newEmpId = response.id;
+      if (photoFile && newEmpId) {
+        const photoData = new FormData();
+        photoData.append('photo', photoFile);
+        await apiFetch(`/employees/${newEmpId}/photo`, {
+          method: 'POST',
+          body: photoData
+        });
+      }
+
+      onSubmit(response); 
       reset();
+      setPhotoFile(null);
+      setPhotoPreview(null);
       onClose();
       alert("Employee added successfully!");
     } catch (err) {
@@ -49,6 +76,32 @@ export function AddEmployeeModal({ isOpen, onClose, onSubmit }) {
         </div>
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="p-6 space-y-6">
+          {/* Profile Photo Upload */}
+          <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <EmployeeAvatar
+              name={watch('name') || 'New Employee'}
+              photoUrl={photoPreview}
+              size={64}
+            />
+            <div>
+              <input
+                type="file"
+                ref={photoInputRef}
+                onChange={handlePhotoChange}
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                className="px-3.5 py-1.5 bg-blue-50 text-blue-600 font-bold text-xs rounded-lg hover:bg-blue-100 transition-colors flex items-center gap-1.5 border border-blue-200"
+              >
+                <UploadCloud size={14} /> Upload Profile Photo
+              </button>
+              <p className="text-[11px] text-slate-400 mt-1">JPG, PNG, WebP (Max 2MB)</p>
+            </div>
+          </div>
+
           {/* Personal Information */}
           <div className="space-y-4">
             <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
@@ -160,7 +213,16 @@ export function AddEmployeeModal({ isOpen, onClose, onSubmit }) {
                   type="number"
                   placeholder="0.00"
                   className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-                
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium text-slate-700">Initial Login Password</label>
+                <input
+                  {...register('password')}
+                  type="text"
+                  defaultValue="Employee@2026"
+                  placeholder="Set login password..."
+                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none font-mono text-sm" />
               </div>
             </div>
           </div>

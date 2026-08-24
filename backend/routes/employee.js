@@ -102,6 +102,46 @@ function logHistory(employeeId, changeType, oldValue, newValue, date) {
 }
 
 /**
+ * CHANGE / RESET EMPLOYEE PASSWORD
+ */
+router.put("/change-password", async (req, res) => {
+  const { id, newPassword } = req.body;
+  const empId = id || req.body.employee_id;
+  if (!empId || !newPassword || newPassword.trim().length < 4) {
+    return res.status(400).json({ message: "Employee ID and valid new password required" });
+  }
+
+  try {
+    const password_hash = await bcrypt.hash(newPassword, 10);
+    db.query("UPDATE employees SET password_hash = ? WHERE id = ?", [password_hash, empId], (err, result) => {
+      if (err) return res.status(500).json({ message: "Failed to update password", details: err });
+      res.json({ message: "Password updated successfully!" });
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error hashing password" });
+  }
+});
+
+router.put("/password/:id", async (req, res) => {
+  const { id } = req.params;
+  const { newPassword } = req.body;
+
+  if (!newPassword || newPassword.trim().length < 4) {
+    return res.status(400).json({ message: "Password must be at least 4 characters long" });
+  }
+
+  try {
+    const password_hash = await bcrypt.hash(newPassword, 10);
+    db.query("UPDATE employees SET password_hash = ? WHERE id = ?", [password_hash, id], (err, result) => {
+      if (err) return res.status(500).json({ message: "Failed to update password", details: err });
+      res.json({ message: "Password updated successfully!" });
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error hashing password" });
+  }
+});
+
+/**
  * LOOKUP ENDPOINTS for dropdown data
  */
 router.get("/lookup/designations", (req, res) => {
@@ -346,9 +386,28 @@ router.post("/", async (req, res) => {
 /**
  * UPDATE EMPLOYEE PROFILE
  */
-router.put("/:id", authenticateJWT, (req, res) => {
+router.post("/change-password", async (req, res) => {
+  const { id, newPassword } = req.body;
+  const empId = id || req.body.employee_id;
+  if (!empId || !newPassword || newPassword.trim().length < 4) {
+    return res.status(400).json({ message: "Employee ID and valid new password required" });
+  }
+
+  try {
+    const password_hash = await bcrypt.hash(newPassword, 10);
+    db.query("UPDATE employees SET password_hash = ? WHERE id = ?", [password_hash, empId], (err, result) => {
+      if (err) return res.status(500).json({ message: "Failed to update password", details: err });
+      res.json({ message: "Password updated successfully!" });
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error hashing password" });
+  }
+});
+
+router.put("/:id", authenticateJWT, (req, res, next) => {
   const { id } = req.params;
   const targetId = parseInt(id);
+  if (isNaN(targetId)) return next();
 
   getTeamLeaderContext(req, (errCtx, ctx) => {
     if (ctx.isTeamLeader && targetId !== ctx.leaderId) {

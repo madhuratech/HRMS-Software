@@ -217,6 +217,14 @@ export default function EmployeeProfileContent() {
     ? rawAcc.slice(-4).padStart(rawAcc.length, "*") 
     : rawAcc;
 
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$';
+    let pass = '';
+    for (let i = 0; i < 10; i++) pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    setEditForm(prev => ({ ...prev, newPassword: pass }));
+    addToast('New password generated!', 'info');
+  };
+
   const handleEditClick = () => {
     setEditForm({
       name: profile.name || '',
@@ -235,13 +243,20 @@ export default function EmployeeProfileContent() {
       department: profile.deptName || 'Engineering',
       designation: profile.roleName || 'Software Engineer',
       managerName: profile.managerName || 'Super Admin',
-      teamName: profile.teamName || 'Backend Team'
+      teamName: profile.teamName || 'Backend Team',
+      newPassword: ''
     });
     setIsEditing(true);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
+
+    if (editForm.newPassword && editForm.newPassword.trim().length < 4) {
+      addToast("Password must be at least 4 characters long", "error");
+      return;
+    }
+
     const payload = {
       name: editForm.name,
       email: editForm.email,
@@ -260,19 +275,28 @@ export default function EmployeeProfileContent() {
       teamName: editForm.teamName
     };
 
-    apiFetch(`/employees/${currentEmpId}`, {
-      method: "PUT",
-      body: JSON.stringify(payload)
-    })
-    .then(() => {
-      addToast("Profile updated successfully!", "success");
+    try {
+      await apiFetch(`/employees/${currentEmpId}`, {
+        method: "PUT",
+        body: JSON.stringify(payload)
+      });
+
+      if (editForm.newPassword && editForm.newPassword.trim().length >= 4) {
+        await apiFetch('/employees/change-password', {
+          method: 'PUT',
+          body: JSON.stringify({ id: currentEmpId, newPassword: editForm.newPassword })
+        });
+        addToast("Profile and Password updated successfully!", "success");
+      } else {
+        addToast("Profile updated successfully!", "success");
+      }
+
       setIsEditing(false);
       loadProfile();
-    })
-    .catch(err => {
+    } catch (err) {
       console.error(err);
       addToast("Failed to update profile", "error");
-    });
+    }
   };
 
   const isViewingTeamMember = isTeamLeaderRole && String(currentEmpId) !== String(authUserId);
@@ -742,6 +766,22 @@ export default function EmployeeProfileContent() {
                 <div className="hrms-input-group">
                   <label className="hrms-label">IFSC Code</label>
                   <input type="text" className="hrms-input" value={editForm.ifscCode} onChange={e => setEditForm({...editForm, ifscCode: e.target.value})} />
+                </div>
+
+                <div style={{ gridColumn: 'span 2', fontWeight: '600', fontSize: '14px', borderTop: '1px solid #f1f5f9', paddingTop: '16px', color: '#1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Security & Password Reset</span>
+                  <button type="button" onClick={generatePassword} style={{ fontSize: '12px', color: '#2563EB', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer' }}>⚡ Auto Generate Password</button>
+                </div>
+                <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="hrms-label">New Password (leave blank to keep current password)</label>
+                  <input
+                    type="text"
+                    className="hrms-input"
+                    placeholder="Enter new password to reset..."
+                    value={editForm.newPassword || ''}
+                    onChange={e => setEditForm({ ...editForm, newPassword: e.target.value })}
+                    style={{ fontFamily: 'monospace' }}
+                  />
                 </div>
 
                 <div style={{ gridColumn: 'span 2', fontWeight: '600', fontSize: '14px', borderTop: '1px solid #f1f5f9', paddingTop: '16px', color: '#1e293b' }}>

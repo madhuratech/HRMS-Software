@@ -25,12 +25,36 @@ import {
   Sparkles,
   Calendar
 } from 'lucide-react';
-import { cn } from '../../lib/utils';
+import { cn, getAvatarUrl } from '../../lib/utils';
 
 export function Sidebar({ userRole, onLogout }) {
   const [expandedGroups, setExpandedGroups] = useState([]);
   const location = useLocation();
   const navigate = useNavigate();
+
+  const getAuthUser = () => {
+    try {
+      const authRaw = localStorage.getItem('hrms_auth');
+      if (authRaw) {
+        const parsed = JSON.parse(authRaw);
+        if (parsed) {
+          const userObj = parsed.user || {};
+          const name = parsed.name || userObj.name || localStorage.getItem('userName') || 'Admin User';
+          const role = parsed.role || userObj.role || localStorage.getItem('userRole') || userRole || 'SUPER_ADMIN';
+          const photo = userObj.profile_photo || userObj.avatar || null;
+          const id = userObj.id || 1;
+          const empCode = userObj.emp_id || `EMP${String(id).padStart(4, '0')}`;
+          return { name, role, photo, id, empCode };
+        }
+      }
+    } catch (e) {}
+
+    const name = localStorage.getItem('userName') || 'Admin User';
+    const role = localStorage.getItem('userRole') || userRole || 'SUPER_ADMIN';
+    return { name, role, photo: null, id: 1, empCode: 'EMP0001' };
+  };
+
+  const activeUser = getAuthUser();
 
   const handleProfileClick = () => {
     let userId = 1;
@@ -420,16 +444,25 @@ export function Sidebar({ userRole, onLogout }) {
               style={{ cursor: 'pointer' }}
               className="flex flex-1 items-center gap-3 min-w-0 hover:opacity-85 transition-opacity"
             >
-              <div className="w-9 h-9 rounded-full custom-sidebar-profile-avatar-bg flex items-center justify-center text-xs font-bold flex-shrink-0">
-                {(localStorage.getItem('userName') || 'John Doe').split(' ').map(n => n[0]).join('')}
-              </div>
+              {activeUser.photo ? (
+                <img 
+                  src={getAvatarUrl(activeUser.photo, activeUser.name, activeUser.id)} 
+                  alt={activeUser.name} 
+                  className="w-9 h-9 rounded-full object-cover flex-shrink-0" 
+                />
+              ) : (
+                <div className="w-9 h-9 rounded-full custom-sidebar-profile-avatar-bg flex items-center justify-center text-xs font-bold flex-shrink-0 text-white">
+                  {activeUser.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+                </div>
+              )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">{localStorage.getItem('userName') || 'John Doe'}</p>
-                <p className="text-xs text-slate-400 truncate">{userRole === 'EMPLOYEE' ? 'EMP0015' : (localStorage.getItem('userRole') || 'Super Admin')}</p>
+                <p className="text-sm font-medium text-white truncate">{activeUser.name}</p>
+                <p className="text-xs text-slate-400 truncate">{activeUser.role}</p>
               </div>
             </div>
             <button
               onClick={onLogout}
+              title="Logout"
               className="text-slate-400 hover:text-red-400 transition-colors p-1 flex-shrink-0"
             >
               <LogOut size={16} />
