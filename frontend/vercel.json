@@ -6,15 +6,15 @@
   "rewrites": [
     {
       "source": "/app/:path*",
-      "destination": "http://185.199.53.201:5001/app/:path*"
+      "destination": "https://madhura-hrm.onrender.com/app/:path*"
     },
     {
       "source": "/api/:path*",
-      "destination": "http://185.199.53.201:5001/api/:path*"
+      "destination": "https://madhura-hrm.onrender.com/api/:path*"
     },
     {
       "source": "/uploads/:path*",
-      "destination": "http://185.199.53.201:5001/uploads/:path*"
+      "destination": "https://madhura-hrm.onrender.com/uploads/:path*"
     },
     {
       "source": "/(.*)",

@@ -5,6 +5,8 @@ export function cn(...inputs) {
   return twMerge(clsx(inputs));
 }
 
+const RENDER_BACKEND_URL = 'https://madhura-hrm.onrender.com';
+
 export function getAvatarUrl(profilePhoto, empName = 'User', empId = 1) {
   if (profilePhoto && typeof profilePhoto === 'string' && profilePhoto.trim() !== '') {
     const trimmed = profilePhoto.trim();
@@ -20,7 +22,8 @@ export function getAvatarUrl(profilePhoto, empName = 'User', empId = 1) {
       return `data:image/png;base64,${trimmed}`;
     }
     if (trimmed.startsWith('/') || trimmed.startsWith('uploads')) {
-      return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+      const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+      return window.location.hostname === 'localhost' ? cleanPath : `${RENDER_BACKEND_URL}${cleanPath}`;
     }
     return trimmed;
   }
