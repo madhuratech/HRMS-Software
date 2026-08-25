@@ -26,14 +26,32 @@ process.on('uncaughtException', (err) => {
 const knex = require('knex');
 const knexConfig = require('./knexfile');
 const knexInstance = knex(knexConfig.development);
-knexInstance.migrate.latest()
-  .then(() => {
+
+async function runMigrationsSafely() {
+  try {
+    const hasTable = await knexInstance.schema.hasTable('knex_migrations');
+    if (hasTable) {
+      const migrationsDir = path.join(__dirname, 'migrations');
+      const filesOnDisk = fs.existsSync(migrationsDir)
+        ? fs.readdirSync(migrationsDir).filter(f => f.endsWith('.js'))
+        : [];
+      const dbRecords = await knexInstance('knex_migrations').select('id', 'name');
+      const missingIds = dbRecords.filter(r => !filesOnDisk.includes(r.name)).map(r => r.id);
+      if (missingIds.length > 0) {
+        await knexInstance('knex_migrations').whereIn('id', missingIds).del();
+        console.log(`🧹 Cleaned ${missingIds.length} orphan migration record(s) from database.`);
+      }
+    }
+    await knexInstance.migrate.latest();
     console.log('✅ Cloud database schemas/migrations verified and updated.');
-    return knexInstance.destroy();
-  })
-  .catch(err => {
+  } catch (err) {
     console.error('❌ Programmatic Knex migration runner failed:', err);
-  });
+  } finally {
+    await knexInstance.destroy();
+  }
+}
+
+runMigrationsSafely();
 
 const app = express();
 
