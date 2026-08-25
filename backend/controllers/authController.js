@@ -47,15 +47,58 @@ exports.login = (req, res) => {
       return res.status(500).json({ success: false, message: "Database query error" });
     }
 
-    if (results.length === 0) {
-      return res.status(401).json({ success: false, message: "Invalid email or password" });
+    let user = results[0];
+    let isMatch = false;
+
+    if (user && user.password_hash) {
+      isMatch = await bcrypt.compare(password, user.password_hash);
     }
 
-    const user = results[0];
-
-    // Password comparison
-    const isMatch = await bcrypt.compare(password, user.password_hash);
+    // Fallback: If not matched in users table, check employees table
     if (!isMatch) {
+      const empCheckSql = `
+        SELECT e.*, r.name as role_name, desg.role_name as designation_name
+        FROM employees e
+        LEFT JOIN roles r ON e.role_id = r.id
+        LEFT JOIN designations desg ON e.designation_id = desg.id
+        WHERE LOWER(e.email) = LOWER(?) AND e.password_hash IS NOT NULL
+      `;
+      const empResults = await new Promise((resolve) => {
+        db.query(empCheckSql, [cleanEmail], (eErr, eRes) => resolve(eRes || []));
+      });
+
+      if (empResults.length > 0) {
+        const emp = empResults[0];
+        const empMatch = await bcrypt.compare(password, emp.password_hash);
+        if (empMatch) {
+          const resolvedRole = getEmployeeRole(emp);
+          const token = jwt.sign(
+            { id: emp.id, name: emp.name, email: emp.email, role: resolvedRole, auth_id: emp.id },
+            JWT_SECRET,
+            { expiresIn: "24h" }
+          );
+
+          // Auto-sync into users table if missing
+          const syncSql = `
+            INSERT INTO users (employee_id, full_name, email, password_hash, role, email_verified, account_status)
+            VALUES (?, ?, ?, ?, ?, 1, 'Active')
+            ON DUPLICATE KEY UPDATE password_hash = VALUES(password_hash), account_status = 'Active', email_verified = 1
+          `;
+          db.query(syncSql, [emp.id, emp.name, emp.email, emp.password_hash, resolvedRole]);
+
+          return res.json({
+            success: true,
+            token,
+            user: {
+              id: emp.id,
+              name: emp.name,
+              email: emp.email,
+              role: resolvedRole
+            }
+          });
+        }
+      }
+
       return res.status(401).json({ success: false, message: "Invalid email or password" });
     }
 
