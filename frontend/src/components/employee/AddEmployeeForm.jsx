@@ -4,6 +4,7 @@ import { UploadCloud, Check, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import EmployeeAvatar from './EmployeeAvatar';
 import './employee-module.css';
+import { apiFetch } from '../../lib/api';
 
 const steps = [
   { id: 1, label: 'Personal Info' },
