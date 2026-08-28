@@ -90,7 +90,7 @@ export function Header({ title, userRole, currentView, onMenuToggle }) {
   const breadcrumbs = getBreadcrumbs();
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10">
+    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-[105]">
       {/* Left: Breadcrumb */}
       <div className="flex items-center gap-3">
         <button 

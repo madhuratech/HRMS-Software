@@ -656,7 +656,7 @@ export function EmployeeDashboard() {
                 </div>
               </div>
 
-              <div className="flex-1 grid grid-cols-1 md: sm:grid-cols-3 gap-4 w-full">
+              <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
                 {attendanceDonut.map((item, idx) => (
                   <div key={idx} className="p-3 rounded-xl border border-slate-100 bg-slate-50 flex items-center gap-3">
                     <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: item.color }} />
@@ -784,7 +784,7 @@ export function EmployeeDashboard() {
           {/* Quick Actions Grid */}
           <div style={cardStyle}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '700', color: '#0F172A' }}>Quick Actions</h3>
-            <div className="grid grid-cols-1 md: gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <button onClick={() => navigate('/employee/leave')} className="p-3 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition-colors text-left group">
                 <CalendarOff size={18} className="text-amber-500 mb-1.5" />
                 <span className="block text-xs font-bold text-slate-800 group-hover:text-blue-600">Apply Leave</span>
@@ -821,7 +821,7 @@ export function EmployeeDashboard() {
                   </div>
                   <FileText size={32} className="text-blue-200" />
                 </div>
-                <div className="grid grid-cols-1 md: gap-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                   <button onClick={() => navigate('/employee/payroll')} className="h-9 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5">
                     <Eye size={14} /> View
                   </button>

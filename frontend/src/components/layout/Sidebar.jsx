@@ -399,9 +399,9 @@ export function Sidebar({ userRole, onLogout, isOpen, onClose }) {
           </linearGradient>
         </defs>
       </svg>
-      <div className={cn("w-64 custom-sidebar h-screen pt-24 lg:pt-0 flex flex-col fixed left-0 top-0 overflow-y-auto z-[100] transition-transform duration-300 safe-area-top", isOpen ? "translate-x-0" : "-translate-x-full")}>
+      <div className={cn("w-64 custom-sidebar h-[calc(100vh-4rem)] lg:h-screen pt-4 lg:pt-0 flex flex-col fixed left-0 top-16 lg:top-0 overflow-y-auto z-[100] transition-transform duration-300 safe-area-top", isOpen ? "translate-x-0" : "-translate-x-full")}>
         {/* Logo */}
-        <div className="p-5 custom-sidebar-border-b flex items-center justify-between">
+        <div className="p-5 custom-sidebar-border-b flex items-center justify-between lg:flex hidden">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg shadow-blue-500/20">
               <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
