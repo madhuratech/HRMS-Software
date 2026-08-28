@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
-export function Sidebar({ userRole, onLogout }) {
+export function Sidebar({ userRole, onLogout, isOpen, onClose }) {
   const [expandedGroups, setExpandedGroups] = useState([]);
   const location = useLocation();
   const navigate = useNavigate();
@@ -312,6 +312,11 @@ export function Sidebar({ userRole, onLogout }) {
     !item.roles || item.roles.includes('ALL') || item.roles.includes(userRole)
   );
 
+  const handleNav = (path) => {
+    navigate(path);
+    if (onClose) onClose();
+  };
+
   const renderMenuItem = (item) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedGroups.includes(item.id);
@@ -338,7 +343,7 @@ export function Sidebar({ userRole, onLogout }) {
                 return (
                   <button
                     key={child.id}
-                    onClick={() => navigate(targetPath)}
+                    onClick={() => handleNav(targetPath)}
                     className={cn(
                       "w-full flex items-center gap-3 pl-10 pr-4 py-2 rounded-lg transition-colors text-sm",
                       location.pathname === targetPath
@@ -361,7 +366,7 @@ export function Sidebar({ userRole, onLogout }) {
     return (
       <button
         key={item.id}
-        onClick={() => navigate(item.path || `/${item.id}`)}
+        onClick={() => handleNav(item.path || `/${item.id}`)}
         className={cn(
           "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm font-medium",
           isActive
@@ -393,7 +398,7 @@ export function Sidebar({ userRole, onLogout }) {
           </linearGradient>
         </defs>
       </svg>
-      <div className="w-64 custom-sidebar h-screen flex flex-col fixed left-0 top-0 overflow-y-auto">
+      <div className={cn("w-64 custom-sidebar h-screen pt-24 lg:pt-0 flex flex-col fixed left-0 top-0 overflow-y-auto z-[100] transition-transform duration-300 safe-area-top", isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0")}>
         {/* Logo */}
         <div className="p-5 custom-sidebar-border-b">
           <div className="flex items-center gap-3">
