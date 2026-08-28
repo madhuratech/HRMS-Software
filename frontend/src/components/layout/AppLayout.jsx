@@ -5,7 +5,7 @@ import { Header } from './Header';
 
 export function AppLayout({ userRole, onLogout }) {
   const location = useLocation();
-  const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth >= 1024);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Extract the current view from the path to pass to Header
   // e.g. /dashboard -> dashboard, /employees/list -> employees-list
