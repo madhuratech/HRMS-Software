@@ -353,11 +353,6 @@ export function Sidebar({ userRole, onLogout, isOpen, onClose }) {
     }
   }, [location.pathname, userRole]);
 
-  const targetMenu = userRole === 'EMPLOYEE' ? employeeMenuItems : userRole === 'TEAM_LEADER' ? teamLeaderMenuItems : menuItems;
-
-  const filteredMenu = targetMenu.filter((item) =>
-    !item.roles || item.roles.includes('ALL') || item.roles.includes(userRole)
-  );
 
   const handleNav = (path) => {
     navigate(path);

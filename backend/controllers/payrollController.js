@@ -176,18 +176,18 @@ exports.getPayslips = async (req, res) => {
     // Role-based data access control:
     // 1. SUPER ADMIN / ADMIN / HR MANAGER: Full access to all employee payslips
     if (
-      scopeData.isUnrestricted || 
+      scopeData.isUnrestricted ||
       userRole.includes('SUPER') ||
-      userRole === 'SUPER ADMIN' || 
-      userRole === 'SUPERADMIN' || 
-      userRole === 'ADMIN' || 
+      userRole === 'SUPER ADMIN' ||
+      userRole === 'SUPERADMIN' ||
+      userRole === 'ADMIN' ||
       userRole === 'HR' ||
       userRole === 'HR MANAGER' ||
       userRole === 'MANAGER' ||
       userRole === 'BRANCH MANAGER'
     ) {
       // Unrestricted: show all active employee payslips
-    } 
+    }
     // 2. TEAM LEADER: Own payslip + assigned team members' payslips only
     else if (userRole === 'TEAM LEADER') {
       const allowedIds = (scopeData.allowedEmployeeIds || []).map(id => parseInt(id)).filter(id => !isNaN(id));
@@ -197,7 +197,7 @@ exports.getPayslips = async (req, res) => {
         sql += ` AND e.id = ?`;
         params.push(scopeData.employeeId);
       }
-    } 
+    }
     // 3. EMPLOYEE: Only logged-in employee's own payslip
     else {
       const empId = scopeData.employeeId || (req.user && (req.user.employee_id || req.user.id));
