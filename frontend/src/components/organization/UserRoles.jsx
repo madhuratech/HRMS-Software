@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Shield, Plus, Save, Trash2, Lock, Users, RefreshCw, Layers, ShieldCheck, UserCheck, Users2, User } from 'lucide-react';
+import { Shield, Plus, Save, Trash2, Lock, Users, RefreshCw, Layers, ShieldCheck, UserCheck, Users2, User, ChevronDown, ChevronRight } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 
 export function UserRoles() {
@@ -55,6 +55,150 @@ export function UserRoles() {
     }
   }, [selectedRole, addToast]);
 
+  const DEFAULT_SUBMODULE_MAP = {
+    dashboard: [{ key: 'dashboard_overview', label: 'Dashboard Overview' }],
+    organization: [
+      { key: 'company_profile', label: 'Company Profile' },
+      { key: 'departments', label: 'Departments' },
+      { key: 'designations', label: 'Designations' },
+      { key: 'teams', label: 'Teams' },
+      { key: 'shift_management', label: 'Shift Management' },
+      { key: 'holiday_calendar', label: 'Holiday Calendar' },
+      { key: 'organization_chart', label: 'Organization Chart' }
+    ],
+    employees: [
+      { key: 'employee_directory', label: 'Employee Directory' },
+      { key: 'employee_list', label: 'Employee List' },
+      { key: 'add_employee', label: 'Add Employee' },
+      { key: 'employee_profile', label: 'Employee Profile' },
+      { key: 'employment_history', label: 'Employment History' },
+      { key: 'promotions', label: 'Promotions' },
+      { key: 'transfers', label: 'Transfers' },
+      { key: 'exit_management', label: 'Exit Management' },
+      { key: 'employee_documents', label: 'Employee Documents' }
+    ],
+    attendance: [
+      { key: 'daily_attendance', label: 'Daily Attendance' },
+      { key: 'gps_attendance', label: 'GPS Attendance' },
+      { key: 'regularization', label: 'Regularization' },
+      { key: 'shift_roster', label: 'Shift Roster' },
+      { key: 'overtime', label: 'Overtime' },
+      { key: 'late_arrival', label: 'Late Arrival' },
+      { key: 'punch_locations', label: 'Punch Locations' }
+    ],
+    leave: [
+      { key: 'leave_dashboard', label: 'Leave Dashboard' },
+      { key: 'leave_balance', label: 'Leave Balance' },
+      { key: 'my_leave', label: 'My Leave' },
+      { key: 'leave_approval', label: 'Leave Requests / Approval' },
+      { key: 'leave_types', label: 'Leave Types' },
+      { key: 'holiday_list', label: 'Holiday List' },
+      { key: 'comp_off', label: 'Comp Off' }
+    ],
+    payroll: [
+      { key: 'salary_structure', label: 'Salary Structure' },
+      { key: 'salary_components', label: 'Salary Components' },
+      { key: 'payroll_processing', label: 'Payroll Processing' },
+      { key: 'generate_payslips', label: 'Generate Payslips' },
+      { key: 'bonus_incentives', label: 'Bonus & Incentives' },
+      { key: 'reimbursements', label: 'Reimbursements' },
+      { key: 'loans_advances', label: 'Loans & Advances' },
+      { key: 'tax_management', label: 'Tax Management' }
+    ],
+    recruitment: [
+      { key: 'recruitment_dashboard', label: 'Recruitment Dashboard' },
+      { key: 'job_openings', label: 'Job Openings' },
+      { key: 'candidates', label: 'Candidates' },
+      { key: 'interview_schedule', label: 'Interview Schedule' },
+      { key: 'offer_letters', label: 'Offer Letters' },
+      { key: 'hiring_pipeline', label: 'Hiring Pipeline' }
+    ],
+    onboarding: [
+      { key: 'new_joiners', label: 'New Joiners' },
+      { key: 'document_verification', label: 'Document Verification' },
+      { key: 'asset_allocation', label: 'Asset Allocation' },
+      { key: 'welcome_kit', label: 'Welcome Kit' },
+      { key: 'orientation', label: 'Orientation' },
+      { key: 'probation', label: 'Probation' }
+    ],
+    performance: [
+      { key: 'goals', label: 'Goals' },
+      { key: 'kpis', label: 'KPIs' },
+      { key: 'kras', label: 'KRAs' },
+      { key: 'appraisals', label: 'Appraisals' },
+      { key: 'reviews', label: 'Reviews' },
+      { key: 'feedback', label: 'Feedback' },
+      { key: 'performance_promotions', label: 'Promotions' }
+    ],
+    projects: [
+      { key: 'project_dashboard', label: 'Project Dashboard' },
+      { key: 'projects_list', label: 'Projects' },
+      { key: 'tasks', label: 'Tasks' },
+      { key: 'sprint_board', label: 'Sprint Board' },
+      { key: 'timesheets', label: 'Timesheets' },
+      { key: 'milestones', label: 'Milestones' },
+      { key: 'team_members', label: 'Team Members' }
+    ],
+    projects_tasks: [
+      { key: 'project_dashboard', label: 'Project Dashboard' },
+      { key: 'projects_list', label: 'Projects' },
+      { key: 'tasks', label: 'Tasks' },
+      { key: 'sprint_board', label: 'Sprint Board' },
+      { key: 'timesheets', label: 'Timesheets' },
+      { key: 'milestones', label: 'Milestones' },
+      { key: 'team_members', label: 'Team Members' }
+    ],
+    reports: [
+      { key: 'reports_directory', label: 'Reports Directory' },
+      { key: 'reports_employee', label: 'Employee Reports' },
+      { key: 'reports_attendance', label: 'Attendance Reports' },
+      { key: 'reports_leave', label: 'Leave Reports' },
+      { key: 'reports_payroll', label: 'Payroll Reports' },
+      { key: 'reports_recruitment', label: 'Recruitment Reports' },
+      { key: 'reports_performance', label: 'Performance Reports' },
+      { key: 'reports_project', label: 'Project Reports' }
+    ],
+    expenses: [
+      { key: 'expense_claims', label: 'Expense Claims' },
+      { key: 'expense_categories', label: 'Expense Categories' },
+      { key: 'expense_approval', label: 'Expense Approval' },
+      { key: 'expense_reimbursements', label: 'Reimbursements' },
+      { key: 'expense_reports', label: 'Expense Reports' }
+    ],
+    documents: [
+      { key: 'doc_employee', label: 'Employee Documents' },
+      { key: 'doc_company', label: 'Company Documents' },
+      { key: 'doc_policies', label: 'HR Policies' },
+      { key: 'doc_templates', label: 'Templates' },
+      { key: 'doc_signatures', label: 'Digital Signatures' }
+    ],
+    helpdesk: [
+      { key: 'helpdesk_dashboard', label: 'Dashboard' },
+      { key: 'tickets', label: 'Tickets' },
+      { key: 'helpdesk_categories', label: 'Categories' },
+      { key: 'helpdesk_priorities', label: 'Priorities' },
+      { key: 'knowledge_base', label: 'Knowledge Base' },
+      { key: 'helpdesk_reports', label: 'Reports' }
+    ],
+    settings: [
+      { key: 'settings_company', label: 'Company Information' },
+      { key: 'settings_branding', label: 'Branding' },
+      { key: 'settings_organization', label: 'Organization' },
+      { key: 'user_roles', label: 'User Roles & Permissions' },
+      { key: 'settings_hr', label: 'HR Settings' },
+      { key: 'settings_communication', label: 'Communication' },
+      { key: 'settings_integrations', label: 'Integrations' },
+      { key: 'settings_security', label: 'Security' },
+      { key: 'settings_system', label: 'System' }
+    ],
+    ai_assistant: [
+      { key: 'ai_dashboard', label: 'AI Assistant Dashboard' }
+    ],
+    user_roles: [
+      { key: 'roles_matrix', label: 'Role Permissions Management' }
+    ]
+  };
+
   const fetchRolePermissions = useCallback(async (roleKey) => {
     setLoadingMatrix(true);
     try {
@@ -63,7 +207,25 @@ export function UserRoles() {
       });
       const data = await res.json();
       if (data.success && Array.isArray(data.data)) {
-        setPermissionsMatrix(data.data);
+        const enriched = data.data.map(m => {
+          let subs = m.submodules;
+          if (!subs || subs.length === 0) {
+            const defaults = DEFAULT_SUBMODULE_MAP[m.module_key] || [];
+            subs = defaults.map(d => ({
+              submodule_key: d.key,
+              submodule_label: d.label,
+              can_view: m.can_view,
+              can_create: m.can_create,
+              can_edit: m.can_edit,
+              can_delete: m.can_delete
+            }));
+          }
+          return {
+            ...m,
+            submodules: subs
+          };
+        });
+        setPermissionsMatrix(enriched);
       } else {
         addToast(data.message || 'Failed to fetch permissions', 'error');
       }
@@ -84,47 +246,119 @@ export function UserRoles() {
     }
   }, [selectedRole, fetchRolePermissions]);
 
-  const handleCheckboxChange = (moduleKey, field) => {
+  const [expandedModules, setExpandedModules] = useState({ leave: true, employees: true, attendance: true });
+
+  const toggleModuleExpand = (moduleKey) => {
+    setExpandedModules(prev => ({
+      ...prev,
+      [moduleKey]: !prev[moduleKey]
+    }));
+  };
+
+  const handleSubmoduleCheckboxChange = (moduleKey, submoduleKey, field) => {
     if (selectedRole?.role_key === 'SUPER_ADMIN' || selectedRole?.role_key === 'ADMIN') {
       addToast('Admin permissions are protected and cannot be disabled', 'info');
       return;
     }
     setPermissionsMatrix(prev =>
-      prev.map(item => {
-        if (item.module_key === moduleKey) {
-          const updated = { ...item, [field]: !item[field] };
-          // If view is unselected, unselect create/edit/delete as well
-          if (field === 'can_view' && !updated.can_view) {
-            updated.can_create = false;
-            updated.can_edit = false;
-            updated.can_delete = false;
-          }
-          // If create/edit/delete is selected, automatically enable view
-          if ((field === 'can_create' || field === 'can_edit' || field === 'can_delete') && updated[field]) {
-            updated.can_view = true;
-          }
-          return updated;
+      prev.map(mod => {
+        if (mod.module_key === moduleKey) {
+          const updatedSubs = (mod.submodules || []).map(sub => {
+            if (sub.submodule_key === submoduleKey) {
+              const updatedSub = { ...sub, [field]: !sub[field] };
+              if (field === 'can_view' && !updatedSub.can_view) {
+                updatedSub.can_create = false;
+                updatedSub.can_edit = false;
+                updatedSub.can_delete = false;
+              }
+              if ((field === 'can_create' || field === 'can_edit' || field === 'can_delete') && updatedSub[field]) {
+                updatedSub.can_view = true;
+              }
+              return updatedSub;
+            }
+            return sub;
+          });
+
+          const hasAnyView = updatedSubs.some(s => s.can_view);
+          const hasAnyCreate = updatedSubs.some(s => s.can_create);
+          const hasAnyEdit = updatedSubs.some(s => s.can_edit);
+          const hasAnyDelete = updatedSubs.some(s => s.can_delete);
+
+          return {
+            ...mod,
+            can_view: hasAnyView,
+            can_create: hasAnyCreate,
+            can_edit: hasAnyEdit,
+            can_delete: hasAnyDelete,
+            submodules: updatedSubs
+          };
         }
-        return item;
+        return mod;
       })
     );
   };
 
-  const handleRowToggle = (moduleKey) => {
+  const handleModuleFieldToggle = (moduleKey, field) => {
     if (selectedRole?.role_key === 'SUPER_ADMIN' || selectedRole?.role_key === 'ADMIN') return;
     setPermissionsMatrix(prev =>
-      prev.map(item => {
-        if (item.module_key === moduleKey) {
-          const allActive = item.can_view && item.can_create && item.can_edit && item.can_delete;
+      prev.map(mod => {
+        if (mod.module_key === moduleKey) {
+          const currentAll = (mod.submodules || []).length > 0 && mod.submodules.every(s => s[field]);
+          const targetVal = !currentAll;
+
+          const updatedSubs = (mod.submodules || []).map(sub => {
+            const updatedSub = { ...sub, [field]: targetVal };
+            if (field === 'can_view' && !targetVal) {
+              updatedSub.can_create = false;
+              updatedSub.can_edit = false;
+              updatedSub.can_delete = false;
+            }
+            if ((field === 'can_create' || field === 'can_edit' || field === 'can_delete') && targetVal) {
+              updatedSub.can_view = true;
+            }
+            return updatedSub;
+          });
+
           return {
-            ...item,
-            can_view: !allActive,
-            can_create: !allActive,
-            can_edit: !allActive,
-            can_delete: !allActive
+            ...mod,
+            can_view: updatedSubs.some(s => s.can_view),
+            can_create: updatedSubs.some(s => s.can_create),
+            can_edit: updatedSubs.some(s => s.can_edit),
+            can_delete: updatedSubs.some(s => s.can_delete),
+            submodules: updatedSubs
           };
         }
-        return item;
+        return mod;
+      })
+    );
+  };
+
+  const handleModuleAllToggle = (moduleKey) => {
+    if (selectedRole?.role_key === 'SUPER_ADMIN' || selectedRole?.role_key === 'ADMIN') return;
+    setPermissionsMatrix(prev =>
+      prev.map(mod => {
+        if (mod.module_key === moduleKey) {
+          const allActive = (mod.submodules || []).length > 0 && mod.submodules.every(s => s.can_view && s.can_create && s.can_edit && s.can_delete);
+          const targetVal = !allActive;
+
+          const updatedSubs = (mod.submodules || []).map(sub => ({
+            ...sub,
+            can_view: targetVal,
+            can_create: targetVal,
+            can_edit: targetVal,
+            can_delete: targetVal
+          }));
+
+          return {
+            ...mod,
+            can_view: targetVal,
+            can_create: targetVal,
+            can_edit: targetVal,
+            can_delete: targetVal,
+            submodules: updatedSubs
+          };
+        }
+        return mod;
       })
     );
   };
@@ -150,7 +384,7 @@ export function UserRoles() {
       const data = await res.json();
       if (data.success) {
         addToast(`Permission matrix updated for ${selectedRole.role_name}!`, 'success');
-        window.dispatchEvent(new Event('permissionsUpdated'));
+        window.dispatchEvent(new CustomEvent('permissionsUpdated', { detail: { roleKey: selectedRole.role_key } }));
       } else {
         addToast(data.message || 'Failed to save permissions', 'error');
       }
@@ -446,44 +680,163 @@ export function UserRoles() {
                 </thead>
                 <tbody>
                   {permissionsMatrix.map((item, idx) => {
-                    const allSelected = item.can_view && item.can_create && item.can_edit && item.can_delete;
+                    const isExpanded = Boolean(expandedModules[item.module_key]);
                     const isProtectedAdmin = selectedRole.role_key === 'SUPER_ADMIN' || selectedRole.role_key === 'ADMIN';
+                    const subs = item.submodules || [];
+                    const hasSubmodules = subs.length > 0;
+
+                    const allSubsSelected = hasSubmodules && subs.every(s => s.can_view && s.can_create && s.can_edit && s.can_delete);
+
                     return (
-                      <tr key={item.module_key} style={{ borderBottom: '1px solid #F1F5F9', background: idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA' }}>
-                        <td style={{ padding: '14px 24px' }}>
-                          <div style={{ fontWeight: 600, fontSize: 14, color: '#0F172A' }}>{item.module_label}</div>
-                          <div style={{ fontSize: 12, color: '#94A3B8' }}>{item.category} Module</div>
-                        </td>
-
-                        {['can_view', 'can_create', 'can_edit', 'can_delete'].map(field => (
-                          <td key={field} style={{ padding: '14px 16px', textAlign: 'center' }}>
-                            <input
-                              type="checkbox"
-                              checked={item[field]}
-                              disabled={isProtectedAdmin}
-                              onChange={() => handleCheckboxChange(item.module_key, field)}
-                              style={{
-                                width: 18, height: 18, accentColor: '#2563EB', cursor: isProtectedAdmin ? 'not-allowed' : 'pointer'
-                              }}
-                            />
+                      <React.Fragment key={item.module_key}>
+                        {/* Parent Module Row */}
+                        <tr
+                          style={{
+                            borderBottom: '1px solid #E2E8F0',
+                            background: idx % 2 === 0 ? '#FFFFFF' : '#FAFAFA',
+                            transition: 'background-color 0.15s ease'
+                          }}
+                        >
+                          <td style={{ padding: '14px 20px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <button
+                                onClick={() => toggleModuleExpand(item.module_key)}
+                                style={{
+                                  background: 'none', border: 'none', cursor: 'pointer', padding: 4,
+                                  color: '#64748B', display: 'flex', alignItems: 'center', borderRadius: 6
+                                }}
+                                title={isExpanded ? "Collapse Submodules" : "Expand Submodules"}
+                              >
+                                {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                              </button>
+                              <div>
+                                <div
+                                  onClick={() => toggleModuleExpand(item.module_key)}
+                                  style={{ fontWeight: 700, fontSize: 14, color: '#0F172A', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                                >
+                                  {item.module_label}
+                                  <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 10, background: '#EFF6FF', color: '#2563EB' }}>
+                                    {subs.length} {subs.length === 1 ? 'submodule' : 'submodules'}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: 12, color: '#64748B' }}>{item.category} Module</div>
+                              </div>
+                            </div>
                           </td>
-                        ))}
 
-                        <td style={{ padding: '14px 20px', textAlign: 'center' }}>
-                          <button
-                            onClick={() => handleRowToggle(item.module_key)}
-                            disabled={isProtectedAdmin}
-                            style={{
-                              padding: '4px 10px', fontSize: 11, fontWeight: 600,
-                              background: allSelected ? '#F1F5F9' : '#EFF6FF',
-                              color: allSelected ? '#475569' : '#2563EB',
-                              border: 'none', borderRadius: 6, cursor: isProtectedAdmin ? 'not-allowed' : 'pointer'
-                            }}
-                          >
-                            {allSelected ? 'Deselect All' : 'Select All'}
-                          </button>
-                        </td>
-                      </tr>
+                          {['can_view', 'can_create', 'can_edit', 'can_delete'].map(field => {
+                            const allFieldChecked = hasSubmodules && subs.every(s => s[field]);
+                            const someFieldChecked = hasSubmodules && subs.some(s => s[field]);
+                            return (
+                              <td key={field} style={{ padding: '14px 16px', textAlign: 'center' }}>
+                                <input
+                                  type="checkbox"
+                                  checked={allFieldChecked}
+                                  ref={el => { if (el) el.indeterminate = !allFieldChecked && someFieldChecked; }}
+                                  disabled={isProtectedAdmin}
+                                  onChange={() => handleModuleFieldToggle(item.module_key, field)}
+                                  title={`Toggle ${field.replace('can_', '')} for all submodules in ${item.module_label}`}
+                                  style={{
+                                    width: 18, height: 18, accentColor: '#2563EB', cursor: isProtectedAdmin ? 'not-allowed' : 'pointer'
+                                  }}
+                                />
+                              </td>
+                            );
+                          })}
+
+                          <td style={{ padding: '14px 20px', textAlign: 'center' }}>
+                            <button
+                              onClick={() => handleModuleAllToggle(item.module_key)}
+                              disabled={isProtectedAdmin}
+                              style={{
+                                padding: '5px 12px', fontSize: 11, fontWeight: 600,
+                                background: allSubsSelected ? '#F1F5F9' : '#EFF6FF',
+                                color: allSubsSelected ? '#475569' : '#2563EB',
+                                border: 'none', borderRadius: 6, cursor: isProtectedAdmin ? 'not-allowed' : 'pointer'
+                              }}
+                            >
+                              {allSubsSelected ? 'Deselect All' : 'Select All'}
+                            </button>
+                          </td>
+                        </tr>
+
+                        {/* Expanded Submodules Section */}
+                        {isExpanded && subs.map((sub, sIdx) => {
+                          const subAllSelected = sub.can_view && sub.can_create && sub.can_edit && sub.can_delete;
+                          return (
+                            <tr
+                              key={sub.submodule_key}
+                              style={{
+                                borderBottom: '1px solid #F1F5F9',
+                                background: sIdx % 2 === 0 ? '#F8FAFC' : '#F1F5F9'
+                              }}
+                            >
+                              <td style={{ padding: '12px 20px 12px 52px' }}>
+                                <div style={{ fontWeight: 600, fontSize: 13, color: '#334155', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                  <span style={{ color: '#94A3B8', fontWeight: 400 }}>└──</span>
+                                  {sub.submodule_label}
+                                </div>
+                                <div style={{ fontSize: 11, color: '#94A3B8', marginLeft: 22 }}>
+                                  Key: {sub.submodule_key}
+                                </div>
+                              </td>
+
+                              {['can_view', 'can_create', 'can_edit', 'can_delete'].map(field => (
+                                <td key={field} style={{ padding: '12px 16px', textAlign: 'center' }}>
+                                  <input
+                                    type="checkbox"
+                                    checked={sub[field]}
+                                    disabled={isProtectedAdmin}
+                                    onChange={() => handleSubmoduleCheckboxChange(item.module_key, sub.submodule_key, field)}
+                                    style={{
+                                      width: 17, height: 17, accentColor: '#2563EB', cursor: isProtectedAdmin ? 'not-allowed' : 'pointer'
+                                    }}
+                                  />
+                                </td>
+                              ))}
+
+                              <td style={{ padding: '12px 20px', textAlign: 'center' }}>
+                                <button
+                                  onClick={() => {
+                                    if (isProtectedAdmin) return;
+                                    const targetVal = !subAllSelected;
+                                    setPermissionsMatrix(prev =>
+                                      prev.map(mObj => {
+                                        if (mObj.module_key === item.module_key) {
+                                          const updatedS = mObj.submodules.map(sItem => {
+                                            if (sItem.submodule_key === sub.submodule_key) {
+                                              return { ...sItem, can_view: targetVal, can_create: targetVal, can_edit: targetVal, can_delete: targetVal };
+                                            }
+                                            return sItem;
+                                          });
+                                          return {
+                                            ...mObj,
+                                            can_view: updatedS.some(s => s.can_view),
+                                            can_create: updatedS.some(s => s.can_create),
+                                            can_edit: updatedS.some(s => s.can_edit),
+                                            can_delete: updatedS.some(s => s.can_delete),
+                                            submodules: updatedS
+                                          };
+                                        }
+                                        return mObj;
+                                      })
+                                    );
+                                  }}
+                                  disabled={isProtectedAdmin}
+                                  style={{
+                                    padding: '3px 8px', fontSize: 10, fontWeight: 600,
+                                    background: subAllSelected ? '#E2E8F0' : '#DBEAFE',
+                                    color: subAllSelected ? '#475569' : '#1E40AF',
+                                    border: 'none', borderRadius: 4, cursor: isProtectedAdmin ? 'not-allowed' : 'pointer'
+                                  }}
+                                >
+                                  {subAllSelected ? 'Clear' : 'All'}
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </React.Fragment>
                     );
                   })}
                 </tbody>

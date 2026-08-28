@@ -1,35 +1,60 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Search, Eye, Download, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
-
-// Mock Data from image
-const employees = [
-  { id: 'EMP001', name: 'Aarav Sharma', dept: 'Design', net: '₹78,500', paymentMode: 'Bank Transfer', status: 'Generated', avatar: 'https://i.pravatar.cc/150?u=EMP001' },
-  { id: 'EMP002', name: 'Neha Patel', dept: 'HR', net: '₹52,300', paymentMode: 'Bank Transfer', status: 'Generated', avatar: 'https://i.pravatar.cc/150?u=EMP002' },
-  { id: 'EMP003', name: 'Rohan Mehta', dept: 'Development', net: '₹85,000', paymentMode: 'Bank Transfer', status: 'Generated', avatar: 'https://i.pravatar.cc/150?u=EMP003' },
-  { id: 'EMP004', name: 'Priya Nair', dept: 'Finance', net: '₹66,400', paymentMode: 'Bank Transfer', status: 'Generated', avatar: 'https://i.pravatar.cc/150?u=EMP004' },
-  { id: 'EMP005', name: 'Karan Verma', dept: 'Marketing', net: '₹72,600', paymentMode: 'Bank Transfer', status: 'Generated', avatar: 'https://i.pravatar.cc/150?u=EMP005' },
-  { id: 'EMP006', name: 'Anjali Desai', dept: 'Sales', net: '₹60,900', paymentMode: 'Bank Transfer', status: 'Generated', avatar: 'https://i.pravatar.cc/150?u=EMP006' },
-  { id: 'EMP007', name: 'Vikram Singh', dept: 'Development', net: '₹91,200', paymentMode: 'Bank Transfer', status: 'Generated', avatar: 'https://i.pravatar.cc/150?u=EMP007' },
-  { id: 'EMP008', name: 'Pooja Reddy', dept: 'HR', net: '₹53,100', paymentMode: 'Bank Transfer', status: 'Generated', avatar: 'https://i.pravatar.cc/150?u=EMP008' },
-];
+import { apiFetch } from '../../lib/api';
 
 export default function GeneratePayslips() {
+  const [employees, setEmployees] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [deptFilter, setDeptFilter] = useState('All Departments');
+
+  useEffect(() => {
+    setLoading(true);
+    apiFetch('/payroll/payslips')
+      .then(res => {
+        if (res && res.success && Array.isArray(res.data)) {
+          setEmployees(res.data);
+        } else if (Array.isArray(res)) {
+          setEmployees(res);
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('Failed to load payslips:', err);
+        setLoading(false);
+      });
+  }, []);
+
+  const filteredEmployees = employees.filter(emp => {
+    const q = search.toLowerCase();
+    const matchName = !search.trim() || (emp.name && emp.name.toLowerCase().includes(q)) || (emp.id && emp.id.toLowerCase().includes(q));
+    const matchDept = deptFilter === 'All Departments' || emp.dept === deptFilter;
+    return matchName && matchDept;
+  });
+
+  const departments = ['All Departments', ...new Set(employees.map(e => e.dept).filter(Boolean))];
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', padding: '0' }}>
-
       {/* Top Toolbar */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '16px', flex: 1 }}>
           <div style={{ position: 'relative', width: '180px' }}>
             <select style={{ width: '100%', padding: '10px 32px 10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', appearance: 'none', color: '#334155', backgroundColor: '#FFF', cursor: 'pointer' }}>
-              <option>May 2024</option>
+              <option>August 2026</option>
+              <option>July 2026</option>
+              <option>June 2026</option>
             </select>
             <ChevronDown size={16} color="#94A3B8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
 
           <div style={{ position: 'relative', width: '200px' }}>
-            <select style={{ width: '100%', padding: '10px 32px 10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', appearance: 'none', color: '#334155', backgroundColor: '#FFF', cursor: 'pointer' }}>
-              <option>All Departments</option>
+            <select
+              value={deptFilter}
+              onChange={e => setDeptFilter(e.target.value)}
+              style={{ width: '100%', padding: '10px 32px 10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', appearance: 'none', color: '#334155', backgroundColor: '#FFF', cursor: 'pointer' }}
+            >
+              {departments.map(d => <option key={d} value={d}>{d}</option>)}
             </select>
             <ChevronDown size={16} color="#94A3B8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
@@ -38,6 +63,8 @@ export default function GeneratePayslips() {
             <Search size={18} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
             <input
               type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
               placeholder="Search employee..."
               style={{ width: '100%', padding: '10px 10px 10px 40px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', color: '#334155' }}
             />
@@ -70,8 +97,14 @@ export default function GeneratePayslips() {
               </tr>
             </thead>
             <tbody>
-              {employees.map((emp, index) => (
-                <tr key={emp.id} style={{ borderBottom: index === employees.length - 1 ? 'none' : '1px solid #F8FAFC' }}>
+              {loading && (
+                <tr><td colSpan="7" style={{ padding: '24px', textAlign: 'center', color: '#64748B' }}>Loading payslips...</td></tr>
+              )}
+              {!loading && filteredEmployees.length === 0 && (
+                <tr><td colSpan="7" style={{ padding: '24px', textAlign: 'center', color: '#64748B' }}>No payslips available for your authorized scope.</td></tr>
+              )}
+              {!loading && filteredEmployees.map((emp, index) => (
+                <tr key={emp.id} style={{ borderBottom: index === filteredEmployees.length - 1 ? 'none' : '1px solid #F8FAFC' }}>
                   <td style={{ padding: '16px 24px', whiteSpace: 'nowrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <img src={emp.avatar} alt={emp.name} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
@@ -110,41 +143,20 @@ export default function GeneratePayslips() {
       {/* Pagination Footer */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
         <div style={{ fontSize: '14px', color: '#64748B', fontWeight: '500' }}>
-          Showing 1 to 8 of 245 entries
+          Showing 1 to {filteredEmployees.length} of {filteredEmployees.length} entries
         </div>
         <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
           <button style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: 'pointer', color: '#64748B' }}>
             <ChevronLeft size={16} />
           </button>
-
           <button style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2952E3', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#FFF', fontSize: '14px', fontWeight: '500' }}>
             1
           </button>
-          <button style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: 'pointer', color: '#64748B', fontSize: '14px', fontWeight: '500' }}>
-            2
-          </button>
-          <button style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: 'pointer', color: '#64748B', fontSize: '14px', fontWeight: '500' }}>
-            3
-          </button>
-          <button style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: 'pointer', color: '#64748B', fontSize: '14px', fontWeight: '500' }}>
-            4
-          </button>
-          <button style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: 'pointer', color: '#64748B', fontSize: '14px', fontWeight: '500' }}>
-            5
-          </button>
-
-          <span style={{ color: '#64748B', margin: '0 4px', fontSize: '14px' }}>...</span>
-
-          <button style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: 'pointer', color: '#64748B', fontSize: '14px', fontWeight: '500' }}>
-            31
-          </button>
-
           <button style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: 'pointer', color: '#64748B' }}>
             <ChevronRight size={16} />
           </button>
         </div>
       </div>
-
     </div>
   );
 }

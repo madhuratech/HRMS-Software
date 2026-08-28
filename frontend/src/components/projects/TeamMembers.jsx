@@ -3,6 +3,9 @@ import { Plus, Edit2, ChevronLeft, ChevronRight, X, Trash2, Users } from 'lucide
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { useToast } from '../ui/Toast';
 import { apiFetch, getInitials } from '../../lib/api';
+import { requireActionPermission, hasPermission } from '../../lib/permissions';
+
+import CustomSelect from '../ui/CustomSelect';
 
 const DEPT_COLORS = ['#2563EB', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#0EA5E9', '#EC4899', '#64748B'];
 const STATUS_S = { Active:{ bg:'#DCFCE7', color:'#15803D' }, 'On Leave':{ bg:'#FEF3C7', color:'#D97706' } };
@@ -56,12 +59,18 @@ export default function TeamMembers() {
   useEffect(() => { fetchMembers(); fetchMeta(); }, [fetchMembers, fetchMeta]);
 
   const openAdd = () => {
+    if (!requireActionPermission('projects', 'team_members', 'create', null, addToast, 'You do not have permission to assign team members. Please contact your administrator.')) {
+      return;
+    }
     setEditingId(null);
     setFormData({ employee_id:'', project_id:'', role:'Team Member', status:'Active' });
     setShowAddModal(true);
   };
 
   const openEdit = (m) => {
+    if (!requireActionPermission('projects', 'team_members', 'edit', null, addToast, 'You do not have permission to edit team members. Please contact your administrator.')) {
+      return;
+    }
     setEditingId(m.id);
     setFormData({
       employee_id: String(m.employee_id || ''),
@@ -74,6 +83,10 @@ export default function TeamMembers() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    const actNeeded = editingId ? 'edit' : 'create';
+    if (!requireActionPermission('projects', 'team_members', actNeeded, null, addToast, `You do not have permission to ${actNeeded} team members. Please contact your administrator.`)) {
+      return;
+    }
     if (!formData.employee_id || !formData.project_id) {
       addToast('Employee and Project are required', 'error');
       return;
@@ -103,6 +116,9 @@ export default function TeamMembers() {
   };
 
   const handleRemove = async (m) => {
+    if (!requireActionPermission('projects', 'team_members', 'delete', null, addToast, 'You do not have permission to remove team members. Please contact your administrator.')) {
+      return;
+    }
     if (!window.confirm(`Remove ${m.name} from the project team?`)) return;
     try {
       const res = await apiFetch(`/project-team/${m.id}`, { method: 'DELETE' });
@@ -145,31 +161,44 @@ export default function TeamMembers() {
               <form id="memberForm" onSubmit={handleSave}>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:20 }}>
                   <div>
-                    <label style={labelStyle}>Employee <span style={{ color:'#EF4444' }}>*</span></label>
-                    <select style={inputStyle} value={formData.employee_id} onChange={e => setFormData(p=>({...p,employee_id:e.target.value}))} required>
-                      <option value="">Select Employee</option>
-                      {meta.employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
-                    </select>
+                    <CustomSelect
+                      label="Employee"
+                      required
+                      options={meta.employees.map(emp => ({ value: emp.id, label: emp.name, sublabel: emp.department_name }))}
+                      value={formData.employee_id}
+                      onChange={val => setFormData(p=>({...p,employee_id:val}))}
+                      placeholder="Select Employee"
+                    />
                   </div>
                   <div>
-                    <label style={labelStyle}>Project <span style={{ color:'#EF4444' }}>*</span></label>
-                    <select style={inputStyle} value={formData.project_id} onChange={e => setFormData(p=>({...p,project_id:e.target.value}))} required>
-                      <option value="">Select Project</option>
-                      {meta.projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
+                    <CustomSelect
+                      label="Project"
+                      required
+                      options={meta.projects.map(p => ({ value: p.id, label: p.name, sublabel: p.project_code }))}
+                      value={formData.project_id}
+                      onChange={val => setFormData(p=>({...p,project_id:val}))}
+                      placeholder="Select Project"
+                    />
                   </div>
                   <div>
-                    <label style={labelStyle}>Role</label>
-                    <select style={inputStyle} value={formData.role} onChange={e => setFormData(p=>({...p,role:e.target.value}))}>
-                      {(meta.roles.length ? meta.roles : ['Team Member']).map(r => <option key={r}>{r}</option>)}
-                    </select>
+                    <CustomSelect
+                      label="Role"
+                      options={(meta.roles.length ? meta.roles : ['Team Member'])}
+                      value={formData.role}
+                      onChange={val => setFormData(p=>({...p,role:val}))}
+                      placeholder="Select Role"
+                      searchable={false}
+                    />
                   </div>
                   <div>
-                    <label style={labelStyle}>Status</label>
-                    <select style={inputStyle} value={formData.status} onChange={e => setFormData(p=>({...p,status:e.target.value}))}>
-                      <option>Active</option>
-                      <option>On Leave</option>
-                    </select>
+                    <CustomSelect
+                      label="Status"
+                      options={['Active', 'On Leave']}
+                      value={formData.status}
+                      onChange={val => setFormData(p=>({...p,status:val}))}
+                      placeholder="Select Status"
+                      searchable={false}
+                    />
                   </div>
                 </div>
               </form>
@@ -185,7 +214,9 @@ export default function TeamMembers() {
       {/* Header */}
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', flexWrap:'wrap', gap:12, marginBottom:20 }}>
         <div><h1 style={{ margin:0, fontSize:22, fontWeight:700, color:'#111827' }}>Team Members</h1><p style={{ margin:'4px 0 0', fontSize:13, color:'#6B7280' }}>Project team and their roles</p></div>
-        <button onClick={openAdd} style={{ height:38, padding:'0 16px', background:'#2563EB', border:'none', borderRadius:8, fontSize:13, fontWeight:600, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Plus size={14}/> Add Member</button>
+        {hasPermission(null, null, 'projects', 'team_members', 'create') && (
+          <button onClick={openAdd} style={{ height:38, padding:'0 16px', background:'#2563EB', border:'none', borderRadius:8, fontSize:13, fontWeight:600, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Plus size={14}/> Add Member</button>
+        )}
       </div>
 
       <div style={{ display:'flex', gap:16, marginBottom:20, flexWrap:'wrap' }}>

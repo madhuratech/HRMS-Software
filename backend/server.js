@@ -101,8 +101,8 @@ app.use((err, req, res, next) => {
 
 const PORT = 5001;
 
-const server = app.listen(PORT, () => {
-    console.log(`SERVER IS RUNNING at http://localhost:${PORT}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`SERVER IS RUNNING at http://127.0.0.1:${PORT}`);
 });
 
 // Ensure Node.js event loop stays active for HTTP server

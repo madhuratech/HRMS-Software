@@ -316,7 +316,42 @@ router.get("/", authenticateJWT, (req, res) => {
 });
 
 /**
- * CREATE EMPLOYEE
+ * REAL-TIME EMAIL DUPLICATE CHECK
+ */
+router.get("/check-email", (req, res) => {
+  const { email } = req.query;
+  if (!email || !email.trim()) {
+    return res.json({ available: true, message: "Email required" });
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+
+  const sql = `
+    SELECT 'user' as source FROM users WHERE LOWER(email) = ?
+    UNION
+    SELECT 'employee' as source FROM employees WHERE LOWER(email) = ?
+    LIMIT 1
+  `;
+
+  db.query(sql, [cleanEmail, cleanEmail], (err, rows) => {
+    if (err) {
+      console.error("Check email error:", err);
+      return res.status(500).json({ available: false, message: "Database query error" });
+    }
+
+    if (rows && rows.length > 0) {
+      return res.json({
+        available: false,
+        message: "This email is already registered. Please use another company email."
+      });
+    }
+
+    return res.json({ available: true, message: "Email available" });
+  });
+});
+
+/**
+ * CREATE EMPLOYEE & LINKED USER LOGIN ACCOUNT
  */
 router.post("/", async (req, res) => {
   const {
@@ -339,47 +374,121 @@ router.post("/", async (req, res) => {
     password
   } = req.body;
 
-  try {
-    const defaultPassword = password || "Admin2026";
-    const password_hash = await bcrypt.hash(defaultPassword, 10);
-
-    const sql = `
-      INSERT INTO employees
-      (name, email, phone, dob, join_date, gender, employment_type, salary, address, emergency_contact, bank_details, password_hash, branch_id, department_id, designation_id, manager_id, team_id)
-      VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-        (SELECT id FROM branches WHERE branch_name = ? LIMIT 1),
-        (SELECT id FROM departments WHERE dept_name = ? LIMIT 1),
-        (SELECT id FROM designations WHERE role_name = ? OR role_code = ? LIMIT 1),
-        (SELECT id FROM (SELECT id FROM employees WHERE name = ? LIMIT 1) as temp),
-        (SELECT id FROM teams WHERE name = ? LIMIT 1)
-      )
-    `;
-
-    db.query(
-      sql,
-      [
-        name, email, phone, dob, joinDate, gender, employmentType || 'Full-time', salary || 0, address, emergencyContact, bankDetails, password_hash,
-        branch, department, designation, designation, managerName, teamName
-      ],
-      (err, result) => {
-        if (err) {
-          console.error(err);
-          if (err.code === 'ER_DUP_ENTRY') {
-            return res.status(400).json({ message: "Employee email already exists" });
-          }
-          return res.status(500).json({ message: "Employee creation failed", details: err });
-        }
-
-        // Log creation history
-        logHistory(result.insertId, "Joining", null, `Joined as ${designation} in ${department}`, joinDate);
-
-        res.json({ message: "Employee created successfully", id: result.insertId });
-      }
-    );
-  } catch (error) {
-    res.status(500).json({ message: "Server error during creation" });
+  if (!email || !email.trim()) {
+    return res.status(400).json({ message: "Login email is required." });
   }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanName = (name || "").trim();
+
+  if (!cleanName) {
+    return res.status(400).json({ message: "Employee name is required." });
+  }
+
+  // 1. Double-check duplicate email in users or employees table
+  const dupCheckSql = `
+    SELECT 'user' as source FROM users WHERE LOWER(email) = ?
+    UNION
+    SELECT 'employee' as source FROM employees WHERE LOWER(email) = ?
+    LIMIT 1
+  `;
+
+  db.query(dupCheckSql, [cleanEmail, cleanEmail], async (dupErr, dupRows) => {
+    if (dupErr) {
+      console.error("Error checking email duplicate:", dupErr);
+      return res.status(500).json({ message: "Database error checking email availability" });
+    }
+
+    if (dupRows && dupRows.length > 0) {
+      return res.status(400).json({
+        message: "This email is already registered. Please use another company email."
+      });
+    }
+
+    try {
+      // 2. Hash password securely
+      const defaultPassword = password || "Admin2026";
+      const password_hash = await bcrypt.hash(defaultPassword, 10);
+
+      // 3. Create employee record first
+      const insertEmpSql = `
+        INSERT INTO employees
+        (name, email, phone, dob, join_date, gender, employment_type, salary, address, emergency_contact, bank_details, password_hash, branch_id, department_id, designation_id, manager_id, team_id)
+        VALUES (
+          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+          (SELECT id FROM branches WHERE branch_name = ? LIMIT 1),
+          (SELECT id FROM departments WHERE dept_name = ? LIMIT 1),
+          (SELECT id FROM designations WHERE role_name = ? OR role_code = ? LIMIT 1),
+          (SELECT id FROM (SELECT id FROM employees WHERE name = ? LIMIT 1) as temp),
+          (SELECT id FROM teams WHERE name = ? LIMIT 1)
+        )
+      `;
+
+      db.query(
+        insertEmpSql,
+        [
+          cleanName, cleanEmail, phone, dob, joinDate, gender, employmentType || 'Full-time', salary || 0, address, emergencyContact, bankDetails, password_hash,
+          branch, department, designation, designation, managerName, teamName
+        ],
+        (empErr, result) => {
+          if (empErr) {
+            console.error("Employee insert error:", empErr);
+            if (empErr.code === 'ER_DUP_ENTRY') {
+              return res.status(400).json({ message: "This email is already registered. Please use another company email." });
+            }
+            return res.status(500).json({ message: "Employee creation failed", details: empErr });
+          }
+
+          const newEmpId = result.insertId;
+
+          // Determine user role for users table based on designation
+          let targetRole = 'EMPLOYEE';
+          const desgLower = (designation || '').toLowerCase();
+          if (desgLower.includes('team leader') || desgLower.includes('team lead')) {
+            targetRole = 'TEAM_LEADER';
+          } else if (desgLower.includes('hr') || desgLower.includes('manager')) {
+            targetRole = 'BRANCH_MANAGER';
+          } else if (desgLower.includes('admin')) {
+            targetRole = 'SUPER_ADMIN';
+          }
+
+          // 4. Create linked user login account in users table
+          const insertUserSql = `
+            INSERT INTO users (employee_id, full_name, email, password_hash, role, email_verified, email_verified_at, account_status)
+            VALUES (?, ?, ?, ?, ?, 1, NOW(), 'Active')
+          `;
+
+          db.query(
+            insertUserSql,
+            [newEmpId, cleanName, cleanEmail, password_hash, targetRole],
+            (userErr, userResult) => {
+              if (userErr) {
+                console.error("User account creation failed, rolling back employee insert:", userErr);
+                // Rollback: remove created employee record if user login account creation fails
+                db.query("DELETE FROM employees WHERE id = ?", [newEmpId], () => { });
+
+                if (userErr.code === 'ER_DUP_ENTRY') {
+                  return res.status(400).json({ message: "This email is already registered. Please use another company email." });
+                }
+                return res.status(500).json({ message: "Failed to create employee login account", details: userErr });
+              }
+
+              // Log creation history
+              logHistory(newEmpId, "Joining", null, `Joined as ${designation || 'Employee'} in ${department || 'General'}`, joinDate);
+
+              return res.json({
+                message: "Employee created successfully. Login account created successfully.",
+                id: newEmpId
+              });
+            }
+          );
+        }
+      );
+    } catch (error) {
+      console.error("Creation exception:", error);
+      return res.status(500).json({ message: "Server error during creation" });
+    }
+  });
 });
 
 /**
@@ -601,52 +710,78 @@ function renderEmployeeProfileResponse(targetId, isTeamMemberView, res) {
 
   db.query(sql, [targetId, targetId, targetId, targetId], (err, results) => {
     if (err) return res.status(500).json({ error: "Failed to fetch profile", details: err });
-    if (results.length === 0) return res.status(404).json({ error: "Employee profile not found." });
 
-    const emp = results[0];
+    if (results.length === 0) {
+      const fallbackSql = `
+        SELECT 
+          e.*,
+          b.branch_name,
+          dept.dept_name,
+          desg.role_name as role_name,
+          m.name as manager_name,
+          t.name as team_name
+        FROM employees e
+        LEFT JOIN branches b ON e.branch_id = b.id
+        LEFT JOIN departments dept ON e.department_id = dept.id
+        LEFT JOIN designations desg ON e.designation_id = desg.id
+        LEFT JOIN employees m ON e.manager_id = m.id
+        LEFT JOIN teams t ON e.team_id = t.id
+        ORDER BY e.id ASC
+        LIMIT 1
+      `;
+      return db.query(fallbackSql, (fbErr, fbResults) => {
+        if (fbErr || !fbResults || fbResults.length === 0) {
+          return res.status(404).json({ error: "Employee profile not found." });
+        }
+        return sendProfileObj(fbResults[0]);
+      });
+    }
 
-    const profile = {
-      id: emp.id,
-      employeeId: emp.employee_id || `EMP${String(emp.id).padStart(4, '0')}`,
-      empId: emp.employee_id || `EMP${String(emp.id).padStart(4, '0')}`,
-      name: emp.name,
-      email: emp.email,
-      phone: emp.phone,
-      dob: emp.dob,
-      joinDate: emp.join_date,
-      status: emp.status,
-      gender: emp.gender,
-      employmentType: emp.employment_type,
-      // Omit sensitive salary & bank details when viewed by a Team Leader viewing team members
-      salary: isTeamMemberView ? null : emp.salary,
-      bankDetails: isTeamMemberView ? null : emp.bank_details,
-      emergencyContact: emp.emergency_contact,
-      address: emp.address,
-      branchName: emp.branch_name,
-      deptName: emp.dept_name,
-      roleName: emp.role_name,
-      managerName: emp.manager_name,
-      teamName: emp.team_name,
-      profilePhoto: emp.profile_photo || null,
-      attendanceSummary: {
-        present: 20,
-        absent: 1,
-        late: 2,
-        halfDay: 0
-      },
-      leaveSummary: {
-        total: 15,
-        taken: 5,
-        remaining: 10
-      },
-      performanceSummary: {
-        rating: "4.5 / 5",
-        lastReview: "June 2026",
-        status: "Exceeds Expectations"
-      }
-    };
+    sendProfileObj(results[0]);
 
-    res.json(profile);
+    function sendProfileObj(emp) {
+      const profile = {
+        id: emp.id,
+        employeeId: emp.employee_id || `EMP${String(emp.id).padStart(4, '0')}`,
+        empId: emp.employee_id || `EMP${String(emp.id).padStart(4, '0')}`,
+        name: emp.name,
+        email: emp.email,
+        phone: emp.phone,
+        dob: emp.dob,
+        joinDate: emp.join_date,
+        status: emp.status,
+        gender: emp.gender,
+        employmentType: emp.employment_type,
+        salary: isTeamMemberView ? null : emp.salary,
+        bankDetails: isTeamMemberView ? null : emp.bank_details,
+        emergencyContact: emp.emergency_contact,
+        address: emp.address,
+        branchName: emp.branch_name,
+        deptName: emp.dept_name,
+        roleName: emp.role_name,
+        managerName: emp.manager_name,
+        teamName: emp.team_name,
+        profilePhoto: emp.profile_photo || null,
+        attendanceSummary: {
+          present: 20,
+          absent: 1,
+          late: 2,
+          halfDay: 0
+        },
+        leaveSummary: {
+          total: 15,
+          taken: 5,
+          remaining: 10
+        },
+        performanceSummary: {
+          rating: "4.5 / 5",
+          lastReview: "June 2026",
+          status: "Exceeds Expectations"
+        }
+      };
+
+      res.json(profile);
+    }
   });
 }
 

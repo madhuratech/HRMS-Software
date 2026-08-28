@@ -13,12 +13,65 @@ export default function LeaveBalance() {
   const [deptFilter, setDeptFilter] = useState('All Departments');
   const [monthFilter, setMonthFilter] = useState('August 2026');
 
+  const getAuthUser = () => {
+    try {
+      const authRaw = localStorage.getItem('hrms_auth');
+      if (authRaw) {
+        const parsed = JSON.parse(authRaw);
+        if (parsed) {
+          return {
+            id: parsed.user?.id,
+            role: parsed.role || parsed.user?.role || localStorage.getItem('userRole') || 'SUPER_ADMIN',
+            name: parsed.user?.name || parsed.name || localStorage.getItem('userName') || 'User'
+          };
+        }
+      }
+    } catch (e) {}
+    return { id: null, role: localStorage.getItem('userRole') || 'SUPER_ADMIN', name: localStorage.getItem('userName') || 'User' };
+  };
+
+  const auth = getAuthUser();
+  const isEmployee = String(auth.role).toUpperCase().replace(/_/g, ' ') === 'EMPLOYEE';
+
   const loadBalances = async () => {
     setLoading(true);
     try {
-      const res = await apiFetch('/leaves/all-balances');
-      if (res && res.records) {
-        setData(res);
+      if (isEmployee && auth.id) {
+        const res = await apiFetch(`/leaves/balances/${auth.id}`);
+        if (Array.isArray(res)) {
+          let cl = 0, sl = 0, el = 0, comp = 0;
+          res.forEach(r => {
+            const code = String(r.leave_code).toUpperCase();
+            if (code === 'CL') cl = parseFloat(r.days_remaining) || 0;
+            else if (code === 'SL') sl = parseFloat(r.days_remaining) || 0;
+            else if (code === 'EL' || code === 'PL') el = parseFloat(r.days_remaining) || 0;
+            else if (code === 'COMP') comp = parseFloat(r.days_remaining) || 0;
+          });
+
+          setData({
+            summary: {
+              cl: `${cl} Days`,
+              sl: `${sl} Days`,
+              el: `${el} Days`,
+              comp: `${comp} Hours`
+            },
+            records: [{
+              id: auth.id,
+              name: auth.name,
+              dept: 'General',
+              cl,
+              sl,
+              el,
+              comp,
+              total: cl + sl + el + comp
+            }]
+          });
+        }
+      } else {
+        const res = await apiFetch('/leaves/all-balances');
+        if (res && res.records) {
+          setData(res);
+        }
       }
     } catch (err) {
       console.error("Failed to load leave balances:", err);
@@ -71,46 +124,48 @@ export default function LeaveBalance() {
       <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
         
         {/* Toolbar */}
-        <div style={{ padding: '24px', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-            <select 
-              value={monthFilter}
-              onChange={(e) => setMonthFilter(e.target.value)}
-              style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '140px' }}
-            >
-              <option>August 2026</option>
-              <option>July 2026</option>
-              <option>June 2026</option>
-            </select>
+        {!isEmployee && (
+          <div style={{ padding: '24px', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+              <select 
+                value={monthFilter}
+                onChange={(e) => setMonthFilter(e.target.value)}
+                style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '140px' }}
+              >
+                <option>August 2026</option>
+                <option>July 2026</option>
+                <option>June 2026</option>
+              </select>
 
-            <select 
-              value={deptFilter}
-              onChange={(e) => setDeptFilter(e.target.value)}
-              style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '160px' }}
-            >
-              <option>All Departments</option>
-              <option>Human Resources</option>
-              <option>Engineering</option>
-              <option>Sales</option>
-              <option>Marketing</option>
-            </select>
+              <select 
+                value={deptFilter}
+                onChange={(e) => setDeptFilter(e.target.value)}
+                style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '160px' }}
+              >
+                <option>All Departments</option>
+                <option>Human Resources</option>
+                <option>Engineering</option>
+                <option>Sales</option>
+                <option>Marketing</option>
+              </select>
 
-            <div style={{ position: 'relative', width: '240px' }}>
-              <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }} />
-              <input 
-                type="text" 
-                placeholder="Search employee..." 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ width: '100%', padding: '9px 12px 9px 36px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none' }} 
-              />
+              <div style={{ position: 'relative', width: '240px' }}>
+                <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }} />
+                <input 
+                  type="text" 
+                  placeholder="Search employee..." 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{ width: '100%', padding: '9px 12px 9px 36px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none' }} 
+                />
+              </div>
             </div>
-          </div>
 
-          <button style={{ background: '#fff', border: '1px solid #E5E7EB', color: '#2563EB', padding: '9px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-            <Download size={16} /> Export
-          </button>
-        </div>
+            <button style={{ background: '#fff', border: '1px solid #E5E7EB', color: '#2563EB', padding: '9px 16px', borderRadius: '8px', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+              <Download size={16} /> Export
+            </button>
+          </div>
+        )}
 
         {/* Table */}
         <div style={{ overflowX: 'auto' }}>

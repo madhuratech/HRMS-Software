@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, Edit2, ChevronLeft, ChevronRight, ChevronDown, Calendar, X, Trash2 } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { apiFetch, formatDate, getInitials } from '../../lib/api';
+import { requireActionPermission, hasPermission } from '../../lib/permissions';
 
 const STATUS_S = { Approved:{ bg:'#DCFCE7', color:'#15803D' }, Pending:{ bg:'#FEF3C7', color:'#D97706' }, Rejected:{ bg:'#FEE2E2', color:'#DC2626' } };
 const AVATAR   = [{ bg:'#DBEAFE', c:'#1D4ED8' },{ bg:'#FCE7F3', c:'#9D174D' },{ bg:'#D1FAE5', c:'#065F46' },{ bg:'#FEF3C7', c:'#92400E' },{ bg:'#EDE9FE', c:'#5B21B6' }];
@@ -110,12 +111,18 @@ export default function Timesheets() {
   useEffect(() => { setPage(1); }, [search, employeeFilter, projectFilter, statusFilter, period]);
 
   const openLogTime = () => {
+    if (!requireActionPermission('projects', 'timesheets', 'create', null, addToast, 'You do not have permission to log time. Please contact your administrator.')) {
+      return;
+    }
     setEditingId(null);
     setFormData({ employee_id:'', project_id:'', log_date:'', hours:'', billable:'Billable', task_description:'', status:'Pending' });
     setShowModal(true);
   };
 
   const openEdit = (r) => {
+    if (!requireActionPermission('projects', 'timesheets', 'edit', null, addToast, 'You do not have permission to edit timesheets. Please contact your administrator.')) {
+      return;
+    }
     setEditingId(r.id);
     setFormData({
       employee_id: String(r.employee_id || ''),
@@ -131,6 +138,10 @@ export default function Timesheets() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    const actNeeded = editingId ? 'edit' : 'create';
+    if (!requireActionPermission('projects', 'timesheets', actNeeded, null, addToast, `You do not have permission to ${actNeeded} timesheets. Please contact your administrator.`)) {
+      return;
+    }
     if (!formData.employee_id || !formData.project_id || !formData.hours) {
       addToast('Employee, Project and Hours are required', 'error');
       return;
@@ -164,6 +175,9 @@ export default function Timesheets() {
   };
 
   const handleDelete = async (r) => {
+    if (!requireActionPermission('projects', 'timesheets', 'delete', null, addToast, 'You do not have permission to delete timesheets. Please contact your administrator.')) {
+      return;
+    }
     if (!window.confirm(`Delete timesheet entry for ${r.employee_name} (${r.hours}h)?`)) return;
     try {
       const res = await apiFetch(`/timesheets/${r.id}`, { method: 'DELETE' });
@@ -275,7 +289,9 @@ export default function Timesheets() {
             <option value="">All Projects</option>
             {projects.map(p => <option key={p.id} value={p.id}>{p.project_name || p.name}</option>)}
           </Sel>
-          <button onClick={openLogTime} style={{ height:38, padding:'0 16px', background:'#2563EB', border:'none', borderRadius:8, fontSize:13, fontWeight:600, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Plus size={14}/> Log Time</button>
+          {hasPermission(null, null, 'projects', 'timesheets', 'create') && (
+            <button onClick={openLogTime} style={{ height:38, padding:'0 16px', background:'#2563EB', border:'none', borderRadius:8, fontSize:13, fontWeight:600, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Plus size={14}/> Log Time</button>
+          )}
         </div>
       </div>
 

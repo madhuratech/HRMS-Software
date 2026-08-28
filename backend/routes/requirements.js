@@ -7,9 +7,9 @@ const { validateRequirement } = require('../validators/requirementValidator');
 const upload = require('../utils/fileUpload');
 
 // Base Roles allowed to view requirements list
-const readRoles = ['Super Admin', 'HR Admin', 'HR Manager', 'Department Manager', 'Viewer'];
-const writeRoles = ['Super Admin', 'HR Admin', 'HR Manager', 'Department Manager'];
-const adminRoles = ['Super Admin', 'HR Admin', 'HR Manager'];
+const readRoles = ['Super Admin', 'SUPER_ADMIN', 'HR Admin', 'HR Manager', 'Department Manager', 'Viewer', 'Team Leader', 'TEAM_LEADER', 'Employee', 'EMPLOYEE', 'ALL'];
+const writeRoles = ['Super Admin', 'SUPER_ADMIN', 'HR Admin', 'HR Manager', 'Department Manager', 'Team Leader', 'TEAM_LEADER', 'Employee', 'EMPLOYEE', 'ALL'];
+const adminRoles = ['Super Admin', 'SUPER_ADMIN', 'HR Admin', 'HR Manager', 'Team Leader', 'TEAM_LEADER'];
 
 const db = require('../config/database');
 

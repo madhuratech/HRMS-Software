@@ -3,6 +3,7 @@ import { Plus, Edit2, Link2, ChevronLeft, ChevronRight, X, Trash2, CheckCircle2 
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { useToast } from '../ui/Toast';
 import { apiFetch, formatDate } from '../../lib/api';
+import { requireActionPermission, hasPermission } from '../../lib/permissions';
 
 const STATUS_S = { 'Completed':{ bg:'#DCFCE7', color:'#15803D' }, 'In Progress':{ bg:'#DBEAFE', color:'#1D4ED8' }, 'Delayed':{ bg:'#FEE2E2', color:'#DC2626' }, 'Upcoming':{ bg:'#F3F4F6', color:'#6B7280' } };
 const KpiCard = ({ label, value, iconBg, iconColor, icon }) => (
@@ -88,12 +89,18 @@ export default function Milestones() {
   useEffect(() => { setPage(1); }, [projectFilter, statusFilter]);
 
   const openAdd = () => {
+    if (!requireActionPermission('projects', 'milestones', 'create', null, addToast, 'You do not have permission to add milestones. Please contact your administrator.')) {
+      return;
+    }
     setEditingId(null);
     setFormData({ milestone_name:'', project_id:'', due_date:'', description:'', status:'Upcoming', progress_pct:0 });
     setShowAddModal(true);
   };
 
   const openEdit = (m) => {
+    if (!requireActionPermission('projects', 'milestones', 'edit', null, addToast, 'You do not have permission to edit milestones. Please contact your administrator.')) {
+      return;
+    }
     setEditingId(m.id);
     setFormData({
       milestone_name: m.milestone_name,
@@ -108,6 +115,10 @@ export default function Milestones() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    const actNeeded = editingId ? 'edit' : 'create';
+    if (!requireActionPermission('projects', 'milestones', actNeeded, null, addToast, `You do not have permission to ${actNeeded} milestones. Please contact your administrator.`)) {
+      return;
+    }
     if (!formData.milestone_name || !formData.project_id || !formData.due_date) {
       addToast('Milestone Name, Project and Due Date are required', 'error');
       return;
@@ -140,6 +151,9 @@ export default function Milestones() {
   };
 
   const handleComplete = async (m) => {
+    if (!requireActionPermission('projects', 'milestones', 'edit', null, addToast, 'You do not have permission to edit milestones. Please contact your administrator.')) {
+      return;
+    }
     try {
       const res = await apiFetch(`/milestones/${m.id}/complete`, { method: 'PUT' });
       if (res.success) {
@@ -155,6 +169,9 @@ export default function Milestones() {
   };
 
   const handleDelete = async (m) => {
+    if (!requireActionPermission('projects', 'milestones', 'delete', null, addToast, 'You do not have permission to delete milestones. Please contact your administrator.')) {
+      return;
+    }
     if (!window.confirm(`Delete milestone "${m.milestone_name}"?`)) return;
     try {
       const res = await apiFetch(`/milestones/${m.id}`, { method: 'DELETE' });
@@ -176,7 +193,9 @@ export default function Milestones() {
     <div style={{ fontFamily:"'Inter',-apple-system,sans-serif", width:'100%', boxSizing:'border-box' }}>
       <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', flexWrap:'wrap', gap:12, marginBottom:20 }}>
         <div><h1 style={{ margin:0, fontSize:22, fontWeight:700, color:'#111827' }}>Milestones</h1><p style={{ margin:'4px 0 0', fontSize:13, color:'#6B7280' }}>Track project milestones</p></div>
-        <button onClick={openAdd} style={{ height:38, padding:'0 16px', background:'#2563EB', border:'none', borderRadius:8, fontSize:13, fontWeight:600, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Plus size={14}/> Add Milestone</button>
+        {hasPermission(null, null, 'projects', 'milestones', 'create') && (
+          <button onClick={openAdd} style={{ height:38, padding:'0 16px', background:'#2563EB', border:'none', borderRadius:8, fontSize:13, fontWeight:600, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Plus size={14}/> Add Milestone</button>
+        )}
       </div>
 
       <div style={{ display:'flex', gap:16, marginBottom:20, flexWrap:'wrap' }}>

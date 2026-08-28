@@ -356,8 +356,8 @@ export function EmployeeDashboard() {
         try {
           const tasksRes = await apiFetch('/tasks');
           const rawTasksList = Array.isArray(tasksRes) ? tasksRes : (tasksRes?.data?.tasks || tasksRes?.tasks || []);
-          
-          let myTasks = rawTasksList.filter(t => 
+
+          let myTasks = rawTasksList.filter(t =>
             String(t.assigned_to) === String(empId) ||
             String(t.assignee_id) === String(empId) ||
             String(t.employee_id) === String(empId) ||

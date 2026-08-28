@@ -3,6 +3,8 @@ const GPSAttendanceService = require("../services/GPSAttendanceService");
 const PunchLocationService = require("../services/PunchLocationService");
 const PDFDocument = require("pdfkit");
 
+const DataScopeService = require("../services/DataScopeService");
+
 // Original endpoint for backward compatibility, updated to use GPS geofence validation
 exports.punch = async (req, res) => {
   try {
@@ -50,32 +52,48 @@ exports.getRecent = (req, res) => {
   });
 };
 
-exports.getDailyStats = (req, res) => {
-  const targetDate = req.query.date || new Date().toISOString().split('T')[0];
+exports.getDailyStats = async (req, res) => {
+  try {
+    const scopeData = await DataScopeService.getScope(req);
+    const targetDate = req.query.date || new Date().toISOString().split('T')[0];
 
-  const sql = `
-    SELECT 
-      e.id,
-      e.name,
-      e.profile_photo as avatar,
-      d.dept_name as department,
-      MIN(CASE WHEN a.punch_type = 'IN' THEN a.punch_time END) as check_in_time,
-      MAX(CASE WHEN a.punch_type = 'OUT' THEN a.punch_time END) as check_out_time,
-      (
-        SELECT COUNT(*) 
-        FROM leave_applications la 
-        WHERE la.employee_id = e.id 
-          AND la.status = 'Approved' 
-          AND ? BETWEEN la.start_date AND la.end_date
-      ) as on_leave
-    FROM employees e
-    LEFT JOIN departments d ON e.department_id = d.id
-    LEFT JOIN attendance a ON a.employee_id = e.id AND DATE(a.punch_time) = ?
-    WHERE e.status = 'Active'
-    GROUP BY e.id, e.name, e.profile_photo, d.dept_name
-  `;
+    let scopeClause = '';
+    let queryParams = [targetDate, targetDate, targetDate];
 
-  db.query(sql, [targetDate, targetDate, targetDate], (err, rows) => {
+    if (!scopeData.isUnrestricted && Array.isArray(scopeData.allowedEmployeeIds)) {
+      if (scopeData.allowedEmployeeIds.length === 0) {
+        return res.json({
+          kpis: { totalEmployees: 0, present: 0, presentPct: '0.00%', absent: 0, absentPct: '0.00%', late: 0, latePct: '0.00%', leave: 0, leavePct: '0.00%' },
+          records: []
+        });
+      }
+      scopeClause = ' AND e.id IN (?)';
+      queryParams = [targetDate, targetDate, scopeData.allowedEmployeeIds, targetDate];
+    }
+
+    const sql = `
+      SELECT 
+        e.id,
+        e.name,
+        e.profile_photo as avatar,
+        d.dept_name as department,
+        MIN(CASE WHEN a.punch_type = 'IN' THEN a.punch_time END) as check_in_time,
+        MAX(CASE WHEN a.punch_type = 'OUT' THEN a.punch_time END) as check_out_time,
+        (
+          SELECT COUNT(*) 
+          FROM leave_applications la 
+          WHERE la.employee_id = e.id 
+            AND la.status = 'Approved' 
+            AND ? BETWEEN la.start_date AND la.end_date
+        ) as on_leave
+      FROM employees e
+      LEFT JOIN departments d ON e.department_id = d.id
+      LEFT JOIN attendance a ON a.employee_id = e.id AND DATE(a.punch_time) = ?
+      WHERE e.status = 'Active'${scopeClause}
+      GROUP BY e.id, e.name, e.profile_photo, d.dept_name
+    `;
+
+    db.query(sql, queryParams, (err, rows) => {
     if (err) {
       console.error(err);
       return res.status(500).json({ message: "Failed to load daily attendance stats", error: err.message });
@@ -136,27 +154,32 @@ exports.getDailyStats = (req, res) => {
 
     const formatPct = (val) => totalEmployees > 0 ? `${((val / totalEmployees) * 100).toFixed(2)}%` : '0.00%';
 
-    res.json({
-      kpis: {
-        totalEmployees,
-        present: present + late,
-        presentPct: formatPct(present + late),
-        absent,
-        absentPct: formatPct(absent),
-        late,
-        latePct: formatPct(late),
-        leave,
-        leavePct: formatPct(leave)
-      },
-      records
+      res.json({
+        kpis: {
+          totalEmployees,
+          present: present + late,
+          presentPct: formatPct(present + late),
+          absent,
+          absentPct: formatPct(absent),
+          late,
+          latePct: formatPct(late),
+          leave,
+          leavePct: formatPct(leave)
+        },
+        records
+      });
     });
-  });
+  } catch (err) {
+    console.error('getDailyStats error:', err);
+    return res.status(500).json({ message: "Failed to load daily attendance stats", error: err.message });
+  }
 };
 
 exports.getGPSFeed = async (req, res) => {
   try {
+    const scopeData = await DataScopeService.getScope(req);
     const targetDate = req.query.date || new Date().toISOString().split('T')[0];
-    const data = await GPSAttendanceService.getGPSDashboardStats(targetDate);
+    const data = await GPSAttendanceService.getGPSDashboardStats(targetDate, scopeData.allowedEmployeeIds);
     return res.status(200).json({ success: true, ...data });
   } catch (error) {
     console.error("GPS feed error:", error.message);
@@ -475,13 +498,21 @@ exports.getTodayStatus = async (req, res) => {
 
 exports.updateAttendanceRecord = async (req, res) => {
   try {
+    const scopeData = await DataScopeService.getScope(req);
     const { employeeId, date } = req.params;
-    const { checkInTime, checkOutTime, status, workingHours } = req.body;
+    const targetEmpId = parseInt(employeeId);
 
     if (!employeeId || !date) {
       return res.status(400).json({ success: false, message: "Missing employee ID or date" });
     }
 
+    if (!scopeData.isUnrestricted && Array.isArray(scopeData.allowedEmployeeIds)) {
+      if (!scopeData.allowedEmployeeIds.includes(targetEmpId)) {
+        return res.status(403).json({ success: false, message: "Permission Denied: You cannot modify attendance records for employees outside your authorized data scope." });
+      }
+    }
+
+    const { checkInTime, checkOutTime, status, workingHours } = req.body;
     const checkInTimestamp = checkInTime ? new Date(`${date} ${checkInTime}`) : null;
     const checkOutTimestamp = checkOutTime ? new Date(`${date} ${checkOutTime}`) : null;
 
@@ -550,10 +581,18 @@ exports.updateAttendanceRecord = async (req, res) => {
 
 exports.deleteAttendanceRecord = async (req, res) => {
   try {
+    const scopeData = await DataScopeService.getScope(req);
     const { employeeId, date } = req.params;
+    const targetEmpId = parseInt(employeeId);
 
     if (!employeeId || !date) {
       return res.status(400).json({ success: false, message: "Missing employee ID or date" });
+    }
+
+    if (!scopeData.isUnrestricted && Array.isArray(scopeData.allowedEmployeeIds)) {
+      if (!scopeData.allowedEmployeeIds.includes(targetEmpId)) {
+        return res.status(403).json({ success: false, message: "Permission Denied: You cannot delete attendance records for employees outside your authorized data scope." });
+      }
     }
 
     await Promise.all([

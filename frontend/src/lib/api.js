@@ -15,12 +15,14 @@ export const getAuthToken = () => {
 
 export const apiFetch = async (path, options = {}) => {
   let empHeaderId = '';
+  let userRole = localStorage.getItem('userRole') || '';
   const auth = localStorage.getItem('hrms_auth');
   if (auth) {
     try {
       const parsed = JSON.parse(auth);
       const userObj = parsed.user || parsed;
       empHeaderId = userObj.id || userObj.emp_id || userObj.employee_id || '';
+      if (!userRole) userRole = parsed.role || userObj.role || '';
     } catch (e) {}
   }
 
@@ -29,10 +31,20 @@ export const apiFetch = async (path, options = {}) => {
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     'Authorization': `Bearer ${getAuthToken()}`,
     ...(empHeaderId ? { 'x-employee-id': String(empHeaderId) } : {}),
+    ...(userRole ? { 'x-user-role': String(userRole) } : {}),
     ...(options.headers || {})
   };
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  return res.json();
+  try {
+    const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+    const text = await res.text();
+    if (!text || !text.trim()) {
+      return { success: res.ok, status: res.status };
+    }
+    return JSON.parse(text);
+  } catch (e) {
+    console.error(`apiFetch error for ${path}:`, e);
+    return { success: false, message: e.message };
+  }
 };
 
 export const formatDate = (value) => {

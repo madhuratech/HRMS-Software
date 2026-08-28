@@ -96,6 +96,14 @@ class TaskService {
       params.push(filters.assignee_id);
     }
 
+    if (filters.scopeData && !filters.scopeData.isUnrestricted && Array.isArray(filters.scopeData.allowedEmployeeIds)) {
+      if (filters.scopeData.allowedEmployeeIds.length === 0) {
+        return { rows: [], total: 0 };
+      }
+      sql += ` AND (t.assignee_id IN (?) OR t.created_by IN (?))`;
+      params.push(filters.scopeData.allowedEmployeeIds, filters.scopeData.allowedEmployeeIds);
+    }
+
     if (filters.sprint_id) {
       sql += ` AND 1=1`;
     }
@@ -133,8 +141,18 @@ class TaskService {
     };
   }
 
-  static async getDashboard() {
-    const rows = await ProjectTask.query(`SELECT status, COUNT(*) as c FROM tasks GROUP BY status`);
+  static async getDashboard(scopeData = null) {
+    let whereClause = '';
+    let params = [];
+    if (scopeData && !scopeData.isUnrestricted && Array.isArray(scopeData.allowedEmployeeIds)) {
+      if (scopeData.allowedEmployeeIds.length === 0) {
+        return { totalTasks: 0, todo: 0, inProgress: 0, review: 0, completed: 0, statusMap: {} };
+      }
+      whereClause = ' WHERE (assignee_id IN (?) OR created_by IN (?)) ';
+      params = [scopeData.allowedEmployeeIds, scopeData.allowedEmployeeIds];
+    }
+
+    const rows = await ProjectTask.query(`SELECT status, COUNT(*) as c FROM tasks ${whereClause} GROUP BY status`, params);
     const map = {};
     rows.forEach(r => { map[r.status] = r.c; });
 

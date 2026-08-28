@@ -29,18 +29,24 @@ export function Header({ title, userRole, currentView }) {
   const fetchNotifications = async () => {
     try {
       const res = await apiFetch('/notifications');
-      if (res && res.success && Array.isArray(res.data)) {
-        setNotifications(res.data);
-        setUnreadCount(res.data.filter(n => !n.is_read).length);
+      if (res && res.success) {
+        const notifList = Array.isArray(res.notifications) ? res.notifications : (Array.isArray(res.data) ? res.data : []);
+        setNotifications(notifList);
+        const count = typeof res.unreadCount === 'number' ? res.unreadCount : notifList.filter(n => !n.is_read && !n.isRead).length;
+        setUnreadCount(count);
+      } else {
+        setNotifications([]);
+        setUnreadCount(0);
       }
     } catch (e) {
-      console.error('Failed to fetch notifications:', e);
+      setNotifications([]);
+      setUnreadCount(0);
     }
   };
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 10000); // Poll every 10 seconds
+    const interval = setInterval(fetchNotifications, 15000); // Poll every 15 seconds
     return () => clearInterval(interval);
   }, []);
 

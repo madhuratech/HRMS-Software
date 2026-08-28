@@ -19,13 +19,11 @@ import {
   ChevronDown,
   ChevronRight,
   LogOut,
-  Network,
-  Clock,
-  Sparkles,
-  Calendar
+  Sparkles
 } from 'lucide-react';
 import { cn, getAvatarUrl } from '../../lib/utils';
 import { apiFetch } from '../../lib/api';
+import { canView } from '../../lib/permissions';
 
 export function Sidebar({ userRole, onLogout }) {
   const [expandedGroups, setExpandedGroups] = useState([]);
@@ -36,9 +34,15 @@ export function Sidebar({ userRole, onLogout }) {
   // Fetch real-time role permissions from backend
   const fetchPermissions = async () => {
     try {
-      const data = await apiFetch('/rbac/user-permissions');
-      if (data && data.success && data.data) {
-        setUserPermissions(data.data);
+      const storedRole = localStorage.getItem('userRole') || userRole || 'EMPLOYEE';
+      const data = await apiFetch(`/rbac/user-permissions?role=${encodeURIComponent(storedRole)}`, {
+        headers: { 'x-user-role': storedRole }
+      });
+      if (data && data.success && (data.permissions || data.data)) {
+        const freshPerms = data.permissions || data.data;
+        setUserPermissions(freshPerms);
+        localStorage.setItem('hrms_permissions', JSON.stringify(freshPerms));
+        console.log('[Sidebar] Synced fresh permissions to localStorage for role:', storedRole);
       }
     } catch (e) {
       console.error('Failed to fetch user permissions in Sidebar:', e);
@@ -63,7 +67,7 @@ export function Sidebar({ userRole, onLogout }) {
           const name = parsed.name || userObj.name || localStorage.getItem('userName') || 'Admin User';
           const role = parsed.role || userObj.role || localStorage.getItem('userRole') || userRole || 'SUPER_ADMIN';
           const photo = userObj.profile_photo || userObj.avatar || null;
-          
+
           return {
             name,
             role,
@@ -75,8 +79,7 @@ export function Sidebar({ userRole, onLogout }) {
     } catch (e) {
       console.error('Error parsing auth user for sidebar:', e);
     }
-    
-    // Fallback
+
     const storedName = localStorage.getItem('userName') || 'Admin User';
     return {
       name: storedName,
@@ -87,6 +90,8 @@ export function Sidebar({ userRole, onLogout }) {
   };
 
   const userInfo = getAuthUser();
+  const normRole = String(userInfo.role || userRole || '').toUpperCase().replace(/_/g, ' ');
+  const isProtectedAdmin = normRole === 'SUPER ADMIN' || normRole === 'SUPERADMIN' || normRole === 'ADMIN';
 
   const handleProfileClick = () => {
     let userId = 1;
@@ -107,59 +112,28 @@ export function Sidebar({ userRole, onLogout }) {
     );
   };
 
-  // Dedicated menu items for EMPLOYEE role mapped to permission keys
-  const employeeMenuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/employee/dashboard', moduleKey: 'dashboard' },
-    { id: 'profile', label: 'My Profile', icon: Users, path: '/employee/profile', moduleKey: 'employees' },
-    { id: 'attendance', label: 'My Attendance', icon: CalendarCheck, path: '/employee/attendance', moduleKey: 'attendance' },
-    { id: 'shift', label: 'My Shift', icon: Clock, path: '/employee/shift', moduleKey: 'attendance' },
-    { id: 'leave', label: 'My Leave', icon: CalendarOff, path: '/employee/leave', moduleKey: 'leave' },
-    { id: 'leave-types', label: 'Leave Types', icon: CalendarOff, path: '/employee/leave-types', moduleKey: 'leave' },
-    { id: 'holiday-list', label: 'Holiday List', icon: Calendar, path: '/employee/holidays', moduleKey: 'leave' },
-    { id: 'payroll', label: 'My Payroll', icon: DollarSign, path: '/employee/payroll', moduleKey: 'payroll' },
-    { id: 'tasks', label: 'My Tasks', icon: ClipboardList, path: '/employee/tasks', moduleKey: 'projects' },
-    { id: 'team', label: 'My Team', icon: Network, path: '/employee/team', moduleKey: 'employees' },
-    { id: 'performance', label: 'My Performance', icon: BarChart3, path: '/employee/performance', moduleKey: 'performance' },
-    { id: 'documents', label: 'My Documents', icon: FileText, path: '/employee/documents', moduleKey: 'documents' },
-    { id: 'announcements', label: 'Announcements', icon: Sparkles, path: '/employee/announcements', moduleKey: 'organization' },
-    { id: 'help', label: 'Help & Support', icon: LifeBuoy, path: '/employee/help', moduleKey: 'helpdesk' },
-  ];
+  const getDashboardPath = () => {
+    if (normRole === 'EMPLOYEE') return '/employee/dashboard';
+    if (normRole === 'TEAM LEADER') return '/team-leader/dashboard';
+    return '/dashboard';
+  };
 
-  // Dedicated menu items for TEAM_LEADER role mapped to permission keys
-  const teamLeaderMenuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/team-leader/dashboard', moduleKey: 'dashboard' },
-    { id: 'profile', label: 'My Profile', icon: Users, path: '/team-leader/profile', moduleKey: 'employees' },
-    { id: 'my-attendance', label: 'My Attendance', icon: CalendarCheck, path: '/team-leader/my-attendance', moduleKey: 'attendance' },
-    { id: 'my-shift', label: 'My Shift', icon: Clock, path: '/team-leader/my-shift', moduleKey: 'attendance' },
-    { id: 'my-team', label: 'My Team', icon: Network, path: '/team-leader/my-team', moduleKey: 'employees' },
-    { id: 'team-attendance', label: 'Team Attendance', icon: CalendarCheck, path: '/team-leader/team-attendance', moduleKey: 'attendance' },
-    { id: 'projects', label: 'Projects', icon: FolderKanban, path: '/team-leader/projects', moduleKey: 'projects' },
-    { id: 'team-tasks', label: 'Team Tasks', icon: ClipboardList, path: '/team-leader/team-tasks', moduleKey: 'projects' },
-    { id: 'team-performance', label: 'Team Performance', icon: BarChart3, path: '/team-leader/team-performance', moduleKey: 'performance' },
-    { id: 'my-leave', label: 'My Leave', icon: CalendarOff, path: '/team-leader/my-leave', moduleKey: 'leave' },
-    { id: 'team-leave', label: 'Team Leave Overview', icon: CalendarOff, path: '/team-leader/team-leave', moduleKey: 'leave' },
-    { id: 'holidays', label: 'Holiday List', icon: Calendar, path: '/team-leader/holidays', moduleKey: 'leave' },
-    { id: 'leave-types', label: 'Leave Types', icon: CalendarOff, path: '/team-leader/leave-types', moduleKey: 'leave' },
-    { id: 'my-payroll', label: 'My Payroll', icon: DollarSign, path: '/team-leader/my-payroll', moduleKey: 'payroll' },
-    { id: 'help', label: 'Help & Support', icon: LifeBuoy, path: '/team-leader/help', moduleKey: 'helpdesk' },
-  ];
-
-  // Standard Admin & HR Menu Items mapped to permission keys
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, moduleKey: 'dashboard', path: '/dashboard' },
+  // Master definition of all existing HRMS sidebar modules & submodules
+  const masterMenuItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, moduleKey: 'dashboard', submoduleKey: 'dashboard_overview', path: getDashboardPath() },
     {
       id: 'organization',
       label: 'Organization',
       icon: Building2,
       moduleKey: 'organization',
       children: [
-        { id: 'company-profile', label: 'Company Profile', path: '/company-profile', moduleKey: 'organization' },
-        { id: 'departments', label: 'Departments', path: '/departments', moduleKey: 'organization' },
-        { id: 'designations', label: 'Designations', path: '/designations', moduleKey: 'organization' },
-        { id: 'teams', label: 'Teams', path: '/teams', moduleKey: 'organization' },
-        { id: 'shift-management', label: 'Shift Management', path: '/shift-management', moduleKey: 'organization' },
-        { id: 'holiday-calendar', label: 'Holiday Calendar', path: '/holiday-calendar', moduleKey: 'organization' },
-        { id: 'organization-chart', label: 'Organization Chart', path: '/organization-chart', moduleKey: 'organization' }
+        { id: 'company-profile', label: 'Company Profile', path: '/company-profile', moduleKey: 'organization', submoduleKey: 'company_profile' },
+        { id: 'departments', label: 'Departments', path: '/departments', moduleKey: 'organization', submoduleKey: 'departments' },
+        { id: 'designations', label: 'Designations', path: '/designations', moduleKey: 'organization', submoduleKey: 'designations' },
+        { id: 'teams', label: 'Teams', path: '/teams', moduleKey: 'organization', submoduleKey: 'teams' },
+        { id: 'shift-management', label: 'Shift Management', path: '/shift-management', moduleKey: 'organization', submoduleKey: 'shift_management' },
+        { id: 'holiday-calendar', label: 'Holiday Calendar', path: '/holiday-calendar', moduleKey: 'organization', submoduleKey: 'holiday_calendar' },
+        { id: 'organization-chart', label: 'Organization Chart', path: '/organization-chart', moduleKey: 'organization', submoduleKey: 'organization_chart' }
       ]
     },
     {
@@ -168,15 +142,15 @@ export function Sidebar({ userRole, onLogout }) {
       icon: Users,
       moduleKey: 'employees',
       children: [
-        { id: 'employee-directory', label: 'Employee Directory', path: '/employees', moduleKey: 'employees' },
-        { id: 'employee-list', label: 'Employee List', path: '/employees/list', moduleKey: 'employees' },
-        { id: 'add-employee', label: 'Add Employee', path: '/employees/add', moduleKey: 'employees' },
-        { id: 'employee-profile', label: 'Employee Profile', path: '/employees/profile', moduleKey: 'employees' },
-        { id: 'employment-history', label: 'Employment History', path: '/employees/history', moduleKey: 'employees' },
-        { id: 'promotions', label: 'Promotions', path: '/employees/promotions', moduleKey: 'employees' },
-        { id: 'transfers', label: 'Transfers', path: '/employees/transfers', moduleKey: 'employees' },
-        { id: 'exit-management', label: 'Exit Management', path: '/employees/exit', moduleKey: 'employees' },
-        { id: 'employee-documents', label: 'Employee Documents', path: '/employees/documents', moduleKey: 'employees' }
+        { id: 'employee-directory', label: 'Employee Directory', path: '/employees', moduleKey: 'employees', submoduleKey: 'employee_directory' },
+        { id: 'employee-list', label: 'Employee List', path: '/employees/list', moduleKey: 'employees', submoduleKey: 'employee_list' },
+        { id: 'add-employee', label: 'Add Employee', path: '/employees/add', moduleKey: 'employees', submoduleKey: 'add_employee' },
+        { id: 'employee-profile', label: 'Employee Profile', path: '/employees/profile', moduleKey: 'employees', submoduleKey: 'employee_profile' },
+        { id: 'employment-history', label: 'Employment History', path: '/employees/history', moduleKey: 'employees', submoduleKey: 'employment_history' },
+        { id: 'promotions', label: 'Promotions', path: '/employees/promotions', moduleKey: 'employees', submoduleKey: 'promotions' },
+        { id: 'transfers', label: 'Transfers', path: '/employees/transfers', moduleKey: 'employees', submoduleKey: 'transfers' },
+        { id: 'exit-management', label: 'Exit Management', path: '/employees/exit', moduleKey: 'employees', submoduleKey: 'exit_management' },
+        { id: 'employee-documents', label: 'Employee Documents', path: '/employees/documents', moduleKey: 'employees', submoduleKey: 'employee_documents' }
       ]
     },
     {
@@ -185,13 +159,13 @@ export function Sidebar({ userRole, onLogout }) {
       icon: CalendarCheck,
       moduleKey: 'attendance',
       children: [
-        { id: 'daily-attendance', label: 'Daily Attendance', path: '/attendance/daily', moduleKey: 'attendance' },
-        { id: 'gps-attendance', label: 'GPS Attendance', path: '/attendance/gps', moduleKey: 'attendance' },
-        { id: 'regularization', label: 'Regularization', path: '/attendance/regularization', moduleKey: 'attendance' },
-        { id: 'shift-roster', label: 'Shift Roster', path: '/attendance/shift-roster', moduleKey: 'attendance' },
-        { id: 'overtime', label: 'Overtime', path: '/attendance/overtime', moduleKey: 'attendance' },
-        { id: 'late-arrival', label: 'Late Arrival', path: '/attendance/late-arrival', moduleKey: 'attendance' },
-        { id: 'punch-locations', label: 'Punch Locations', path: '/attendance/punch-locations', moduleKey: 'attendance' }
+        { id: 'daily-attendance', label: 'Daily Attendance', path: '/attendance/daily', moduleKey: 'attendance', submoduleKey: 'daily_attendance' },
+        { id: 'gps-attendance', label: 'GPS Attendance', path: '/attendance/gps', moduleKey: 'attendance', submoduleKey: 'gps_attendance' },
+        { id: 'regularization', label: 'Regularization', path: '/attendance/regularization', moduleKey: 'attendance', submoduleKey: 'regularization' },
+        { id: 'shift-roster', label: 'Shift Roster', path: '/attendance/shift-roster', moduleKey: 'attendance', submoduleKey: 'shift_roster' },
+        { id: 'overtime', label: 'Overtime', path: '/attendance/overtime', moduleKey: 'attendance', submoduleKey: 'overtime' },
+        { id: 'late-arrival', label: 'Late Arrival', path: '/attendance/late-arrival', moduleKey: 'attendance', submoduleKey: 'late_arrival' },
+        { id: 'punch-locations', label: 'Punch Locations', path: '/attendance/punch-locations', moduleKey: 'attendance', submoduleKey: 'punch_locations' }
       ]
     },
     {
@@ -200,13 +174,13 @@ export function Sidebar({ userRole, onLogout }) {
       icon: CalendarOff,
       moduleKey: 'leave',
       children: [
-        { id: 'leave-dashboard', label: 'Leave Dashboard', path: '/leave-dashboard', moduleKey: 'leave' },
-        { id: 'leave-applications', label: 'Leave Applications', path: '/leave-applications', moduleKey: 'leave' },
-        { id: 'leave-approval', label: 'Leave Approval', path: '/leave-approval', moduleKey: 'leave' },
-        { id: 'leave-balance', label: 'Leave Balance', path: '/leave-balance', moduleKey: 'leave' },
-        { id: 'leave-types', label: 'Leave Types', path: '/leave-types', moduleKey: 'leave' },
-        { id: 'holiday-list', label: 'Holiday List', path: '/holiday-list', moduleKey: 'leave' },
-        { id: 'comp-off', label: 'Comp Off', path: '/comp-off', moduleKey: 'leave' }
+        { id: 'leave-dashboard', label: 'Leave Dashboard', path: '/leave-dashboard', moduleKey: 'leave', submoduleKey: 'leave_dashboard' },
+        { id: 'leave-applications', label: 'Leave Applications', path: '/leave-applications', moduleKey: 'leave', submoduleKey: 'my_leave' },
+        { id: 'leave-approval', label: 'Leave Approval', path: '/leave-approval', moduleKey: 'leave', submoduleKey: 'leave_approval' },
+        { id: 'leave-balance', label: 'Leave Balance', path: '/leave-balance', moduleKey: 'leave', submoduleKey: 'leave_balance' },
+        { id: 'leave-types', label: 'Leave Types', path: '/leave-types', moduleKey: 'leave', submoduleKey: 'leave_types' },
+        { id: 'holiday-list', label: 'Holiday List', path: '/holiday-list', moduleKey: 'leave', submoduleKey: 'holiday_list' },
+        { id: 'comp-off', label: 'Comp Off', path: '/comp-off', moduleKey: 'leave', submoduleKey: 'comp_off' }
       ]
     },
     {
@@ -215,14 +189,14 @@ export function Sidebar({ userRole, onLogout }) {
       icon: DollarSign,
       moduleKey: 'payroll',
       children: [
-        { id: 'salary-structure', label: 'Salary Structure', path: '/payroll/salary-structure', moduleKey: 'payroll' },
-        { id: 'salary-components', label: 'Salary Components', path: '/payroll/components', moduleKey: 'payroll' },
-        { id: 'payroll-processing', label: 'Payroll Processing', path: '/payroll/processing', moduleKey: 'payroll' },
-        { id: 'generate-payslips', label: 'Generate Payslips', path: '/payroll/payslips', moduleKey: 'payroll' },
-        { id: 'bonus-incentives', label: 'Bonus & Incentives', path: '/payroll/bonus', moduleKey: 'payroll' },
-        { id: 'reimbursements', label: 'Reimbursements', path: '/payroll/reimbursements', moduleKey: 'payroll' },
-        { id: 'loans-advances', label: 'Loans & Advances', path: '/payroll/loans', moduleKey: 'payroll' },
-        { id: 'tax-management', label: 'Tax Management', path: '/payroll/tax', moduleKey: 'payroll' }
+        { id: 'salary-structure', label: 'Salary Structure', path: '/payroll/salary-structure', moduleKey: 'payroll', submoduleKey: 'salary_structure' },
+        { id: 'salary-components', label: 'Salary Components', path: '/payroll/components', moduleKey: 'payroll', submoduleKey: 'salary_components' },
+        { id: 'payroll-processing', label: 'Payroll Processing', path: '/payroll/processing', moduleKey: 'payroll', submoduleKey: 'payroll_processing' },
+        { id: 'generate-payslips', label: 'Generate Payslips', path: '/payroll/payslips', moduleKey: 'payroll', submoduleKey: 'generate_payslips' },
+        { id: 'bonus-incentives', label: 'Bonus & Incentives', path: '/payroll/bonus', moduleKey: 'payroll', submoduleKey: 'bonus_incentives' },
+        { id: 'reimbursements', label: 'Reimbursements', path: '/payroll/reimbursements', moduleKey: 'payroll', submoduleKey: 'reimbursements' },
+        { id: 'loans-advances', label: 'Loans & Advances', path: '/payroll/loans', moduleKey: 'payroll', submoduleKey: 'loans_advances' },
+        { id: 'tax-management', label: 'Tax Management', path: '/payroll/tax', moduleKey: 'payroll', submoduleKey: 'tax_management' }
       ]
     },
     {
@@ -231,12 +205,12 @@ export function Sidebar({ userRole, onLogout }) {
       icon: UserPlus,
       moduleKey: 'recruitment',
       children: [
-        { id: 'recruitment-dashboard', label: 'Dashboard', path: '/recruitment/dashboard', moduleKey: 'recruitment' },
-        { id: 'job-openings', label: 'Job Openings', path: '/recruitment/jobs', moduleKey: 'recruitment' },
-        { id: 'candidates', label: 'Candidates', path: '/recruitment/candidates', moduleKey: 'recruitment' },
-        { id: 'interview-schedule', label: 'Interview Schedule', path: '/recruitment/interviews', moduleKey: 'recruitment' },
-        { id: 'offer-letters', label: 'Offer Letters', path: '/recruitment/offers', moduleKey: 'recruitment' },
-        { id: 'hiring-pipeline', label: 'Hiring Pipeline', path: '/recruitment/pipeline', moduleKey: 'recruitment' }
+        { id: 'recruitment-dashboard', label: 'Dashboard', path: '/recruitment/dashboard', moduleKey: 'recruitment', submoduleKey: 'recruitment_dashboard' },
+        { id: 'job-openings', label: 'Job Openings', path: '/recruitment/jobs', moduleKey: 'recruitment', submoduleKey: 'job_openings' },
+        { id: 'candidates', label: 'Candidates', path: '/recruitment/candidates', moduleKey: 'recruitment', submoduleKey: 'candidates' },
+        { id: 'interview-schedule', label: 'Interview Schedule', path: '/recruitment/interviews', moduleKey: 'recruitment', submoduleKey: 'interview_schedule' },
+        { id: 'offer-letters', label: 'Offer Letters', path: '/recruitment/offers', moduleKey: 'recruitment', submoduleKey: 'offer_letters' },
+        { id: 'hiring-pipeline', label: 'Hiring Pipeline', path: '/recruitment/pipeline', moduleKey: 'recruitment', submoduleKey: 'hiring_pipeline' }
       ]
     },
     {
@@ -245,12 +219,12 @@ export function Sidebar({ userRole, onLogout }) {
       icon: ClipboardList,
       moduleKey: 'onboarding',
       children: [
-        { id: 'new-joiners', label: 'New Joiners', path: '/onboarding/new-joiners', moduleKey: 'onboarding' },
-        { id: 'document-verification', label: 'Document Verification', path: '/onboarding/documents', moduleKey: 'onboarding' },
-        { id: 'asset-allocation', label: 'Asset Allocation', path: '/onboarding/assets', moduleKey: 'onboarding' },
-        { id: 'welcome-kit', label: 'Welcome Kit', path: '/onboarding/welcome-kit', moduleKey: 'onboarding' },
-        { id: 'orientation', label: 'Orientation', path: '/onboarding/orientation', moduleKey: 'onboarding' },
-        { id: 'probation', label: 'Probation', path: '/onboarding/probation', moduleKey: 'onboarding' }
+        { id: 'new-joiners', label: 'New Joiners', path: '/onboarding/new-joiners', moduleKey: 'onboarding', submoduleKey: 'new_joiners' },
+        { id: 'document-verification', label: 'Document Verification', path: '/onboarding/documents', moduleKey: 'onboarding', submoduleKey: 'document_verification' },
+        { id: 'asset-allocation', label: 'Asset Allocation', path: '/onboarding/assets', moduleKey: 'onboarding', submoduleKey: 'asset_allocation' },
+        { id: 'welcome-kit', label: 'Welcome Kit', path: '/onboarding/welcome-kit', moduleKey: 'onboarding', submoduleKey: 'welcome_kit' },
+        { id: 'orientation', label: 'Orientation', path: '/onboarding/orientation', moduleKey: 'onboarding', submoduleKey: 'orientation' },
+        { id: 'probation', label: 'Probation', path: '/onboarding/probation', moduleKey: 'onboarding', submoduleKey: 'probation' }
       ]
     },
     {
@@ -259,13 +233,13 @@ export function Sidebar({ userRole, onLogout }) {
       icon: BarChart3,
       moduleKey: 'performance',
       children: [
-        { id: 'goals', label: 'Goals', path: '/performance/goals', moduleKey: 'performance' },
-        { id: 'kpi', label: 'KPI', path: '/performance/kpis', moduleKey: 'performance' },
-        { id: 'kras', label: 'KRAs', path: '/performance/kras', moduleKey: 'performance' },
-        { id: 'appraisals', label: 'Appraisals', path: '/performance/appraisals', moduleKey: 'performance' },
-        { id: 'reviews', label: 'Reviews', path: '/performance/reviews', moduleKey: 'performance' },
-        { id: 'feedback', label: 'Feedback', path: '/performance/feedback', moduleKey: 'performance' },
-        { id: 'promotions-performance', label: 'Promotions', path: '/performance/promotions', moduleKey: 'performance' }
+        { id: 'goals', label: 'Goals', path: '/performance/goals', moduleKey: 'performance', submoduleKey: 'goals' },
+        { id: 'kpi', label: 'KPI', path: '/performance/kpis', moduleKey: 'performance', submoduleKey: 'kpis' },
+        { id: 'kras', label: 'KRAs', path: '/performance/kras', moduleKey: 'performance', submoduleKey: 'kras' },
+        { id: 'appraisals', label: 'Appraisals', path: '/performance/appraisals', moduleKey: 'performance', submoduleKey: 'appraisals' },
+        { id: 'reviews', label: 'Reviews', path: '/performance/reviews', moduleKey: 'performance', submoduleKey: 'reviews' },
+        { id: 'feedback', label: 'Feedback', path: '/performance/feedback', moduleKey: 'performance', submoduleKey: 'feedback' },
+        { id: 'promotions-performance', label: 'Promotions', path: '/performance/promotions', moduleKey: 'performance', submoduleKey: 'performance_promotions' }
       ]
     },
     {
@@ -274,27 +248,27 @@ export function Sidebar({ userRole, onLogout }) {
       icon: FolderKanban,
       moduleKey: 'projects',
       children: [
-        { id: 'project-dashboard', label: 'Project Dashboard', path: '/projects/dashboard', moduleKey: 'projects' },
-        { id: 'projects-list', label: 'Projects', path: '/projects/list', moduleKey: 'projects' },
-        { id: 'tasks', label: 'Tasks', path: '/projects/tasks', moduleKey: 'projects' },
-        { id: 'sprint-board', label: 'Sprint Board', path: '/projects/sprint-board', moduleKey: 'projects' },
-        { id: 'timesheets', label: 'Timesheets', path: '/projects/timesheets', moduleKey: 'projects' },
-        { id: 'milestones', label: 'Milestones', path: '/projects/milestones', moduleKey: 'projects' },
-        { id: 'team-members', label: 'Team Members', path: '/projects/team', moduleKey: 'projects' }
+        { id: 'project-dashboard', label: 'Project Dashboard', path: '/projects/dashboard', moduleKey: 'projects', submoduleKey: 'project_dashboard' },
+        { id: 'projects-list', label: 'Projects', path: '/projects/list', moduleKey: 'projects', submoduleKey: 'projects_list' },
+        { id: 'tasks', label: 'Tasks', path: '/projects/tasks', moduleKey: 'projects', submoduleKey: 'tasks' },
+        { id: 'sprint-board', label: 'Sprint Board', path: '/projects/sprint-board', moduleKey: 'projects', submoduleKey: 'sprint_board' },
+        { id: 'timesheets', label: 'Timesheets', path: '/projects/timesheets', moduleKey: 'projects', submoduleKey: 'timesheets' },
+        { id: 'milestones', label: 'Milestones', path: '/projects/milestones', moduleKey: 'projects', submoduleKey: 'milestones' },
+        { id: 'team-members', label: 'Team Members', path: '/projects/team', moduleKey: 'projects', submoduleKey: 'team_members' }
       ]
     },
-    { id: 'reports', label: 'Reports', icon: FileBarChart, moduleKey: 'reports', path: '/reports' },
+    { id: 'reports', label: 'Reports', icon: FileBarChart, moduleKey: 'reports', submoduleKey: 'reports_directory', path: '/reports' },
     {
       id: 'expenses',
       label: 'Expenses',
       icon: Receipt,
       moduleKey: 'expenses',
       children: [
-        { id: 'expense-claims', label: 'Expense Claims', path: '/expenses/claims', moduleKey: 'expenses' },
-        { id: 'expense-categories', label: 'Expense Categories', path: '/expenses/categories', moduleKey: 'expenses' },
-        { id: 'expense-approval', label: 'Expense Approval', path: '/expenses/approval', moduleKey: 'expenses' },
-        { id: 'expense-reimbursements', label: 'Reimbursements', path: '/expenses/reimbursements', moduleKey: 'expenses' },
-        { id: 'expense-reports', label: 'Expense Reports', path: '/expenses/reports', moduleKey: 'expenses' }
+        { id: 'expense-claims', label: 'Expense Claims', path: '/expenses/claims', moduleKey: 'expenses', submoduleKey: 'expense_claims' },
+        { id: 'expense-categories', label: 'Expense Categories', path: '/expenses/categories', moduleKey: 'expenses', submoduleKey: 'expense_categories' },
+        { id: 'expense-approval', label: 'Expense Approval', path: '/expenses/approval', moduleKey: 'expenses', submoduleKey: 'expense_approval' },
+        { id: 'expense-reimbursements', label: 'Reimbursements', path: '/expenses/reimbursements', moduleKey: 'expenses', submoduleKey: 'expense_reimbursements' },
+        { id: 'expense-reports', label: 'Expense Reports', path: '/expenses/reports', moduleKey: 'expenses', submoduleKey: 'expense_reports' }
       ]
     },
     {
@@ -303,11 +277,11 @@ export function Sidebar({ userRole, onLogout }) {
       icon: FileText,
       moduleKey: 'documents',
       children: [
-        { id: 'employee-documents-module', label: 'Employee Documents', path: '/documents/employee', moduleKey: 'documents' },
-        { id: 'company-documents', label: 'Company Documents', path: '/documents/company', moduleKey: 'documents' },
-        { id: 'hr-policies', label: 'HR Policies', path: '/documents/policies', moduleKey: 'documents' },
-        { id: 'templates', label: 'Templates', path: '/documents/templates', moduleKey: 'documents' },
-        { id: 'digital-signatures', label: 'Digital Signatures', path: '/documents/signatures', moduleKey: 'documents' }
+        { id: 'employee-documents-module', label: 'Employee Documents', path: '/documents/employee', moduleKey: 'documents', submoduleKey: 'doc_employee' },
+        { id: 'company-documents', label: 'Company Documents', path: '/documents/company', moduleKey: 'documents', submoduleKey: 'doc_company' },
+        { id: 'hr-policies', label: 'HR Policies', path: '/documents/policies', moduleKey: 'documents', submoduleKey: 'doc_policies' },
+        { id: 'templates', label: 'Templates', path: '/documents/templates', moduleKey: 'documents', submoduleKey: 'doc_templates' },
+        { id: 'digital-signatures', label: 'Digital Signatures', path: '/documents/signatures', moduleKey: 'documents', submoduleKey: 'doc_signatures' }
       ]
     },
     {
@@ -316,11 +290,11 @@ export function Sidebar({ userRole, onLogout }) {
       icon: LifeBuoy,
       moduleKey: 'helpdesk',
       children: [
-        { id: 'help-desk-dashboard', label: 'Dashboard', path: '/help-desk/dashboard', moduleKey: 'helpdesk' },
-        { id: 'tickets', label: 'Tickets', path: '/help-desk/tickets', moduleKey: 'helpdesk' },
-        { id: 'categories', label: 'Categories', path: '/help-desk/categories', moduleKey: 'helpdesk' },
-        { id: 'priorities', label: 'Priorities', path: '/help-desk/priorities', moduleKey: 'helpdesk' },
-        { id: 'help-desk-reports', label: 'Reports', path: '/help-desk/reports', moduleKey: 'helpdesk' }
+        { id: 'help-desk-dashboard', label: 'Dashboard', path: '/help-desk/dashboard', moduleKey: 'helpdesk', submoduleKey: 'helpdesk_dashboard' },
+        { id: 'tickets', label: 'Tickets', path: '/help-desk/tickets', moduleKey: 'helpdesk', submoduleKey: 'tickets' },
+        { id: 'categories', label: 'Categories', path: '/help-desk/categories', moduleKey: 'helpdesk', submoduleKey: 'helpdesk_categories' },
+        { id: 'priorities', label: 'Priorities', path: '/help-desk/priorities', moduleKey: 'helpdesk', submoduleKey: 'helpdesk_priorities' },
+        { id: 'help-desk-reports', label: 'Reports', path: '/help-desk/reports', moduleKey: 'helpdesk', submoduleKey: 'helpdesk_reports' }
       ]
     },
     {
@@ -329,44 +303,41 @@ export function Sidebar({ userRole, onLogout }) {
       icon: Settings,
       moduleKey: 'settings',
       children: [
-        { id: 'settings-company', label: 'Company Information', path: '/settings/company', moduleKey: 'settings' },
-        { id: 'settings-branding', label: 'Branding', path: '/settings/branding', moduleKey: 'settings' },
-        { id: 'settings-organization', label: 'Organization', path: '/settings/organization', moduleKey: 'settings' },
-        { id: 'settings-users', label: 'User Roles & Permissions', path: '/settings/users', moduleKey: 'user_roles' },
-        { id: 'settings-hr', label: 'HR Settings', path: '/settings/hr', moduleKey: 'settings' },
-        { id: 'settings-communication', label: 'Communication', path: '/settings/communication', moduleKey: 'settings' },
-        { id: 'settings-integrations', label: 'Integrations', path: '/settings/integrations', moduleKey: 'settings' },
-        { id: 'settings-security', label: 'Security', path: '/settings/security', moduleKey: 'settings' },
-        { id: 'settings-system', label: 'System', path: '/settings/system', moduleKey: 'settings' }
+        { id: 'settings-company', label: 'Company Information', path: '/settings/company', moduleKey: 'settings', submoduleKey: 'settings_company' },
+        { id: 'settings-branding', label: 'Branding', path: '/settings/branding', moduleKey: 'settings', submoduleKey: 'settings_branding' },
+        { id: 'settings-organization', label: 'Organization', path: '/settings/organization', moduleKey: 'settings', submoduleKey: 'settings_organization' },
+        { id: 'settings-users', label: 'User Roles & Permissions', path: '/settings/users', moduleKey: 'user_roles', submoduleKey: 'roles_matrix' },
+        { id: 'settings-hr', label: 'HR Settings', path: '/settings/hr', moduleKey: 'settings', submoduleKey: 'settings_hr' },
+        { id: 'settings-communication', label: 'Communication', path: '/settings/communication', moduleKey: 'settings', submoduleKey: 'settings_communication' },
+        { id: 'settings-integrations', label: 'Integrations', path: '/settings/integrations', moduleKey: 'settings', submoduleKey: 'settings_integrations' },
+        { id: 'settings-security', label: 'Security', path: '/settings/security', moduleKey: 'settings', submoduleKey: 'settings_security' },
+        { id: 'settings-system', label: 'System', path: '/settings/system', moduleKey: 'settings', submoduleKey: 'settings_system' }
       ]
     },
-    { id: 'ai-assistant', label: 'AI Assistant', icon: Sparkles, moduleKey: 'ai_assistant', path: '/ai-assistant' },
+    { id: 'ai-assistant', label: 'AI Assistant', icon: Sparkles, moduleKey: 'ai_assistant', submoduleKey: 'ai_dashboard', path: '/ai-assistant' },
   ];
 
-  // Helper to check if a module is permitted for current role
-  const isModulePermitted = (mKey) => {
-    if (userRole === 'SUPER_ADMIN' || userRole === 'Super Admin') return true;
-    if (!userPermissions) return true; // Default view while loading
-    const perm = userPermissions[mKey];
-    if (!perm) return true; // Default allow if not configured
-    return perm.view !== false;
+  const isItemPermitted = (item) => {
+    if (isProtectedAdmin) return true;
+    if (!userPermissions) return false;
+    return canView(userPermissions, normRole, item.moduleKey, item.submoduleKey);
   };
 
-  const targetMenu = userRole === 'EMPLOYEE' ? employeeMenuItems : userRole === 'TEAM_LEADER' ? teamLeaderMenuItems : menuItems;
+  // Admin / Super Admin gets the original untouched sidebar
+  // Employee / Team Leader / HR gets the dynamic database-driven sidebar
+  const filteredMenu = isProtectedAdmin
+    ? masterMenuItems
+    : masterMenuItems
+      .map(item => {
+        if (item.children && item.children.length > 0) {
+          const validChildren = item.children.filter(child => isItemPermitted(child));
+          if (validChildren.length > 0) return { ...item, children: validChildren };
+          return null;
+        }
+        return isItemPermitted(item) ? item : null;
+      })
+      .filter(Boolean);
 
-  // Filter top-level items and children dynamically based on RBAC database permissions
-  const filteredMenu = targetMenu
-    .filter(item => isModulePermitted(item.moduleKey))
-    .map(item => {
-      if (item.children) {
-        const validChildren = item.children.filter(child => isModulePermitted(child.moduleKey));
-        return { ...item, children: validChildren };
-      }
-      return item;
-    })
-    .filter(item => !item.children || item.children.length > 0);
-
-  // Automatically expand active module group
   useEffect(() => {
     const currentPath = location.pathname;
     const matchingGroup = filteredMenu.find(item => {
@@ -479,6 +450,12 @@ export function Sidebar({ userRole, onLogout }) {
         {/* Navigation */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {filteredMenu.map(item => renderMenuItem(item))}
+          {!isProtectedAdmin && !userPermissions && (
+            <div className="px-4 py-3 text-xs text-slate-400 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-500 animate-ping"></span>
+              Loading permissions...
+            </div>
+          )}
         </nav>
 
         {/* User Profile */}
@@ -490,10 +467,10 @@ export function Sidebar({ userRole, onLogout }) {
               className="flex flex-1 items-center gap-3 min-w-0 hover:opacity-85 transition-opacity"
             >
               {userInfo.photoUrl ? (
-                <img 
-                  src={userInfo.photoUrl} 
-                  alt={userInfo.name} 
-                  className="w-9 h-9 rounded-full object-cover flex-shrink-0" 
+                <img
+                  src={userInfo.photoUrl}
+                  alt={userInfo.name}
+                  className="w-9 h-9 rounded-full object-cover flex-shrink-0"
                 />
               ) : (
                 <div className="w-9 h-9 rounded-full custom-sidebar-profile-avatar-bg flex items-center justify-center text-xs font-bold flex-shrink-0 text-white">
@@ -508,9 +485,7 @@ export function Sidebar({ userRole, onLogout }) {
             <button
               onClick={onLogout}
               title="Logout"
-              className="text-slate-400 hover:text-red-400 transition-colors p-1 flex-shrink-0"
-              title="Sign Out"
-            >
+              className="text-slate-400 hover:text-red-400 transition-colors p-1 flex-shrink-0">
               <LogOut size={16} />
             </button>
           </div>

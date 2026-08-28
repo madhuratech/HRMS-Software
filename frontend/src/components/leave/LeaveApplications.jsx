@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, Plus, Eye, Edit, XCircle, Download, ChevronLeft, ChevronRight, X, Upload, Calendar } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { canCreate, canEdit, canDelete, guardCreateAction } from '../../lib/permissions';
 
 const CustomSelect = ({ label, required, value, onChange, options, placeholder }) => {
   const [open, setOpen] = useState(false);
@@ -32,11 +33,32 @@ export default function LeaveApplications() {
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [deptFilter, setDeptFilter] = useState('All Departments');
 
+  // Permissions state
+  const [userRole, setUserRole] = useState('EMPLOYEE');
+  const [userPermissions, setUserPermissions] = useState(null);
+
   // Dynamic lists from backend
   const [applications, setApplications] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [leaveTypes, setLeaveTypes] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPerms = async () => {
+      try {
+        const auth = localStorage.getItem('hrms_auth');
+        if (auth) {
+          const parsed = JSON.parse(auth);
+          setUserRole(parsed.role || (parsed.user && parsed.user.role) || 'EMPLOYEE');
+        }
+        const data = await apiFetch('/rbac/user-permissions');
+        if (data && data.success && data.permissions) {
+          setUserPermissions(data.permissions);
+        }
+      } catch (err) {}
+    };
+    fetchPerms();
+  }, []);
 
   const [formData, setFormData] = useState({
     employeeName: '',
@@ -254,17 +276,20 @@ export default function LeaveApplications() {
           </div>
 
           <button 
-            onClick={() => setShowModal(true)} 
+            onClick={() => {
+              if (!guardCreateAction(userPermissions, userRole, 'leave', 'my_leave', addToast)) return;
+              setShowModal(true);
+            }} 
             style={{ 
               background: '#2563EB', color: '#fff', border: 'none', 
               padding: '10px 18px', borderRadius: '8px', fontSize: '13px', 
               fontWeight: '600', display: 'flex', alignItems: 'center', 
               gap: '8px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            <Plus size={16} /> Apply Leave
-          </button>
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <Plus size={16} /> Apply Leave
+            </button>
         </div>
 
         {/* Table */}

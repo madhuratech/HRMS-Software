@@ -186,8 +186,25 @@ class GPSAttendanceService {
     }
   }
 
-  static async getGPSDashboardStats(targetDate) {
+  static async getGPSDashboardStats(targetDate, allowedEmployeeIds = null) {
     const date = targetDate || new Date().toISOString().split('T')[0];
+
+    let empScopeClause = '';
+    let empScopeParams = [date];
+    let feedParams = [date, date];
+
+    if (Array.isArray(allowedEmployeeIds)) {
+      if (allowedEmployeeIds.length === 0) {
+        return {
+          kpis: { totalCheckins: 0, onSite: 0, remote: 0, activeGeofences: 0 },
+          records: [],
+          geofences: []
+        };
+      }
+      empScopeClause = ' AND employee_id IN (?) ';
+      empScopeParams = [date, allowedEmployeeIds];
+      feedParams = [date, date, allowedEmployeeIds];
+    }
 
     const statsRow = await query(`
       SELECT 
@@ -195,8 +212,8 @@ class GPSAttendanceService {
         SUM(CASE WHEN check_in_time IS NOT NULL THEN 1 ELSE 0 END) as onsite_checkins,
         0 as remote_checkins
       FROM GPSAttendance
-      WHERE punch_date = ?
-    `, [date]);
+      WHERE punch_date = ?${empScopeClause}
+    `, empScopeParams);
 
     const geofenceCountRow = await query(`SELECT COUNT(*) as active_geofences FROM GeofenceLocations WHERE status = 'Active'`);
 
@@ -221,6 +238,11 @@ class GPSAttendanceService {
       WHERE status = 'Active'
     `, [date]);
 
+    let feedWhere = ' WHERE (g.punch_date = ? OR DATE(g.check_in_time) = ?) ';
+    if (Array.isArray(allowedEmployeeIds)) {
+      feedWhere += ' AND g.employee_id IN (?) ';
+    }
+
     const sqlFeed = `
       SELECT 
         g.employee_id,
@@ -237,10 +259,10 @@ class GPSAttendanceService {
       FROM GPSAttendance g
       JOIN employees e ON e.id = g.employee_id
       LEFT JOIN departments d ON d.id = e.department_id
-      WHERE g.punch_date = ? OR DATE(g.check_in_time) = ?
+      ${feedWhere}
       ORDER BY g.created_at DESC
     `;
-    const rows = await query(sqlFeed, [date, date]);
+    const rows = await query(sqlFeed, feedParams);
 
     const records = rows.map(r => {
       const fmt = t => t ? new Date(t).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--';

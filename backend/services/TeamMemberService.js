@@ -41,7 +41,16 @@ class TeamMemberService {
     return result.affectedRows > 0;
   }
 
-  static async list() {
+  static async list(scopeData = null) {
+    let whereClause = '';
+    let params = [];
+
+    if (scopeData && !scopeData.isUnrestricted && Array.isArray(scopeData.allowedEmployeeIds)) {
+      if (scopeData.allowedEmployeeIds.length === 0) return [];
+      whereClause = ' WHERE ptm.employee_id IN (?) ';
+      params = [scopeData.allowedEmployeeIds];
+    }
+
     const rows = await ProjectTeamMember.query(`
       SELECT ptm.id, ptm.project_id, ptm.employee_id, ptm.role, ptm.status,
              e.name as employee_name,
@@ -56,9 +65,10 @@ class TeamMemberService {
       LEFT JOIN designations des ON e.designation_id = des.id
       LEFT JOIN branches b ON e.branch_id = b.id
       LEFT JOIN project_team_members ptm2 ON ptm2.employee_id = ptm.employee_id
+      ${whereClause}
       GROUP BY ptm.id, ptm.project_id, ptm.employee_id, ptm.role, ptm.status, e.name, d.dept_name, des.role_name, b.branch_name
       ORDER BY ptm.employee_id, ptm.created_at DESC
-    `);
+    `, params);
 
     const aggregated = [];
     const seen = new Set();
@@ -84,7 +94,18 @@ class TeamMemberService {
     return aggregated;
   }
 
-  static async getMeta() {
+  static async getMeta(scopeData = null) {
+    let empWhere = '';
+    let empParams = [];
+    if (scopeData && !scopeData.isUnrestricted && Array.isArray(scopeData.allowedEmployeeIds)) {
+      if (scopeData.allowedEmployeeIds.length === 0) {
+        empWhere = ' WHERE 1 = 0 ';
+      } else {
+        empWhere = ' WHERE e.id IN (?) ';
+        empParams = [scopeData.allowedEmployeeIds];
+      }
+    }
+
     const employees = await ProjectTeamMember.query(`
       SELECT e.id, e.name,
              d.dept_name as department_name,
@@ -92,8 +113,9 @@ class TeamMemberService {
       FROM employees e
       LEFT JOIN departments d ON e.department_id = d.id
       LEFT JOIN designations des ON e.designation_id = des.id
+      ${empWhere}
       ORDER BY e.name
-    `);
+    `, empParams);
     const projects = await ProjectTeamMember.query(`
       SELECT p.id, p.project_name as name, p.project_code
       FROM projects p ORDER BY p.project_name

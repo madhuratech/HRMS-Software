@@ -1,4 +1,5 @@
 const TeamMemberService = require('../services/TeamMemberService');
+const DataScopeService = require('../services/DataScopeService');
 const response = require('../utils/response');
 
 class TeamMemberController {
@@ -37,7 +38,8 @@ class TeamMemberController {
 
   static async list(req, res) {
     try {
-      const members = await TeamMemberService.list();
+      const scopeData = await DataScopeService.getScope(req);
+      const members = await TeamMemberService.list(scopeData);
       return response(res, true, 200, 'Team members retrieved successfully', members);
     } catch (err) {
       return response(res, false, 500, 'Failed to fetch team members', null, err.message);
@@ -46,7 +48,8 @@ class TeamMemberController {
 
   static async meta(req, res) {
     try {
-      const meta = await TeamMemberService.getMeta();
+      const scopeData = await DataScopeService.getScope(req);
+      const meta = await TeamMemberService.getMeta(scopeData);
       return response(res, true, 200, 'Team member meta data retrieved successfully', meta);
     } catch (err) {
       return response(res, false, 500, 'Failed to fetch meta data', null, err.message);

@@ -49,6 +49,47 @@ export default function AddEmployeeForm() {
   const [photoFile, setPhotoFile] = useState(null);
   const photoInputRef = useRef(null);
 
+  const [emailStatus, setEmailStatus] = useState('idle'); // 'idle' | 'checking' | 'available' | 'taken'
+  const [emailError, setEmailError] = useState(null);
+
+  // Real-time Email Duplicate Check
+  useEffect(() => {
+    if (!formData.email || !formData.email.trim()) {
+      setEmailStatus('idle');
+      setEmailError(null);
+      return;
+    }
+
+    const cleanEmail = formData.email.trim().toLowerCase();
+    const emailRegex = /\S+@\S+\.\S+/;
+    if (!emailRegex.test(cleanEmail)) {
+      setEmailStatus('taken');
+      setEmailError('Invalid email format');
+      return;
+    }
+
+    setEmailStatus('checking');
+    setEmailError(null);
+
+    const timer = setTimeout(() => {
+      apiFetch(`/employees/check-email?email=${encodeURIComponent(cleanEmail)}`)
+        .then(data => {
+          if (data && data.available === false) {
+            setEmailStatus('taken');
+            setEmailError(data.message || 'This email is already registered. Please use another company email.');
+          } else {
+            setEmailStatus('available');
+            setEmailError(null);
+          }
+        })
+        .catch(() => {
+          setEmailStatus('idle');
+        });
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [formData.email]);
+
   const handlePhotoChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -100,8 +141,16 @@ export default function AddEmployeeForm() {
       }
     }
     if (activeStep === 3) {
-      if (!formData.email || !formData.phone) {
+      if (!formData.email || !formData.email.trim() || !formData.phone) {
         addToast("Please fill email and phone number (*)", "error");
+        return;
+      }
+      if (!formData.password || formData.password.trim().length < 4) {
+        addToast("Please provide a valid login password", "error");
+        return;
+      }
+      if (emailStatus === 'taken' || emailError) {
+        addToast("This email is already registered. Please use another company email.", "error");
         return;
       }
     }
@@ -109,10 +158,16 @@ export default function AddEmployeeForm() {
   };
 
   const handleSubmit = async () => {
+    if (emailStatus === 'taken' || emailError) {
+      addToast("This email is already registered. Please use another company email.", "error");
+      setActiveStep(3);
+      return;
+    }
+
     const payload = {
       name: `${formData.firstName} ${formData.lastName}`.trim(),
-      email: formData.email,
-      phone: formData.phone,
+      email: formData.email.trim().toLowerCase(),
+      phone: formData.phone.trim(),
       dob: formData.dob,
       joinDate: formData.joinDate,
       gender: formData.gender,
@@ -151,11 +206,19 @@ export default function AddEmployeeForm() {
         });
       }
 
-      addToast("Employee created successfully!", "success");
+      addToast(resData.message || "Employee created successfully. Login account created successfully.", "success");
       navigate("/employees/list");
     } catch (err) {
       console.error(err);
-      addToast(err?.message || "Failed to save employee to database", "error");
+      const errMsg = err?.message || "Failed to save employee to database";
+      if (errMsg.toLowerCase().includes("registered") || errMsg.toLowerCase().includes("duplicate") || errMsg.toLowerCase().includes("already exists")) {
+        setEmailStatus('taken');
+        setEmailError("This email is already registered. Please use another company email.");
+        setActiveStep(3);
+        addToast("This email is already registered. Please use another company email.", "error");
+      } else {
+        addToast(errMsg, "error");
+      }
     }
   };
 
@@ -283,7 +346,32 @@ export default function AddEmployeeForm() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                   <div className="hrms-input-group">
                     <label className="hrms-label">Login Email *</label>
-                    <input type="email" name="email" value={formData.email} onChange={handleChange} className="hrms-input" placeholder="e.g. name@company.com" />
+                    <input
+                      type="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      className="hrms-input"
+                      style={{
+                        borderColor: emailStatus === 'taken' ? '#ef4444' : emailStatus === 'available' ? '#10b981' : undefined
+                      }}
+                      placeholder="e.g. name@company.com"
+                    />
+                    {emailStatus === 'checking' && (
+                      <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                        Checking email availability...
+                      </span>
+                    )}
+                    {emailStatus === 'available' && (
+                      <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '600', marginTop: '4px', display: 'block' }}>
+                        ✓ Email available
+                      </span>
+                    )}
+                    {emailStatus === 'taken' && (
+                      <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: '600', marginTop: '4px', display: 'block' }}>
+                        ✕ {emailError || "This email is already registered. Please use another company email."}
+                      </span>
+                    )}
                   </div>
                   <div className="hrms-input-group">
                     <label className="hrms-label">Phone *</label>

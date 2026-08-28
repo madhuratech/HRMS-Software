@@ -6,7 +6,9 @@ const NotificationController = {
    */
   async getNotifications(req, res) {
     try {
-      const employeeId = req.user?.id || 11;
+      const rawId = req.user?.id || req.user?.employee_id || 1;
+      const parsedId = parseInt(rawId);
+      const employeeId = (!isNaN(parsedId) && parsedId > 0) ? parsedId : 1;
 
       // Fetch employee's real role and team from DB
       const userSql = `
@@ -17,8 +19,20 @@ const NotificationController = {
       `;
 
       db.query(userSql, [employeeId], (userErr, userRows) => {
-        if (userErr || !userRows || userRows.length === 0) {
-          return res.json({ success: true, data: [] });
+        if (userErr) {
+          console.error('[NOTIFICATIONS ERROR] User lookup error:', userErr);
+          return res.json({ success: true, notifications: [], data: [], unreadCount: 0 });
+        }
+
+        if (!userRows || userRows.length === 0) {
+          console.log('[NOTIFICATIONS]', {
+            userId: req.user?.auth_id || req.user?.id,
+            employeeId,
+            role: req.user?.role || 'UNKNOWN',
+            queryCount: 0,
+            unreadCount: 0
+          });
+          return res.json({ success: true, notifications: [], data: [], unreadCount: 0 });
         }
 
         const user = userRows[0];
@@ -32,10 +46,10 @@ const NotificationController = {
         `;
         const params = [user.id];
 
-        if (roleKey === 'SUPER_ADMIN') {
-          sql += ` OR role = 'SUPER_ADMIN'`;
-        } else if (roleKey === 'HR_MANAGER') {
-          sql += ` OR role = 'HR_MANAGER'`;
+        if (roleKey === 'SUPER_ADMIN' || roleKey === 'ADMIN') {
+          sql += ` OR role = 'SUPER_ADMIN' OR role = 'ADMIN'`;
+        } else if (roleKey === 'HR_MANAGER' || roleKey === 'HR') {
+          sql += ` OR role = 'HR_MANAGER' OR role = 'HR'`;
         } else if (roleKey === 'TEAM_LEADER' && teamId) {
           sql += ` OR (role = 'TEAM_LEADER' AND team_id = ?)`;
           params.push(teamId);
@@ -45,15 +59,41 @@ const NotificationController = {
 
         db.query(sql, params, (err, rows) => {
           if (err) {
-            console.error('Error fetching notifications:', err);
+            console.error('[NOTIFICATIONS ERROR] Query error:', err);
             return res.status(500).json({ success: false, message: 'Failed to retrieve notifications' });
           }
-          return res.json({ success: true, data: rows });
+
+          const rawRows = rows || [];
+          const notificationsFormatted = rawRows.map(r => ({
+            id: r.id,
+            title: r.title,
+            message: r.message,
+            type: r.type,
+            isRead: Boolean(r.is_read),
+            createdAt: r.created_at,
+            actionUrl: r.action_url
+          }));
+          const unreadCount = notificationsFormatted.filter(n => !n.isRead).length;
+
+          console.log('[NOTIFICATIONS]', {
+            userId: req.user?.auth_id || req.user?.id,
+            employeeId: user.id,
+            role: roleKey,
+            queryCount: rawRows.length,
+            unreadCount
+          });
+
+          return res.json({
+            success: true,
+            notifications: notificationsFormatted,
+            data: rawRows,
+            unreadCount
+          });
         });
       });
     } catch (e) {
-      console.error(e);
-      return res.status(500).json({ success: false, message: 'Server error' });
+      console.error('[NOTIFICATIONS EXCEPTION]', e);
+      return res.status(500).json({ success: false, message: 'Server error during notifications retrieval' });
     }
   },
 

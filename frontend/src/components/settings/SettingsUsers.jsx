@@ -81,11 +81,18 @@ export function SettingsUsers() {
   const fetchUsers = useCallback(async () => {
     setLoadingUsers(true);
     try {
-      const res = await fetch('/app/organization/employees/list', {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const data = await res.json();
-      if (data.success && Array.isArray(data.data)) {
+      const data = await apiFetch('/employees');
+      if (Array.isArray(data)) {
+        setUsersList(data.map(emp => ({
+          id: emp.id,
+          name: emp.name,
+          email: emp.email,
+          role: emp.role_name || emp.roleName || 'Employee',
+          dept: emp.dept_name || emp.department || 'General',
+          status: emp.status || 'Active',
+          login: 'Recently'
+        })));
+      } else if (data && data.success && Array.isArray(data.data)) {
         setUsersList(data.data);
       } else {
         // Fallback default users if endpoint pending

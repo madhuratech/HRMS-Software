@@ -1,74 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldAlert, Loader2 } from 'lucide-react';
-import { apiFetch } from '../../lib/api';
+import { usePermissions } from '../../context/PermissionContext';
 
-export function PermissionGuard({ moduleKey, children }) {
+export function PermissionGuard({ moduleKey, submoduleKey = null, action = 'view', children }) {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
-  const [allowed, setAllowed] = useState(true);
+  const { hasPermission, userRole, loadingPermissions } = usePermissions();
 
-  useEffect(() => {
-    let isMounted = true;
+  const normRole = String(userRole || '').toUpperCase().replace(/_/g, ' ');
+  const isAdmin = normRole === 'SUPER ADMIN' || normRole === 'SUPERADMIN' || normRole === 'ADMIN';
 
-    const checkPerms = async () => {
-      let userRole = localStorage.getItem('userRole');
-      if (!userRole) {
-        try {
-          const auth = localStorage.getItem('hrms_auth');
-          if (auth) {
-            const parsed = JSON.parse(auth);
-            userRole = parsed.role || (parsed.user && parsed.user.role);
-          }
-        } catch (e) {}
-      }
-      userRole = userRole || 'EMPLOYEE';
-
-      const normRole = String(userRole).toUpperCase().replace(/_/g, ' ');
-
-      // Super Admin and Admin always have full access
-      if (normRole === 'SUPER ADMIN' || normRole === 'SUPERADMIN' || normRole === 'ADMIN') {
-        if (isMounted) {
-          setAllowed(true);
-          setLoading(false);
-        }
-        return;
-      }
-
-      try {
-        // Try fetching latest backend permissions
-        const data = await apiFetch('/rbac/user-permissions');
-        if (data && data.success && data.data) {
-          const perms = data.data;
-          const modPerm = perms[moduleKey];
-          // If module permission is explicitly set to view: false
-          if (modPerm && modPerm.view === false) {
-            if (isMounted) setAllowed(false);
-          } else {
-            if (isMounted) setAllowed(true);
-          }
-        }
-      } catch (err) {
-        console.error('Error checking permission for module:', moduleKey, err);
-        // Fallback to local storage or allow default if offline
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-
-    checkPerms();
-
-    // Listen for real-time permission updates
-    const handlePermUpdate = () => checkPerms();
-    window.addEventListener('permissionsUpdated', handlePermUpdate);
-
-    return () => {
-      isMounted = false;
-      window.removeEventListener('permissionsUpdated', handlePermUpdate);
-    };
-  }, [moduleKey]);
-
-  if (loading) {
+  if (loadingPermissions) {
     return (
       <div className="min-h-[50vh] flex items-center justify-center p-6 text-slate-500">
         <Loader2 className="animate-spin text-blue-600 mr-2" size={24} />
@@ -76,6 +18,8 @@ export function PermissionGuard({ moduleKey, children }) {
       </div>
     );
   }
+
+  const allowed = isAdmin || hasPermission(moduleKey, submoduleKey, action);
 
   if (!allowed) {
     return (
@@ -86,13 +30,13 @@ export function PermissionGuard({ moduleKey, children }) {
           </div>
           <h2 className="text-2xl font-bold text-slate-800 mb-2">Access Denied</h2>
           <p className="text-slate-600 mb-6">
-            You don't have permission to access this module. Please contact your administrator.
+            You do not have permission to access this module or page. Please contact your administrator.
           </p>
           <button
-            onClick={() => navigate('/dashboard')}
-            className="px-6 py-2.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors shadow-lg shadow-blue-600/20"
+            onClick={() => navigate(-1)}
+            className="px-6 py-2.5 bg-slate-800 text-white font-semibold rounded-xl hover:bg-slate-900 transition-colors shadow-lg shadow-slate-800/20"
           >
-            Back to Dashboard
+            Go Back
           </button>
         </div>
       </div>

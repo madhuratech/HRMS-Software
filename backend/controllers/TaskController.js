@@ -1,4 +1,5 @@
 const TaskService = require('../services/TaskService');
+const DataScopeService = require('../services/DataScopeService');
 const response = require('../utils/response');
 const getPagination = require('../utils/pagination');
 
@@ -76,6 +77,7 @@ class TaskController {
 
   static async list(req, res) {
     try {
+      const scopeData = await DataScopeService.getScope(req);
       const pagination = getPagination(req);
       const filters = {
         search: req.query.search || '',
@@ -85,7 +87,8 @@ class TaskController {
         assignee_id: req.query.assignee_id || null,
         start_date: req.query.start_date || null,
         end_date: req.query.end_date || null,
-        sortBy: req.query.sortBy || 'newest'
+        sortBy: req.query.sortBy || 'newest',
+        scopeData
       };
 
       const result = await TaskService.list(filters, pagination);
@@ -102,7 +105,8 @@ class TaskController {
 
   static async getDashboard(req, res) {
     try {
-      const stats = await TaskService.getDashboard();
+      const scopeData = await DataScopeService.getScope(req);
+      const stats = await TaskService.getDashboard(scopeData);
       return response(res, true, 200, 'Task statistics retrieved successfully', stats);
     } catch (err) {
       return response(res, false, 500, 'Failed to retrieve task stats', null, err.message);

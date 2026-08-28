@@ -24,7 +24,7 @@ function getEmployeeRole(employee) {
   return 'EMPLOYEE';
 }
 
-exports.login = (req, res) => {
+exports.login = async (req, res) => {
   const { email, password, loginType } = req.body;
 
   if (!email || !password) {
@@ -33,51 +33,140 @@ exports.login = (req, res) => {
 
   const cleanEmail = email.trim().toLowerCase();
 
-  // Query users table for authentication
-  const sql = `
-    SELECT u.*, e.id as emp_db_id, e.name as emp_name 
-    FROM users u
-    LEFT JOIN employees e ON u.employee_id = e.id
-    WHERE LOWER(u.email) = LOWER(?)
-  `;
-
-  db.query(sql, [cleanEmail], async (err, results) => {
-    if (err) {
-      console.error("Login DB error:", err);
-      return res.status(500).json({ success: false, message: "Database query error" });
+  // Helper for password matching (handles bcrypt hashes and legacy plain-text stored passwords)
+  const checkPasswordMatch = async (inputPass, storedHash) => {
+    if (!inputPass || !storedHash) return false;
+    if (inputPass === storedHash) return true;
+    try {
+      return await bcrypt.compare(inputPass, storedHash);
+    } catch (e) {
+      return false;
     }
+  };
 
-    if (results.length === 0) {
-      return res.status(401).json({ success: false, message: "Invalid email or password" });
-    }
+  try {
+    // 1. Query users table for authentication
+    const sql = `
+      SELECT u.*, e.id as emp_db_id, e.name as emp_name 
+      FROM users u
+      LEFT JOIN employees e ON (u.employee_id = e.id OR LOWER(u.email) = LOWER(e.email))
+      WHERE LOWER(u.email) = LOWER(?)
+    `;
 
-    const user = results[0];
-
-    // Password comparison
-    const isMatch = await bcrypt.compare(password, user.password_hash);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: "Invalid email or password" });
-    }
-
-    // Check email verification status
-    if (!user.email_verified) {
-      return res.status(403).json({ success: false, message: "Please verify your email before signing in." });
-    }
-
-    // Check account status
-    if (user.account_status !== 'Active') {
-      return res.status(403).json({ success: false, message: `Your account is currently ${user.account_status}. Access denied.` });
-    }
-
-    let resolvedRole = user.role;
-
-    if (loginType === 'admin') {
-      if (user.role !== 'SUPER_ADMIN') {
-        return res.status(403).json({ success: false, message: "Access denied. Only Admins can sign in here." });
+    db.query(sql, [cleanEmail], async (err, results) => {
+      if (err) {
+        console.error("Login DB error:", err);
+        return res.status(500).json({ success: false, message: "Database query error" });
       }
-    } else {
-      // Employee login - query the employees and designations tables to resolve actual role
-      if (user.employee_id) {
+
+      let user = results && results.length > 0 ? results[0] : null;
+
+      // 2. Fallback: If user not found in users table, check employees table and auto-sync
+      if (!user) {
+        const empFallbackSql = `
+          SELECT e.*, r.name as role_name, desg.role_name as designation_name
+          FROM employees e
+          LEFT JOIN roles r ON e.role_id = r.id
+          LEFT JOIN designations desg ON e.designation_id = desg.id
+          WHERE LOWER(e.email) = LOWER(?)
+        `;
+        db.query(empFallbackSql, [cleanEmail], async (empErr, empRows) => {
+          if (empErr || !empRows || empRows.length === 0) {
+            console.log("[LOGIN]", {
+              emailReceived: true,
+              userFound: false,
+              employeeFound: false,
+              passwordHashExists: false,
+              passwordMatched: false,
+              accountActive: false,
+              employeeId: null,
+              role: null
+            });
+            return res.status(401).json({ success: false, message: "Invalid email or password" });
+          }
+
+          const employee = empRows[0];
+          const isMatch = await checkPasswordMatch(password, employee.password_hash);
+          const resolvedRole = getEmployeeRole(employee);
+
+          console.log("[LOGIN]", {
+            emailReceived: true,
+            userFound: false,
+            employeeFound: true,
+            passwordHashExists: !!employee.password_hash,
+            passwordMatched: isMatch,
+            accountActive: true,
+            employeeId: employee.id,
+            role: resolvedRole
+          });
+
+          if (!isMatch) {
+            return res.status(401).json({ success: false, message: "Invalid email or password" });
+          }
+
+          // Auto-sync into users table for future logins
+          const insertUserSql = `
+            INSERT INTO users (employee_id, full_name, email, password_hash, role, email_verified, email_verified_at, account_status)
+            VALUES (?, ?, ?, ?, ?, 1, NOW(), 'Active')
+            ON DUPLICATE KEY UPDATE employee_id = VALUES(employee_id), account_status = 'Active'
+          `;
+          db.query(insertUserSql, [employee.id, employee.name, employee.email, employee.password_hash, resolvedRole], (insErr, insRes) => {
+            const authId = insRes ? insRes.insertId : null;
+            const token = jwt.sign(
+              { id: employee.id, name: employee.name, email: employee.email, role: resolvedRole, auth_id: authId },
+              JWT_SECRET,
+              { expiresIn: "24h" }
+            );
+
+            return res.json({
+              success: true,
+              token,
+              user: {
+                id: employee.id,
+                name: employee.name,
+                email: employee.email,
+                role: resolvedRole
+              }
+            });
+          });
+        });
+        return;
+      }
+
+      // User record exists
+      const empIdToResolve = user.employee_id || user.emp_db_id;
+      const isMatch = await checkPasswordMatch(password, user.password_hash);
+      let resolvedRole = user.role || 'EMPLOYEE';
+
+      if (user.account_status && user.account_status !== 'Active') {
+        console.log("[LOGIN]", {
+          emailReceived: true,
+          userFound: true,
+          employeeFound: !!empIdToResolve,
+          passwordHashExists: !!user.password_hash,
+          passwordMatched: isMatch,
+          accountActive: false,
+          employeeId: empIdToResolve,
+          role: resolvedRole
+        });
+        return res.status(403).json({ success: false, message: `Your account is currently ${user.account_status}. Access denied.` });
+      }
+
+      if (!isMatch) {
+        console.log("[LOGIN]", {
+          emailReceived: true,
+          userFound: true,
+          employeeFound: !!empIdToResolve,
+          passwordHashExists: !!user.password_hash,
+          passwordMatched: false,
+          accountActive: true,
+          employeeId: empIdToResolve,
+          role: resolvedRole
+        });
+        return res.status(401).json({ success: false, message: "Invalid email or password" });
+      }
+
+      if (empIdToResolve) {
         const empSql = `
           SELECT e.*, r.name as role_name, desg.role_name as designation_name
           FROM employees e
@@ -85,18 +174,24 @@ exports.login = (req, res) => {
           LEFT JOIN designations desg ON e.designation_id = desg.id
           WHERE e.id = ?
         `;
-        db.query(empSql, [user.employee_id], (empErr, empRes) => {
-          if (empErr) {
-            console.error("Error resolving employee info:", empErr);
-            return res.status(500).json({ success: false, message: "Internal server error" });
-          }
-
-          if (empRes.length > 0) {
+        db.query(empSql, [empIdToResolve], (empErr, empRes) => {
+          if (empRes && empRes.length > 0) {
             resolvedRole = getEmployeeRole(empRes[0]);
           }
 
+          console.log("[LOGIN]", {
+            emailReceived: true,
+            userFound: true,
+            employeeFound: true,
+            passwordHashExists: true,
+            passwordMatched: true,
+            accountActive: true,
+            employeeId: empIdToResolve,
+            role: resolvedRole
+          });
+
           const token = jwt.sign(
-            { id: user.employee_id, name: user.full_name, email: user.email, role: resolvedRole, auth_id: user.id },
+            { id: empIdToResolve, name: user.full_name || user.emp_name, email: user.email, role: resolvedRole, auth_id: user.id },
             JWT_SECRET,
             { expiresIn: "24h" }
           );
@@ -105,34 +200,47 @@ exports.login = (req, res) => {
             success: true,
             token,
             user: {
-              id: user.employee_id,
-              name: user.full_name,
+              id: empIdToResolve,
+              name: user.full_name || user.emp_name || 'User',
               email: user.email,
               role: resolvedRole
             }
           });
         });
-        return;
-      }
-    }
+      } else {
+        console.log("[LOGIN]", {
+          emailReceived: true,
+          userFound: true,
+          employeeFound: false,
+          passwordHashExists: true,
+          passwordMatched: true,
+          accountActive: true,
+          employeeId: user.id,
+          role: resolvedRole
+        });
 
-    const token = jwt.sign(
-      { id: user.employee_id || 1, name: user.full_name, email: user.email, role: resolvedRole, auth_id: user.id },
-      JWT_SECRET,
-      { expiresIn: "24h" }
-    );
+        const token = jwt.sign(
+          { id: user.id, name: user.full_name || 'User', email: user.email, role: resolvedRole, auth_id: user.id },
+          JWT_SECRET,
+          { expiresIn: "24h" }
+        );
 
-    res.json({
-      success: true,
-      token,
-      user: {
-        id: user.employee_id || 1,
-        name: user.full_name,
-        email: user.email,
-        role: resolvedRole
+        return res.json({
+          success: true,
+          token,
+          user: {
+            id: user.id,
+            name: user.full_name || 'User',
+            email: user.email,
+            role: resolvedRole
+          }
+        });
       }
     });
-  });
+  } catch (error) {
+    console.error("Login processing exception:", error);
+    return res.status(500).json({ success: false, message: "Server error during login" });
+  }
 };
 
 exports.verifyEmailRequest = async (req, res) => {

@@ -1,9 +1,16 @@
-const RbacService = require('../services/RbacService');
 const response = require('../utils/response');
+
+function getRbacService() {
+  try {
+    delete require.cache[require.resolve('../services/RbacService')];
+  } catch (e) {}
+  return require('../services/RbacService');
+}
 
 const RbacController = {
   async getModules(req, res) {
     try {
+      const RbacService = getRbacService();
       const modules = RbacService.getModules();
       return response(res, true, 200, 'Modules retrieved successfully', modules);
     } catch (e) {
@@ -13,6 +20,7 @@ const RbacController = {
 
   async getRoles(req, res) {
     try {
+      const RbacService = getRbacService();
       const roles = await RbacService.getRoles();
       return response(res, true, 200, 'Roles retrieved successfully', roles);
     } catch (e) {
@@ -23,6 +31,7 @@ const RbacController = {
   async getRolePermissions(req, res) {
     try {
       const { roleKey } = req.params;
+      const RbacService = getRbacService();
       const matrix = await RbacService.getRolePermissions(roleKey);
       return response(res, true, 200, 'Role permissions retrieved successfully', matrix);
     } catch (e) {
@@ -32,6 +41,7 @@ const RbacController = {
 
   async createRole(req, res) {
     try {
+      const RbacService = getRbacService();
       const result = await RbacService.createRole(req.body);
       return response(res, true, 201, 'Role created successfully', result);
     } catch (e) {
@@ -43,6 +53,7 @@ const RbacController = {
     try {
       const { roleKey } = req.params;
       const { permissions, roleInfo } = req.body;
+      const RbacService = getRbacService();
       await RbacService.updateRolePermissions(roleKey, permissions, roleInfo);
 
       // Notify all users under this role of permission changes
@@ -70,6 +81,7 @@ const RbacController = {
   async deleteRole(req, res) {
     try {
       const { roleKey } = req.params;
+      const RbacService = getRbacService();
       await RbacService.deleteRole(roleKey);
       return response(res, true, 200, 'Role deleted successfully');
     } catch (e) {
@@ -79,9 +91,15 @@ const RbacController = {
 
   async getUserPermissions(req, res) {
     try {
-      const roleNameOrKey = req.user?.role || 'Super Admin';
+      const roleNameOrKey = req.query?.role || req.headers['x-user-role'] || req.headers['x-role'] || req.user?.role || 'EMPLOYEE';
+      const RbacService = getRbacService();
       const perms = await RbacService.getUserPermissions(roleNameOrKey);
-      return response(res, true, 200, 'User permissions retrieved successfully', perms);
+      return res.status(200).json({
+        success: true,
+        message: 'User permissions retrieved successfully',
+        permissions: perms,
+        data: perms
+      });
     } catch (e) {
       return response(res, false, 500, 'Failed to retrieve user permissions', null, e.message);
     }

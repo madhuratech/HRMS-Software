@@ -206,18 +206,32 @@ class ProjectService {
     };
   }
 
-  static async getMeta() {
+  static async getMeta(scopeData = null) {
+    let empWhere = '';
+    let empParams = [];
+    if (scopeData && !scopeData.isUnrestricted && Array.isArray(scopeData.allowedEmployeeIds)) {
+      if (scopeData.allowedEmployeeIds.length === 0) {
+        empWhere = ' WHERE 1 = 0 ';
+      } else {
+        empWhere = ' WHERE e.id IN (?) ';
+        empParams = [scopeData.allowedEmployeeIds];
+      }
+    }
+
     const employees = await Project.query(`
-      SELECT e.id, e.name, e.department_id, e.branch_id, e.designation_id,
+      SELECT e.id, e.name, e.department_id, e.branch_id, e.designation_id, e.team_id,
              d.dept_name as department_name,
              b.branch_name as branch_name,
-             des.role_name as designation_name
+             des.role_name as designation_name,
+             r.role_key, r.role_name
       FROM employees e
       LEFT JOIN departments d ON e.department_id = d.id
       LEFT JOIN branches b ON e.branch_id = b.id
       LEFT JOIN designations des ON e.designation_id = des.id
+      LEFT JOIN roles r ON e.role_id = r.id
+      ${empWhere}
       ORDER BY e.name
-    `);
+    `, empParams);
     const departments = await Project.query(`SELECT id, dept_name as name FROM departments ORDER BY dept_name`);
     const branches = await Project.query(`SELECT id, branch_name as name FROM branches ORDER BY branch_name`);
     const designations = await Project.query(`SELECT id, role_name as name FROM designations ORDER BY role_name`);

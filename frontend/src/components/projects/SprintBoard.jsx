@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, X, Pencil, Trash2 } from 'lucide-react';
 import { useToast } from '../ui/Toast';
-import { apiFetch, formatDate } from '../../lib/api';
+import { apiFetch, formatDate, getInitials } from '../../lib/api';
+import { guardCreateAction, requireActionPermission, hasPermission } from '../../lib/permissions';
 
 const PRIORITY_COLOR = { High: '#EF4444', Medium: '#F59E0B', Low: '#10B981' };
 const LABEL_COLOR    = { Feature:'#DBEAFE/#2563EB', Backend:'#D1FAE5/#065F46', Security:'#FEE2E2/#DC2626', Design:'#EDE9FE/#5B21B6', QA:'#FEF3C7/#D97706', Bug:'#FEE2E2/#DC2626', Enhancement:'#F3F4F6/#6B7280', Setup:'#E0E7FF/#3730A3', Auth:'#FCE7F3/#9D174D', Admin:'#DBEAFE/#1D4ED8' };
@@ -102,6 +103,9 @@ export default function SprintBoard() {
   useEffect(() => { fetchMeta(); fetchBoard(); }, [fetchMeta, fetchBoard]);
 
   const openCreateSprint = () => {
+    if (!requireActionPermission('projects', 'sprint_board', 'create', null, addToast, 'You do not have permission to create sprints. Please contact your administrator.')) {
+      return;
+    }
     setEditingSprintId(null);
     setSprintForm({ name: '', goal: '', startDate: '', endDate: '', project_id: '', status: 'Planning' });
     setShowSprintModal(true);
@@ -110,6 +114,9 @@ export default function SprintBoard() {
   const openEditSprint = () => {
     const s = board.sprint;
     if (!s) return;
+    if (!requireActionPermission('projects', 'sprint_board', 'edit', null, addToast, 'You do not have permission to edit sprints. Please contact your administrator.')) {
+      return;
+    }
     setEditingSprintId(s.id);
     setSprintForm({ name: s.name || '', goal: s.goal || '', startDate: s.start_date || '', endDate: s.end_date || '', project_id: String(s.project_id || ''), status: s.status || 'Planning' });
     setShowSprintModal(true);
@@ -117,6 +124,10 @@ export default function SprintBoard() {
 
   const handleCreateSprint = async (e) => {
     e.preventDefault();
+    const actNeeded = editingSprintId ? 'edit' : 'create';
+    if (!requireActionPermission('projects', 'sprint_board', actNeeded, null, addToast, `You do not have permission to ${actNeeded} sprints. Please contact your administrator.`)) {
+      return;
+    }
     if (!sprintForm.name) {
       addToast('Sprint Name is required', 'error');
       return;
@@ -150,6 +161,9 @@ export default function SprintBoard() {
   const handleDeleteSprint = async () => {
     const s = board.sprint;
     if (!s) return;
+    if (!requireActionPermission('projects', 'sprint_board', 'delete', null, addToast, 'You do not have permission to delete sprints. Please contact your administrator.')) {
+      return;
+    }
     if (!window.confirm(`Delete sprint "${s.name}"?`)) return;
     try {
       const res = await apiFetch(`/sprints/${s.id}`, { method: 'DELETE' });
@@ -165,6 +179,9 @@ export default function SprintBoard() {
   };
 
   const openAddTask = (colId) => {
+    if (!requireActionPermission('projects', 'tasks', 'create', null, addToast, 'You do not have permission to create tasks. Please contact your administrator.')) {
+      return;
+    }
     setEditingTaskId(null);
     setTaskColumn(colId);
     setTaskForm({ title: '', project_id: '', assignee_id: '', priority: 'Medium', label: 'Feature', due: '' });
@@ -172,6 +189,9 @@ export default function SprintBoard() {
   };
 
   const openEditTask = (card) => {
+    if (!requireActionPermission('projects', 'tasks', 'edit', null, addToast, 'You do not have permission to edit tasks. Please contact your administrator.')) {
+      return;
+    }
     setEditingTaskId(card.id);
     const col = board.columns.find(c => board.cards && board.cards[c.id] && board.cards[c.id].find(x => x.id === card.id));
     setTaskColumn(col ? col.id : 'todo');
@@ -186,8 +206,12 @@ export default function SprintBoard() {
     setShowTaskModal(true);
   };
 
-  const handleAddTask = async (e) => {
+  const handleCreateTask = async (e) => {
     e.preventDefault();
+    const actNeeded = editingTaskId ? 'edit' : 'create';
+    if (!requireActionPermission('projects', 'tasks', actNeeded, null, addToast, `You do not have permission to ${actNeeded} tasks. Please contact your administrator.`)) {
+      return;
+    }
     if (!taskForm.title) {
       addToast('Task Title is required', 'error');
       return;
@@ -225,6 +249,9 @@ export default function SprintBoard() {
   };
 
   const handleDeleteTask = async (card) => {
+    if (!requireActionPermission('projects', 'tasks', 'delete', null, addToast, 'You do not have permission to delete tasks. Please contact your administrator.')) {
+      return;
+    }
     if (!window.confirm(`Delete task "${card.title}"?`)) return;
     try {
       const res = await apiFetch(`/tasks/${card.id}`, { method: 'DELETE' });
@@ -381,11 +408,17 @@ export default function SprintBoard() {
         <div style={{ display:'flex', alignItems:'center', gap:10 }}>
           {sprint && (
             <>
-              <button onClick={openEditSprint} style={{ height:38, padding:'0 14px', background:'#fff', border:'1px solid #E5E7EB', borderRadius:8, fontSize:13, color:'#374151', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Pencil size={14} /> Edit</button>
-              <button onClick={handleDeleteSprint} style={{ height:38, padding:'0 14px', background:'#fff', border:'1px solid #FECACA', borderRadius:8, fontSize:13, color:'#DC2626', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Trash2 size={14} /> Delete</button>
+              {hasPermission(null, null, 'projects', 'sprint_board', 'edit') && (
+                <button onClick={openEditSprint} style={{ height:38, padding:'0 14px', background:'#fff', border:'1px solid #E5E7EB', borderRadius:8, fontSize:13, color:'#374151', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Pencil size={14} /> Edit</button>
+              )}
+              {hasPermission(null, null, 'projects', 'sprint_board', 'delete') && (
+                <button onClick={handleDeleteSprint} style={{ height:38, padding:'0 14px', background:'#fff', border:'1px solid #FECACA', borderRadius:8, fontSize:13, color:'#DC2626', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Trash2 size={14} /> Delete</button>
+              )}
             </>
           )}
-          <button onClick={openCreateSprint} style={{ height:38, padding:'0 16px', background:'#2563EB', border:'none', borderRadius:8, fontSize:13, fontWeight:600, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Plus size={14} /> Create Sprint</button>
+          {hasPermission(null, null, 'projects', 'sprint_board', 'create') && (
+            <button onClick={openCreateSprint} style={{ height:38, padding:'0 16px', background:'#2563EB', border:'none', borderRadius:8, fontSize:13, fontWeight:600, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Plus size={14} /> Create Sprint</button>
+          )}
         </div>
       </div>
 
