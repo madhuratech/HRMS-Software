@@ -20,7 +20,7 @@ export default function TransfersContent() {
 
   const loadData = () => {
     setLoading(true);
-    fetch("http://localhost:3000/app/employees/transfers")
+    fetch("/app/employees/transfers")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -38,7 +38,7 @@ export default function TransfersContent() {
         setLoading(false);
       });
 
-    fetch("http://localhost:3000/app/employees?status=Active")
+    fetch("/app/employees?status=Active")
       .then(res => res.json())
       .then(data => setEmployees(data))
       .catch(err => console.error(err));
@@ -55,7 +55,7 @@ export default function TransfersContent() {
       return;
     }
 
-    fetch("http://localhost:3000/app/employees/transfers", {
+    fetch("/app/employees/transfers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ employeeId, transferType, newValueName, effectiveDate })
@@ -77,7 +77,7 @@ export default function TransfersContent() {
   };
 
   const handleApprove = (transferId) => {
-    fetch(`http://localhost:3000/app/employees/transfers/${transferId}/approve`, {
+    fetch(`/app/employees/transfers/${transferId}/approve`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ approverId: 1 }) // Default Admin

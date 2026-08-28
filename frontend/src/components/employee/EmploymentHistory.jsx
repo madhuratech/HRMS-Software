@@ -16,7 +16,7 @@ export default function EmploymentHistory() {
   };
 
   useEffect(() => {
-    fetch('http://localhost:3000/app/employees')
+    fetch('/app/employees')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setAllEmployees(data);
@@ -27,11 +27,11 @@ export default function EmploymentHistory() {
   useEffect(() => {
     setLoading(true);
     // Fetch profile first to get default details
-    fetch(`http://localhost:3000/app/employees/${currentEmpId}/profile`)
+    fetch(`/app/employees/${currentEmpId}/profile`)
       .then(res => res.json())
       .then(data => {
         setProfile(data);
-        return fetch(`http://localhost:3000/app/employees/${currentEmpId}/history`);
+        return fetch(`/app/employees/${currentEmpId}/history`);
       })
       .then(res => res.json())
       .then(data => {

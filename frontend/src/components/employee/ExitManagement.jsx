@@ -21,7 +21,7 @@ export default function ExitManagement() {
 
   const loadData = () => {
     setLoading(true);
-    fetch("http://localhost:3000/app/employees/exits")
+    fetch("/app/employees/exits")
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -39,7 +39,7 @@ export default function ExitManagement() {
         setLoading(false);
       });
 
-    fetch("http://localhost:3000/app/employees?status=Active")
+    fetch("/app/employees?status=Active")
       .then(res => res.json())
       .then(data => setEmployees(data))
       .catch(err => console.error(err));
@@ -56,7 +56,7 @@ export default function ExitManagement() {
       return;
     }
 
-    fetch("http://localhost:3000/app/employees/exits", {
+    fetch("/app/employees/exits", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ employeeId, exitType, noticeDate, exitDate, reason })
@@ -78,7 +78,7 @@ export default function ExitManagement() {
   };
 
   const handleSettle = (exitId) => {
-    fetch(`http://localhost:3000/app/employees/exits/${exitId}/settle`, {
+    fetch(`/app/employees/exits/${exitId}/settle`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" }
     })
@@ -183,110 +183,120 @@ export default function ExitManagement() {
         </div>
       </div>
 
-      <div className="hrms-layout" style={{ gridTemplateColumns: '300px 1fr' }}>
-        {/* Exit Process Overview Sidebar */}
-        {selectedExit && (
-          <div className="hrms-card" style={{ alignSelf: 'start' }}>
-            <h2 className="hrms-font-semibold hrms-mb-6" style={{ fontSize: '16px' }}>Exit Process: {selectedExit.employee_name}</h2>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              <div className="hrms-flex-between">
-                <div className="hrms-flex-start" style={{ gap: '12px' }}>
-                  <Clock size={16} className="hrms-text-muted" />
-                  <span className="hrms-text-sm hrms-font-medium">Notice Submitted</span>
-                </div>
-                <span className="hrms-badge hrms-badge-active">{new Date(selectedExit.notice_date).toLocaleDateString()}</span>
+      {/* Exit Process Overview Header Card (when an exit is selected) */}
+      {selectedExit && (
+        <div className="hrms-card hrms-mb-6" style={{ background: '#f8fafc', border: '1px solid #cbd5e1' }}>
+          <div className="hrms-flex-between hrms-mb-4">
+            <h2 className="hrms-font-semibold" style={{ fontSize: '16px', margin: 0, color: '#0f172a' }}>
+              Exit Process Overview: <span style={{ color: '#2563eb' }}>{selectedExit.employee_name}</span>
+            </h2>
+            <button 
+              onClick={() => setSelectedExit(null)}
+              className="hrms-secondary-btn"
+              style={{ padding: '4px 10px', fontSize: '12px', cursor: 'pointer' }}
+            >
+              ✕ Close Overview
+            </button>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', alignItems: 'center' }}>
+            <div className="hrms-flex-between" style={{ padding: '12px 16px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div className="hrms-flex-start" style={{ gap: '10px' }}>
+                <Clock size={16} className="hrms-text-muted" />
+                <span className="hrms-text-sm hrms-font-medium">Notice Submitted</span>
               </div>
-              
-              <div className="hrms-flex-between">
-                <div className="hrms-flex-start" style={{ gap: '12px' }}>
-                  <Briefcase size={16} className="hrms-text-muted" />
-                  <span className="hrms-text-sm hrms-font-medium">Exit Type</span>
-                </div>
-                <span className="hrms-badge hrms-badge-active">{selectedExit.exit_type}</span>
-              </div>
-              
-              <div className="hrms-flex-between">
-                <div className="hrms-flex-start" style={{ gap: '12px' }}>
-                  <CheckCircle2 size={16} className="hrms-text-muted" />
-                  <span className="hrms-text-sm hrms-font-medium">Clearance Checklist</span>
-                </div>
-                <span className={`hrms-badge ${selectedExit.status === 'Settled' ? 'hrms-badge-active' : 'hrms-badge-pending'}`}>
-                  {selectedExit.status === 'Settled' ? 'Cleared' : 'Pending'}
-                </span>
-              </div>
-              
-              <div className="hrms-flex-between">
-                <div className="hrms-flex-start" style={{ gap: '12px' }}>
-                  <DollarSign size={16} className="hrms-text-muted" />
-                  <span className="hrms-text-sm hrms-font-medium">Final Settlement</span>
-                </div>
-                <span className={`hrms-badge ${selectedExit.status === 'Settled' ? 'hrms-badge-active' : 'hrms-badge-inactive'}`}>
-                  {selectedExit.status}
-                </span>
-              </div>
-
-              {selectedExit.status === 'Pending' && (
-                <button 
-                  className="hrms-primary-btn" 
-                  onClick={() => handleSettle(selectedExit.id)}
-                  style={{ width: '100%', marginTop: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-                >
-                  <Check size={16} /> Approve & Settle
-                </button>
-              )}
+              <span className="hrms-badge hrms-badge-active">{new Date(selectedExit.notice_date).toLocaleDateString()}</span>
             </div>
-          </div>
-        )}
+            
+            <div className="hrms-flex-between" style={{ padding: '12px 16px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div className="hrms-flex-start" style={{ gap: '10px' }}>
+                <Briefcase size={16} className="hrms-text-muted" />
+                <span className="hrms-text-sm hrms-font-medium">Exit Type</span>
+              </div>
+              <span className="hrms-badge hrms-badge-active">{selectedExit.exit_type}</span>
+            </div>
+            
+            <div className="hrms-flex-between" style={{ padding: '12px 16px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div className="hrms-flex-start" style={{ gap: '10px' }}>
+                <CheckCircle2 size={16} className="hrms-text-muted" />
+                <span className="hrms-text-sm hrms-font-medium">Clearance</span>
+              </div>
+              <span className={`hrms-badge ${selectedExit.status === 'Settled' ? 'hrms-badge-active' : 'hrms-badge-pending'}`}>
+                {selectedExit.status === 'Settled' ? 'Cleared' : 'Pending'}
+              </span>
+            </div>
+            
+            <div className="hrms-flex-between" style={{ padding: '12px 16px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div className="hrms-flex-start" style={{ gap: '10px' }}>
+                <DollarSign size={16} className="hrms-text-muted" />
+                <span className="hrms-text-sm hrms-font-medium">Final Settlement</span>
+              </div>
+              <span className={`hrms-badge ${selectedExit.status === 'Settled' ? 'hrms-badge-active' : 'hrms-badge-inactive'}`}>
+                {selectedExit.status}
+              </span>
+            </div>
 
-        {/* Recent Exits Table */}
-        <div className="hrms-card" style={{ padding: '0', overflow: 'hidden' }}>
-          <div style={{ padding: '24px' }}>
-            <h2 className="hrms-font-semibold" style={{ fontSize: '16px', margin: 0 }}>Recent Exits</h2>
+            {selectedExit.status === 'Pending' && (
+              <button 
+                className="hrms-primary-btn" 
+                onClick={() => handleSettle(selectedExit.id)}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '10px 16px', gridColumn: 'span 1' }}
+              >
+                <Check size={16} /> Approve & Settle
+              </button>
+            )}
           </div>
-          <div className="hrms-table-container">
-            <table className="hrms-table">
-              <thead>
+        </div>
+      )}
+
+      {/* Full Width Recent Exits Table */}
+      <div className="hrms-card" style={{ padding: '0', overflow: 'hidden', width: '100%' }}>
+        <div style={{ padding: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <h2 className="hrms-font-semibold" style={{ fontSize: '16px', margin: 0 }}>Recent Exits</h2>
+          <span className="hrms-text-sm hrms-text-muted">Click any row to view process details</span>
+        </div>
+        <div className="hrms-table-container" style={{ width: '100%', overflowX: 'auto' }}>
+          <table className="hrms-table" style={{ width: '100%' }}>
+            <thead>
+              <tr>
+                <th>Employee</th>
+                <th>Exit Date</th>
+                <th>Notice Date</th>
+                <th>Reason</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
                 <tr>
-                  <th>Employee</th>
-                  <th>Exit Date</th>
-                  <th>Notice Date</th>
-                  <th>Reason</th>
-                  <th>Status</th>
+                  <td colSpan="5" style={{ textAlign: 'center', padding: '24px' }}>Loading exits...</td>
                 </tr>
-              </thead>
-              <tbody>
-                {loading ? (
-                  <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '16px' }}>Loading exits...</td>
+              ) : exits.length === 0 ? (
+                <tr>
+                  <td colSpan="5" style={{ textAlign: 'center', padding: '24px' }}>No exits recorded.</td>
+                </tr>
+              ) : (
+                exits.map((exit) => (
+                  <tr key={exit.id} onClick={() => setSelectedExit(exit)} style={{ cursor: 'pointer', background: selectedExit?.id === exit.id ? '#f1f5f9' : 'transparent' }}>
+                    <td style={{ whiteSpace: 'nowrap' }}>
+                      <div className="hrms-user-info">
+                        <img src={getAvatarUrl(exit.profile_photo, exit.employee_name, exit.employee_id)} alt={exit.employee_name} className="hrms-avatar" style={{width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover'}} />
+                        <span className="hrms-font-medium" style={{color: '#0f172a'}}>{exit.employee_name}</span>
+                      </div>
+                    </td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{new Date(exit.exit_date).toLocaleDateString()}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{new Date(exit.notice_date).toLocaleDateString()}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{exit.reason || '—'}</td>
+                    <td>
+                      <span className={`hrms-badge ${exit.status === 'Settled' ? 'hrms-badge-active' : 'hrms-badge-pending'}`}>
+                        {exit.status}
+                      </span>
+                    </td>
                   </tr>
-                ) : exits.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" style={{ textAlign: 'center', padding: '16px' }}>No exits recorded.</td>
-                  </tr>
-                ) : (
-                  exits.map((exit) => (
-                    <tr key={exit.id} onClick={() => setSelectedExit(exit)} style={{ cursor: 'pointer' }}>
-                      <td style={{ whiteSpace: 'nowrap' }}>
-                        <div className="hrms-user-info">
-                          <img src={getAvatarUrl(exit.profile_photo, exit.employee_name, exit.employee_id)} alt={exit.employee_name} className="hrms-avatar" style={{width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover'}} />
-                          <span className="hrms-font-medium" style={{color: '#0f172a'}}>{exit.employee_name}</span>
-                        </div>
-                      </td>
-                      <td style={{ whiteSpace: 'nowrap' }}>{new Date(exit.exit_date).toLocaleDateString()}</td>
-                      <td style={{ whiteSpace: 'nowrap' }}>{new Date(exit.notice_date).toLocaleDateString()}</td>
-                      <td style={{ whiteSpace: 'nowrap' }}>{exit.reason || '—'}</td>
-                      <td>
-                        <span className={`hrms-badge ${exit.status === 'Settled' ? 'hrms-badge-active' : 'hrms-badge-pending'}`}>
-                          {exit.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
+                ))
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

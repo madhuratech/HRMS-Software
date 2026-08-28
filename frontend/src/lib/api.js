@@ -1,3 +1,4 @@
+const RENDER_BACKEND_URL = 'https://madhura-hrm.onrender.com';
 const API_BASE = '/app';
 
 export const getAuthToken = () => {
@@ -24,14 +25,28 @@ export const apiFetch = async (path, options = {}) => {
     } catch (e) {}
   }
 
+  const isFormData = options.body instanceof FormData;
   const headers = {
-    'Content-Type': 'application/json',
+    ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
     'Authorization': `Bearer ${getAuthToken()}`,
     ...(empHeaderId ? { 'x-employee-id': String(empHeaderId) } : {}),
     ...(options.headers || {})
   };
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  return res.json();
+
+  try {
+    const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+    if (!res.ok && window.location.hostname !== 'localhost') {
+      const fallbackRes = await fetch(`${RENDER_BACKEND_URL}/app${path}`, { ...options, headers });
+      return fallbackRes.json();
+    }
+    return res.json();
+  } catch (err) {
+    if (window.location.hostname !== 'localhost') {
+      const fallbackRes = await fetch(`${RENDER_BACKEND_URL}/app${path}`, { ...options, headers });
+      return fallbackRes.json();
+    }
+    throw err;
+  }
 };
 
 export const formatDate = (value) => {

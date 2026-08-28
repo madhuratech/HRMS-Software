@@ -17,7 +17,7 @@ export default function EmployeeListContent() {
   useEffect(() => {
     const delayDebounceFn = setTimeout(() => {
       setLoading(true);
-      fetch(`http://localhost:3000/app/employees?search=${searchTerm}`)
+      fetch(`/app/employees?search=${searchTerm}`)
         .then(res => res.json())
         .then(data => {
           if (Array.isArray(data)) {

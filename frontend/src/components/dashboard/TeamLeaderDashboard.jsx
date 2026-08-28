@@ -137,12 +137,14 @@ export function TeamLeaderDashboard() {
         console.error("Failed to load TL personal attendance:", e);
       }
 
-      // 3. Fetch Team Members from Database
+      // 3. Fetch Team Members from Database (Team Leader Scoped)
       try {
-        const employeesRes = await apiFetch('/employees');
+        const teamScopeRes = await apiFetch('/employees/team-members');
         let members = [];
-        if (Array.isArray(employeesRes)) {
-          members = employeesRes.filter(e => String(e.id) !== String(userId) && e.status !== 'Inactive');
+        if (teamScopeRes && Array.isArray(teamScopeRes.scopedMembers)) {
+          members = teamScopeRes.scopedMembers;
+        } else if (teamScopeRes && Array.isArray(teamScopeRes.members)) {
+          members = teamScopeRes.members;
         }
         setTeamMembers(members);
         if (members.length > 0 && !newTask.assignee_id) {
@@ -478,7 +480,7 @@ export function TeamLeaderDashboard() {
                         <td className="py-3 px-4 text-slate-600 font-medium">{row.shift || 'Morning Shift'}</td>
                         <td className="py-3 px-4">
                           <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${row.status === 'Present' || row.status === 'Completed' || row.attendanceStatus === 'Present' || row.attendanceStatus === 'Completed' ? 'bg-emerald-50 text-emerald-600' :
-                              row.status === 'Late' || row.attendanceStatus === 'Late' ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'
+                            row.status === 'Late' || row.attendanceStatus === 'Late' ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'
                             }`}>
                             {row.status || row.attendanceStatus || 'Absent'}
                           </span>
@@ -550,7 +552,7 @@ export function TeamLeaderDashboard() {
                         <td className="py-3 px-4 text-slate-600">{t.due_date ? new Date(t.due_date).toLocaleDateString() : 'Today'}</td>
                         <td className="py-3 px-4">
                           <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${t.status === 'Completed' ? 'bg-emerald-50 text-emerald-600' :
-                              t.status === 'In Progress' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-600'
+                            t.status === 'In Progress' ? 'bg-blue-50 text-blue-600' : 'bg-slate-100 text-slate-600'
                             }`}>
                             {t.status || 'Pending'}
                           </span>

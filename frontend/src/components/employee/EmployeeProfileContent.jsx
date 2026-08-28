@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Edit2, Mail, Phone, MapPin, Briefcase, Calendar, DollarSign, Clock, FileText, Monitor, TrendingUp, Folder, User, Camera, Trash2 } from 'lucide-react';
+import { Edit2, Mail, Phone, MapPin, Briefcase, Calendar, DollarSign, Clock, FileText, Monitor, TrendingUp, Folder, User, Camera, Trash2, ChevronDown, Check } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import EmployeeAvatar from './EmployeeAvatar';
 import './employee-module.css';
 import { apiFetch, getAuthToken } from '../../lib/api';
 
 const tabs = [
-  'Overview', 'Employment', 'Salary', 'Attendance', 'Leave', 
+  'Overview', 'Employment', 'Salary', 'Attendance', 'Leave',
   'Documents', 'Performance'
 ];
 
@@ -24,7 +24,7 @@ export default function EmployeeProfileContent() {
       const userObj = parsed.user || parsed;
       if (parsed.role) userRole = parsed.role;
       if (userObj && userObj.id) authUserId = String(userObj.id);
-    } catch(e) {}
+    } catch (e) { }
   }
   const isEmployeeRole = userRole === 'EMPLOYEE';
   const isTeamLeaderRole = userRole === 'TEAM_LEADER' || userRole === 'Team Leader';
@@ -42,7 +42,7 @@ export default function EmployeeProfileContent() {
   const [departments, setDepartments] = useState([]);
   const [branches, setBranches] = useState([]);
   const [teams, setTeams] = useState([]);
-  
+
   // Editing state
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
@@ -70,7 +70,20 @@ export default function EmployeeProfileContent() {
     return localStorage.getItem('selectedEmployeeId') || '1';
   });
   const [allEmployees, setAllEmployees] = useState([]);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
   const photoInputRef = useRef(null);
+
+  // Close custom dropdown on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const handleEmployeeSelect = (newId) => {
     localStorage.setItem('selectedEmployeeId', newId);
@@ -93,22 +106,22 @@ export default function EmployeeProfileContent() {
       },
       body: formData
     })
-    .then(res => { if (!res.ok) throw new Error('Upload failed'); return res.json(); })
-    .then(() => {
-      addToast('Profile photo updated!', 'success');
-      loadProfile();
-    })
-    .catch(() => addToast('Failed to upload photo', 'error'));
+      .then(res => { if (!res.ok) throw new Error('Upload failed'); return res.json(); })
+      .then(() => {
+        addToast('Profile photo updated!', 'success');
+        loadProfile();
+      })
+      .catch(() => addToast('Failed to upload photo', 'error'));
     e.target.value = '';
   };
 
   const handlePhotoRemove = () => {
     apiFetch(`/employees/${currentEmpId}/photo`, { method: 'DELETE' })
-    .then(() => {
-      addToast('Photo removed', 'success');
-      loadProfile();
-    })
-    .catch(() => addToast('Failed to remove photo', 'error'));
+      .then(() => {
+        addToast('Photo removed', 'success');
+        loadProfile();
+      })
+      .catch(() => addToast('Failed to remove photo', 'error'));
   };
 
   const loadProfile = () => {
@@ -174,13 +187,13 @@ export default function EmployeeProfileContent() {
 
     // Fetch lookup data for dropdowns
     apiFetch('/employees/lookup/designations')
-      .then(data => Array.isArray(data) && setDesignations(data)).catch(() => {});
+      .then(data => Array.isArray(data) && setDesignations(data)).catch(() => { });
     apiFetch('/employees/lookup/departments')
-      .then(data => Array.isArray(data) && setDepartments(data)).catch(() => {});
+      .then(data => Array.isArray(data) && setDepartments(data)).catch(() => { });
     apiFetch('/employees/lookup/branches')
-      .then(data => Array.isArray(data) && setBranches(data)).catch(() => {});
+      .then(data => Array.isArray(data) && setBranches(data)).catch(() => { });
     apiFetch('/employees/lookup/teams')
-      .then(data => Array.isArray(data) && setTeams(data)).catch(() => {});
+      .then(data => Array.isArray(data) && setTeams(data)).catch(() => { });
   }, [currentEmpId]);
 
   if (loading) {
@@ -213,8 +226,8 @@ export default function EmployeeProfileContent() {
 
   // Mask bank account number
   const rawAcc = bank.accountNumber || "";
-  const maskedAcc = rawAcc.length > 4 
-    ? rawAcc.slice(-4).padStart(rawAcc.length, "*") 
+  const maskedAcc = rawAcc.length > 4
+    ? rawAcc.slice(-4).padStart(rawAcc.length, "*")
     : rawAcc;
 
   const handleEditClick = () => {
@@ -264,15 +277,15 @@ export default function EmployeeProfileContent() {
       method: "PUT",
       body: JSON.stringify(payload)
     })
-    .then(() => {
-      addToast("Profile updated successfully!", "success");
-      setIsEditing(false);
-      loadProfile();
-    })
-    .catch(err => {
-      console.error(err);
-      addToast("Failed to update profile", "error");
-    });
+      .then(() => {
+        addToast("Profile updated successfully!", "success");
+        setIsEditing(false);
+        loadProfile();
+      })
+      .catch(err => {
+        console.error(err);
+        addToast("Failed to update profile", "error");
+      });
   };
 
   const isViewingTeamMember = isTeamLeaderRole && String(currentEmpId) !== String(authUserId);
@@ -323,37 +336,108 @@ export default function EmployeeProfileContent() {
       <div className="hrms-card hrms-mb-6" style={{ position: 'relative' }}>
         <div style={{ position: 'absolute', top: '24px', right: '24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
           {!isEmployeeRole && (
-            <div style={{
-              display: 'flex', alignItems: 'center', gap: '8px',
-              background: '#F8FAFC', border: '1px solid #CBD5E1', borderRadius: '8px',
-              padding: '6px 12px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-            }}>
-              <User size={16} color="#475569" />
-              <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>
-                {isTeamLeaderRole ? 'My Team Profiles:' : 'Select Employee:'}
-              </span>
-              <select
-                value={currentEmpId}
-                onChange={(e) => handleEmployeeSelect(e.target.value)}
+            <div ref={dropdownRef} style={{ position: 'relative' }}>
+              {/* Trigger Button */}
+              <button
+                onClick={() => setDropdownOpen(o => !o)}
                 style={{
-                  background: 'transparent',
-                  border: 'none',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  color: '#0F172A',
-                  outline: 'none',
-                  cursor: 'pointer'
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  background: '#fff',
+                  border: `1.5px solid ${dropdownOpen ? '#6366F1' : '#E2E8F0'}`,
+                  borderRadius: '12px',
+                  padding: '8px 14px',
+                  boxShadow: dropdownOpen ? '0 0 0 3px rgba(99,102,241,0.10)' : '0 1px 4px rgba(15,23,42,0.06)',
+                  cursor: 'pointer',
+                  transition: 'all 0.18s ease'
                 }}
               >
-                {noTeamAssigned && (
-                  <option value={authUserId}>My Profile (No Team Assigned)</option>
+                <User size={14} color="#6366F1" />
+                <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A', whiteSpace: 'nowrap', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {noTeamAssigned
+                    ? 'My Profile'
+                    : (() => { const sel = allEmployees.find(e => String(e.id) === String(currentEmpId)); return sel ? sel.name : 'Select…'; })()
+                  }
+                </span>
+                {!noTeamAssigned && (
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#6366F1', background: '#EEF2FF', padding: '2px 7px', borderRadius: '6px', letterSpacing: '0.04em' }}>
+                    {`EMP${String(currentEmpId).padStart(4, '0')}`}
+                  </span>
                 )}
-                {!noTeamAssigned && allEmployees.map(emp => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.name} ({`EMP${String(emp.id).padStart(4, '0')}`}){String(emp.id) === String(authUserId) ? ' (Me)' : ''}
-                  </option>
-                ))}
-              </select>
+                <ChevronDown size={14} color="#94A3B8" style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.18s ease', flexShrink: 0 }} />
+              </button>
+
+              {/* Custom Dropdown Panel */}
+              {dropdownOpen && (
+                <div style={{
+                  position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                  background: '#fff',
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '14px',
+                  boxShadow: '0 8px 30px -4px rgba(15,23,42,0.16)',
+                  minWidth: '240px',
+                  overflow: 'hidden',
+                  zIndex: 999,
+                  animation: 'fadeSlideIn 0.15s ease'
+                }}>
+                  <style>{`@keyframes fadeSlideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+                  <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                    {noTeamAssigned ? (
+                      <div style={{ padding: '10px 12px', borderRadius: '8px', background: '#F8FAFC', fontSize: '13px', color: '#64748B' }}>
+                        My Profile (No Team Assigned)
+                      </div>
+                    ) : (
+                      allEmployees.map((emp, idx) => {
+                        const isSelected = String(emp.id) === String(currentEmpId);
+                        const isMe = String(emp.id) === String(authUserId);
+                        const colors = ['#3B82F6','#8B5CF6','#10B981','#F59E0B','#EF4444','#06B6D4'];
+                        const col = colors[idx % colors.length];
+                        const initials = emp.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+                        return (
+                          <button
+                            key={emp.id}
+                            onClick={() => { handleEmployeeSelect(String(emp.id)); setDropdownOpen(false); }}
+                            style={{
+                              display: 'flex', alignItems: 'center', gap: '10px',
+                              padding: '9px 12px', borderRadius: '9px', border: 'none',
+                              background: isSelected ? '#EEF2FF' : 'transparent',
+                              cursor: 'pointer', textAlign: 'left', width: '100%',
+                              transition: 'background 0.12s ease'
+                            }}
+                            onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#F8FAFC'; }}
+                            onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
+                          >
+                            {/* Avatar */}
+                            <div style={{
+                              width: '32px', height: '32px', borderRadius: '9px', flexShrink: 0,
+                              background: `linear-gradient(135deg, ${col}, ${col}bb)`,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              fontSize: '11px', fontWeight: 800, color: '#fff'
+                            }}>
+                              {initials}
+                            </div>
+                            {/* Info */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <span style={{ fontSize: '13px', fontWeight: 700, color: isSelected ? '#4F46E5' : '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                  {emp.name}
+                                </span>
+                                {isMe && (
+                                  <span style={{ fontSize: '10px', fontWeight: 700, color: '#10B981', background: '#ECFDF5', padding: '1px 6px', borderRadius: '5px', flexShrink: 0 }}>Me</span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: '11px', color: '#94A3B8', fontWeight: 600, marginTop: '1px' }}>
+                                {`EMP${String(emp.id).padStart(4, '0')}`}
+                              </div>
+                            </div>
+                            {/* Check */}
+                            {isSelected && <Check size={14} color="#6366F1" style={{ flexShrink: 0 }} />}
+                          </button>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -418,7 +502,7 @@ export default function EmployeeProfileContent() {
               <h1 style={{ fontSize: '28px', fontWeight: '600', color: '#0f172a', margin: 0 }}>{profile.name}</h1>
               <span className="hrms-badge hrms-badge-active">{profile.status || 'Active'}</span>
             </div>
-            
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '48px' }}>
               <div>
                 <p className="hrms-text-muted hrms-text-xs" style={{ marginBottom: '4px' }}>Employee ID</p>
@@ -451,8 +535,8 @@ export default function EmployeeProfileContent() {
         {/* Tabs */}
         <div className="hrms-tabs" style={{ marginBottom: 0, borderBottom: 'none' }}>
           {filteredTabs.map(tab => (
-            <div 
-              key={tab} 
+            <div
+              key={tab}
               className={`hrms-tab ${activeTab === tab ? 'active' : ''}`}
               onClick={() => setActiveTab(tab)}
             >
@@ -639,7 +723,7 @@ export default function EmployeeProfileContent() {
                       <p className="hrms-text-xs hrms-text-muted">{doc.doc_type} • Uploaded on {new Date(doc.uploaded_at).toLocaleDateString()}</p>
                     </div>
                   </div>
-                  <a href={doc.file_path.startsWith('http') ? doc.file_path : `http://localhost:3000${doc.file_path}`} target="_blank" rel="noreferrer" download className="hrms-text-primary hrms-text-xs hrms-font-semibold hover:underline">Download</a>
+                  <a href={doc.file_path.startsWith('http') ? doc.file_path : `${doc.file_path}`} target="_blank" rel="noreferrer" download className="hrms-text-primary hrms-text-xs hrms-font-semibold hover:underline">Download</a>
                 </div>
               ))}
             </div>
@@ -684,23 +768,23 @@ export default function EmployeeProfileContent() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Full Name *</label>
-                  <input type="text" className="hrms-input" value={editForm.name} onChange={e => setEditForm({...editForm, name: e.target.value})} required />
+                  <input type="text" className="hrms-input" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} required />
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Email *</label>
-                  <input type="email" className="hrms-input" value={editForm.email} onChange={e => setEditForm({...editForm, email: e.target.value})} required />
+                  <input type="email" className="hrms-input" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} required />
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Phone *</label>
-                  <input type="text" className="hrms-input" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} required />
+                  <input type="text" className="hrms-input" value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} required />
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Date of Birth</label>
-                  <input type="date" className="hrms-input" value={editForm.dob} onChange={e => setEditForm({...editForm, dob: e.target.value})} />
+                  <input type="date" className="hrms-input" value={editForm.dob} onChange={e => setEditForm({ ...editForm, dob: e.target.value })} />
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Gender</label>
-                  <select className="hrms-select" value={editForm.gender} onChange={e => setEditForm({...editForm, gender: e.target.value})}>
+                  <select className="hrms-select" value={editForm.gender} onChange={e => setEditForm({ ...editForm, gender: e.target.value })}>
                     <option value="">Select Gender</option>
                     <option value="Male">Male</option>
                     <option value="Female">Female</option>
@@ -709,7 +793,7 @@ export default function EmployeeProfileContent() {
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Employment Type</label>
-                  <select className="hrms-select" value={editForm.employmentType} onChange={e => setEditForm({...editForm, employmentType: e.target.value})}>
+                  <select className="hrms-select" value={editForm.employmentType} onChange={e => setEditForm({ ...editForm, employmentType: e.target.value })}>
                     <option value="Full-time">Full-time</option>
                     <option value="Part-time">Part-time</option>
                     <option value="Contract">Contract</option>
@@ -717,31 +801,31 @@ export default function EmployeeProfileContent() {
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Monthly Gross Salary (INR)</label>
-                  <input type="number" className="hrms-input" value={editForm.salary} onChange={e => setEditForm({...editForm, salary: e.target.value})} />
+                  <input type="number" className="hrms-input" value={editForm.salary} onChange={e => setEditForm({ ...editForm, salary: e.target.value })} />
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Emergency Contact</label>
-                  <input type="text" className="hrms-input" value={editForm.emergencyContact} onChange={e => setEditForm({...editForm, emergencyContact: e.target.value})} />
+                  <input type="text" className="hrms-input" value={editForm.emergencyContact} onChange={e => setEditForm({ ...editForm, emergencyContact: e.target.value })} />
                 </div>
                 <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
                   <label className="hrms-label">Address</label>
-                  <textarea className="hrms-input" rows="2" style={{ height: 'auto', resize: 'vertical' }} value={editForm.address} onChange={e => setEditForm({...editForm, address: e.target.value})} />
+                  <textarea className="hrms-input" rows="2" style={{ height: 'auto', resize: 'vertical' }} value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} />
                 </div>
-                
+
                 <div style={{ gridColumn: 'span 2', fontWeight: '600', fontSize: '14px', borderTop: '1px solid #f1f5f9', paddingTop: '16px', color: '#1e293b' }}>
                   Bank Account Details
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Bank Name</label>
-                  <input type="text" className="hrms-input" value={editForm.bankName} onChange={e => setEditForm({...editForm, bankName: e.target.value})} />
+                  <input type="text" className="hrms-input" value={editForm.bankName} onChange={e => setEditForm({ ...editForm, bankName: e.target.value })} />
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Account Number</label>
-                  <input type="text" className="hrms-input" value={editForm.accountNumber} onChange={e => setEditForm({...editForm, accountNumber: e.target.value})} />
+                  <input type="text" className="hrms-input" value={editForm.accountNumber} onChange={e => setEditForm({ ...editForm, accountNumber: e.target.value })} />
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">IFSC Code</label>
-                  <input type="text" className="hrms-input" value={editForm.ifscCode} onChange={e => setEditForm({...editForm, ifscCode: e.target.value})} />
+                  <input type="text" className="hrms-input" value={editForm.ifscCode} onChange={e => setEditForm({ ...editForm, ifscCode: e.target.value })} />
                 </div>
 
                 <div style={{ gridColumn: 'span 2', fontWeight: '600', fontSize: '14px', borderTop: '1px solid #f1f5f9', paddingTop: '16px', color: '#1e293b' }}>
@@ -749,7 +833,7 @@ export default function EmployeeProfileContent() {
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Branch</label>
-                  <select className="hrms-select" value={editForm.branch} onChange={e => setEditForm({...editForm, branch: e.target.value})}>
+                  <select className="hrms-select" value={editForm.branch} onChange={e => setEditForm({ ...editForm, branch: e.target.value })}>
                     <option value="">Select Branch</option>
                     {branches.map(b => <option key={b.id} value={b.branch_name}>{b.branch_name}</option>)}
                     {editForm.branch && !branches.find(b => b.branch_name === editForm.branch) && <option value={editForm.branch}>{editForm.branch}</option>}
@@ -757,7 +841,7 @@ export default function EmployeeProfileContent() {
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Department</label>
-                  <select className="hrms-select" value={editForm.department} onChange={e => setEditForm({...editForm, department: e.target.value})}>
+                  <select className="hrms-select" value={editForm.department} onChange={e => setEditForm({ ...editForm, department: e.target.value })}>
                     <option value="">Select Department</option>
                     {departments.map(d => <option key={d.id} value={d.dept_name}>{d.dept_name}</option>)}
                     {editForm.department && !departments.find(d => d.dept_name === editForm.department) && <option value={editForm.department}>{editForm.department}</option>}
@@ -765,7 +849,7 @@ export default function EmployeeProfileContent() {
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Designation</label>
-                  <select className="hrms-select" value={editForm.designation} onChange={e => setEditForm({...editForm, designation: e.target.value})}>
+                  <select className="hrms-select" value={editForm.designation} onChange={e => setEditForm({ ...editForm, designation: e.target.value })}>
                     <option value="">Select Designation</option>
                     {designations.map(d => <option key={d.id} value={d.role_name}>{d.role_name}</option>)}
                     {editForm.designation && !designations.find(d => d.role_name === editForm.designation) && <option value={editForm.designation}>{editForm.designation}</option>}
@@ -773,7 +857,7 @@ export default function EmployeeProfileContent() {
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Team</label>
-                  <select className="hrms-select" value={editForm.teamName} onChange={e => setEditForm({...editForm, teamName: e.target.value})}>
+                  <select className="hrms-select" value={editForm.teamName} onChange={e => setEditForm({ ...editForm, teamName: e.target.value })}>
                     <option value="">Select Team</option>
                     {teams.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
                     {editForm.teamName && !teams.find(t => t.name === editForm.teamName) && <option value={editForm.teamName}>{editForm.teamName}</option>}
@@ -781,7 +865,7 @@ export default function EmployeeProfileContent() {
                 </div>
                 <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
                   <label className="hrms-label">Manager Name</label>
-                  <input type="text" className="hrms-input" value={editForm.managerName} onChange={e => setEditForm({...editForm, managerName: e.target.value})} />
+                  <input type="text" className="hrms-input" value={editForm.managerName} onChange={e => setEditForm({ ...editForm, managerName: e.target.value })} />
                 </div>
               </div>
               <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #f1f5f9', paddingTop: '16px' }}>

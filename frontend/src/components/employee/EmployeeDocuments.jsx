@@ -24,7 +24,7 @@ export default function EmployeeDocuments() {
   };
 
   useEffect(() => {
-    fetch('http://localhost:3000/app/employees')
+    fetch('/app/employees')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setAllEmployees(data);
@@ -34,7 +34,7 @@ export default function EmployeeDocuments() {
 
   const loadDocuments = () => {
     setLoading(true);
-    fetch(`http://localhost:3000/app/employees/${currentEmpId}/documents`)
+    fetch(`/app/employees/${currentEmpId}/documents`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
@@ -73,7 +73,7 @@ export default function EmployeeDocuments() {
     formData.append('document', selectedFile);
     formData.append('docType', docType);
 
-    fetch(`http://localhost:3000/app/employees/${currentEmpId}/documents`, {
+    fetch(`/app/employees/${currentEmpId}/documents`, {
       method: "POST",
       body: formData
     })
@@ -100,7 +100,7 @@ export default function EmployeeDocuments() {
   const handleDelete = (docId) => {
     if (!window.confirm("Are you sure you want to delete this document?")) return;
     
-    fetch(`http://localhost:3000/app/employees/documents/${docId}`, {
+    fetch(`/app/employees/documents/${docId}`, {
       method: "DELETE"
     })
     .then(res => {

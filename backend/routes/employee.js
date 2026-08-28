@@ -15,31 +15,34 @@ function getTeamLeaderContext(req, callback) {
   const userRole = roleHeader || (req.user && req.user.role) || '';
   const isTL = userRole === 'TEAM_LEADER' || userRole === 'Team Leader' || (req.headers['x-employee-id'] === '11');
 
-  let leaderId = req.headers['x-employee-id'] || (req.user && req.user.id) || 11;
-  if (typeof leaderId === 'string' && !isNaN(parseInt(leaderId))) {
-    leaderId = parseInt(leaderId);
+  let reqId = req.headers['x-employee-id'] || (req.user && (req.user.employee_id || req.user.id)) || 11;
+  let userEmail = (req.user && req.user.email) || null;
+
+  if (typeof reqId === 'string' && !isNaN(parseInt(reqId))) {
+    reqId = parseInt(reqId);
   }
 
-  if (!isTL) {
-    return callback(null, { isTeamLeader: false, leaderId, teamId: null, teamName: null });
-  }
-
-  // Requester is Team Leader -> Find team_id from employees or teams table
   const sql = `
-    SELECT e.id, e.team_id, t.id as lead_team_id, t.name as team_name
+    SELECT e.id as emp_id, e.department_id, e.team_id, e.manager_id,
+           t.id as lead_team_id, t.name as lead_team_name, t.department_id as lead_team_dept
     FROM employees e
-    LEFT JOIN teams t ON (e.team_id = t.id OR t.team_lead_id = e.id)
-    WHERE e.id = ?
+    LEFT JOIN users u ON (u.employee_id = e.id OR u.email = e.email)
+    LEFT JOIN teams t ON (t.team_lead_id = e.id OR e.team_id = t.id)
+    WHERE e.id = ? OR u.id = ? OR u.employee_id = ? OR e.email = ?
+    ORDER BY (t.team_lead_id = e.id) DESC, (e.id = ?) DESC
     LIMIT 1
   `;
 
-  db.query(sql, [leaderId], (err, rows) => {
+  db.query(sql, [reqId || 0, reqId || 0, reqId || 0, userEmail || '', reqId || 0], (err, rows) => {
     if (err || !rows || rows.length === 0) {
-      return callback(null, { isTeamLeader: true, leaderId, teamId: null, teamName: null });
+      return callback(null, { isTeamLeader: isTL, leaderId: reqId, teamId: null, teamName: null });
     }
-    const teamId = rows[0].lead_team_id || rows[0].team_id || null;
-    const teamName = rows[0].team_name || null;
-    callback(null, { isTeamLeader: true, leaderId, teamId, teamName });
+    const emp = rows[0];
+    const resolvedLeaderId = emp.emp_id;
+    const teamId = emp.lead_team_id || emp.team_id || null;
+    const teamName = emp.lead_team_name || null;
+
+    callback(null, { isTeamLeader: isTL, leaderId: resolvedLeaderId, teamId, teamName, emp });
   });
 }
 
@@ -102,6 +105,46 @@ function logHistory(employeeId, changeType, oldValue, newValue, date) {
 }
 
 /**
+ * CHANGE / RESET EMPLOYEE PASSWORD
+ */
+router.put("/change-password", async (req, res) => {
+  const { id, newPassword } = req.body;
+  const empId = id || req.body.employee_id;
+  if (!empId || !newPassword || newPassword.trim().length < 4) {
+    return res.status(400).json({ message: "Employee ID and valid new password required" });
+  }
+
+  try {
+    const password_hash = await bcrypt.hash(newPassword, 10);
+    db.query("UPDATE employees SET password_hash = ? WHERE id = ?", [password_hash, empId], (err, result) => {
+      if (err) return res.status(500).json({ message: "Failed to update password", details: err });
+      res.json({ message: "Password updated successfully!" });
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error hashing password" });
+  }
+});
+
+router.put("/password/:id", async (req, res) => {
+  const { id } = req.params;
+  const { newPassword } = req.body;
+
+  if (!newPassword || newPassword.trim().length < 4) {
+    return res.status(400).json({ message: "Password must be at least 4 characters long" });
+  }
+
+  try {
+    const password_hash = await bcrypt.hash(newPassword, 10);
+    db.query("UPDATE employees SET password_hash = ? WHERE id = ?", [password_hash, id], (err, result) => {
+      if (err) return res.status(500).json({ message: "Failed to update password", details: err });
+      res.json({ message: "Password updated successfully!" });
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error hashing password" });
+  }
+});
+
+/**
  * LOOKUP ENDPOINTS for dropdown data
  */
 router.get("/lookup/designations", (req, res) => {
@@ -138,53 +181,49 @@ router.get("/lookup/teams", (req, res) => {
  * Returns noTeamAssigned: true if no team is assigned to the Team Leader.
  */
 router.get("/team-members", authenticateJWT, (req, res) => {
-  getTeamLeaderContext(req, (err, ctx) => {
-    const leaderId = ctx.leaderId;
-    const teamId = ctx.teamId;
+  const { getTeamScope } = require('../utils/teamScope');
+  getTeamScope(req, (err, scope) => {
+    if (err) return res.status(500).json({ error: "Failed to fetch team scope" });
 
-    if (!teamId) {
-      // NO TEAM ASSIGNED -> Return ONLY the Team Leader's own profile record!
-      // DO NOT return company-wide employees as fallback!
-      const sqlSelf = `
-        SELECT 
-          e.id, e.name, e.email, e.phone, e.status, e.join_date,
-          dept.dept_name, desg.role_name, e.profile_photo
-        FROM employees e
-        LEFT JOIN departments dept ON e.department_id = dept.id
-        LEFT JOIN designations desg ON e.designation_id = desg.id
-        WHERE e.id = ?
-      `;
-      return db.query(sqlSelf, [leaderId], (err2, selfRows) => {
-        res.json({
-          noTeamAssigned: true,
-          message: "No team assigned",
-          teamName: null,
-          members: selfRows || []
-        });
+    const flatMembers = [];
+    if (scope.teamLeader) {
+      flatMembers.push({
+        id: scope.teamLeader.id,
+        employeeId: scope.teamLeader.employeeId,
+        name: scope.teamLeader.name,
+        email: scope.teamLeader.email,
+        phone: scope.teamLeader.phone,
+        status: scope.teamLeader.status,
+        dept_name: scope.teamLeader.department,
+        role_name: scope.teamLeader.designation,
+        team_name: scope.team ? scope.team.name : 'Assigned Team',
+        profile_photo: scope.teamLeader.profile_photo
       });
     }
-
-    // Team exists -> Query ONLY employees belonging to this team_id OR the leaderId
-    const sqlTeamMembers = `
-      SELECT 
-        e.id, e.name, e.email, e.phone, e.status, e.join_date,
-        dept.dept_name, desg.role_name, t.name as team_name, e.profile_photo
-      FROM employees e
-      LEFT JOIN departments dept ON e.department_id = dept.id
-      LEFT JOIN designations desg ON e.designation_id = desg.id
-      LEFT JOIN teams t ON e.team_id = t.id
-      WHERE e.team_id = ? OR e.id = ?
-      ORDER BY (e.id = ?) DESC, e.name ASC
-    `;
-
-    db.query(sqlTeamMembers, [teamId, leaderId, leaderId], (err3, memberRows) => {
-      if (err3) return res.status(500).json({ error: "Failed to fetch team members" });
-      res.json({
-        noTeamAssigned: false,
-        teamId,
-        teamName: ctx.teamName || 'Assigned Team',
-        members: memberRows
+    (scope.members || []).forEach(m => {
+      flatMembers.push({
+        id: m.id,
+        employeeId: m.employeeId,
+        name: m.name,
+        email: m.email,
+        phone: m.phone,
+        status: m.status,
+        dept_name: m.department,
+        role_name: m.designation,
+        team_name: scope.team ? scope.team.name : 'Assigned Team',
+        profile_photo: m.profile_photo
       });
+    });
+
+    res.json({
+      noTeamAssigned: scope.noTeamAssigned,
+      team: scope.team,
+      teamId: scope.team ? scope.team.id : null,
+      teamName: scope.team ? scope.team.name : null,
+      teamLeader: scope.teamLeader,
+      members: flatMembers,
+      scopedMembers: scope.members,
+      memberCount: scope.memberCount
     });
   });
 });
@@ -346,9 +385,28 @@ router.post("/", async (req, res) => {
 /**
  * UPDATE EMPLOYEE PROFILE
  */
-router.put("/:id", authenticateJWT, (req, res) => {
+router.post("/change-password", async (req, res) => {
+  const { id, newPassword } = req.body;
+  const empId = id || req.body.employee_id;
+  if (!empId || !newPassword || newPassword.trim().length < 4) {
+    return res.status(400).json({ message: "Employee ID and valid new password required" });
+  }
+
+  try {
+    const password_hash = await bcrypt.hash(newPassword, 10);
+    db.query("UPDATE employees SET password_hash = ? WHERE id = ?", [password_hash, empId], (err, result) => {
+      if (err) return res.status(500).json({ message: "Failed to update password", details: err });
+      res.json({ message: "Password updated successfully!" });
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Server error hashing password" });
+  }
+});
+
+router.put("/:id", authenticateJWT, (req, res, next) => {
   const { id } = req.params;
   const targetId = parseInt(id);
+  if (isNaN(targetId)) return next();
 
   getTeamLeaderContext(req, (errCtx, ctx) => {
     if (ctx.isTeamLeader && targetId !== ctx.leaderId) {
@@ -407,8 +465,30 @@ router.put("/:id", authenticateJWT, (req, res) => {
       }
 
       logHistory(id, "Profile Update", "Previous values", `Updated profile fields for ${name}`, new Date());
+
+      // Trigger Notification
+      const NotificationService = require("../services/NotificationService");
+      const updaterName = req.user?.name || "System";
+      NotificationService.triggerEmployeeProfileUpdate(id, updaterName)
+        .catch(e => console.error("Error triggering employee profile update notification:", e));
+
       res.json({ message: "Employee updated successfully" });
     });
+  });
+});
+
+/**
+ * GET ME PROFILE (Returns profile for authenticated user)
+ */
+router.get("/me/profile", authenticateJWT, (req, res) => {
+  getTeamLeaderContext(req, (errCtx, ctx) => {
+    renderEmployeeProfileResponse(ctx.leaderId, false, res);
+  });
+});
+
+router.get("/me", authenticateJWT, (req, res) => {
+  getTeamLeaderContext(req, (errCtx, ctx) => {
+    renderEmployeeProfileResponse(ctx.leaderId, false, res);
   });
 });
 
@@ -417,40 +497,42 @@ router.put("/:id", authenticateJWT, (req, res) => {
  * Enforces Team Leader scope: TL can view self or own team members ONLY.
  */
 router.get("/:id/profile", authenticateJWT, (req, res) => {
+  if (req.params.id === 'me') {
+    return getTeamLeaderContext(req, (errCtx, ctx) => {
+      renderEmployeeProfileResponse(ctx.leaderId, false, res);
+    });
+  }
+
   const targetId = parseInt(req.params.id);
 
   getTeamLeaderContext(req, (errCtx, ctx) => {
-    if (ctx.isTeamLeader) {
-      const leaderId = ctx.leaderId;
+    const leaderId = (ctx && ctx.leaderId) ? ctx.leaderId : (req.user ? req.user.id : null);
+    const reqUserId = req.user ? req.user.id : null;
+
+    const isSelf = targetId === leaderId || targetId === reqUserId || (ctx && targetId === ctx.leaderId) || isNaN(targetId);
+
+    if (ctx.isTeamLeader && !isSelf) {
       const teamId = ctx.teamId;
-
-      // If requested targetId is NOT the Team Leader themselves
-      if (targetId !== leaderId) {
-        if (!teamId) {
-          return res.status(403).json({
-            error: "Access denied. You have no team assigned and cannot access other employee profiles.",
-            code: "NO_TEAM_ASSIGNED"
-          });
-        }
-
-        // Verify target employee belongs to Team Leader's assigned teamId
-        const sqlCheck = "SELECT id, team_id FROM employees WHERE id = ? AND team_id = ?";
-        return db.query(sqlCheck, [targetId, teamId], (vErr, vRows) => {
-          if (vErr || !vRows || vRows.length === 0) {
-            return res.status(403).json({
-              error: "Access denied. You are authorized to view profiles of your own team members ONLY.",
-              code: "TEAM_ACCESS_RESTRICTED"
-            });
-          }
-
-          // In team -> Return profile but STRIP SENSITIVE FIELDS (salary, bank details)
-          return renderEmployeeProfileResponse(targetId, true, res);
+      if (!teamId) {
+        return res.status(403).json({
+          error: "Access denied. You have no team assigned and cannot access other employee profiles.",
+          code: "NO_TEAM_ASSIGNED"
         });
       }
+
+      const sqlCheck = "SELECT id, team_id FROM employees WHERE (id = ? OR email = (SELECT email FROM users WHERE id = ? LIMIT 1)) AND team_id = ?";
+      return db.query(sqlCheck, [targetId, targetId, teamId], (vErr, vRows) => {
+        if (vErr || !vRows || vRows.length === 0) {
+          return res.status(403).json({
+            error: "Access denied. You are authorized to view profiles of your own team members ONLY.",
+            code: "TEAM_ACCESS_RESTRICTED"
+          });
+        }
+        return renderEmployeeProfileResponse(targetId, true, res);
+      });
     }
 
-    // Admin/HR/Manager or Self -> Fetch full profile
-    renderEmployeeProfileResponse(targetId, false, res);
+    renderEmployeeProfileResponse(isSelf ? leaderId : targetId, false, res);
   });
 });
 
@@ -458,35 +540,41 @@ router.get("/:id/profile", authenticateJWT, (req, res) => {
  * GET EMPLOYEE BY ID (Maps to profile fetch with same authorization checks)
  */
 router.get("/:id", authenticateJWT, (req, res) => {
+  if (req.params.id === 'me') {
+    return getTeamLeaderContext(req, (errCtx, ctx) => {
+      renderEmployeeProfileResponse(ctx.leaderId, false, res);
+    });
+  }
+
   const targetId = parseInt(req.params.id);
 
   getTeamLeaderContext(req, (errCtx, ctx) => {
-    if (ctx.isTeamLeader) {
-      const leaderId = ctx.leaderId;
+    const leaderId = ctx.leaderId;
+    const reqUserId = req.user ? req.user.id : null;
+    const isSelf = targetId === leaderId || targetId === reqUserId || targetId === ctx.leaderId || isNaN(targetId);
+
+    if (ctx.isTeamLeader && !isSelf) {
       const teamId = ctx.teamId;
-
-      if (targetId !== leaderId) {
-        if (!teamId) {
-          return res.status(403).json({
-            error: "Access denied. You have no team assigned and cannot access other employee profiles.",
-            code: "NO_TEAM_ASSIGNED"
-          });
-        }
-
-        const sqlCheck = "SELECT id, team_id FROM employees WHERE id = ? AND team_id = ?";
-        return db.query(sqlCheck, [targetId, teamId], (vErr, vRows) => {
-          if (vErr || !vRows || vRows.length === 0) {
-            return res.status(403).json({
-              error: "Access denied. You are authorized to view profiles of your own team members ONLY.",
-              code: "TEAM_ACCESS_RESTRICTED"
-            });
-          }
-          return renderEmployeeProfileResponse(targetId, true, res);
+      if (!teamId) {
+        return res.status(403).json({
+          error: "Access denied. You have no team assigned and cannot access other employee profiles.",
+          code: "NO_TEAM_ASSIGNED"
         });
       }
+
+      const sqlCheck = "SELECT id, team_id FROM employees WHERE (id = ? OR email = (SELECT email FROM users WHERE id = ? LIMIT 1)) AND team_id = ?";
+      return db.query(sqlCheck, [targetId, targetId, teamId], (vErr, vRows) => {
+        if (vErr || !vRows || vRows.length === 0) {
+          return res.status(403).json({
+            error: "Access denied. You are authorized to view profiles of your own team members ONLY.",
+            code: "TEAM_ACCESS_RESTRICTED"
+          });
+        }
+        return renderEmployeeProfileResponse(targetId, true, res);
+      });
     }
 
-    renderEmployeeProfileResponse(targetId, false, res);
+    renderEmployeeProfileResponse(isSelf ? leaderId : targetId, false, res);
   });
 });
 
@@ -500,22 +588,27 @@ function renderEmployeeProfileResponse(targetId, isTeamMemberView, res) {
       m.name as manager_name,
       t.name as team_name
     FROM employees e
+    LEFT JOIN users u ON u.email = e.email
     LEFT JOIN branches b ON e.branch_id = b.id
     LEFT JOIN departments dept ON e.department_id = dept.id
     LEFT JOIN designations desg ON e.designation_id = desg.id
     LEFT JOIN employees m ON e.manager_id = m.id
     LEFT JOIN teams t ON e.team_id = t.id
-    WHERE e.id = ?
+    WHERE e.id = ? OR u.id = ? OR e.email = (SELECT email FROM users WHERE id = ? LIMIT 1)
+    ORDER BY (e.id = ?) DESC
+    LIMIT 1
   `;
 
-  db.query(sql, [targetId], (err, results) => {
+  db.query(sql, [targetId, targetId, targetId, targetId], (err, results) => {
     if (err) return res.status(500).json({ error: "Failed to fetch profile", details: err });
-    if (results.length === 0) return res.status(404).json({ error: "Employee not found" });
+    if (results.length === 0) return res.status(404).json({ error: "Employee profile not found." });
 
     const emp = results[0];
 
     const profile = {
       id: emp.id,
+      employeeId: emp.employee_id || `EMP${String(emp.id).padStart(4, '0')}`,
+      empId: emp.employee_id || `EMP${String(emp.id).padStart(4, '0')}`,
       name: emp.name,
       email: emp.email,
       phone: emp.phone,
@@ -835,6 +928,78 @@ router.get("/:id/documents", (req, res) => {
   });
 });
 
+/**
+ * UPLOAD EMPLOYEE DOCUMENT PATH
+ */
+router.post("/:id/documents", uploadDoc.single('document'), (req, res) => {
+  const { docType } = req.body;
+  const fileName = req.file ? req.file.originalname : (req.body.fileName || 'Untitled');
+  const filePath = req.file ? `/uploads/documents/${req.file.filename}` : req.body.filePath;
+
+  const sql = `
+    INSERT INTO employee_documents (employee_id, document_type, document_name, file, status)
+    VALUES (?, ?, ?, ?, 'Pending')
+  `;
+  db.query(sql, [req.params.id, docType, fileName, filePath || `/uploads/docs/${fileName}`], (err, result) => {
+    if (err) {
+      console.error("Document upload DB error:", err);
+      return res.status(500).json({ error: "Failed to save document record", details: err.message, stack: err.stack });
+    }
+    res.json({ message: "Document uploaded successfully", id: result.insertId });
+  });
+});
+
+/**
+ * DELETE DOCUMENT
+ */
+router.delete("/documents/:docId", (req, res) => {
+  const sql = "DELETE FROM employee_documents WHERE id = ?";
+  db.query(sql, [req.params.docId], (err) => {
+    if (err) return res.status(500).json({ error: "Failed to delete document", details: err });
+    res.json({ message: "Document deleted successfully" });
+  });
+});
+
+/**
+ * UPLOAD PROFILE PHOTO
+ */
+router.post("/:id/photo", uploadPhoto.single('photo'), (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: "No photo uploaded" });
+  }
+
+  const photoPath = `/uploads/photos/${req.file.filename}`;
+  const { id } = req.params;
+
+  db.query("UPDATE employees SET profile_photo = ? WHERE id = ?", [photoPath, id], (err) => {
+    if (err) return res.status(500).json({ error: "Failed to save photo", details: err });
+    res.json({ message: "Photo uploaded successfully", photoUrl: photoPath });
+  });
+});
+
+/**
+ * DELETE PROFILE PHOTO
+ */
+router.delete("/:id/photo", (req, res) => {
+  const { id } = req.params;
+
+  // Get current photo path to delete file
+  db.query("SELECT profile_photo FROM employees WHERE id = ?", [id], (err, rows) => {
+    if (err) return res.status(500).json({ error: "Failed" });
+
+    if (rows.length > 0 && rows[0].profile_photo) {
+      const filePath = path.join(__dirname, '..', rows[0].profile_photo);
+      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    }
+
+    db.query("UPDATE employees SET profile_photo = NULL WHERE id = ?", [id], (err2) => {
+      if (err2) return res.status(500).json({ error: "Failed to remove photo" });
+      res.json({ message: "Photo removed successfully" });
+    });
+  });
+});
+
+module.exports = router;
 /**
  * UPLOAD EMPLOYEE DOCUMENT PATH
  */

@@ -106,41 +106,88 @@ export function TeamAttendanceModule() {
 
       {/* Filters & Controls */}
       <div style={cardStyle}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3 flex-wrap flex-1">
-            <div className="relative w-64">
-              <Search size={16} className="absolute left-3 top-3 text-slate-400" />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', marginBottom: '24px', flexWrap: 'wrap' }}>
+
+          {/* Left group: Search + Status */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, flexWrap: 'wrap' }}>
+            {/* Search Input */}
+            <div style={{ position: 'relative', minWidth: '220px', maxWidth: '300px', flex: 1 }}>
+              <Search
+                size={15}
+                style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8', pointerEvents: 'none' }}
+              />
               <input
                 type="text"
                 placeholder="Search team member..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full h-10 pl-9 pr-3 rounded-xl border border-slate-200 text-xs outline-none"
+                style={{
+                  width: '100%',
+                  height: '40px',
+                  paddingLeft: '36px',
+                  paddingRight: '12px',
+                  borderRadius: '10px',
+                  border: '1.5px solid #E2E8F0',
+                  fontSize: '13px',
+                  color: '#1E293B',
+                  background: '#F8FAFC',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                  transition: 'border-color 0.15s, box-shadow 0.15s',
+                  fontFamily: "'Inter', sans-serif",
+                }}
+                onFocus={e => { e.target.style.borderColor = '#3B82F6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.12)'; e.target.style.background = '#fff'; }}
+                onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#F8FAFC'; }}
               />
             </div>
-            <div className="w-40">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white outline-none"
-              >
-                <option value="All">All Statuses</option>
-                <option value="Present">Present</option>
-                <option value="Completed">Completed</option>
-                <option value="Late">Late</option>
-                <option value="Absent">Absent</option>
-              </select>
-            </div>
+
+            {/* Status Filter */}
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{
+                height: '40px',
+                padding: '0 12px',
+                borderRadius: '10px',
+                border: '1.5px solid #E2E8F0',
+                fontSize: '13px',
+                fontWeight: '600',
+                color: '#334155',
+                background: '#F8FAFC',
+                outline: 'none',
+                cursor: 'pointer',
+                fontFamily: "'Inter', sans-serif",
+                minWidth: '140px',
+              }}
+            >
+              <option value="All">All Statuses</option>
+              <option value="Present">Present</option>
+              <option value="Completed">Completed</option>
+              <option value="Late">Late</option>
+              <option value="Absent">Absent</option>
+            </select>
           </div>
 
-          <div className="w-44">
-            <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 outline-none"
-            />
-          </div>
+          {/* Right: Date Picker */}
+          <input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            style={{
+              height: '40px',
+              padding: '0 12px',
+              borderRadius: '10px',
+              border: '1.5px solid #E2E8F0',
+              fontSize: '13px',
+              fontWeight: '600',
+              color: '#334155',
+              background: '#F8FAFC',
+              outline: 'none',
+              fontFamily: "'Inter', sans-serif",
+              minWidth: '150px',
+              cursor: 'pointer',
+            }}
+          />
         </div>
 
         {/* Table */}

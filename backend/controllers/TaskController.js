@@ -8,6 +8,17 @@ class TaskController {
       const userId = req.user?.id || 1;
       const data = { ...req.body };
       const newTask = await TaskService.create(data, userId);
+
+      if (data.assignee_id) {
+        const NotificationService = require('../services/NotificationService');
+        NotificationService.triggerTaskAssignment(
+          newTask.id,
+          data.title,
+          data.assignee_id,
+          data.due_date
+        ).catch(e => console.error("Error triggering task assignment notification:", e));
+      }
+
       return response(res, true, 212, 'Task created successfully', newTask);
     } catch (err) {
       console.error(err);

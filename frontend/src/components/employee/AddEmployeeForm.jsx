@@ -4,6 +4,7 @@ import { UploadCloud, Check, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import EmployeeAvatar from './EmployeeAvatar';
 import './employee-module.css';
+import { apiFetch } from '../../lib/api';
 
 const steps = [
   { id: 1, label: 'Personal Info' },
@@ -40,10 +41,12 @@ export default function AddEmployeeForm() {
     accountNumber: '',
     ifscCode: '',
     emergencyContact: '',
+    password: 'Employee@2026',
     photo: ''
   });
 
   const [photoPreview, setPhotoPreview] = useState(null);
+  const [photoFile, setPhotoFile] = useState(null);
   const photoInputRef = useRef(null);
 
   const handlePhotoChange = (e) => {
@@ -53,6 +56,7 @@ export default function AddEmployeeForm() {
         addToast('Photo must be under 2MB', 'error');
         return;
       }
+      setPhotoFile(file);
       setPhotoPreview(URL.createObjectURL(file));
     }
   };
@@ -64,18 +68,28 @@ export default function AddEmployeeForm() {
   const [teams, setTeams] = useState([]);
 
   useEffect(() => {
-    fetch('http://localhost:3000/app/employees/lookup/designations')
-      .then(res => res.json()).then(data => { if (Array.isArray(data)) { setDesignations(data); if (data.length > 0 && !formData.designation) setFormData(prev => ({ ...prev, designation: data[0].role_name })); } }).catch(() => { });
-    fetch('http://localhost:3000/app/employees/lookup/departments')
-      .then(res => res.json()).then(data => { if (Array.isArray(data)) { setDepartments(data); if (data.length > 0 && !formData.department) setFormData(prev => ({ ...prev, department: data[0].dept_name })); } }).catch(() => { });
-    fetch('http://localhost:3000/app/employees/lookup/branches')
-      .then(res => res.json()).then(data => { if (Array.isArray(data)) { setBranches(data); if (data.length > 0 && !formData.branch) setFormData(prev => ({ ...prev, branch: data[0].branch_name })); } }).catch(() => { });
-    fetch('http://localhost:3000/app/employees/lookup/teams')
-      .then(res => res.json()).then(data => { if (Array.isArray(data)) { setTeams(data); if (data.length > 0 && !formData.teamName) setFormData(prev => ({ ...prev, teamName: data[0].name })); } }).catch(() => { });
+    apiFetch('/employees/lookup/designations')
+      .then(data => { if (Array.isArray(data)) { setDesignations(data); if (data.length > 0 && !formData.designation) setFormData(prev => ({ ...prev, designation: data[0].role_name })); } }).catch(() => { });
+    apiFetch('/employees/lookup/departments')
+      .then(data => { if (Array.isArray(data)) { setDepartments(data); if (data.length > 0 && !formData.department) setFormData(prev => ({ ...prev, department: data[0].dept_name })); } }).catch(() => { });
+    apiFetch('/employees/lookup/branches')
+      .then(data => { if (Array.isArray(data)) { setBranches(data); if (data.length > 0 && !formData.branch) setFormData(prev => ({ ...prev, branch: data[0].branch_name })); } }).catch(() => { });
+    apiFetch('/employees/lookup/teams')
+      .then(data => { if (Array.isArray(data)) { setTeams(data); if (data.length > 0 && !formData.teamName) setFormData(prev => ({ ...prev, teamName: data[0].name })); } }).catch(() => { });
   }, []);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
+
+  const generatePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$';
+    let pass = '';
+    for (let i = 0; i < 10; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setFormData(prev => ({ ...prev, password: pass }));
+    addToast('New password generated!', 'info');
   };
 
   const handleNext = () => {
@@ -94,9 +108,9 @@ export default function AddEmployeeForm() {
     setActiveStep(Math.min(6, activeStep + 1));
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const payload = {
-      name: `${formData.firstName} ${formData.lastName}`,
+      name: `${formData.firstName} ${formData.lastName}`.trim(),
       email: formData.email,
       phone: formData.phone,
       dob: formData.dob,
@@ -111,26 +125,38 @@ export default function AddEmployeeForm() {
       department: formData.department,
       designation: formData.designation,
       managerName: formData.managerName,
-      teamName: formData.teamName
+      teamName: formData.teamName,
+      password: formData.password || 'Employee@2026'
     };
 
-    fetch("http://localhost:3000/app/employees", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    })
-      .then(res => {
-        if (!res.ok) throw new Error("Failed to create employee");
-        return res.json();
-      })
-      .then(() => {
-        addToast("Employee created successfully!", "success");
-        navigate("/employees/list");
-      })
-      .catch(err => {
-        console.error(err);
-        addToast("Failed to save employee to database", "error");
+    try {
+      const resData = await apiFetch('/employees', {
+        method: "POST",
+        body: JSON.stringify(payload)
       });
+
+      if (!resData || resData.message === "Employee creation failed" || resData.error) {
+        throw new Error(resData?.message || resData?.error || "Failed to create employee");
+      }
+
+      const newEmpId = resData.id;
+
+      // Upload profile photo if selected by user
+      if (photoFile && newEmpId) {
+        const photoData = new FormData();
+        photoData.append('photo', photoFile);
+        await apiFetch(`/employees/${newEmpId}/photo`, {
+          method: 'POST',
+          body: photoData
+        });
+      }
+
+      addToast("Employee created successfully!", "success");
+      navigate("/employees/list");
+    } catch (err) {
+      console.error(err);
+      addToast(err?.message || "Failed to save employee to database", "error");
+    }
   };
 
   return (
@@ -253,23 +279,30 @@ export default function AddEmployeeForm() {
 
             {activeStep === 3 && (
               <>
-                <h2 className="hrms-font-semibold hrms-mb-6">Contact & Address Info</h2>
+                <h2 className="hrms-font-semibold hrms-mb-6">Contact & Login Credentials</h2>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                   <div className="hrms-input-group">
-                    <label className="hrms-label">Email *</label>
+                    <label className="hrms-label">Login Email *</label>
                     <input type="email" name="email" value={formData.email} onChange={handleChange} className="hrms-input" placeholder="e.g. name@company.com" />
                   </div>
                   <div className="hrms-input-group">
                     <label className="hrms-label">Phone *</label>
                     <input type="text" name="phone" value={formData.phone} onChange={handleChange} className="hrms-input" placeholder="e.g. +91 99999 99999" />
                   </div>
-                  <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
-                    <label className="hrms-label">Complete Address</label>
-                    <textarea name="address" value={formData.address} onChange={handleChange} className="hrms-input" rows="3" placeholder="Street, City, State..." style={{ height: 'auto', resize: 'vertical' }} />
+                  <div className="hrms-input-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                      <label className="hrms-label" style={{ margin: 0 }}>Login Password *</label>
+                      <button type="button" onClick={generatePassword} style={{ fontSize: '11px', color: '#2563EB', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer' }}>⚡ Auto Generate</button>
+                    </div>
+                    <input type="text" name="password" value={formData.password} onChange={handleChange} className="hrms-input" placeholder="Set login password..." />
                   </div>
                   <div className="hrms-input-group">
                     <label className="hrms-label">Emergency Contact Name/Number</label>
                     <input type="text" name="emergencyContact" value={formData.emergencyContact} onChange={handleChange} className="hrms-input" placeholder="e.g. Parent - +91 98888 88888" />
+                  </div>
+                  <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="hrms-label">Complete Address</label>
+                    <textarea name="address" value={formData.address} onChange={handleChange} className="hrms-input" rows="2" placeholder="Street, City, State..." style={{ height: 'auto', resize: 'vertical' }} />
                   </div>
                 </div>
               </>
