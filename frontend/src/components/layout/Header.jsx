@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Search, ChevronRight, X } from 'lucide-react';
+import { Bell, Search, ChevronRight, X, Menu } from 'lucide-react';
 import { LeaveApprovals } from '../attendance/LeaveApprovals';
 
-export function Header({ title, userRole, currentView }) {
+export function Header({ title, userRole, currentView, onMenuToggle }) {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const isManager = userRole === 'BRANCH_MANAGER' || userRole === 'SUPER_ADMIN';
@@ -90,17 +90,25 @@ export function Header({ title, userRole, currentView }) {
   const breadcrumbs = getBreadcrumbs();
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10">
+    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10">
       {/* Left: Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm">
-        {breadcrumbs.map((crumb, index) => (
-          <React.Fragment key={index}>
-            {index > 0 && <ChevronRight size={14} className="text-slate-400" />}
-            <span className={index === breadcrumbs.length - 1 ? "font-semibold text-slate-800" : "text-slate-500"}>
-              {crumb}
-            </span>
-          </React.Fragment>
-        ))}
+      <div className="flex items-center gap-3">
+        <button 
+          onClick={onMenuToggle}
+          className="p-1.5 -ml-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+        >
+          <Menu size={20} />
+        </button>
+        <div className="flex items-center gap-2 text-sm hidden sm:flex">
+          {breadcrumbs.map((crumb, index) => (
+            <React.Fragment key={index}>
+              {index > 0 && <ChevronRight size={14} className="text-slate-400" />}
+              <span className={index === breadcrumbs.length - 1 ? "font-semibold text-slate-800" : "text-slate-500"}>
+                {crumb}
+              </span>
+            </React.Fragment>
+          ))}
+        </div>
       </div>
 
       {/* Right: Search, Notifications, User */}

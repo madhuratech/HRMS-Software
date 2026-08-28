@@ -398,7 +398,7 @@ export function Sidebar({ userRole, onLogout, isOpen, onClose }) {
           </linearGradient>
         </defs>
       </svg>
-      <div className={cn("w-64 custom-sidebar h-screen pt-24 lg:pt-0 flex flex-col fixed left-0 top-0 overflow-y-auto z-[100] transition-transform duration-300 safe-area-top", isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0")}>
+      <div className={cn("w-64 custom-sidebar h-screen pt-24 lg:pt-0 flex flex-col fixed left-0 top-0 overflow-y-auto z-[100] transition-transform duration-300 safe-area-top", isOpen ? "translate-x-0" : "-translate-x-full")}>
         {/* Logo */}
         <div className="p-5 custom-sidebar-border-b">
           <div className="flex items-center gap-3">
