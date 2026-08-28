@@ -23,7 +23,8 @@ import {
   Clock,
   Bird,
   Sparkles,
-  Calendar
+  Calendar,
+  X
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
@@ -400,16 +401,24 @@ export function Sidebar({ userRole, onLogout, isOpen, onClose }) {
       </svg>
       <div className={cn("w-64 custom-sidebar h-screen pt-24 lg:pt-0 flex flex-col fixed left-0 top-0 overflow-y-auto z-[100] transition-transform duration-300 safe-area-top", isOpen ? "translate-x-0" : "-translate-x-full")}>
         {/* Logo */}
-        <div className="p-5 custom-sidebar-border-b">
+        <div className="p-5 custom-sidebar-border-b flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 custom-sidebar-logo-bg rounded-lg flex items-center justify-center">
-              <Bird size={22} className="text-white" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-wide">HAWKEYE NEST</h1>
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest">HRMS</p>
+              <h1 className="font-bold text-lg text-white tracking-tight">HAWKEYE NEST</h1>
+              <p className="text-[10px] text-blue-200/80 uppercase tracking-widest font-semibold mt-0.5">HRMS</p>
             </div>
           </div>
+          <button 
+            onClick={onClose}
+            className="lg:hidden p-2 -mr-2 text-slate-300 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         {/* Navigation */}
