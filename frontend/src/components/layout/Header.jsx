@@ -1,17 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Search, ChevronRight, X, Sparkles, Folder, Calendar, FileText, CheckSquare, Settings } from 'lucide-react';
-import { apiFetch } from '../../lib/api';
+import { Bell, Search, ChevronRight, X, Menu } from 'lucide-react';
+import { LeaveApprovals } from '../attendance/LeaveApprovals';
 
-export function Header({ title, userRole, currentView }) {
+export function Header({ title, userRole, currentView, onMenuToggle }) {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const isManager = userRole === 'BRANCH_MANAGER' || userRole === 'SUPER_ADMIN';
 
   const authRaw = localStorage.getItem('hrms_auth');
   let authData = {};
-  try { if (authRaw) authData = JSON.parse(authRaw); } catch (e) { }
+  try { if (authRaw) authData = JSON.parse(authRaw); } catch(e) {}
 
   const handleProfileClick = () => {
     let userId = 1;
@@ -20,7 +19,7 @@ export function Header({ title, userRole, currentView }) {
       try {
         const parsed = JSON.parse(auth);
         if (parsed.user && parsed.user.id) userId = parsed.user.id;
-      } catch (e) { }
+      } catch (e) {}
     }
     localStorage.setItem('selectedEmployeeId', userId);
     navigate('/employees/profile');
@@ -157,7 +156,6 @@ export function Header({ title, userRole, currentView }) {
       'documents': ['Documents'],
       'help-desk': ['Help Desk'],
       'settings': ['Settings'],
-      'user-roles': ['Settings', 'User Roles & Permissions']
     };
     return viewMap[currentView] || [title];
   };
@@ -165,21 +163,29 @@ export function Header({ title, userRole, currentView }) {
   const breadcrumbs = getBreadcrumbs();
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10">
+    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10">
       {/* Left: Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm">
-        {breadcrumbs.map((crumb, index) => (
-          <React.Fragment key={index}>
-            {index > 0 && <ChevronRight size={14} className="text-slate-400" />}
-            <span className={index === breadcrumbs.length - 1 ? "font-semibold text-slate-800" : "text-slate-500"}>
-              {crumb}
-            </span>
-          </React.Fragment>
-        ))}
+      <div className="flex items-center gap-3">
+        <button 
+          onClick={onMenuToggle}
+          className="p-1.5 -ml-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
+        >
+          <Menu size={20} />
+        </button>
+        <div className="flex items-center gap-2 text-sm hidden sm:flex">
+          {breadcrumbs.map((crumb, index) => (
+            <React.Fragment key={index}>
+              {index > 0 && <ChevronRight size={14} className="text-slate-400" />}
+              <span className={index === breadcrumbs.length - 1 ? "font-semibold text-slate-800" : "text-slate-500"}>
+                {crumb}
+              </span>
+            </React.Fragment>
+          ))}
+        </div>
       </div>
 
       {/* Right: Search, Notifications, User */}
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-5">
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -197,9 +203,9 @@ export function Header({ title, userRole, currentView }) {
             className={`relative p-2 rounded-full transition-colors ${showNotifications ? 'bg-blue-100 text-blue-600' : 'text-slate-500 hover:bg-slate-100'}`}
           >
             <Bell size={20} />
-            {unreadCount > 0 && (
+            {isManager && (
               <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
-                {unreadCount}
+                3
               </span>
             )}
           </button>
@@ -213,81 +219,44 @@ export function Header({ title, userRole, currentView }) {
               <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-xl shadow-xl border border-slate-200 z-20 overflow-hidden">
                 <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                   <h3 className="font-bold text-slate-800">Notifications</h3>
-                  <div className="flex items-center gap-3">
-                    {unreadCount > 0 && (
-                      <button
-                        onClick={handleMarkAllRead}
-                        className="text-xs font-semibold text-blue-600 hover:text-blue-800 transition-colors"
-                      >
-                        Mark all as read
-                      </button>
-                    )}
-                    <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-slate-600">
-                      <X size={16} />
-                    </button>
-                  </div>
+                  <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-slate-600">
+                    <X size={16} />
+                  </button>
                 </div>
-
-                <div className="max-h-[400px] overflow-y-auto divide-y divide-slate-100">
-                  {notifications.length > 0 ? (
-                    notifications.map(notif => (
-                      <div
-                        key={notif.id}
-                        onClick={() => handleNotificationClick(notif)}
-                        className={`p-4 cursor-pointer hover:bg-slate-50 transition-colors flex gap-3 ${!notif.is_read ? 'bg-blue-50/40' : ''}`}
-                      >
-                        <div className="mt-1 flex-shrink-0 w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center">
-                          {getNotificationIcon(notif.type)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2 mb-0.5">
-                            <p className={`text-sm font-semibold truncate ${!notif.is_read ? 'text-slate-900' : 'text-slate-700'}`}>
-                              {notif.title}
-                            </p>
-                            <span className="text-[10px] text-slate-400 whitespace-nowrap">
-                              {getRelativeTime(notif.created_at)}
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
-                            {notif.message}
-                          </p>
-                        </div>
-                        {!notif.is_read && (
-                          <div className="mt-2.5 w-2 h-2 rounded-full bg-blue-600 flex-shrink-0" />
-                        )}
-                      </div>
-                    ))
+                
+                <div className="max-h-[400px] overflow-y-auto">
+                  {isManager ? (
+                    <div className="p-4">
+                      <p className="text-xs font-bold text-slate-400 uppercase mb-3">Leave Requests</p>
+                      <LeaveApprovals compact limit={3} />
+                    </div>
                   ) : (
                     <div className="p-8 text-center text-slate-500 text-sm">
-                      <Bell size={32} className="mx-auto mb-2 opacity-20 text-slate-400" />
+                      <Bell size={32} className="mx-auto mb-2 opacity-20" />
                       No new notifications
                     </div>
                   )}
                 </div>
-
-                <div className="p-3 border-t border-slate-100 bg-slate-50 text-center">
-                  <button
-                    onClick={() => { setShowNotifications(false); navigate('/notifications'); }}
-                    className="text-blue-600 text-xs font-bold hover:underline"
-                  >
-                    View All Notifications
-                  </button>
-                </div>
+                
+                {isManager && (
+                  <div className="p-3 border-t border-slate-100 bg-slate-50 text-center">
+                    <button className="text-blue-600 text-xs font-bold hover:underline">
+                      View All Notifications
+                    </button>
+                  </div>
+                )}
               </div>
             </>
           )}
         </div>
 
-        {/* Divider */}
-        <div className="h-8 w-px bg-slate-200" />
-
         {/* User Info */}
-        <div
+        <div 
           onClick={handleProfileClick}
           style={{ cursor: 'pointer' }}
-          className="flex items-center gap-3 pl-1 hover:opacity-85 transition-opacity"
+          className="flex items-center gap-3 hover:opacity-85 transition-opacity"
         >
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-xs font-bold text-white shadow-sm">
+          <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white shadow-sm">
             {((authData.name || localStorage.getItem('userName')) || 'Dhilipan P').split(' ').map(n => n[0]).join('')}
           </div>
           <div>

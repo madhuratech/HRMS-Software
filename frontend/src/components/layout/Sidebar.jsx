@@ -25,9 +25,8 @@ import { cn, getAvatarUrl } from '../../lib/utils';
 import { apiFetch } from '../../lib/api';
 import { canView } from '../../lib/permissions';
 
-export function Sidebar({ userRole, onLogout }) {
+export function Sidebar({ userRole, onLogout, isOpen, onClose }) {
   const [expandedGroups, setExpandedGroups] = useState([]);
-  const [userPermissions, setUserPermissions] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -125,7 +124,7 @@ export function Sidebar({ userRole, onLogout }) {
       id: 'organization',
       label: 'Organization',
       icon: Building2,
-      moduleKey: 'organization',
+      roles: ['ALL'],
       children: [
         { id: 'company-profile', label: 'Company Profile', path: '/company-profile', moduleKey: 'organization', submoduleKey: 'company_profile' },
         { id: 'departments', label: 'Departments', path: '/departments', moduleKey: 'organization', submoduleKey: 'departments' },
@@ -140,7 +139,7 @@ export function Sidebar({ userRole, onLogout }) {
       id: 'employees',
       label: 'Employees',
       icon: Users,
-      moduleKey: 'employees',
+      roles: ['ALL'],
       children: [
         { id: 'employee-directory', label: 'Employee Directory', path: '/employees', moduleKey: 'employees', submoduleKey: 'employee_directory' },
         { id: 'employee-list', label: 'Employee List', path: '/employees/list', moduleKey: 'employees', submoduleKey: 'employee_list' },
@@ -157,7 +156,7 @@ export function Sidebar({ userRole, onLogout }) {
       id: 'attendance',
       label: 'Attendance',
       icon: CalendarCheck,
-      moduleKey: 'attendance',
+      roles: ['ALL'],
       children: [
         { id: 'daily-attendance', label: 'Daily Attendance', path: '/attendance/daily', moduleKey: 'attendance', submoduleKey: 'daily_attendance' },
         { id: 'gps-attendance', label: 'GPS Attendance', path: '/attendance/gps', moduleKey: 'attendance', submoduleKey: 'gps_attendance' },
@@ -172,7 +171,7 @@ export function Sidebar({ userRole, onLogout }) {
       id: 'leave-management',
       label: 'Leave Management',
       icon: CalendarOff,
-      moduleKey: 'leave',
+      roles: ['ALL'],
       children: [
         { id: 'leave-dashboard', label: 'Leave Dashboard', path: '/leave-dashboard', moduleKey: 'leave', submoduleKey: 'leave_dashboard' },
         { id: 'leave-applications', label: 'Leave Applications', path: '/leave-applications', moduleKey: 'leave', submoduleKey: 'my_leave' },
@@ -187,7 +186,7 @@ export function Sidebar({ userRole, onLogout }) {
       id: 'payroll',
       label: 'Payroll',
       icon: DollarSign,
-      moduleKey: 'payroll',
+      roles: ['ALL'],
       children: [
         { id: 'salary-structure', label: 'Salary Structure', path: '/payroll/salary-structure', moduleKey: 'payroll', submoduleKey: 'salary_structure' },
         { id: 'salary-components', label: 'Salary Components', path: '/payroll/components', moduleKey: 'payroll', submoduleKey: 'salary_components' },
@@ -203,7 +202,7 @@ export function Sidebar({ userRole, onLogout }) {
       id: 'recruitment',
       label: 'Recruitment',
       icon: UserPlus,
-      moduleKey: 'recruitment',
+      roles: ['ALL'],
       children: [
         { id: 'recruitment-dashboard', label: 'Dashboard', path: '/recruitment/dashboard', moduleKey: 'recruitment', submoduleKey: 'recruitment_dashboard' },
         { id: 'job-openings', label: 'Job Openings', path: '/recruitment/jobs', moduleKey: 'recruitment', submoduleKey: 'job_openings' },
@@ -217,7 +216,7 @@ export function Sidebar({ userRole, onLogout }) {
       id: 'onboarding',
       label: 'Onboarding',
       icon: ClipboardList,
-      moduleKey: 'onboarding',
+      roles: ['ALL'],
       children: [
         { id: 'new-joiners', label: 'New Joiners', path: '/onboarding/new-joiners', moduleKey: 'onboarding', submoduleKey: 'new_joiners' },
         { id: 'document-verification', label: 'Document Verification', path: '/onboarding/documents', moduleKey: 'onboarding', submoduleKey: 'document_verification' },
@@ -231,7 +230,7 @@ export function Sidebar({ userRole, onLogout }) {
       id: 'performance',
       label: 'Performance',
       icon: BarChart3,
-      moduleKey: 'performance',
+      roles: ['ALL'],
       children: [
         { id: 'goals', label: 'Goals', path: '/performance/goals', moduleKey: 'performance', submoduleKey: 'goals' },
         { id: 'kpi', label: 'KPI', path: '/performance/kpis', moduleKey: 'performance', submoduleKey: 'kpis' },
@@ -246,7 +245,7 @@ export function Sidebar({ userRole, onLogout }) {
       id: 'projects',
       label: 'Projects',
       icon: FolderKanban,
-      moduleKey: 'projects',
+      roles: ['ALL'],
       children: [
         { id: 'project-dashboard', label: 'Project Dashboard', path: '/projects/dashboard', moduleKey: 'projects', submoduleKey: 'project_dashboard' },
         { id: 'projects-list', label: 'Projects', path: '/projects/list', moduleKey: 'projects', submoduleKey: 'projects_list' },
@@ -262,7 +261,7 @@ export function Sidebar({ userRole, onLogout }) {
       id: 'expenses',
       label: 'Expenses',
       icon: Receipt,
-      moduleKey: 'expenses',
+      roles: ['ALL'],
       children: [
         { id: 'expense-claims', label: 'Expense Claims', path: '/expenses/claims', moduleKey: 'expenses', submoduleKey: 'expense_claims' },
         { id: 'expense-categories', label: 'Expense Categories', path: '/expenses/categories', moduleKey: 'expenses', submoduleKey: 'expense_categories' },
@@ -275,7 +274,7 @@ export function Sidebar({ userRole, onLogout }) {
       id: 'documents',
       label: 'Documents',
       icon: FileText,
-      moduleKey: 'documents',
+      roles: ['ALL'],
       children: [
         { id: 'employee-documents-module', label: 'Employee Documents', path: '/documents/employee', moduleKey: 'documents', submoduleKey: 'doc_employee' },
         { id: 'company-documents', label: 'Company Documents', path: '/documents/company', moduleKey: 'documents', submoduleKey: 'doc_company' },
@@ -288,7 +287,7 @@ export function Sidebar({ userRole, onLogout }) {
       id: 'help-desk',
       label: 'Help Desk',
       icon: LifeBuoy,
-      moduleKey: 'helpdesk',
+      roles: ['ALL'],
       children: [
         { id: 'help-desk-dashboard', label: 'Dashboard', path: '/help-desk/dashboard', moduleKey: 'helpdesk', submoduleKey: 'helpdesk_dashboard' },
         { id: 'tickets', label: 'Tickets', path: '/help-desk/tickets', moduleKey: 'helpdesk', submoduleKey: 'tickets' },
@@ -301,7 +300,7 @@ export function Sidebar({ userRole, onLogout }) {
       id: 'settings',
       label: 'Settings',
       icon: Settings,
-      moduleKey: 'settings',
+      roles: ['ALL'],
       children: [
         { id: 'settings-company', label: 'Company Information', path: '/settings/company', moduleKey: 'settings', submoduleKey: 'settings_company' },
         { id: 'settings-branding', label: 'Branding', path: '/settings/branding', moduleKey: 'settings', submoduleKey: 'settings_branding' },
@@ -340,7 +339,9 @@ export function Sidebar({ userRole, onLogout }) {
 
   useEffect(() => {
     const currentPath = location.pathname;
-    const matchingGroup = filteredMenu.find(item => {
+    const targetMenu = userRole === 'EMPLOYEE' ? employeeMenuItems : menuItems;
+
+    const matchingGroup = targetMenu.find(item => {
       if (item.children) {
         return item.children.some(child => child.path && (currentPath.startsWith(child.path) || currentPath === child.path));
       }
@@ -351,6 +352,17 @@ export function Sidebar({ userRole, onLogout }) {
       setExpandedGroups([matchingGroup.id]);
     }
   }, [location.pathname, userRole]);
+
+  const targetMenu = userRole === 'EMPLOYEE' ? employeeMenuItems : userRole === 'TEAM_LEADER' ? teamLeaderMenuItems : menuItems;
+
+  const filteredMenu = targetMenu.filter((item) =>
+    !item.roles || item.roles.includes('ALL') || item.roles.includes(userRole)
+  );
+
+  const handleNav = (path) => {
+    navigate(path);
+    if (onClose) onClose();
+  };
 
   const renderMenuItem = (item) => {
     const hasChildren = item.children && item.children.length > 0;
@@ -378,7 +390,7 @@ export function Sidebar({ userRole, onLogout }) {
                 return (
                   <button
                     key={child.id}
-                    onClick={() => navigate(targetPath)}
+                    onClick={() => handleNav(targetPath)}
                     className={cn(
                       "w-full flex items-center gap-3 pl-10 pr-4 py-2 rounded-lg transition-colors text-sm",
                       location.pathname === targetPath
@@ -401,7 +413,7 @@ export function Sidebar({ userRole, onLogout }) {
     return (
       <button
         key={item.id}
-        onClick={() => navigate(item.path || `/${item.id}`)}
+        onClick={() => handleNav(item.path || `/${item.id}`)}
         className={cn(
           "w-full flex items-center gap-3 px-4 py-2.5 rounded-lg transition-colors text-sm font-medium",
           isActive
@@ -433,18 +445,26 @@ export function Sidebar({ userRole, onLogout }) {
           </linearGradient>
         </defs>
       </svg>
-      <div className="w-64 custom-sidebar h-screen flex flex-col fixed left-0 top-0 overflow-y-auto">
+      <div className={cn("w-64 custom-sidebar h-screen pt-24 lg:pt-0 flex flex-col fixed left-0 top-0 overflow-y-auto z-[100] transition-transform duration-300 safe-area-top", isOpen ? "translate-x-0" : "-translate-x-full")}>
         {/* Logo */}
-        <div className="p-5 custom-sidebar-border-b">
+        <div className="p-5 custom-sidebar-border-b flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 custom-sidebar-logo-bg rounded-lg flex items-center justify-center">
-              <Sparkles size={22} className="text-white" />
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center shadow-lg shadow-blue-500/20">
+              <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
             </div>
             <div>
-              <h1 className="text-lg font-bold tracking-wide">HAWKEYE NEST</h1>
-              <p className="text-[10px] text-slate-400 uppercase tracking-widest">HRMS</p>
+              <h1 className="font-bold text-lg text-white tracking-tight">HAWKEYE NEST</h1>
+              <p className="text-[10px] text-blue-200/80 uppercase tracking-widest font-semibold mt-0.5">HRMS</p>
             </div>
           </div>
+          <button 
+            onClick={onClose}
+            className="lg:hidden p-2 -mr-2 text-slate-300 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+          >
+            <X size={20} />
+          </button>
         </div>
 
         {/* Navigation */}
@@ -478,8 +498,8 @@ export function Sidebar({ userRole, onLogout }) {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">{userInfo.name}</p>
-                <p className="text-xs text-slate-400 truncate">{userInfo.role}</p>
+                <p className="text-sm font-medium text-white truncate">{localStorage.getItem('userName') || 'John Doe'}</p>
+                <p className="text-xs text-slate-400 truncate">{userRole === 'EMPLOYEE' ? 'EMP0015' : (localStorage.getItem('userRole') || 'Super Admin')}</p>
               </div>
             </div>
             <button

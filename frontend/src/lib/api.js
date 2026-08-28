@@ -1,3 +1,4 @@
+const RENDER_BACKEND_URL = 'https://madhura-hrm.onrender.com';
 const API_BASE = '/app';
 
 export const getAuthToken = () => {

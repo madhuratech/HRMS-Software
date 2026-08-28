@@ -282,8 +282,8 @@ export function SuperAdminDashboard() {
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box', background: '#F8FAFC', minHeight: '100vh', padding: 0 }}>
 
-      {/* ── FIRST ROW: EXACTLY 5 KPI CARDS MATCHING REFERENCE IMAGE ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 16, marginBottom: 24, width: '100%' }}>
+      {/* ── FIRST ROW: 4 KPI Cards ── */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
         <KpiCard label="Total Revenue" value={revenueValue} trend="12.5%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="₹" />
         <KpiCard label="Total Employees" value={employeeCount} trend="8.3%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="👥" />
         <KpiCard label="Total Projects" value={projectCount} trend="15.7%" trendLabel="vs last month" iconBg="#DCFCE7" iconColor="#16A34A" iconSymbol="💼" />
@@ -291,8 +291,8 @@ export function SuperAdminDashboard() {
         <KpiCard label="Total Clients" value={clientCount} trend="10.2%" trendLabel="vs last month" iconBg="#EFF6FF" iconColor="#2563EB" iconSymbol="👤" />
       </div>
 
-      {/* ── SECOND ROW: TEAM PERFORMANCE (70%) + ATTENDANCE STATUS (30%) ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.8fr 1fr', gap: 24, marginBottom: 24, alignItems: 'stretch' }}>
+      {/* ── SECOND ROW: TEAM PERFORMANCE + ATTENDANCE ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.8fr_1fr] gap-6 mb-6">
 
         {/* Left 70%: Team Performance Bar Chart */}
         <div style={{ background: '#FFFFFF', borderRadius: 16, border: '1px solid #E5E7EB', padding: 24, boxShadow: '0 8px 24px rgba(15,23,42,0.06)', display: 'flex', flexDirection: 'column' }}>
@@ -329,7 +329,7 @@ export function SuperAdminDashboard() {
           <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#111827' }}>Attendance Status</h3>
           <p style={{ margin: '2px 0 16px', fontSize: 12, color: '#6B7280' }}>Today's overview</p>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: 16, alignItems: 'center', flex: 1 }}>
+          <div className="grid grid-cols-1 sm:grid-cols-[1.2fr_1fr] gap-4 items-center flex-1">
             {/* Circular Progress Donut */}
             <div style={{ width: '100%', height: 160, position: 'relative' }}>
               <ResponsiveContainer width="100%" height="100%">
@@ -384,7 +384,7 @@ export function SuperAdminDashboard() {
       </div>
 
       {/* ── THIRD ROW: EMPLOYEE PERFORMANCE + ON LEAVE ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16, marginBottom: 24 }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4 mb-6">
 
         {/* Left: Employee Performance Overview Table */}
         <div style={{ background: '#FFFFFF', borderRadius: 16, border: '1px solid #E5E7EB', boxShadow: '0 8px 24px rgba(15,23,42,0.06)', overflow: 'hidden' }}>
@@ -496,7 +496,7 @@ export function SuperAdminDashboard() {
       </div>
 
       {/* ── FOURTH ROW: WIDGETS — 2 rows × 2 columns ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16, alignItems: 'flex-start' }}>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
 
         {/* Widget 1: Upcoming Holidays */}
         <div style={{ background: '#FFFFFF', borderRadius: 16, border: '1px solid #E5E7EB', padding: '20px 20px 24px', boxShadow: '0 4px 16px rgba(15,23,42,0.04)', display: 'flex', flexDirection: 'column' }}>
@@ -591,7 +591,7 @@ export function SuperAdminDashboard() {
           <div style={{ marginBottom: 18 }}>
             <h3 style={{ margin: 0, fontSize: 14, fontWeight: 700, color: '#1E293B' }}>Quick Actions</h3>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
               { icon: <UserPlus size={22} />, label: 'Add User' },
               { icon: <FolderPlus size={22} />, label: 'Add Project' },

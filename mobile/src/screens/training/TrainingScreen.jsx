@@ -1,0 +1,230 @@
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Modal, Alert } from 'react-native';
+import { Search, Plus, BookOpen, Calendar as CalendarIcon, User, X, Clock } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import apiClient from '../../api/client';
+
+export default function TrainingScreen() {
+  const [trainings, setTrainings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Modal State
+  const [modalVisible, setModalVisible] = useState(false);
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [trainer, setTrainer] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetchTrainings();
+  }, []);
+
+  const fetchTrainings = async () => {
+    try {
+      setLoading(true);
+      const res = await apiClient.get('/training');
+      if (Array.isArray(res.data)) {
+        setTrainings(res.data);
+      }
+    } catch (err) {
+      console.error('Error fetching trainings:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddTraining = async () => {
+    if (!title.trim() || !startDate.trim() || !endDate.trim()) {
+      Alert.alert('Error', 'Title, Start Date, and End Date are required.');
+      return;
+    }
+    try {
+      setSubmitting(true);
+      await apiClient.post('/training', { 
+        title, description, trainer, start_date: startDate, end_date: endDate
+      });
+      setTitle(''); setDescription(''); setTrainer(''); setStartDate(''); setEndDate('');
+      setModalVisible(false);
+      fetchTrainings();
+    } catch (err) {
+      console.error('Error adding training:', err);
+      Alert.alert('Error', 'Failed to add training.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const filtered = trainings.filter(t => 
+    t.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    t.trainer?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const getStatusColor = (status) => {
+    switch(status) {
+      case 'planned': return '#3B82F6';
+      case 'ongoing': return '#F59E0B';
+      case 'completed': return '#10B981';
+      case 'cancelled': return '#EF4444';
+      default: return '#6B7280';
+    }
+  };
+
+  const renderItem = ({ item }) => (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={styles.titleRow}>
+          <View style={styles.iconBox}>
+            <BookOpen size={20} color="#2563EB" />
+          </View>
+          <Text style={styles.trainingTitle} numberOfLines={1}>{item.title}</Text>
+        </View>
+        <View style={[styles.badge, { backgroundColor: getStatusColor(item.status) + '15' }]}>
+          <Text style={[styles.badgeText, { color: getStatusColor(item.status) }]}>{item.status.toUpperCase()}</Text>
+        </View>
+      </View>
+
+      {item.description ? (
+        <Text style={styles.descText} numberOfLines={2}>{item.description}</Text>
+      ) : null}
+
+      <View style={styles.divider} />
+
+      <View style={styles.detailGrid}>
+        <View style={styles.detailCol}>
+          <User size={14} color='#6B7280' style={{marginBottom: 4}} />
+          <Text style={styles.detailLabel}>Trainer</Text>
+          <Text style={styles.detailValue}>{item.trainer || 'TBA'}</Text>
+        </View>
+        <View style={styles.detailCol}>
+          <CalendarIcon size={14} color='#6B7280' style={{marginBottom: 4}} />
+          <Text style={styles.detailLabel}>Dates</Text>
+          <Text style={styles.detailValue}>
+            {new Date(item.start_date).toLocaleDateString()} - {new Date(item.end_date).toLocaleDateString()}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.headerTitle}>Training</Text>
+          <Text style={styles.headerSubtitle}>Employee development programs</Text>
+        </View>
+        <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
+          <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.gradientBtn}>
+            <Plus size={18} color='#FFFFFF' />
+            <Text style={styles.addButtonText}>New</Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.toolbar}>
+        <View style={styles.searchBox}>
+          <Search size={20} color='#6B7280' />
+          <TextInput 
+            style={styles.searchInput} 
+            placeholder="Search programs..." 
+            placeholderTextColor="#94A3B8"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+        </View>
+      </View>
+
+      {loading ? (
+        <View style={styles.centerBox}>
+          <ActivityIndicator size="large" color="#2563EB" />
+        </View>
+      ) : (
+        <FlatList
+          data={filtered}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyBox}>
+              <Text style={styles.emptyText}>No training programs found</Text>
+            </View>
+          }
+        />
+      )}
+
+      {/* Add Modal */}
+      <Modal visible={modalVisible} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>New Training Program</Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <X size={24} color='#6B7280' />
+              </TouchableOpacity>
+            </View>
+            <View style={styles.modalBody}>
+              <TextInput style={styles.modalInput} placeholder="Program Title" placeholderTextColor="#94A3B8" value={title} onChangeText={setTitle} />
+              <TextInput style={styles.modalInput} placeholder="Trainer Name" placeholderTextColor="#94A3B8" value={trainer} onChangeText={setTrainer} />
+              <TextInput style={styles.modalInput} placeholder="Start Date (YYYY-MM-DD)" placeholderTextColor="#94A3B8" value={startDate} onChangeText={setStartDate} />
+              <TextInput style={styles.modalInput} placeholder="End Date (YYYY-MM-DD)" placeholderTextColor="#94A3B8" value={endDate} onChangeText={setEndDate} />
+              <TextInput 
+                style={[styles.modalInput, { height: 80, textAlignVertical: 'top' }]} 
+                placeholder="Description..." 
+                placeholderTextColor="#94A3B8" 
+                value={description} 
+                onChangeText={setDescription} 
+                multiline 
+              />
+              <TouchableOpacity style={[styles.submitButton, submitting && { opacity: 0.7 }]} onPress={handleAddTraining} disabled={submitting}>
+                <Text style={styles.submitButtonText}>{submitting ? 'Saving...' : 'Create Program'}</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: { padding: 20, backgroundColor: '#FFFFFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  headerTextContainer: { flex: 1 },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },
+  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
+  addButton: { borderRadius: 10, overflow: 'hidden', shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
+  gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 6 },
+  addButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
+  toolbar: { padding: 20 },
+  searchBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 16, height: 48 },
+  searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: '#1E293B', fontWeight: '500' },
+  centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  listContent: { paddingHorizontal: 20, paddingBottom: 24 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, paddingRight: 12 },
+  iconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
+  trainingTitle: { fontSize: 16, fontWeight: '700', color: '#111827', flex: 1 },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  badgeText: { fontSize: 10, fontWeight: '700' },
+  descText: { fontSize: 14, color: '#475569', lineHeight: 20, marginBottom: 12 },
+  divider: { height: 1, backgroundColor: '#E5E7EB', marginVertical: 12 },
+  detailGrid: { flexDirection: 'row', gap: 20 },
+  detailCol: { flex: 1 },
+  detailLabel: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginBottom: 2, textTransform: 'uppercase' },
+  detailValue: { fontSize: 13, color: '#1E293B', fontWeight: '600' },
+  emptyBox: { padding: 40, alignItems: 'center' },
+  emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '500' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
+  modalBody: { gap: 12 },
+  modalInput: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, fontSize: 16, color: '#1E293B', backgroundColor: '#F8FAFC' },
+  submitButton: { backgroundColor: '#2563EB', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 10 },
+  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' }
+});
