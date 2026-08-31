@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronDown, Plus, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts';
 import { useToast } from '../ui/Toast';
+import { canCreate, checkActionPermission } from '../../lib/permissions';
 
 export default function Feedback() {
   const { addToast } = useToast();
@@ -58,7 +59,7 @@ export default function Feedback() {
   const fetchMeta = async () => {
     try {
       const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
-      
+
       // Fetch departments
       const deptRes = await fetch('/app/requirements/meta/all', { headers });
       const deptData = await deptRes.json();
@@ -134,6 +135,9 @@ export default function Feedback() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (!checkActionPermission('feedback', 'CREATE')) {
+      return;
+    }
     if (!formData.recipient || !formData.department || !formData.comments) {
       addToast('Please fill in all required fields.', 'error');
       return;
@@ -194,7 +198,7 @@ export default function Feedback() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: '"Inter", sans-serif', paddingBottom: '24px' }}>
-      
+
       {/* Add Feedback Modal */}
       {showAddModal && (
         <>
@@ -213,10 +217,10 @@ export default function Feedback() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Recipient Employee <span className="text-red-500">*</span></label>
-                  <select 
-                    required 
-                    value={formData.recipient} 
-                    onChange={e => setFormData({ ...formData, recipient: e.target.value })} 
+                  <select
+                    required
+                    value={formData.recipient}
+                    onChange={e => setFormData({ ...formData, recipient: e.target.value })}
                     className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
                   >
                     <option value="">Select Employee</option>
@@ -279,9 +283,9 @@ export default function Feedback() {
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Track and manage feedback logs</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <select 
-            value={filterDept} 
-            onChange={e => setFilterDept(e.target.value)} 
+          <select
+            value={filterDept}
+            onChange={e => setFilterDept(e.target.value)}
             style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '13px', color: '#334155', cursor: 'pointer' }}
           >
             <option value="All Departments">All Departments</option>
@@ -289,7 +293,28 @@ export default function Feedback() {
               <option key={d.id} value={d.id}>{d.name}</option>
             ))}
           </select>
-          <button onClick={() => setShowAddModal(true)} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+          <button 
+            disabled={!canCreate('feedback')}
+            onClick={() => {
+              if (!checkActionPermission('feedback', 'CREATE')) {
+                return;
+              }
+              setShowAddModal(true);
+            }} 
+            style={{ 
+              padding: '10px 20px', 
+              borderRadius: '8px', 
+              border: 'none', 
+              background: canCreate('feedback') ? '#2952E3' : '#94A3B8', 
+              color: '#FFF', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              cursor: canCreate('feedback') ? 'pointer' : 'not-allowed', 
+              fontSize: '14px', 
+              fontWeight: '500' 
+            }}
+          >
             <Plus size={16} /> Add Feedback
           </button>
         </div>
@@ -317,14 +342,14 @@ export default function Feedback() {
 
       {/* Main Content Layout */}
       <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: '24px' }}>
-        
+
         {/* Table */}
         <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Feedback Tracker</h3>
-            <input 
-              type="text" 
-              placeholder="Search..." 
+            <input
+              type="text"
+              placeholder="Search..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '13px' }}
@@ -364,7 +389,7 @@ export default function Feedback() {
                         <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.department_name}</td>
                         <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.subject || '-'}</td>
                         <td style={{ padding: '16px 24px', fontSize: '13px' }}>
-                          <span style={{ 
+                          <span style={{
                             padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600',
                             backgroundColor: getFeedbackTypeStyle(row.feedback_type).bg, color: getFeedbackTypeStyle(row.feedback_type).color
                           }}>

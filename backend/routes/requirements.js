@@ -48,6 +48,10 @@ router.put('/:id', authenticateJWT, checkRole(writeRoles), upload.single('attach
 router.delete('/:id', authenticateJWT, checkRole(writeRoles), RequirementController.softDelete);
 
 router.post('/:id/restore', authenticateJWT, checkRole(writeRoles), RequirementController.restore);
+router.post('/:id/publish', authenticateJWT, checkRole(writeRoles), RequirementController.publish);
+router.post('/:id/publish-linkedin', authenticateJWT, checkRole(writeRoles), RequirementController.publishLinkedIn);
+router.get('/:id/publishing-channels', authenticateJWT, RequirementController.getPublishingChannels);
+router.post('/:id/retry-publish', authenticateJWT, checkRole(writeRoles), RequirementController.retryPublishChannel);
 router.post('/:id/approve', authenticateJWT, checkRole(adminRoles), RequirementController.approve);
 router.post('/:id/reject', authenticateJWT, checkRole(adminRoles), RequirementController.reject);
 router.post('/:id/close', authenticateJWT, checkRole(writeRoles), RequirementController.close);

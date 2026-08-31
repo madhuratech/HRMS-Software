@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Plus, MoreHorizontal, ChevronLeft, ChevronRight, X, AlertTriangle } from 'lucide-react';
+import { Search, Filter, Plus, MoreHorizontal, ChevronLeft, ChevronRight, X, AlertTriangle, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { canCreate, canEdit, canDelete, checkActionPermission } from '../../lib/permissions';
 
 export default function JobOpenings() {
+  const navigate = useNavigate();
   const [showAddModal, setShowAddModal] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
@@ -35,6 +38,14 @@ export default function JobOpenings() {
   const [isLoading, setIsLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState(null);
   const [meta, setMeta] = useState({ departments: [], designations: [], branches: [], employees: [], companies: [] });
+
+  // Modal States
+  const [editingJobId, setEditingJobId] = useState(null);
+  const [selectedJobForLinks, setSelectedJobForLinks] = useState(null);
+  const [showLinksModal, setShowLinksModal] = useState(false);
+  const [copiedLinkType, setCopiedLinkType] = useState(null);
+  const [deleteConfirmJob, setDeleteConfirmJob] = useState(null);
+  const [channelStatuses, setChannelStatuses] = useState({});
 
   // Filter States
   const [search, setSearch] = useState('');
@@ -114,8 +125,62 @@ export default function JobOpenings() {
     fetchRequirements();
   }, [search, selectedDept, selectedStatus, page]);
 
+  const resetForm = () => {
+    setEditingJobId(null);
+    setFormData({
+      title: '', code: '', department: '', designation: '', type: 'Full Time', location: '',
+      vacancies: '', experienceFrom: '0', experienceTo: '5', salaryFrom: '', salaryTo: '',
+      hiringManager: '', requestedBy: '', openingDate: '', closingDate: '', description: '',
+      skills: '', status: 'Open', priority: 'Medium', education: '', responsibilities: '',
+      requirements: '', remarks: '', branch: '', company: ''
+    });
+  };
+
+  const handleEditClick = (job) => {
+    if (!checkActionPermission('job_openings', 'EDIT')) return;
+    setEditingJobId(job.id);
+    setFormData({
+      title: job.job_title || '',
+      code: job.requirement_code || '',
+      department: job.department_id || '',
+      designation: job.designation_id || '',
+      type: job.employment_type || 'Full Time',
+      location: job.location || '',
+      vacancies: job.vacancies || '',
+      experienceFrom: job.experience_from || '0',
+      experienceTo: job.experience_to || '5',
+      salaryFrom: job.salary_from || '',
+      salaryTo: job.salary_to || '',
+      hiringManager: job.hiring_manager || '',
+      requestedBy: job.requested_by || '',
+      openingDate: job.opening_date ? String(job.opening_date).split('T')[0] : '',
+      closingDate: job.closing_date ? String(job.closing_date).split('T')[0] : '',
+      description: job.job_description || '',
+      skills: job.skills || '',
+      status: job.status || 'Published',
+      priority: job.priority || 'Medium',
+      education: job.education || '',
+      responsibilities: job.responsibilities || '',
+      requirements: job.requirements || '',
+      remarks: job.remarks || '',
+      branch: job.branch_id || '',
+      company: job.company_id || ''
+    });
+    setShowAddModal(true);
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
+    if (editingJobId) {
+      if (!checkActionPermission('job_openings', 'EDIT')) return;
+    } else {
+      if (!checkActionPermission('job_openings', 'CREATE')) return;
+    }
+
+    if (!formData.title || !formData.department || !formData.designation) {
+      alert('Please fill in required fields.');
+      return;
+    }
     setErrorMsg(null);
 
     const payload = {
@@ -146,8 +211,11 @@ export default function JobOpenings() {
     };
 
     try {
-      const res = await fetch('/app/requirements', {
-        method: 'POST',
+      const url = editingJobId ? `/app/requirements/${editingJobId}` : '/app/requirements';
+      const method = editingJobId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${getAuthToken()}`
@@ -156,14 +224,9 @@ export default function JobOpenings() {
       });
       const data = await res.json();
       if (data.success) {
+        alert(editingJobId ? 'Job opening updated successfully!' : 'Job opening created successfully!');
         fetchRequirements();
-        setFormData({
-          title: '', code: '', department: '', designation: '', type: 'Full Time', location: '',
-          vacancies: '', experienceFrom: '0', experienceTo: '5', salaryFrom: '', salaryTo: '',
-          hiringManager: '', requestedBy: '', openingDate: '', closingDate: '', description: '',
-          skills: '', status: 'Open', priority: 'Medium', education: '', responsibilities: '',
-          requirements: '', remarks: '', branch: '', company: ''
-        });
+        resetForm();
         setShowAddModal(false);
       } else {
         alert(data.message || 'Validation failed');
@@ -171,6 +234,127 @@ export default function JobOpenings() {
     } catch (err) {
       alert(err.message || 'Failed to submit requirement');
     }
+  };
+
+  const handlePublishJob = async (jobId) => {
+    if (!checkActionPermission('job_openings', 'EDIT')) return;
+    try {
+      const res = await fetch(`/app/requirements/${jobId}/publish`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Job published successfully to Madhura Technologies Career Page!');
+        fetchRequirements();
+      } else {
+        alert(data.message || 'Failed to publish job');
+      }
+    } catch (err) {
+      alert('Error connecting to backend server');
+    }
+  };
+
+  const handleCloseJob = async (jobId) => {
+    if (!checkActionPermission('job_openings', 'EDIT')) return;
+    try {
+      const res = await fetch(`/app/requirements/${jobId}/close`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Job status updated to Closed.');
+        fetchRequirements();
+      } else {
+        alert(data.message || 'Failed to close job');
+      }
+    } catch (err) {
+      alert('Error connecting to server');
+    }
+  };
+
+  const getSlug = (title, id) => {
+    const clean = String(title || 'job').toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
+    return `${clean}-${id}`;
+  };
+
+  const getTrackedUrl = (job, source) => {
+    if (!job) return '';
+    const slug = getSlug(job.job_title, job.id);
+    const baseUrl = `https://madhuratech.com/career/job/${slug}`;
+    if (!source || source === 'CAREER_PAGE') return baseUrl;
+    return `${baseUrl}?source=${source.toLowerCase()}`;
+  };
+
+  const handleDeleteJob = async (jobId) => {
+    if (!checkActionPermission('job_openings', 'DELETE')) return;
+    try {
+      const res = await fetch(`/app/requirements/${jobId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${getAuthToken()}`
+        }
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert('Job opening deleted successfully and removed from active public channels.');
+        setDeleteConfirmJob(null);
+        fetchRequirements();
+      } else {
+        alert(data.message || 'Failed to delete job');
+      }
+    } catch (err) {
+      alert('Error deleting job opening');
+    }
+  };
+
+  const fetchChannelsForJob = async (jobId) => {
+    try {
+      const res = await fetch(`/app/requirements/${jobId}/publishing-channels`, {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+      });
+      const data = await res.json();
+      if (data.success) {
+        setChannelStatuses(prev => ({ ...prev, [jobId]: data.channels }));
+      }
+    } catch (e) {}
+  };
+
+  const handleRetryChannel = async (jobId, channel) => {
+    try {
+      const res = await fetch(`/app/requirements/${jobId}/retry-publish`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify({ channel })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`Retry for ${channel}: ${data.result?.status}`);
+        fetchChannelsForJob(jobId);
+      } else {
+        alert(data.message || 'Failed to retry channel');
+      }
+    } catch (err) {
+      alert('Error retrying channel');
+    }
+  };
+
+  const copyToClipboard = (text, type) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+    }
+    setCopiedLinkType(type);
+    setTimeout(() => setCopiedLinkType(null), 2000);
   };
 
   const cardStyle = {
@@ -231,8 +415,24 @@ export default function JobOpenings() {
           </div>
           <div>
             <button
-              onClick={() => setShowAddModal(true)}
-              style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}
+              disabled={!canCreate('job_openings')}
+              onClick={() => {
+                if (!checkActionPermission('job_openings', 'CREATE')) return;
+                setShowAddModal(true);
+              }}
+              style={{ 
+                padding: '10px 16px', 
+                borderRadius: '8px', 
+                border: 'none', 
+                background: canCreate('job_openings') ? '#2952E3' : '#94A3B8', 
+                color: '#FFF', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                cursor: canCreate('job_openings') ? 'pointer' : 'not-allowed', 
+                fontSize: '14px', 
+                fontWeight: '500' 
+              }}
             >
               <Plus size={16} /> Create Opening
             </button>
@@ -284,14 +484,77 @@ export default function JobOpenings() {
                         borderRadius: '20px', 
                         fontSize: '12px', 
                         fontWeight: '600', 
-                        backgroundColor: row.status === 'Open' || row.status === 'Approved' ? '#ECFDF5' : '#FEF2F2', 
-                        color: row.status === 'Open' || row.status === 'Approved' ? '#10B981' : '#EF4444' 
+                        backgroundColor: (row.status === 'Published' || row.status === 'Open' || row.status === 'Approved') ? '#ECFDF5' : (row.status === 'Draft' ? '#FFFBEB' : '#FEF2F2'), 
+                        color: (row.status === 'Published' || row.status === 'Open' || row.status === 'Approved') ? '#10B981' : (row.status === 'Draft' ? '#D97706' : '#EF4444') 
                       }}>
-                        {row.status}
+                        {row.status === 'Open' ? 'Published' : row.status}
                       </span>
                     </td>
-                    <td style={{ padding: '16px 24px', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                      <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}><MoreHorizontal size={18} /></button>
+                    <td style={{ padding: '16px 24px', whiteSpace: 'nowrap', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                        
+                        {/* Edit Job Button */}
+                        <button 
+                          disabled={!canEdit('job_openings')}
+                          onClick={() => handleEditClick(row)}
+                          title="Edit Job Opening"
+                          style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#334155', fontSize: '12px', fontWeight: '500', cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed' }}
+                        >
+                          Edit
+                        </button>
+
+                        {/* View Candidates */}
+                        <button 
+                          onClick={() => navigate(`/recruitment/candidates?job_title=${encodeURIComponent(row.job_title)}`)}
+                          title="View Applicants"
+                          style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', color: '#2563EB', fontSize: '12px', fontWeight: '500', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          <Users size={14} /> Candidates
+                        </button>
+
+                        {/* Publish Job Button */}
+                        {row.status !== 'Published' && row.status !== 'Open' && (
+                          <button 
+                            disabled={!canEdit('job_openings')}
+                            onClick={() => handlePublishJob(row.id)}
+                            style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: canEdit('job_openings') ? '#10B981' : '#94A3B8', color: '#FFF', fontSize: '12px', fontWeight: '600', cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed' }}
+                          >
+                            Publish Job
+                          </button>
+                        )}
+
+                        {/* Tracking Links Button */}
+                        <button 
+                          onClick={() => {
+                            setSelectedJobForLinks(row);
+                            setShowLinksModal(true);
+                          }}
+                          style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#334155', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+                        >
+                          Copy Links
+                        </button>
+
+                        {/* Close Job Button */}
+                        {row.status !== 'Closed' && (
+                          <button 
+                            disabled={!canEdit('job_openings')}
+                            onClick={() => handleCloseJob(row.id)}
+                            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#475569', fontSize: '12px', fontWeight: '500', cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed' }}
+                          >
+                            Close
+                          </button>
+                        )}
+
+                        {/* Delete Job Button */}
+                        <button 
+                          disabled={!canDelete('job_openings')}
+                          onClick={() => setDeleteConfirmJob(row)}
+                          style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', fontSize: '12px', fontWeight: '500', cursor: canDelete('job_openings') ? 'pointer' : 'not-allowed' }}
+                        >
+                          Delete
+                        </button>
+
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -335,10 +598,10 @@ export default function JobOpenings() {
           <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
             <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
               <div>
-                <h2 className="text-xl font-bold text-[#0A1629]">Add Job Opening</h2>
-                <p className="text-sm text-slate-500 mt-1">Configure a new requisition and publish opening.</p>
+                <h2 className="text-xl font-bold text-[#0A1629]">{editingJobId ? 'Edit Job Opening' : 'Add Job Opening'}</h2>
+                <p className="text-sm text-slate-500 mt-1">{editingJobId ? 'Update requisition details and publishing preferences.' : 'Configure a new requisition and publish opening.'}</p>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
+              <button onClick={() => { setShowAddModal(false); resetForm(); }} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
                 <X size={20} className="text-slate-400" />
               </button>
             </div>
@@ -476,10 +739,111 @@ export default function JobOpenings() {
                 </div>
               </div>
               <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-                <button type="submit" className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">Save Job Opening</button>
+                <button type="button" onClick={() => { setShowAddModal(false); resetForm(); }} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
+                <button type="submit" className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">{editingJobId ? 'Update Opening' : 'Save Job Opening'}</button>
               </div>
             </form>
+          </div>
+        </>
+      )}
+
+      {/* Tracking Links Modal */}
+      {showLinksModal && selectedJobForLinks && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setShowLinksModal(false)} />
+          <div className="modal-centered-content" style={{ width: '650px', maxWidth: '90vw' }}>
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-bold text-[#0A1629]">Job Application Tracking Links</h2>
+                <p className="text-xs text-slate-500 mt-1">Unique tracked URLs for job postings on external career portals.</p>
+              </div>
+              <button onClick={() => setShowLinksModal(false)} className="p-2 hover:bg-slate-100 rounded-lg">
+                <X size={18} className="text-slate-400" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="text-xs font-bold text-slate-700 mb-1">LinkedIn Application Link</div>
+                <div className="flex items-center gap-2">
+                  <input type="text" readOnly value={getTrackedUrl(selectedJobForLinks, 'LINKEDIN')} className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-600" />
+                  <button 
+                    onClick={() => copyToClipboard(getTrackedUrl(selectedJobForLinks, 'LINKEDIN'), 'linkedin')} 
+                    className="px-3 py-2 bg-blue-600 text-white rounded text-xs font-semibold whitespace-nowrap hover:bg-blue-700"
+                  >
+                    {copiedLinkType === 'linkedin' ? 'Copied!' : 'Copy Link'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="text-xs font-bold text-slate-700 mb-1">Indeed Application Link</div>
+                <div className="flex items-center gap-2">
+                  <input type="text" readOnly value={getTrackedUrl(selectedJobForLinks, 'INDEED')} className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-600" />
+                  <button 
+                    onClick={() => copyToClipboard(getTrackedUrl(selectedJobForLinks, 'INDEED'), 'indeed')} 
+                    className="px-3 py-2 bg-blue-600 text-white rounded text-xs font-semibold whitespace-nowrap hover:bg-blue-700"
+                  >
+                    {copiedLinkType === 'indeed' ? 'Copied!' : 'Copy Link'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="text-xs font-bold text-slate-700 mb-1">Naukri Application Link</div>
+                <div className="flex items-center gap-2">
+                  <input type="text" readOnly value={getTrackedUrl(selectedJobForLinks, 'NAUKRI')} className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-600" />
+                  <button 
+                    onClick={() => copyToClipboard(getTrackedUrl(selectedJobForLinks, 'NAUKRI'), 'naukri')} 
+                    className="px-3 py-2 bg-blue-600 text-white rounded text-xs font-semibold whitespace-nowrap hover:bg-blue-700"
+                  >
+                    {copiedLinkType === 'naukri' ? 'Copied!' : 'Copy Link'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="text-xs font-bold text-slate-700 mb-1">Direct Madhura Career Page Link</div>
+                <div className="flex items-center gap-2">
+                  <input type="text" readOnly value={getTrackedUrl(selectedJobForLinks, 'CAREER_PAGE')} className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-600" />
+                  <button 
+                    onClick={() => copyToClipboard(getTrackedUrl(selectedJobForLinks, 'direct'), 'direct')} 
+                    className="px-3 py-2 bg-slate-800 text-white rounded text-xs font-semibold whitespace-nowrap hover:bg-slate-900"
+                  >
+                    {copiedLinkType === 'direct' ? 'Copied!' : 'Copy Link'}
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div className="p-4 border-t border-slate-200 flex justify-end">
+              <button onClick={() => setShowLinksModal(false)} className="px-5 py-2 bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold">Done</button>
+            </div>
+          </div>
+        </>
+      )}
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmJob && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setDeleteConfirmJob(null)} />
+          <div className="modal-centered-content" style={{ width: '480px', maxWidth: '90vw' }}>
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-3 text-red-600">
+                <AlertTriangle size={24} />
+                <h3 className="text-lg font-bold">Delete Job Opening?</h3>
+              </div>
+              <button onClick={() => setDeleteConfirmJob(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            <div className="p-6 space-y-3">
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Are you sure you want to delete <strong>{deleteConfirmJob.job_title}</strong>?
+              </p>
+              <p className="text-xs text-slate-500 bg-red-50 p-3 rounded-lg border border-red-100 text-red-700">
+                This action will immediately remove the job from all active publishing channels (MadhuraTech Career Page, LinkedIn, Indeed). Historical candidate applications will remain intact.
+              </p>
+            </div>
+            <div className="p-4 border-t border-slate-200 flex justify-end gap-3">
+              <button onClick={() => setDeleteConfirmJob(null)} className="px-5 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-200">Cancel</button>
+              <button onClick={() => handleDeleteJob(deleteConfirmJob.id)} className="px-5 py-2 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 shadow-md">Delete Job</button>
+            </div>
           </div>
         </>
       )}

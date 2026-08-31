@@ -19,14 +19,23 @@ import {
   ChevronDown,
   ChevronRight,
   LogOut,
-  Sparkles
+  Sparkles,
+  X
 } from 'lucide-react';
 import { cn, getAvatarUrl } from '../../lib/utils';
 import { apiFetch } from '../../lib/api';
 import { canView } from '../../lib/permissions';
 
-export function Sidebar({ userRole, onLogout, isOpen, onClose }) {
+export function Sidebar({ userRole, onLogout, onClose }) {
   const [expandedGroups, setExpandedGroups] = useState([]);
+  const [userPermissions, setUserPermissions] = useState(() => {
+    try {
+      const raw = localStorage.getItem('hrms_permissions');
+      return raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      return null;
+    }
+  });
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -207,6 +216,7 @@ export function Sidebar({ userRole, onLogout, isOpen, onClose }) {
         { id: 'recruitment-dashboard', label: 'Dashboard', path: '/recruitment/dashboard', moduleKey: 'recruitment', submoduleKey: 'recruitment_dashboard' },
         { id: 'job-openings', label: 'Job Openings', path: '/recruitment/jobs', moduleKey: 'recruitment', submoduleKey: 'job_openings' },
         { id: 'candidates', label: 'Candidates', path: '/recruitment/candidates', moduleKey: 'recruitment', submoduleKey: 'candidates' },
+        { id: 'screening', label: 'Screening', path: '/recruitment/screening', moduleKey: 'recruitment', submoduleKey: 'screening' },
         { id: 'interview-schedule', label: 'Interview Schedule', path: '/recruitment/interviews', moduleKey: 'recruitment', submoduleKey: 'interview_schedule' },
         { id: 'offer-letters', label: 'Offer Letters', path: '/recruitment/offers', moduleKey: 'recruitment', submoduleKey: 'offer_letters' },
         { id: 'hiring-pipeline', label: 'Hiring Pipeline', path: '/recruitment/pipeline', moduleKey: 'recruitment', submoduleKey: 'hiring_pipeline' }
@@ -339,9 +349,7 @@ export function Sidebar({ userRole, onLogout, isOpen, onClose }) {
 
   useEffect(() => {
     const currentPath = location.pathname;
-    const targetMenu = userRole === 'EMPLOYEE' ? employeeMenuItems : menuItems;
-
-    const matchingGroup = targetMenu.find(item => {
+    const matchingGroup = filteredMenu.find(item => {
       if (item.children) {
         return item.children.some(child => child.path && (currentPath.startsWith(child.path) || currentPath === child.path));
       }
@@ -349,14 +357,13 @@ export function Sidebar({ userRole, onLogout, isOpen, onClose }) {
     });
 
     if (matchingGroup) {
-      setExpandedGroups([matchingGroup.id]);
+      setExpandedGroups(prev => prev.includes(matchingGroup.id) ? prev : [...prev, matchingGroup.id]);
     }
-  }, [location.pathname, userRole]);
-
+  }, [location.pathname, filteredMenu]);
 
   const handleNav = (path) => {
     navigate(path);
-    if (onClose) onClose();
+    if (onClose && typeof onClose === 'function') onClose();
   };
 
   const renderMenuItem = (item) => {
@@ -440,7 +447,7 @@ export function Sidebar({ userRole, onLogout, isOpen, onClose }) {
           </linearGradient>
         </defs>
       </svg>
-      <div className={cn("w-64 custom-sidebar h-screen pt-24 lg:pt-0 flex flex-col fixed left-0 top-0 overflow-y-auto z-[100] transition-transform duration-300 safe-area-top", isOpen ? "translate-x-0" : "-translate-x-full")}>
+      <div className="sidebar custom-sidebar overflow-y-auto safe-area-top">
         {/* Logo */}
         <div className="p-5 custom-sidebar-border-b flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -454,12 +461,6 @@ export function Sidebar({ userRole, onLogout, isOpen, onClose }) {
               <p className="text-[10px] text-blue-200/80 uppercase tracking-widest font-semibold mt-0.5">HRMS</p>
             </div>
           </div>
-          <button 
-            onClick={onClose}
-            className="lg:hidden p-2 -mr-2 text-slate-300 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-          >
-            <X size={20} />
-          </button>
         </div>
 
         {/* Navigation */}

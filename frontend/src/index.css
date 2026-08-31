@@ -1066,6 +1066,14 @@
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .grid-cols-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .grid-cols-5 {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
   .flex-col {
     flex-direction: column;
   }
@@ -2827,6 +2835,12 @@
   }
 
   @media (width >=64rem) {
+    .lg\:grid-cols-5 {
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+  }
+
+  @media (width >=64rem) {
     .lg\:flex-row {
       flex-direction: row;
     }
@@ -3818,4 +3832,53 @@ input:checked+.form-toggle-slider:before {
   width: 448px !important;
   padding: 24px !important;
   text-align: center !important;
+}
+
+/* ====================================================
+   DESKTOP-ONLY APPLICATION LAYOUT
+   ==================================================== */
+.app-shell {
+  display: flex;
+  width: 100%;
+  min-width: 1366px;
+  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 250px;
+  min-width: 250px;
+  flex-shrink: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #0a1128;
+  border-right: 1px solid rgba(17, 30, 54, 0.4);
+  color: #ffffff;
+  position: static !important;
+  transform: none !important;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 100vh;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.header {
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.page-content {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
 }

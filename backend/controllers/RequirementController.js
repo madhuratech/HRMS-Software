@@ -1,4 +1,5 @@
 const RequirementService = require('../services/RequirementService');
+const JobPublisher = require('../services/jobPublishing/jobPublisher');
 const response = require('../utils/response');
 const getPagination = require('../utils/pagination');
 
@@ -128,13 +129,123 @@ class RequirementController {
     }
   }
 
+  static async publish(req, res) {
+    try {
+      const jobId = req.params.id;
+      const job = await RequirementService.getById(jobId);
+      if (!job) return response(res, false, 404, 'Job opening not found');
+
+      const channelsResult = await JobPublisher.publishAll(job);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Job publishing process completed across all channels.',
+        jobId,
+        channels: channelsResult
+      });
+    } catch (err) {
+      console.error('[RequirementController.publish] Error:', err);
+      return response(res, false, 500, 'Failed to publish job', null, err.message);
+    }
+  }
+
+  static async publishLinkedIn(req, res) {
+    try {
+      const jobId = req.params.id;
+      const job = await RequirementService.getById(jobId);
+      if (!job) return response(res, false, 404, 'Job opening not found');
+
+      const LinkedInJobService = require('../services/linkedinJobService');
+      const result = await LinkedInJobService.publishJob(job);
+
+      if (result.success) {
+        return res.status(200).json({
+          success: true,
+          jobId: result.jobId,
+          linkedinStatus: result.linkedinStatus,
+          linkedinJobId: result.linkedinJobId
+        });
+      } else {
+        return res.status(200).json({
+          success: false,
+          jobId: result.jobId,
+          linkedinStatus: result.linkedinStatus,
+          error: result.error
+        });
+      }
+    } catch (err) {
+      return res.status(500).json({
+        success: false,
+        jobId: req.params.id,
+        linkedinStatus: 'failed',
+        error: err.message
+      });
+    }
+  }
+
   static async close(req, res) {
     try {
-      const userId = req.user?.id || 1;
-      await RequirementService.updateStatus(req.params.id, 'Closed', req.body.approval_status || 'Approved', req.body.remarks || 'Closed by user', userId);
-      return response(res, true, 200, 'Requirement closed successfully');
+      const jobId = req.params.id;
+      const job = await RequirementService.getById(jobId);
+      if (!job) return response(res, false, 404, 'Job opening not found');
+
+      const channelsResult = await JobPublisher.closeAll(job);
+
+      return res.status(200).json({
+        success: true,
+        message: 'Job closed across all active channels.',
+        jobId,
+        channels: channelsResult
+      });
     } catch (err) {
-      return response(res, false, 500, 'Failed to close requirement', null, err.message);
+      return response(res, false, 500, 'Failed to close job', null, err.message);
+    }
+  }
+
+  static async softDelete(req, res) {
+    try {
+      const jobId = req.params.id;
+      const job = await RequirementService.getById(jobId);
+      if (job) {
+        await JobPublisher.deleteAll(job);
+      }
+      const userId = req.user?.id || 1;
+      await RequirementService.softDelete(jobId, userId);
+
+      return response(res, true, 200, 'Job opening deleted successfully and removed from public channels');
+    } catch (err) {
+      return response(res, false, 500, 'Failed to delete requirement', null, err.message);
+    }
+  }
+
+  static async getPublishingChannels(req, res) {
+    try {
+      const jobId = req.params.id;
+      const channels = await JobPublisher.getChannelsForJob(jobId);
+      return res.status(200).json({
+        success: true,
+        channels
+      });
+    } catch (err) {
+      return response(res, false, 500, 'Failed to fetch publishing status');
+    }
+  }
+
+  static async retryPublishChannel(req, res) {
+    try {
+      const jobId = req.params.id;
+      const { channel } = req.body;
+      const job = await RequirementService.getById(jobId);
+      if (!job) return response(res, false, 404, 'Job opening not found');
+
+      const result = await JobPublisher.retryChannel(job, channel);
+      return res.status(200).json({
+        success: true,
+        channel,
+        result
+      });
+    } catch (err) {
+      return response(res, false, 500, 'Failed to retry publishing channel', null, err.message);
     }
   }
 

@@ -90,6 +90,7 @@ const MODULE_STRUCTURE = [
       { key: 'recruitment_dashboard', label: 'Recruitment Dashboard' },
       { key: 'job_openings', label: 'Job Openings' },
       { key: 'candidates', label: 'Candidates' },
+      { key: 'screening', label: 'Screening' },
       { key: 'interview_schedule', label: 'Interview Schedule' },
       { key: 'offer_letters', label: 'Offer Letters' },
       { key: 'hiring_pipeline', label: 'Hiring Pipeline' }
@@ -355,29 +356,12 @@ class RbacService {
 
     const getDefaultSubmoduleCreate = (mKey, sKey) => {
       if (keyUpper === 'SUPER_ADMIN' || keyUpper === 'ADMIN') return true;
-      if (keyUpper === 'EMPLOYEE') {
-        if (sKey === 'my_leave') return true;
-        return false;
-      }
-      if (keyUpper === 'HR_MANAGER' || keyUpper === 'HR') return true;
-      if (keyUpper === 'TEAM_LEADER') {
-        if (sKey === 'my_leave' || sKey === 'tasks') return true;
-        return false;
-      }
+      if (sKey === 'my_leave') return true;
       return false;
     };
 
     const getDefaultSubmoduleEdit = (mKey, sKey) => {
       if (keyUpper === 'SUPER_ADMIN' || keyUpper === 'ADMIN') return true;
-      if (keyUpper === 'EMPLOYEE') {
-        if (sKey === 'my_leave') return true;
-        return false;
-      }
-      if (keyUpper === 'HR_MANAGER' || keyUpper === 'HR') return true;
-      if (keyUpper === 'TEAM_LEADER') {
-        if (sKey === 'my_leave' || sKey === 'tasks') return true;
-        return false;
-      }
       return false;
     };
 
@@ -389,11 +373,36 @@ class RbacService {
     const fullHierarchy = MODULE_STRUCTURE.map(m => {
       const submodules = m.submodules.map(s => {
         const subKey = `${m.key}:${s.key}`;
-        const p = permMap[subKey] || permMap[s.key] || permMap[m.key];
-        const canView = p ? p.can_view : getDefaultSubmoduleView(m.key, s.key);
-        const canCreate = p ? p.can_create : getDefaultSubmoduleCreate(m.key, s.key);
-        const canEdit = p ? p.can_edit : getDefaultSubmoduleEdit(m.key, s.key);
-        const canDelete = p ? p.can_delete : getDefaultSubmoduleDelete(m.key, s.key);
+        const pSub = permMap[subKey] || permMap[s.key];
+        const pParent = permMap[m.key];
+        
+        let canView = false;
+        let canCreate = false;
+        let canEdit = false;
+        let canDelete = false;
+
+        if (keyUpper === 'SUPER_ADMIN' || keyUpper === 'ADMIN') {
+          canView = true;
+          canCreate = true;
+          canEdit = true;
+          canDelete = true;
+        } else if (pSub) {
+          canView = Boolean(pSub.can_view);
+          canCreate = Boolean(pSub.can_create);
+          canEdit = Boolean(pSub.can_edit);
+          canDelete = Boolean(pSub.can_delete);
+        } else if (pParent) {
+          canView = Boolean(pParent.can_view);
+          canCreate = Boolean(pParent.can_create);
+          canEdit = Boolean(pParent.can_edit);
+          canDelete = Boolean(pParent.can_delete);
+        } else {
+          canView = getDefaultSubmoduleView(m.key, s.key);
+          canCreate = getDefaultSubmoduleCreate(m.key, s.key);
+          canEdit = getDefaultSubmoduleEdit(m.key, s.key);
+          canDelete = getDefaultSubmoduleDelete(m.key, s.key);
+        }
+
         return {
           submodule_key: s.key,
           submodule_label: s.label,
@@ -403,12 +412,14 @@ class RbacService {
           can_delete: canDelete
         };
       });
+
       const parentPerm = permMap[m.key];
       const hasAnySubView = submodules.some(s => s.can_view);
-      const moduleCanView = parentPerm ? parentPerm.can_view : hasAnySubView;
-      const moduleCanCreate = parentPerm ? parentPerm.can_create : submodules.some(s => s.can_create);
-      const moduleCanEdit = parentPerm ? parentPerm.can_edit : submodules.some(s => s.can_edit);
-      const moduleCanDelete = parentPerm ? parentPerm.can_delete : submodules.some(s => s.can_delete);
+      const moduleCanView = (keyUpper === 'SUPER_ADMIN' || keyUpper === 'ADMIN') ? true : (parentPerm ? Boolean(parentPerm.can_view) : hasAnySubView);
+      const moduleCanCreate = (keyUpper === 'SUPER_ADMIN' || keyUpper === 'ADMIN') ? true : (parentPerm ? Boolean(parentPerm.can_create) : submodules.some(s => s.can_create));
+      const moduleCanEdit = (keyUpper === 'SUPER_ADMIN' || keyUpper === 'ADMIN') ? true : (parentPerm ? Boolean(parentPerm.can_edit) : submodules.some(s => s.can_edit));
+      const moduleCanDelete = (keyUpper === 'SUPER_ADMIN' || keyUpper === 'ADMIN') ? true : (parentPerm ? Boolean(parentPerm.can_delete) : submodules.some(s => s.can_delete));
+
       return {
         module_key: m.key,
         module_label: m.label,

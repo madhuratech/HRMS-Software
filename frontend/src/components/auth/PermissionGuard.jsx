@@ -2,15 +2,19 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ShieldAlert, Loader2 } from 'lucide-react';
 import { usePermissions } from '../../context/PermissionContext';
+import { hasPermission as globalHasPermission } from '../../lib/permissions';
 
-export function PermissionGuard({ moduleKey, submoduleKey = null, action = 'view', children }) {
+export function PermissionGuard({ moduleKey, module, submoduleKey = null, action = 'view', inline = false, fallback = null, children }) {
   const navigate = useNavigate();
-  const { hasPermission, userRole, loadingPermissions } = usePermissions();
+  const { userRole, loadingPermissions } = usePermissions();
+
+  const modName = module || moduleKey;
 
   const normRole = String(userRole || '').toUpperCase().replace(/_/g, ' ');
   const isAdmin = normRole === 'SUPER ADMIN' || normRole === 'SUPERADMIN' || normRole === 'ADMIN';
 
   if (loadingPermissions) {
+    if (inline) return null;
     return (
       <div className="min-h-[50vh] flex items-center justify-center p-6 text-slate-500">
         <Loader2 className="animate-spin text-blue-600 mr-2" size={24} />
@@ -19,9 +23,12 @@ export function PermissionGuard({ moduleKey, submoduleKey = null, action = 'view
     );
   }
 
-  const allowed = isAdmin || hasPermission(moduleKey, submoduleKey, action);
+  const allowed = isAdmin || globalHasPermission(modName, action);
 
   if (!allowed) {
+    if (inline || fallback !== null) {
+      return fallback;
+    }
     return (
       <div className="min-h-[70vh] bg-slate-50 flex items-center justify-center p-6 text-center">
         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border border-slate-200">
@@ -30,7 +37,7 @@ export function PermissionGuard({ moduleKey, submoduleKey = null, action = 'view
           </div>
           <h2 className="text-2xl font-bold text-slate-800 mb-2">Access Denied</h2>
           <p className="text-slate-600 mb-6">
-            You do not have permission to access this module or page. Please contact your administrator.
+            You do not have permission to perform this action ({action.toUpperCase()}). Please contact your administrator.
           </p>
           <button
             onClick={() => navigate(-1)}

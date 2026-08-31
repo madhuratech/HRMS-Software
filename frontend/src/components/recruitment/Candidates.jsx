@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Download, Plus, MoreVertical, Star, ChevronLeft, ChevronRight, X, Eye, Edit3, Trash2, Calendar, FileText, CheckCircle2, UserCheck, Briefcase, Mail, Phone, MapPin, DollarSign, Clock, Send, ShieldCheck, ArrowRightLeft } from 'lucide-react';
 import { useToast } from '../ui/Toast';
+import { canCreate, canEdit, canDelete, checkActionPermission } from '../../lib/permissions';
 
 export default function Candidates() {
   const { addToast } = useToast();
@@ -297,15 +298,17 @@ export default function Candidates() {
   // Submit Send Offer Letter Form
   const handleOfferSubmit = async (e) => {
     e.preventDefault();
+    if (!checkActionPermission('candidates', 'UPDATE')) return;
     addToast(`Offer letter issued for ${selectedCandidate?.candidate_name}!`, 'success');
     setShowOfferModal(false);
     handleUpdateStatus(selectedCandidate?.id, 'Selected');
   };
 
-  const handleSave = async (e) => {
+  const handleCreateSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.name || !formData.email || !formData.mobile || !formData.department || !formData.job) {
-      addToast('Please fill in all required fields.', 'error');
+    if (!checkActionPermission('candidates', 'CREATE')) return;
+    if (!formData.name || !formData.email || !formData.mobile) {
+      addToast('Name, email, and mobile are required.', 'error');
       return;
     }
 
@@ -373,8 +376,24 @@ export default function Candidates() {
           <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Manage and track candidates in the pipeline</p>
         </div>
         <button
-          onClick={() => setShowAddModal(true)}
-          style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}
+          disabled={!canCreate('candidates')}
+          onClick={() => {
+            if (!checkActionPermission('candidates', 'CREATE')) return;
+            setShowAddModal(true);
+          }}
+          style={{ 
+            padding: '10px 16px', 
+            borderRadius: '8px', 
+            border: 'none', 
+            background: canCreate('candidates') ? '#2952E3' : '#94A3B8', 
+            color: '#FFF', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            cursor: canCreate('candidates') ? 'pointer' : 'not-allowed', 
+            fontSize: '14px', 
+            fontWeight: '500' 
+          }}
         >
           <Plus size={16} /> Add Candidate
         </button>

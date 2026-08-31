@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, Video, Clock, Plus, MessageSquare, X } from 'lucide-react';
 import { useToast } from '../ui/Toast';
+import { canCreate, canEdit, checkActionPermission } from '../../lib/permissions';
 
 export default function InterviewSchedule() {
   const { addToast } = useToast();
@@ -151,6 +152,7 @@ export default function InterviewSchedule() {
 
   const handleScheduleSubmit = async (e) => {
     e.preventDefault();
+    if (!checkActionPermission('interview_schedule', 'CREATE')) return;
     if (!scheduleForm.candidate_id || !scheduleForm.interviewer_id || !scheduleForm.interviewDate || !scheduleForm.interviewTime) {
       addToast('Please fill in all required fields.', 'error');
       return;
@@ -210,6 +212,7 @@ export default function InterviewSchedule() {
 
   const handleFeedbackSubmit = async (e) => {
     e.preventDefault();
+    if (!checkActionPermission('interview_schedule', 'EDIT')) return;
     if (!feedbackForm.schedule_id) return;
     
     setSubmitting(true);
@@ -256,6 +259,7 @@ export default function InterviewSchedule() {
         <div style={{ display: 'flex', gap: '12px' }}>
           <button
             onClick={() => {
+              if (!checkActionPermission('interview_schedule', 'EDIT')) return;
               setFeedbackForm({
                 schedule_id: '', candidate: '', interviewRound: 'Technical Round', interviewer: '', rating: '5',
                 strengths: '', weaknesses: '', recommendation: 'Hire', comments: '', status: 'Completed'
@@ -267,11 +271,27 @@ export default function InterviewSchedule() {
             <MessageSquare size={16} /> Interview Feedback
           </button>
           <button
-            onClick={() => setShowScheduleModal(true)}
-            style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}
-          >
-            <Plus size={16} /> Schedule Interview
-          </button>
+          disabled={!canCreate('interview_schedule')}
+          onClick={() => {
+            if (!checkActionPermission('interview_schedule', 'CREATE')) return;
+            setShowScheduleModal(true);
+          }}
+          style={{ 
+            padding: '10px 16px', 
+            borderRadius: '8px', 
+            border: 'none', 
+            background: canCreate('interview_schedule') ? '#2952E3' : '#94A3B8', 
+            color: '#FFF', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            cursor: canCreate('interview_schedule') ? 'pointer' : 'not-allowed', 
+            fontSize: '14px', 
+            fontWeight: '500' 
+          }}
+        >
+          <Plus size={16} /> Schedule Interview
+        </button>
         </div>
       </div>
 

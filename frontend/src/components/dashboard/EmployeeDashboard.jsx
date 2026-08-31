@@ -627,22 +627,22 @@ export function EmployeeDashboard() {
         <div className="lg:col-span-2 space-y-6">
 
           {/* Attendance Overview Chart */}
-          <div style={cardStyle}>
-            <div className="flex items-center justify-between mb-6">
+          <div style={{ ...cardStyle, padding: '18px 20px' }}>
+            <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0F172A' }}>Attendance Overview</h3>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#0F172A' }}>Attendance Overview</h3>
                 <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748B' }}>Current month attendance statistics from database</p>
               </div>
-              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100">
+              <span className="text-xs font-semibold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-100">
                 {presentDaysCount} Present / {totalWorkingDays} Working Days
               </span>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center gap-6">
-              <div style={{ width: '160px', height: '160px', position: 'relative' }}>
+            <div className="flex flex-col sm:flex-row items-center gap-5">
+              <div style={{ width: '120px', height: '120px', position: 'relative', flexShrink: 0 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={attendanceDonut} cx="50%" cy="50%" innerRadius={50} outerRadius={70} paddingAngle={4} dataKey="value">
+                    <Pie data={attendanceDonut} cx="50%" cy="50%" innerRadius={38} outerRadius={54} paddingAngle={3} dataKey="value">
                       {attendanceDonut.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
@@ -651,19 +651,19 @@ export function EmployeeDashboard() {
                   </PieChart>
                 </ResponsiveContainer>
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-                  <span style={{ fontSize: '20px', fontWeight: '800', color: '#0F172A' }}>{attendanceRate}%</span>
-                  <span style={{ fontSize: '10px', color: '#64748B', fontWeight: '600' }}>RATE</span>
+                  <span style={{ fontSize: '18px', fontWeight: '800', color: '#0F172A', lineHeight: 1 }}>{attendanceRate}%</span>
+                  <span style={{ fontSize: '9px', color: '#64748B', fontWeight: '600', marginTop: 1 }}>RATE</span>
                 </div>
               </div>
 
-              <div className="flex-1 grid grid-cols-1 md: sm:grid-cols-3 gap-4 w-full">
+              <div className="flex-1 grid grid-cols-2 sm:grid-cols-5 gap-2 w-full">
                 {attendanceDonut.map((item, idx) => (
-                  <div key={idx} className="p-3 rounded-xl border border-slate-100 bg-slate-50 flex items-center gap-3">
-                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: item.color }} />
-                    <div>
-                      <span className="block text-xs text-slate-500 font-medium">{item.name}</span>
-                      <strong className="text-sm text-slate-800 font-bold">{item.value} Days</strong>
+                  <div key={idx} className="p-2 rounded-lg border border-slate-100 bg-slate-50 flex flex-col justify-between min-w-0">
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: item.color, flexShrink: 0 }} />
+                      <span className="text-[10px] text-slate-500 font-medium truncate">{item.name}</span>
                     </div>
+                    <strong className="text-xs text-slate-800 font-bold block">{item.value} Days</strong>
                   </div>
                 ))}
               </div>
@@ -784,7 +784,7 @@ export function EmployeeDashboard() {
           {/* Quick Actions Grid */}
           <div style={cardStyle}>
             <h3 style={{ margin: '0 0 16px 0', fontSize: '15px', fontWeight: '700', color: '#0F172A' }}>Quick Actions</h3>
-            <div className="grid grid-cols-1 md: gap-3">
+            <div className="grid grid-cols-2 gap-3">
               <button onClick={() => navigate('/employee/leave')} className="p-3 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition-colors text-left group">
                 <CalendarOff size={18} className="text-amber-500 mb-1.5" />
                 <span className="block text-xs font-bold text-slate-800 group-hover:text-blue-600">Apply Leave</span>
@@ -821,7 +821,7 @@ export function EmployeeDashboard() {
                   </div>
                   <FileText size={32} className="text-blue-200" />
                 </div>
-                <div className="grid grid-cols-1 md: gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   <button onClick={() => navigate('/employee/payroll')} className="h-9 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5">
                     <Eye size={14} /> View
                   </button>

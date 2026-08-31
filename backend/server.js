@@ -11,7 +11,7 @@ process.on('unhandledRejection', (reason, promise) => {
   const logMessage = `[${new Date().toISOString()}] Unhandled Rejection: ${reason?.stack || reason}\n\n`;
   try {
     fs.appendFileSync(path.join(__dirname, 'error.log'), logMessage);
-  } catch (e) {}
+  } catch (e) { }
 });
 
 process.on('uncaughtException', (err) => {
@@ -19,7 +19,7 @@ process.on('uncaughtException', (err) => {
   const logMessage = `[${new Date().toISOString()}] Uncaught Exception: ${err?.stack || err}\n\n`;
   try {
     fs.appendFileSync(path.join(__dirname, 'error.log'), logMessage);
-  } catch (e) {}
+  } catch (e) { }
 });
 
 // Programmatic Knex Migration Runner on Startup
@@ -55,14 +55,31 @@ runMigrationsSafely();
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = [
+  'https://madhuratech.com',
+  'https://www.madhuratech.com',
+  'http://localhost:5173',
+  'http://localhost:3000'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin) || process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    return callback(null, true);
+  },
+  credentials: true
+}));
 app.use(express.json());
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 app.get("/", (req, res) => {
-    res.send("HRM Backend Running");
+  res.send("HRM Backend Running");
 });
 
+app.use("/api/public/jobs", require("./routes/publicJobs"));
+app.use("/api/jobs", require("./routes/requirements"));
 app.use("/api/attendance", require("./routes/attendanceRoute"));
 app.use("/app/attendance", require("./routes/attendanceRoute"));
 app.use("/app/auth", require("./routes/auth"));
@@ -120,8 +137,8 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5001;
 
 const server = app.listen(PORT, '0.0.0.0', () => {
-    console.log(`SERVER IS RUNNING at http://127.0.0.1:${PORT}`);
+  console.log(`SERVER IS RUNNING at http://127.0.0.1:${PORT}`);
 });
 
 // Ensure Node.js event loop stays active for HTTP server
-setInterval(() => {}, 1000 * 60 * 60);
+setInterval(() => { }, 1000 * 60 * 60);

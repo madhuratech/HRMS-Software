@@ -14,12 +14,10 @@ import { getAvatarUrl } from '../../lib/utils';
 
 // ── Team Performance Single Bar Chart Data (Achievement %) ──
 const TEAM_PERFORMANCE_DATA = [
-  { team: 'Engineering', achievement: 92 },
-  { team: 'HR', achievement: 78 },
-  { team: 'Finance', achievement: 85 },
-  { team: 'Sales', achievement: 95 },
-  { team: 'Marketing', achievement: 68 },
-  { team: 'Operations', achievement: 88 },
+  { team: 'Customer Support', achievement: 82 },
+  { team: 'Website Development', achievement: 91 },
+  { team: 'Software Development', achievement: 95 },
+  { team: 'Sales', achievement: 87 },
 ];
 
 // ── Attendance Status Donut Segments (83% Present) ──
@@ -98,7 +96,7 @@ const KpiCard = ({ label, value, trend, trendLabel, iconBg, iconColor, iconSymbo
     padding: '16px 18px',
     display: 'flex',
     flexDirection: 'column',
-    justify: 'space-between',
+    justifyContent: 'space-between',
     flex: '1 1 0',
     minWidth: 0,
     boxSizing: 'border-box',
@@ -231,59 +229,77 @@ export function SuperAdminDashboard() {
 
   const perfList = Array.isArray(stats?.performanceEmployees)
     ? stats.performanceEmployees.map((row, idx) => ({
-        ...row,
-        avatar: getAvatarUrl(row.profile_photo, row.name, row.id || idx + 1)
-      }))
+      ...row,
+      avatar: getAvatarUrl(row.profile_photo, row.name, row.id || idx + 1)
+    }))
     : [];
 
   const holidayList = Array.isArray(stats?.upcomingHolidays)
     ? stats.upcomingHolidays.map(h => ({
-        date: new Date(h.date).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }),
-        day: new Date(h.date).toLocaleDateString([], { weekday: 'long' }),
-        name: h.name
-      }))
+      date: new Date(h.date).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' }),
+      day: new Date(h.date).toLocaleDateString([], { weekday: 'long' }),
+      name: h.name
+    }))
     : [];
 
   const birthdayList = Array.isArray(stats?.upcomingBirthdays)
     ? stats.upcomingBirthdays.map((b, idx) => ({
-        img: getAvatarUrl(b.profile_photo, b.name, b.id || idx + 1),
-        name: b.name,
-        role: 'Team Member',
-        date: b.date || 'Today'
-      }))
+      img: getAvatarUrl(b.profile_photo, b.name, b.id || idx + 1),
+      name: b.name,
+      role: 'Team Member',
+      date: b.date || 'Today'
+    }))
     : [];
 
   const activityList = Array.isArray(stats?.recentActivity)
     ? stats.recentActivity.map((act, idx) => ({
-        avatar: getAvatarUrl(act.profile_photo, act.employee_name, act.employee_id || idx + 1),
-        name: act.employee_name,
-        action: act.punch_type === 'IN' ? 'punched in at' : 'punched out at',
-        highlight: new Date(act.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        time: 'Just now',
-        dot: act.punch_type === 'IN' ? '#10B981' : '#EF4444'
-      }))
+      avatar: getAvatarUrl(act.profile_photo, act.employee_name, act.employee_id || idx + 1),
+      name: act.employee_name,
+      action: act.punch_type === 'IN' ? 'punched in at' : 'punched out at',
+      highlight: new Date(act.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+      time: 'Just now',
+      dot: act.punch_type === 'IN' ? '#10B981' : '#EF4444'
+    }))
     : [];
 
   const leaveList = Array.isArray(stats?.recentLeaves)
     ? stats.recentLeaves.map((l, idx) => ({
-        avatar: getAvatarUrl(l.profile_photo, l.employee_name, l.id || idx + 1),
-        name: l.employee_name,
-        dept: l.dept_name || 'HR',
-        type: l.leave_name || 'Sick Leave',
-        days: `${l.duration || 1} day`
-      }))
+      avatar: getAvatarUrl(l.profile_photo, l.employee_name, l.id || idx + 1),
+      name: l.employee_name,
+      dept: l.dept_name || 'HR',
+      type: l.leave_name || 'Sick Leave',
+      days: `${l.duration || 1} day`
+    }))
     : [];
 
-  // Adapt department summary to chart format
-  const chartData = Array.isArray(stats?.departmentSummary)
-    ? stats.departmentSummary.map(d => ({ team: d.dept, achievement: Math.min(100, Math.round(d.emp * 12)) })) 
-    : [];
+  // Dynamically build chart data from real department/team data from API
+  const rawDeptData = Array.isArray(stats?.departmentSummary) && stats.departmentSummary.length > 0
+    ? stats.departmentSummary
+    : null;
+
+  const chartData = rawDeptData
+    ? (() => {
+        const maxEmp = Math.max(...rawDeptData.map(d => d.emp), 1);
+        return rawDeptData.map(d => ({
+          team: d.dept,
+          achievement: d.emp === 0 ? 0 : Math.min(100, Math.max(5, Math.round((d.emp / maxEmp) * 100)))
+        }));
+      })()
+    : TEAM_PERFORMANCE_DATA;
 
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box', background: '#F8FAFC', minHeight: '100vh', padding: 0 }}>
 
-      {/* ── FIRST ROW: 4 KPI Cards ── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+      {/* ── FIRST ROW: 5 KPI Cards Grid ── */}
+      <div
+        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+          gap: 16,
+          marginBottom: 24
+        }}
+      >
         <KpiCard label="Total Revenue" value={revenueValue} trend="12.5%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="₹" />
         <KpiCard label="Total Employees" value={employeeCount} trend="8.3%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="👥" />
         <KpiCard label="Total Projects" value={projectCount} trend="15.7%" trendLabel="vs last month" iconBg="#DCFCE7" iconColor="#16A34A" iconSymbol="💼" />
@@ -291,32 +307,71 @@ export function SuperAdminDashboard() {
         <KpiCard label="Total Clients" value={clientCount} trend="10.2%" trendLabel="vs last month" iconBg="#EFF6FF" iconColor="#2563EB" iconSymbol="👤" />
       </div>
 
-      {/* ── SECOND ROW: TEAM PERFORMANCE + ATTENDANCE ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.8fr_1fr] gap-6 mb-6">
-
-        {/* Left 70%: Team Performance Bar Chart */}
-        <div style={{ background: '#FFFFFF', borderRadius: 16, border: '1px solid #E5E7EB', padding: 24, boxShadow: '0 8px 24px rgba(15,23,42,0.06)', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      {/* ── SECOND ROW: TEAM PERFORMANCE (LEFT ~64%) + ATTENDANCE STATUS (RIGHT ~36%) ── */}
+      <div 
+        style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'minmax(0, 1.7fr) minmax(380px, 0.9fr)', 
+          gap: 20, 
+          marginBottom: 24,
+          alignItems: 'stretch'
+        }}
+      >
+        {/* Left: Team Performance Bar Chart */}
+        <div style={{ 
+          background: '#FFFFFF', 
+          borderRadius: 20, 
+          border: '1px solid #E5E7EB', 
+          padding: '20px 24px', 
+          boxShadow: '0 4px 16px rgba(15,23,42,0.04)', 
+          display: 'flex', 
+          flexDirection: 'column',
+          boxSizing: 'border-box'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <div>
               <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#111827' }}>Team Performance</h3>
-              <p style={{ margin: '4px 0 0', fontSize: 12, color: '#6B7280' }}>Team Goal Achievement Percentage</p>
+              <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6B7280' }}>Team Goal Achievement Percentage</p>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#374151', fontWeight: 500 }}>
-                <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#2563EB' }} /> Achievement %
-              </span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#374151', fontWeight: 500 }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#2563EB' }} /> Achievement %
             </div>
           </div>
 
           <div style={{ width: '100%', height: 260, flex: 1 }}>
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 20, right: 10, left: -10, bottom: 0 }}>
+              <BarChart data={chartData} margin={{ top: 16, right: 10, left: -15, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                <XAxis dataKey="team" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} />
+                <XAxis
+                  dataKey="team"
+                  axisLine={false}
+                  tickLine={false}
+                  interval={0}
+                  height={52}
+                  tick={({ x, y, payload }) => {
+                    // Split label into max 2 lines for horizontal display — no rotation
+                    const words = String(payload.value).split(' ');
+                    const mid = Math.ceil(words.length / 2);
+                    const line1 = words.slice(0, mid).join(' ');
+                    const line2 = words.slice(mid).join(' ');
+                    return (
+                      <g transform={`translate(${x},${y})`}>
+                        <text x={0} y={0} dy={12} textAnchor="middle" fill="#64748B" fontSize={10} fontFamily="Inter, sans-serif">
+                          {line1}
+                        </text>
+                        {line2 && (
+                          <text x={0} y={0} dy={25} textAnchor="middle" fill="#64748B" fontSize={10} fontFamily="Inter, sans-serif">
+                            {line2}
+                          </text>
+                        )}
+                      </g>
+                    );
+                  }}
+                />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748B' }} tickFormatter={(v) => `${v}%`} domain={[0, 100]} ticks={[0, 20, 40, 60, 80, 100]} />
-                <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }} formatter={(val) => [`${val}%`, 'Achievement']} />
-                <Bar dataKey="achievement" fill="#2563EB" radius={[4, 4, 0, 0]} barSize={28}>
+                <Tooltip contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }} cursor={{ fill: 'rgba(241, 245, 249, 0.4)' }} formatter={(val) => [`${val}%`, 'Achievement']} />
+                <Bar dataKey="achievement" fill="#2563EB" radius={[4, 4, 0, 0]} barSize={26}>
                   <LabelList dataKey="achievement" position="top" formatter={(v) => `${v}%`} style={{ fontSize: 11, fontWeight: 600, fill: '#1E293B' }} />
                 </Bar>
               </BarChart>
@@ -324,13 +379,32 @@ export function SuperAdminDashboard() {
           </div>
         </div>
 
-        {/* Right 30%: Attendance Status Circular Donut + 3 Summary Cards */}
-        <div style={{ background: '#FFFFFF', borderRadius: 16, border: '1px solid #E5E7EB', padding: 24, boxShadow: '0 8px 24px rgba(15,23,42,0.06)', display: 'flex', flexDirection: 'column' }}>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#111827' }}>Attendance Status</h3>
-          <p style={{ margin: '2px 0 16px', fontSize: 12, color: '#6B7280' }}>Today's overview</p>
+        {/* Right: Attendance Status Circular Donut + 3 Summary Cards */}
+        <div style={{ 
+          background: '#FFFFFF', 
+          borderRadius: 20, 
+          border: '1px solid #E5E7EB', 
+          padding: '20px 24px', 
+          boxShadow: '0 4px 16px rgba(15,23,42,0.04)', 
+          display: 'flex', 
+          flexDirection: 'column',
+          justify: 'space-between',
+          boxSizing: 'border-box'
+        }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#111827' }}>Attendance Status</h3>
+            <p style={{ margin: '2px 0 0', fontSize: 12, color: '#6B7280' }}>Today's overview</p>
+          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-[1.2fr_1fr] gap-4 items-center flex-1">
-            {/* Circular Progress Donut */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: '1.1fr 1fr', 
+            alignItems: 'center', 
+            gap: 16, 
+            flex: 1, 
+            marginTop: 10 
+          }}>
+            {/* Left Side: Red Donut Chart */}
             <div style={{ width: '100%', height: 160, position: 'relative' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -342,38 +416,38 @@ export function SuperAdminDashboard() {
               </ResponsiveContainer>
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                 <span style={{ fontSize: 24, fontWeight: 800, color: '#111827', lineHeight: 1 }}>{presentPct}%</span>
-                <span style={{ fontSize: 10, fontWeight: 600, color: '#6B7280', marginTop: 2, textTransform: 'uppercase' }}>Present</span>
+                <span style={{ fontSize: 10, fontWeight: 600, color: '#6B7280', marginTop: 2, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Present</span>
               </div>
             </div>
 
-            {/* 3 Vertical Pastel Summary Cards */}
+            {/* Right Side: 3 Vertically Stacked Status Cards */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ background: '#F0FDF4', border: '1px solid #DCFCE7', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#DCFCE7', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <UserCheck size={14} />
+                <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#DCFCE7', color: '#16A34A', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <UserCheck size={15} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>{presentToday}</div>
-                  <div style={{ fontSize: 11, fontWeight: 500, color: '#16A34A' }}>Present</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#111827', lineHeight: 1.1 }}>{presentToday}</div>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: '#16A34A' }}>Present</div>
                 </div>
               </div>
 
               <div style={{ background: '#FEF2F2', border: '1px solid #FEE2E2', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#FEE2E2', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Calendar size={14} />
+                <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#FEE2E2', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Calendar size={15} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>{leaveToday}</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#111827', lineHeight: 1.1 }}>{leaveToday}</div>
                   <div style={{ fontSize: 11, fontWeight: 500, color: '#EF4444' }}>On Leave</div>
                 </div>
               </div>
 
               <div style={{ background: '#EFF6FF', border: '1px solid #DBEAFE', borderRadius: 12, padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 10 }}>
-                <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#DBEAFE', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Calendar size={14} />
+                <div style={{ width: 30, height: 30, borderRadius: '50%', background: '#DBEAFE', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Calendar size={15} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: '#111827', lineHeight: 1.1 }}>{absentToday}</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: '#111827', lineHeight: 1.1 }}>{absentToday}</div>
                   <div style={{ fontSize: 11, fontWeight: 500, color: '#2563EB' }}>Absent</div>
                 </div>
               </div>
@@ -383,11 +457,11 @@ export function SuperAdminDashboard() {
 
       </div>
 
-      {/* ── THIRD ROW: EMPLOYEE PERFORMANCE + ON LEAVE ── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4 mb-6">
+      {/* ── THIRD ROW: EMPLOYEE PERFORMANCE (2/3 WIDE) + ON LEAVE (1/3 NARROW) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
 
-        {/* Left: Employee Performance Overview Table */}
-        <div style={{ background: '#FFFFFF', borderRadius: 16, border: '1px solid #E5E7EB', boxShadow: '0 8px 24px rgba(15,23,42,0.06)', overflow: 'hidden' }}>
+        {/* Left 67%: Employee Performance Overview Table */}
+        <div className="lg:col-span-2" style={{ background: '#FFFFFF', borderRadius: 16, border: '1px solid #E5E7EB', boxShadow: '0 8px 24px rgba(15,23,42,0.06)', overflow: 'hidden' }}>
           <div style={{ padding: '18px 24px', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#111827' }}>Employee Performance Overview</h3>
             <button style={{ background: 'none', border: 'none', color: '#2952E3', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
@@ -446,8 +520,8 @@ export function SuperAdminDashboard() {
           </div>
         </div>
 
-        {/* Right: On Leave Today */}
-        <div style={{ background: '#FFFFFF', borderRadius: 16, border: '1px solid #E5E7EB', boxShadow: '0 8px 24px rgba(15,23,42,0.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Right 33%: On Leave Today */}
+        <div className="lg:col-span-1" style={{ background: '#FFFFFF', borderRadius: 16, border: '1px solid #E5E7EB', boxShadow: '0 8px 24px rgba(15,23,42,0.06)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Header */}
           <div style={{ padding: '18px 20px', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -463,8 +537,8 @@ export function SuperAdminDashboard() {
               const typeColor = emp.type === 'Sick Leave'
                 ? { bg: '#FEF2F2', text: '#EF4444' }
                 : emp.type === 'Annual Leave' || emp.type === 'Earned Leave'
-                ? { bg: '#EFF6FF', text: '#2563EB' }
-                : { bg: '#F0FDF4', text: '#16A34A' };
+                  ? { bg: '#EFF6FF', text: '#2563EB' }
+                  : { bg: '#F0FDF4', text: '#16A34A' };
               return (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', padding: '10px 20px', borderBottom: i < 4 ? '1px solid #F8FAFC' : 'none', gap: 12 }}>
                   <img
@@ -615,9 +689,9 @@ export function SuperAdminDashboard() {
                 transition: 'all 150ms ease',
                 color: '#2563EB',
               }}
-              onClick={() => handleQuickAction(action.label)}
-              onMouseEnter={e => { e.currentTarget.style.background = '#2563EB'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#2563EB'; }}
-              onMouseLeave={e => { e.currentTarget.style.background = '#F0F4FF'; e.currentTarget.style.color = '#2563EB'; e.currentTarget.style.borderColor = '#E0E7FF'; }}
+                onClick={() => handleQuickAction(action.label)}
+                onMouseEnter={e => { e.currentTarget.style.background = '#2563EB'; e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = '#2563EB'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = '#F0F4FF'; e.currentTarget.style.color = '#2563EB'; e.currentTarget.style.borderColor = '#E0E7FF'; }}
               >
                 {action.icon}
                 <span style={{ fontSize: 11, fontWeight: 600, whiteSpace: 'nowrap', color: 'inherit' }}>{action.label}</span>
@@ -648,7 +722,7 @@ export function SuperAdminDashboard() {
                 <Mail size={18} color="#2563EB" />
                 <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#0F172A' }}>Send Announcement Email</h3>
               </div>
-              <button 
+              <button
                 onClick={() => setShowEmailModal(false)}
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B' }}
               >
@@ -661,7 +735,7 @@ export function SuperAdminDashboard() {
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
                   Email Subject *
                 </label>
-                <input 
+                <input
                   type="text"
                   placeholder="e.g. Monthly All-Hands Announcement"
                   value={emailSubject}
@@ -678,7 +752,7 @@ export function SuperAdminDashboard() {
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
                   Message Content *
                 </label>
-                <textarea 
+                <textarea
                   rows={4}
                   placeholder="Write your email message here..."
                   value={emailBody}
@@ -692,8 +766,8 @@ export function SuperAdminDashboard() {
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 8 }}>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setShowEmailModal(false)}
                   style={{
                     padding: '8px 16px', borderRadius: 8, border: '1px solid #CBD5E1',
@@ -702,7 +776,7 @@ export function SuperAdminDashboard() {
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
                   disabled={sendingEmail}
                   style={{

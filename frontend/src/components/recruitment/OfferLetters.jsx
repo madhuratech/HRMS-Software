@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Download, Plus, MoreHorizontal, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useToast } from '../ui/Toast';
+import { canCreate, canEdit, checkActionPermission } from '../../lib/permissions';
 
 export default function OfferLetters() {
   const { addToast } = useToast();
@@ -120,6 +121,7 @@ export default function OfferLetters() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    if (!checkActionPermission('offer_letters', 'CREATE')) return;
     if (!formData.candidate || !formData.job || !formData.department || !formData.salaryOffered || !formData.joiningDate || !formData.reportingManager || !formData.offerExpiryDate) {
       addToast('Please fill in all required fields.', 'error');
       return;
@@ -179,10 +181,26 @@ export default function OfferLetters() {
           <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Manage and track offer letters</p>
         </div>
         <button
-          onClick={() => setShowAddModal(true)}
-          style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}
+          disabled={!canCreate('offer_letters')}
+          onClick={() => {
+            if (!checkActionPermission('offer_letters', 'CREATE')) return;
+            setShowAddModal(true);
+          }}
+          style={{ 
+            padding: '10px 16px', 
+            borderRadius: '8px', 
+            border: 'none', 
+            background: canCreate('offer_letters') ? '#2952E3' : '#94A3B8', 
+            color: '#FFF', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '8px', 
+            cursor: canCreate('offer_letters') ? 'pointer' : 'not-allowed', 
+            fontSize: '14px', 
+            fontWeight: '500' 
+          }}
         >
-          <Plus size={16} /> Create Offer Letter
+          <Plus size={16} /> Create Offer
         </button>
       </div>
 

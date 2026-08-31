@@ -91,10 +91,13 @@ import CompOff from './components/leave/CompOff';
 import RecruitmentDashboard from './components/recruitment/RecruitmentDashboard';
 import JobOpenings from './components/recruitment/JobOpenings';
 import Candidates from './components/recruitment/Candidates';
+import CandidateScreening from './components/recruitment/CandidateScreening';
 import InterviewSchedule from './components/recruitment/InterviewSchedule';
 import OfferLetters from './components/recruitment/OfferLetters';
 import HiringPipeline from './components/recruitment/HiringPipeline';
 import RecruitmentReports from './components/recruitment/RecruitmentReports';
+import PublicCareerPage from './components/public/PublicCareerPage';
+import PublicJobDetails from './components/public/PublicJobDetails';
 
 // Onboarding Module Imports
 import NewJoiners from './components/onboarding/NewJoiners';
@@ -320,6 +323,10 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            
+            {/* Public Career Website Routes */}
+            <Route path="/career" element={<PublicCareerPage />} />
+            <Route path="/career/job/:slug" element={<PublicJobDetails />} />
 
             <Route element={<AppLayout userRole={userRole} onLogout={handleLogout} />}>
               {/* Dashboard Route */}
@@ -449,6 +456,7 @@ function App() {
             <Route path="/recruitment/dashboard" element={<PermissionGuard moduleKey="recruitment" submoduleKey="recruitment_dashboard"><RecruitmentDashboard /></PermissionGuard>} />
             <Route path="/recruitment/jobs" element={<PermissionGuard moduleKey="recruitment" submoduleKey="job_openings"><JobOpenings /></PermissionGuard>} />
             <Route path="/recruitment/candidates" element={<PermissionGuard moduleKey="recruitment" submoduleKey="candidates"><Candidates /></PermissionGuard>} />
+            <Route path="/recruitment/screening" element={<PermissionGuard moduleKey="recruitment" submoduleKey="screening"><CandidateScreening /></PermissionGuard>} />
             <Route path="/recruitment/interviews" element={<PermissionGuard moduleKey="recruitment" submoduleKey="interview_schedule"><InterviewSchedule /></PermissionGuard>} />
             <Route path="/recruitment/offers" element={<PermissionGuard moduleKey="recruitment" submoduleKey="offer_letters"><OfferLetters /></PermissionGuard>} />
             <Route path="/recruitment/pipeline" element={<PermissionGuard moduleKey="recruitment" submoduleKey="hiring_pipeline"><HiringPipeline /></PermissionGuard>} />

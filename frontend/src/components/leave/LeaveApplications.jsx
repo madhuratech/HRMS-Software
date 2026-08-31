@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Filter, Plus, Eye, Edit, XCircle, Download, ChevronLeft, ChevronRight, X, Upload, Calendar } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
-import { canCreate, canEdit, canDelete, guardCreateAction } from '../../lib/permissions';
+import { canCreate, canEdit, canDelete, guardCreateAction, checkActionPermission } from '../../lib/permissions';
 
 const CustomSelect = ({ label, required, value, onChange, options, placeholder }) => {
   const [open, setOpen] = useState(false);
@@ -55,7 +55,7 @@ export default function LeaveApplications() {
         if (data && data.success && data.permissions) {
           setUserPermissions(data.permissions);
         }
-      } catch (err) {}
+      } catch (err) { }
     };
     fetchPerms();
   }, []);
@@ -147,7 +147,7 @@ export default function LeaveApplications() {
     const nextForm = { ...formData, [field]: val };
     const days = calculateDays(field === 'startDate' ? val : formData.startDate, field === 'endDate' ? val : formData.endDate);
     setFormData({ ...nextForm, totalDays: days });
-    
+
     if (errors[field]) setErrors(prev => ({ ...prev, [field]: null }));
     if (field === 'endDate' || field === 'startDate') {
       if (nextForm.startDate && nextForm.endDate && new Date(nextForm.endDate) < new Date(nextForm.startDate)) {
@@ -174,6 +174,7 @@ export default function LeaveApplications() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!checkActionPermission('my_leave', 'CREATE')) return;
     if (!validate()) return;
 
     try {
@@ -228,8 +229,8 @@ export default function LeaveApplications() {
 
   // Filter local rows
   const filtered = applications.filter(app => {
-    const nameMatch = app.employee_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                      `EMP${String(app.employee_id).padStart(3,'0')}`.toLowerCase().includes(searchTerm.toLowerCase());
+    const nameMatch = app.employee_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      `EMP${String(app.employee_id).padStart(3, '0')}`.toLowerCase().includes(searchTerm.toLowerCase());
     const statusMatch = statusFilter === 'All Status' || app.status === statusFilter;
     return nameMatch && statusMatch;
   });
@@ -242,15 +243,15 @@ export default function LeaveApplications() {
           <div style={{ display: 'flex', gap: '12px', flex: 1, minWidth: '280px', flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ flex: 1, minWidth: '220px', position: 'relative' }}>
               <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }} />
-              <input 
-                type="text" 
-                placeholder="Search employee..." 
+              <input
+                type="text"
+                placeholder="Search employee..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ width: '100%', padding: '9px 12px 9px 36px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none' }} 
+                style={{ width: '100%', padding: '9px 12px 9px 36px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
               />
             </div>
-            <select 
+            <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
               style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '130px' }}
@@ -260,7 +261,7 @@ export default function LeaveApplications() {
               <option>Approved</option>
               <option>Rejected</option>
             </select>
-            <select 
+            <select
               value={deptFilter}
               onChange={(e) => setDeptFilter(e.target.value)}
               style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '150px' }}
@@ -275,21 +276,21 @@ export default function LeaveApplications() {
             </div>
           </div>
 
-          <button 
+          <button
             onClick={() => {
               if (!guardCreateAction(userPermissions, userRole, 'leave', 'my_leave', addToast)) return;
               setShowModal(true);
-            }} 
-            style={{ 
-              background: '#2563EB', color: '#fff', border: 'none', 
-              padding: '10px 18px', borderRadius: '8px', fontSize: '13px', 
-              fontWeight: '600', display: 'flex', alignItems: 'center', 
+            }}
+            style={{
+              background: '#2563EB', color: '#fff', border: 'none',
+              padding: '10px 18px', borderRadius: '8px', fontSize: '13px',
+              fontWeight: '600', display: 'flex', alignItems: 'center',
               gap: '8px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              <Plus size={16} /> Apply Leave
-            </button>
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <Plus size={16} /> Apply Leave
+          </button>
         </div>
 
         {/* Table */}
@@ -322,7 +323,7 @@ export default function LeaveApplications() {
                   const s = new Date(app.start_date);
                   const e = new Date(app.end_date);
                   const days = isNaN(s) || isNaN(e) ? 1 : Math.ceil(Math.abs(e - s) / (1000 * 60 * 60 * 24)) + 1;
-                  
+
                   return (
                     <tr key={app.id || idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '16px' }}>
@@ -330,7 +331,7 @@ export default function LeaveApplications() {
                           <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(app.employee_name)}&background=f1f5f9&color=64748b`} alt={app.employee_name} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
                           <div>
                             <div style={{ fontSize: '13px', fontWeight: '600', color: '#1e293b' }}>{app.employee_name}</div>
-                            <div style={{ fontSize: '11px', color: '#94a3b8' }}>EMP{String(app.employee_id).padStart(3,'0')}</div>
+                            <div style={{ fontSize: '11px', color: '#94a3b8' }}>EMP{String(app.employee_id).padStart(3, '0')}</div>
                           </div>
                         </div>
                       </td>
@@ -357,7 +358,7 @@ export default function LeaveApplications() {
       {showModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
           <div style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '640px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            
+
             {/* Header */}
             <div style={{ padding: '24px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#1e293b' }}>New Leave Request</h3>
@@ -368,10 +369,10 @@ export default function LeaveApplications() {
 
             {/* Form */}
             <form onSubmit={handleSubmit} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                
-                <CustomSelect 
+
+                <CustomSelect
                   label="Employee Name"
                   required
                   placeholder="Select employee"
@@ -382,7 +383,7 @@ export default function LeaveApplications() {
 
                 <div>
                   <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#334155', marginBottom: '8px' }}>Employee ID</label>
-                  <input type="text" readOnly value={formData.employeeId ? `EMP${String(formData.employeeId).padStart(3,'0')}` : ''} style={{ width: '100%', height: '48px', padding: '0 16px', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '14px', background: '#f8fafc', color: '#64748b', boxSizing: 'border-box' }} />
+                  <input type="text" readOnly value={formData.employeeId ? `EMP${String(formData.employeeId).padStart(3, '0')}` : ''} style={{ width: '100%', height: '48px', padding: '0 16px', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '14px', background: '#f8fafc', color: '#64748b', boxSizing: 'border-box' }} />
                 </div>
 
               </div>
@@ -399,7 +400,7 @@ export default function LeaveApplications() {
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
-                <CustomSelect 
+                <CustomSelect
                   label="Leave Type"
                   required
                   placeholder="Select leave type"

@@ -1,9 +1,22 @@
 
-# Added by ggshield
-.cache_ggshield
-<<<<<<< HEAD
-=======
+# Dependencies
+node_modules/
+backend/node_modules/
+frontend/node_modules/
 
-backend/.env
+# Environment variables
 .env
->>>>>>> origin/main
+*.env
+backend/.env
+frontend/.env
+backend/.env.local
+
+# Logs and scratch
+*.log
+backend/*.log
+scratch/
+.cache_ggshield
+
+# Build output
+frontend/dist/
+frontend/build/

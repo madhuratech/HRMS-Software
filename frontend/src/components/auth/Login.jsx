@@ -31,9 +31,13 @@ export function Login({ onLogin, onRegisterClick }) {
         body: JSON.stringify({ email, password, loginType })
       });
 
-      if (data && data.user) {
+      if (data && data.success && data.user) {
         // Backend resolved the actual role and employee ID
         onLogin(data.user.role, data.user.name, data.user);
+        return;
+      } else if (data && data.message && !data.message.toLowerCase().includes('fetch') && !data.message.toLowerCase().includes('network')) {
+        setErrorMsg(data.message);
+        return;
       }
     } catch (err) {
       console.error('Login error:', err);

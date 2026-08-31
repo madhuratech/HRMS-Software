@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Bell, Search, ChevronRight, X, Menu } from 'lucide-react';
 import { LeaveApprovals } from '../attendance/LeaveApprovals';
+import { apiFetch } from '../../lib/api';
 
-export function Header({ title, userRole, currentView, onMenuToggle }) {
+export function Header({ title, userRole, currentView }) {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const isManager = userRole === 'BRANCH_MANAGER' || userRole === 'SUPER_ADMIN';
 
   const authRaw = localStorage.getItem('hrms_auth');
   let authData = {};
-  try { if (authRaw) authData = JSON.parse(authRaw); } catch(e) {}
+  try { if (authRaw) authData = JSON.parse(authRaw); } catch (e) { }
 
   const handleProfileClick = () => {
     let userId = 1;
@@ -19,7 +22,7 @@ export function Header({ title, userRole, currentView, onMenuToggle }) {
       try {
         const parsed = JSON.parse(auth);
         if (parsed.user && parsed.user.id) userId = parsed.user.id;
-      } catch (e) {}
+      } catch (e) { }
     }
     localStorage.setItem('selectedEmployeeId', userId);
     navigate('/employees/profile');
@@ -163,16 +166,10 @@ export function Header({ title, userRole, currentView, onMenuToggle }) {
   const breadcrumbs = getBreadcrumbs();
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10">
+    <header className="header h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 sticky top-0 z-10">
       {/* Left: Breadcrumb */}
       <div className="flex items-center gap-3">
-        <button 
-          onClick={onMenuToggle}
-          className="p-1.5 -ml-1.5 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-colors"
-        >
-          <Menu size={20} />
-        </button>
-        <div className="flex items-center gap-2 text-sm hidden sm:flex">
+        <div className="flex items-center gap-2 text-sm">
           {breadcrumbs.map((crumb, index) => (
             <React.Fragment key={index}>
               {index > 0 && <ChevronRight size={14} className="text-slate-400" />}
@@ -223,7 +220,7 @@ export function Header({ title, userRole, currentView, onMenuToggle }) {
                     <X size={16} />
                   </button>
                 </div>
-                
+
                 <div className="max-h-[400px] overflow-y-auto">
                   {isManager ? (
                     <div className="p-4">
@@ -237,7 +234,7 @@ export function Header({ title, userRole, currentView, onMenuToggle }) {
                     </div>
                   )}
                 </div>
-                
+
                 {isManager && (
                   <div className="p-3 border-t border-slate-100 bg-slate-50 text-center">
                     <button className="text-blue-600 text-xs font-bold hover:underline">
@@ -251,7 +248,7 @@ export function Header({ title, userRole, currentView, onMenuToggle }) {
         </div>
 
         {/* User Info */}
-        <div 
+        <div
           onClick={handleProfileClick}
           style={{ cursor: 'pointer' }}
           className="flex items-center gap-3 hover:opacity-85 transition-opacity"
