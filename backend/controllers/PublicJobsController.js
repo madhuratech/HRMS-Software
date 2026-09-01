@@ -353,6 +353,17 @@ class PublicJobsController {
         LIMIT 1
       `;
 
+      const parseSalary = (val) => {
+        if (val === undefined || val === null || val === '') return null;
+        const num = parseFloat(String(val).replace(/[^0-9.]/g, ''));
+        return isNaN(num) ? null : num;
+      };
+
+      const currentSalaryVal = parseSalary(req.body.currentSalary || req.body.current_salary);
+      const expectedSalaryVal = parseSalary(req.body.expectedSalary || req.body.expected_salary);
+      const currentCompanyVal = req.body.currentCompany || req.body.current_company || null;
+      const noticePeriodVal = req.body.noticePeriod || req.body.notice_period || 'Immediate';
+
       db.query(
         'SELECT id, job_title, department_id FROM requirements WHERE (id = ? OR requirement_code = ?) AND deleted_at IS NULL AND LOWER(status) IN (\'published\', \'open\', \'approved\') LIMIT 1',
         [jobId, jobId],
@@ -368,105 +379,69 @@ class PublicJobsController {
 
           const targetJob = jobRows[0];
 
+          // Duplicate detection: check if applicant already applied for this job
           db.query(
-            'SELECT id FROM candidates WHERE LOWER(email) = ? OR mobile_number = ?',
-            [emailToUse, phoneToUse],
-            (cErr, existingCandidates) => {
-              if (existingCandidates && existingCandidates.length > 0) {
-                const candidateId = existingCandidates[0].id;
-
-                const updateSql = `
-                  UPDATE candidates SET
-                    candidate_name = ?,
-                    mobile_number = ?,
-                    job_position = ?,
-                    department_id = ?,
-                    resume = COALESCE(?, resume),
-                    experience = ?,
-                    current_company = ?,
-                    expected_salary = ?,
-                    notice_period = ?,
-                    status = 'Applied',
-                    updated_at = NOW()
-                  WHERE id = ?
-                `;
-
-                const updateParams = [
-                  nameToUse,
-                  phoneToUse,
-                  targetJob.job_title,
-                  targetJob.department_id || 1,
-                  resumePath,
-                  totalExperience || experience || '0-1 Years',
-                  currentCompany || null,
-                  expectedSalary ? parseFloat(expectedSalary) || null : null,
-                  noticePeriod || 'Immediate',
-                  candidateId
-                ];
-
-                db.query(updateSql, updateParams, (uErr) => {
-                  if (uErr) {
-                    console.error('[applyForJob] Candidate Update Error:', uErr);
-                    return response(res, false, 500, 'Failed to update candidate application.');
-                  }
-
-                  return res.status(200).json({
-                    success: true,
-                    message: 'Your application has been submitted successfully.',
-                    candidateId,
-                    jobId: targetJob.id
-                  });
-                });
-              } else {
-                const insertSql = `
-                  INSERT INTO candidates (
-                    candidate_name,
-                    email,
-                    mobile_number,
-                    gender,
-                    department_id,
-                    job_position,
-                    resume,
-                    experience,
-                    current_company,
-                    expected_salary,
-                    notice_period,
-                    address,
-                    status,
-                    created_by,
-                    updated_by
-                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Applied', 1, 1)
-                `;
-
-                const insertParams = [
-                  nameToUse,
-                  emailToUse,
-                  phoneToUse,
-                  gender || 'Male',
-                  targetJob.department_id || 1,
-                  targetJob.job_title,
-                  resumePath,
-                  totalExperience || experience || '0-1 Years',
-                  currentCompany || null,
-                  expectedSalary ? parseFloat(expectedSalary) || null : null,
-                  noticePeriod || 'Immediate',
-                  currentLocation || address || null
-                ];
-
-                db.query(insertSql, insertParams, (iErr, iRes) => {
-                  if (iErr) {
-                    console.error('[applyForJob] Insert Error:', iErr);
-                    return response(res, false, 500, 'Failed to save application.');
-                  }
-
-                  return res.status(201).json({
-                    success: true,
-                    message: 'Your application has been submitted successfully.',
-                    candidateId: iRes.insertId,
-                    jobId: targetJob.id
-                  });
+            'SELECT id, status, created_at FROM candidates WHERE (LOWER(email) = ? OR mobile_number = ?) AND LOWER(job_position) = LOWER(?)',
+            [emailToUse, phoneToUse, targetJob.job_title],
+            (cErr, existingMatches) => {
+              if (existingMatches && existingMatches.length > 0) {
+                return res.status(200).json({
+                  success: false,
+                  alreadyApplied: true,
+                  message: `You have already applied for the ${targetJob.job_title} position. Our HR recruitment team is currently reviewing your profile.`
                 });
               }
+
+              const insertSql = `
+                INSERT INTO candidates (
+                  candidate_name,
+                  email,
+                  mobile_number,
+                  gender,
+                  department_id,
+                  job_position,
+                  resume,
+                  experience,
+                  current_company,
+                  current_salary,
+                  expected_salary,
+                  notice_period,
+                  address,
+                  status,
+                  created_by,
+                  updated_by
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Applied', 1, 1)
+              `;
+
+              const insertParams = [
+                nameToUse,
+                emailToUse,
+                phoneToUse,
+                gender || 'Male',
+                targetJob.department_id || 1,
+                targetJob.job_title,
+                resumePath,
+                totalExperience || experience || '0-1 Years',
+                currentCompanyVal,
+                currentSalaryVal,
+                expectedSalaryVal,
+                noticePeriodVal,
+                currentLocation || address || null
+              ];
+
+              db.query(insertSql, insertParams, (iErr, iRes) => {
+                if (iErr) {
+                  console.error('[applyForJob] Insert Error:', iErr);
+                  return response(res, false, 500, 'Failed to save application.');
+                }
+
+                return res.status(201).json({
+                  success: true,
+                  message: 'Your application has been submitted successfully.',
+                  candidateId: iRes.insertId,
+                  jobId: targetJob.id
+                });
+              });
             }
           );
         }
