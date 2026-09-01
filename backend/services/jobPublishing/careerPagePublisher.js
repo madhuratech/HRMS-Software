@@ -17,15 +17,10 @@ class CareerPagePublisher {
    * PUBLISH JOB
    */
   static async publish(job) {
-
     return new Promise((resolve) => {
-
-      const title = job.job_title || job.title || 'Job Opening';
-
-      const slug = getSlug(title, job.id);
-
-      const externalUrl =
-        `https://madhuratech.com/career/job/${slug}`;
+      const jobTitle = job.job_title || job.title || 'job-opening';
+      const slug = getSlug(jobTitle, job.id);
+      const externalUrl = `https://madhuratech.com/career/job/${slug}`;
 
       const sql = `
         UPDATE requirements
@@ -38,14 +33,8 @@ class CareerPagePublisher {
       `;
 
       db.query(sql, [job.id], (err, result) => {
-
         if (err) {
-
-          console.error(
-            '[CareerPagePublisher.publish]',
-            err
-          );
-
+          console.error('[CareerPagePublisher.publish] Error:', err);
           return resolve({
             success: false,
             status: 'FAILED',
@@ -60,54 +49,38 @@ class CareerPagePublisher {
           externalJobId: String(job.id),
           lastSyncedAt: new Date()
         });
-
       });
-
     });
   }
 
-
   /**
    * UPDATE JOB
-   *
-   * Since WordPress reads the database through
-   * the public API, we don't need another sync operation.
    */
   static async update(job) {
-
     return this.publish(job);
-
   }
-
 
   /**
    * CLOSE JOB
    */
   static async close(job) {
-
     return new Promise((resolve) => {
-
       const sql = `
         UPDATE requirements
         SET
           status = 'Closed',
-          closing_date = CURRENT_DATE()
+          closing_date = COALESCE(closing_date, CURRENT_DATE())
         WHERE id = ?
       `;
 
       db.query(sql, [job.id], (err, result) => {
-
         if (err) {
-
-          console.error(
-            '[CareerPagePublisher.close]',
-            err
-          );
-
+          console.error('[CareerPagePublisher.close] Error:', err);
           return resolve({
             success: false,
             status: 'FAILED',
-            errorMessage: err.message
+            errorMessage: err.message,
+            externalJobId: String(job.id)
           });
         }
 
@@ -117,20 +90,15 @@ class CareerPagePublisher {
           externalJobId: String(job.id),
           lastSyncedAt: new Date()
         });
-
       });
-
     });
   }
-
 
   /**
    * DELETE / REMOVE JOB
    */
   static async delete(job) {
-
     return new Promise((resolve) => {
-
       const sql = `
         UPDATE requirements
         SET
@@ -140,33 +108,25 @@ class CareerPagePublisher {
       `;
 
       db.query(sql, [job.id], (err, result) => {
-
         if (err) {
-
-          console.error(
-            '[CareerPagePublisher.delete]',
-            err
-          );
-
+          console.error('[CareerPagePublisher.delete] Error:', err);
           return resolve({
             success: false,
             status: 'FAILED',
-            errorMessage: err.message
+            errorMessage: err.message,
+            externalJobId: String(job.id)
           });
         }
 
         return resolve({
           success: true,
-          status: 'REMOVED',
+          status: 'DELETED',
           externalJobId: String(job.id),
           lastSyncedAt: new Date()
         });
-
       });
-
     });
   }
-
 }
 
 module.exports = CareerPagePublisher;
