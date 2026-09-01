@@ -340,10 +340,9 @@ export default function JobOpenings() {
 
   const getTrackedUrl = (job, source) => {
     if (!job) return '';
-    const slug = getSlug(job.job_title, job.id);
-    const baseUrl = `https://madhuratech.com/career/job/${slug}`;
+    const baseUrl = 'https://madhuratech.com/career';
     if (!source || source === 'CAREER_PAGE') return baseUrl;
-    return `${baseUrl}?source=${source.toLowerCase()}`;
+    return `${baseUrl}?source=${source.toLowerCase()}&job=${job.id}`;
   };
 
   const handleDeleteJob = async (jobId) => {

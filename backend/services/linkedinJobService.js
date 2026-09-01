@@ -108,7 +108,7 @@ class LinkedInJobService {
     const jobId = job.id;
     const jobTitle = job.job_title || job.title || 'Untitled Job';
     const slug = getSlug(jobTitle, jobId);
-    const applyUrl = `https://madhuratech.com/career/job/${slug}`;
+    const applyUrl = 'https://madhuratech.com/career';
 
     console.log('[LinkedIn] Starting automatic post publishing');
 
