@@ -25,7 +25,6 @@ class CareerPagePublisher {
         SET
           status = 'Published',
           opening_date = COALESCE(opening_date, CURRENT_DATE()),
-          closing_date = NULL,
           deleted_at = NULL
         WHERE id = ?
       `;
