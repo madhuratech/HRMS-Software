@@ -27,15 +27,14 @@ class CareerPagePublisher {
       }
 
       const jobTitle = job.job_title || job.title || 'job-opening';
-      const slug = getSlug(jobTitle, job.id);
-      const externalUrl = `https://madhuratech.com/career/?job=${encodeURIComponent(slug)}`;
+      const externalUrl = 'https://madhuratech.com/career';
 
       const sql = `
         UPDATE requirements
         SET
           status = 'Published',
           opening_date = COALESCE(opening_date, CURRENT_DATE()),
-          closing_date = NULL,
+          closing_date = COALESCE(closing_date, DATE_ADD(CURRENT_DATE(), INTERVAL 30 DAY)),
           deleted_at = NULL
         WHERE id = ?
       `;
