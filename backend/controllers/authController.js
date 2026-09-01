@@ -560,3 +560,301 @@ exports.register = async (req, res) => {
     });
   });
 };
+
+/**
+ * Initiates LinkedIn OAuth Flow requesting organization posting permission:
+ * w_organization_social openid profile email
+ */
+exports.connectLinkedIn = async (req, res) => {
+  const clientId = process.env.LINKEDIN_CLIENT_ID;
+  const redirectUri = process.env.LINKEDIN_REDIRECT_URI || 'http://localhost:5000/api/auth/linkedin/callback';
+  const scopes = 'w_organization_social openid profile email';
+
+  if (!clientId) {
+    return res.status(400).send(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>LinkedIn Configuration Error</title><meta charset="utf-8"/></head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F8FAFC; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px;">
+        <div style="max-width: 520px; background: #FFFFFF; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); padding: 32px; border: 1px solid #FECACA;">
+          <h2 style="color: #991B1B; margin: 0 0 12px 0;">Configuration Missing</h2>
+          <p style="color: #475569; font-size: 14px; line-height: 1.6;">LINKEDIN_CLIENT_ID is not configured in backend environment variables (.env).</p>
+          <a href="http://localhost:3000/recruitment/jobs" style="display: inline-block; margin-top: 16px; padding: 10px 20px; background: #2563EB; color: #FFF; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 13px;">Return to Job Openings</a>
+        </div>
+      </body>
+      </html>
+    `);
+  }
+
+  const authUrl = `https://www.linkedin.com/oauth/v2/authorization?response_type=code&client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${encodeURIComponent(scopes)}&state=hrms_linkedin_auth`;
+
+  return res.redirect(authUrl);
+};
+
+/**
+ * Handles LinkedIn OAuth Callback, exchanges code for access token,
+ * provides detailed error handling for all error types, and redirects back to /recruitment/jobs.
+ */
+exports.linkedinCallback = async (req, res) => {
+  const { code, error, error_description } = req.query;
+  const redirectTarget = 'http://localhost:3000/recruitment/jobs';
+
+  // 1. Error Handling for OAuth redirect errors from LinkedIn
+  if (error) {
+    let errorTitle = 'LinkedIn Authorization Error';
+    let errorExplanation = error_description || error;
+
+    if (error === 'unauthorized_scope_error') {
+      errorTitle = 'Unauthorized Scope Error';
+      errorExplanation = 'LinkedIn organization posting permission is not authorized for this application.';
+    } else if (error === 'invalid_redirect_uri' || error === 'redirect_uri_mismatch') {
+      errorTitle = 'Invalid Redirect URI';
+      errorExplanation = 'The redirect URI configured in your LinkedIn Developer Portal does not match the backend redirect URI (http://localhost:5000/api/auth/linkedin/callback).';
+    } else if (error === 'access_denied' || error === 'user_cancelled_authorize') {
+      errorTitle = 'Authorization Cancelled';
+      errorExplanation = 'You cancelled the LinkedIn authorization request.';
+    }
+
+    return res.status(400).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>${errorTitle}</title>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F8FAFC; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px;">
+        <div style="max-width: 540px; background: #FFFFFF; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); padding: 36px; border: 1px solid #FECACA;">
+          <div style="width: 56px; height: 56px; background: #FEF2F2; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px auto; color: #DC2626; font-size: 28px; font-weight: bold;">
+            ✕
+          </div>
+          <h2 style="font-size: 20px; font-weight: 700; color: #991B1B; margin: 0 0 12px 0; text-align: center;">${errorTitle}</h2>
+          <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 16px 0; text-align: center;">
+            ${errorExplanation}
+          </p>
+          <div style="background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 12px; font-size: 12px; color: #64748B; word-break: break-all; margin-bottom: 24px;">
+            <strong>Error Code:</strong> ${error}
+          </div>
+          <div style="text-align: center;">
+            <a href="${redirectTarget}" style="display: inline-block; padding: 12px 28px; background: #2563EB; color: #FFFFFF; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 14px;">
+              Return to Job Openings
+            </a>
+          </div>
+        </div>
+      </body>
+      </html>
+    `);
+  }
+
+  // 2. Missing Authorization Code Error
+  if (!code) {
+    return res.status(400).send(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>Missing Authorization Code</title><meta charset="utf-8"/></head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F8FAFC; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px;">
+        <div style="max-width: 520px; background: #FFFFFF; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); padding: 32px; border: 1px solid #E2E8F0; text-align: center;">
+          <h2 style="color: #1E293B; margin: 0 0 12px 0;">Missing Authorization Code</h2>
+          <p style="color: #64748B; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;">No authorization code was provided in the callback request from LinkedIn.</p>
+          <a href="${redirectTarget}" style="display: inline-block; padding: 12px 24px; background: #2563EB; color: #FFF; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 13px;">Return to Job Openings</a>
+        </div>
+      </body>
+      </html>
+    `);
+  }
+
+  const clientId = process.env.LINKEDIN_CLIENT_ID;
+  const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+  const redirectUri = process.env.LINKEDIN_REDIRECT_URI || 'http://localhost:5000/api/auth/linkedin/callback';
+
+  // 3. Client ID or Secret Missing
+  if (!clientId || !clientSecret) {
+    return res.status(500).send(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>Configuration Missing</title><meta charset="utf-8"/></head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F8FAFC; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px;">
+        <div style="max-width: 520px; background: #FFFFFF; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); padding: 32px; border: 1px solid #FECACA; text-align: center;">
+          <h2 style="color: #991B1B; margin: 0 0 12px 0;">Client Credentials Missing</h2>
+          <p style="color: #64748B; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;">LINKEDIN_CLIENT_ID or LINKEDIN_CLIENT_SECRET is missing in environment configuration.</p>
+          <a href="${redirectTarget}" style="display: inline-block; padding: 12px 24px; background: #2563EB; color: #FFF; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 13px;">Return to Job Openings</a>
+        </div>
+      </body>
+      </html>
+    `);
+  }
+
+  try {
+    // 4. Exchange authorization code for access token
+    const tokenRes = await fetch('https://www.linkedin.com/oauth/v2/accessToken', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        client_id: clientId,
+        client_secret: clientSecret,
+        redirect_uri: redirectUri
+      }).toString()
+    });
+
+    const tokenData = await tokenRes.json();
+
+    if (!tokenRes.ok || !tokenData.access_token) {
+      console.error('[LinkedIn OAuth Callback] Token exchange error:', tokenData);
+      return res.status(400).send(`
+        <!DOCTYPE html>
+        <html>
+        <head><title>LinkedIn Token Exchange Failed</title><meta charset="utf-8"/></head>
+        <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F8FAFC; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px;">
+          <div style="max-width: 540px; background: #FFFFFF; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); padding: 36px; border: 1px solid #FECACA; text-align: center;">
+            <h2 style="font-size: 20px; font-weight: 700; color: #991B1B; margin: 0 0 12px 0;">Token Exchange Failed</h2>
+            <p style="font-size: 14px; color: #475569; line-height: 1.6; margin: 0 0 20px 0;">
+              ${tokenData.error_description || tokenData.error || 'Failed to exchange authorization code for access token. The code may have expired.'}
+            </p>
+            <a href="${redirectTarget}" style="display: inline-block; padding: 12px 28px; background: #2563EB; color: #FFFFFF; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 14px;">
+              Return to Job Openings
+            </a>
+          </div>
+        </body>
+        </html>
+      `);
+    }
+
+    const accessToken = tokenData.access_token;
+    const expiresInDays = Math.round((tokenData.expires_in || 5184000) / 86400);
+
+    // 5. Store returned access token in runtime process.env
+    process.env.LINKEDIN_ACCESS_TOKEN = accessToken;
+
+    // 6. Persist access token into backend/.env file on disk
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const envPath = path.join(__dirname, '..', '.env');
+      if (fs.existsSync(envPath)) {
+        let envContent = fs.readFileSync(envPath, 'utf8');
+        if (envContent.includes('LINKEDIN_ACCESS_TOKEN=')) {
+          envContent = envContent.replace(/LINKEDIN_ACCESS_TOKEN=.*/, `LINKEDIN_ACCESS_TOKEN=${accessToken}`);
+        } else {
+          envContent += `\nLINKEDIN_ACCESS_TOKEN=${accessToken}\n`;
+        }
+        fs.writeFileSync(envPath, envContent, 'utf8');
+        console.log('✅ Successfully stored LINKEDIN_ACCESS_TOKEN in backend/.env');
+      }
+    } catch (fileErr) {
+      console.error('Failed to update .env with access token:', fileErr);
+    }
+
+    // 7. Render success page with automatic 2-second redirect to /recruitment/jobs
+    return res.send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>LinkedIn Connected Successfully</title>
+        <meta charset="utf-8" />
+        <meta http-equiv="refresh" content="2;url=${redirectTarget}" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+      </head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F8FAFC; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px;">
+        <div style="max-width: 520px; background: #FFFFFF; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); padding: 36px; text-align: center; border: 1px solid #E2E8F0;">
+          <div style="width: 64px; height: 64px; background: #ECFDF5; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px auto; color: #10B981; font-size: 32px;">
+            ✓
+          </div>
+          <h1 style="font-size: 22px; font-weight: 700; color: #0F172A; margin: 0 0 12px 0;">LinkedIn Connected Successfully!</h1>
+          <p style="font-size: 14px; color: #64748B; line-height: 1.6; margin: 0 0 20px 0;">
+            Authentication completed using standard OpenID Connect profile scopes. Redirecting to Job Openings...
+          </p>
+          <div style="background: #F1F5F9; border-radius: 8px; padding: 10px 16px; margin-bottom: 24px; font-size: 13px; color: #334155;">
+            <strong>Token Validity:</strong> Active for approx. ${expiresInDays} days
+          </div>
+          <a href="${redirectTarget}" style="display: inline-block; padding: 12px 28px; background: #0A66C2; color: #FFFFFF; text-decoration: none; border-radius: 10px; font-weight: 600; font-size: 14px; box-shadow: 0 4px 12px rgba(10, 102, 194, 0.25);">
+            Continue to Job Openings
+          </a>
+        </div>
+      </body>
+      </html>
+    `);
+  } catch (netErr) {
+    console.error('[LinkedIn OAuth Callback] Network exception:', netErr);
+    return res.status(500).send(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>Network Error</title><meta charset="utf-8"/></head>
+      <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #F8FAFC; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px;">
+        <div style="max-width: 520px; background: #FFFFFF; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.08); padding: 32px; border: 1px solid #FECACA; text-align: center;">
+          <h2 style="color: #991B1B; margin: 0 0 12px 0;">Network Exception</h2>
+          <p style="color: #64748B; font-size: 14px; line-height: 1.6; margin: 0 0 20px 0;">${netErr.message}</p>
+          <a href="${redirectTarget}" style="display: inline-block; padding: 12px 24px; background: #2563EB; color: #FFF; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 13px;">Return to Job Openings</a>
+        </div>
+      </body>
+      </html>
+    `);
+  }
+};
+
+/**
+ * Returns current LinkedIn integration status and configuration diagnostics
+ */
+exports.getLinkedInStatus = async (req, res) => {
+  const clientId = process.env.LINKEDIN_CLIENT_ID;
+  const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
+  const accessToken = process.env.LINKEDIN_ACCESS_TOKEN;
+  const orgId = process.env.LINKEDIN_ORGANIZATION_ID;
+
+  const isConfigured = !!(clientId && clientSecret && orgId);
+  const hasToken = !!(accessToken && accessToken.length > 20);
+
+  return res.json({
+    success: true,
+    data: {
+      configured: isConfigured,
+      hasToken,
+      orgId: orgId || null,
+      clientId: clientId ? `${clientId.slice(0, 4)}...` : null,
+      tokenSnippet: hasToken ? `${accessToken.slice(0, 8)}...${accessToken.slice(-6)}` : null
+    }
+  });
+};
+
+/**
+ * Manually updates or pastes LinkedIn Access Token or Organization ID
+ */
+exports.saveLinkedInToken = async (req, res) => {
+  const { accessToken, orgId } = req.body;
+  if (!accessToken && !orgId) {
+    return res.status(400).json({ success: false, message: 'Please provide an accessToken or orgId.' });
+  }
+
+  if (accessToken) process.env.LINKEDIN_ACCESS_TOKEN = accessToken.trim();
+  if (orgId) process.env.LINKEDIN_ORGANIZATION_ID = orgId.trim();
+
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const envPath = path.join(__dirname, '..', '.env');
+    if (fs.existsSync(envPath)) {
+      let envContent = fs.readFileSync(envPath, 'utf8');
+      if (accessToken) {
+        if (envContent.includes('LINKEDIN_ACCESS_TOKEN=')) {
+          envContent = envContent.replace(/LINKEDIN_ACCESS_TOKEN=.*/, `LINKEDIN_ACCESS_TOKEN=${accessToken.trim()}`);
+        } else {
+          envContent += `\nLINKEDIN_ACCESS_TOKEN=${accessToken.trim()}\n`;
+        }
+      }
+      if (orgId) {
+        if (envContent.includes('LINKEDIN_ORGANIZATION_ID=')) {
+          envContent = envContent.replace(/LINKEDIN_ORGANIZATION_ID=.*/, `LINKEDIN_ORGANIZATION_ID=${orgId.trim()}`);
+        } else {
+          envContent += `\nLINKEDIN_ORGANIZATION_ID=${orgId.trim()}\n`;
+        }
+      }
+      fs.writeFileSync(envPath, envContent, 'utf8');
+    }
+    return res.json({ success: true, message: 'LinkedIn credentials updated successfully.' });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Failed to write credentials to .env', error: err.message });
+  }
+};
+
+

@@ -4,11 +4,13 @@ class LinkedInPublisher {
   static async publish(job) {
     const res = await LinkedInJobService.publishJob(job);
     return {
-      success: res.success,
-      status: (res.linkedinStatus || 'failed').toUpperCase(),
-      externalJobId: res.linkedinJobId || null,
-      errorMessage: res.error || null,
-      lastSyncedAt: new Date()
+      success: !!res.success,
+      status: (res.status || 'FAILED').toUpperCase(),
+      externalJobId: res.externalJobId || null,
+      externalUrl: res.externalUrl || null,
+      alreadyPublished: !!res.alreadyPublished,
+      errorMessage: res.errorMessage || null,
+      lastSyncedAt: res.lastSyncedAt || new Date()
     };
   }
 
@@ -17,16 +19,21 @@ class LinkedInPublisher {
   }
 
   static async close(job) {
+    await LinkedInJobService.closeJob(job);
     return {
       success: true,
       status: 'CLOSED',
-      externalJobId: String(job.id),
       lastSyncedAt: new Date()
     };
   }
 
   static async delete(job) {
-    return this.close(job);
+    await LinkedInJobService.deleteJob(job);
+    return {
+      success: true,
+      status: 'DELETED',
+      lastSyncedAt: new Date()
+    };
   }
 }
 

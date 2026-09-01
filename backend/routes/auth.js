@@ -7,4 +7,12 @@ router.post("/register", authController.register);
 router.post("/verify-email-request", authController.verifyEmailRequest);
 router.post("/verify-otp", authController.verifyOtp);
 
+// LinkedIn OAuth Connect, Callback & Configuration
+router.get("/linkedin/connect", authController.connectLinkedIn);
+router.get("/linkedin/callback", authController.linkedinCallback);
+router.get("/linkedin/status", authController.getLinkedInStatus);
+router.post("/linkedin/token", authController.saveLinkedInToken);
+
 module.exports = router;
+
+

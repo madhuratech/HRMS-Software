@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Plus, MoreHorizontal, ChevronLeft, ChevronRight, X, AlertTriangle, Users } from 'lucide-react';
+import { 
+  Search, Filter, Plus, MoreHorizontal, ChevronLeft, ChevronRight, X, 
+  AlertTriangle, Users, Globe, ExternalLink, CheckCircle2, AlertCircle, 
+  RefreshCw, Linkedin, Copy, Check, Settings, Key, ShieldCheck, Zap
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { canCreate, canEdit, canDelete, checkActionPermission } from '../../lib/permissions';
 
@@ -46,6 +50,15 @@ export default function JobOpenings() {
   const [copiedLinkType, setCopiedLinkType] = useState(null);
   const [deleteConfirmJob, setDeleteConfirmJob] = useState(null);
   const [channelStatuses, setChannelStatuses] = useState({});
+  const [publishSummary, setPublishSummary] = useState(null);
+  const [isPublishingId, setIsPublishingId] = useState(null);
+
+  // LinkedIn Settings & OAuth Modal
+  const [showLinkedInModal, setShowLinkedInModal] = useState(false);
+  const [linkedInConfig, setLinkedInConfig] = useState(null);
+  const [tokenInput, setTokenInput] = useState('');
+  const [orgIdInput, setOrgIdInput] = useState('');
+  const [isSavingToken, setIsSavingToken] = useState(false);
 
   // Filter States
   const [search, setSearch] = useState('');
@@ -86,6 +99,17 @@ export default function JobOpenings() {
     }
   };
 
+  const fetchLinkedInStatus = async () => {
+    try {
+      const res = await fetch('/app/auth/linkedin/status');
+      const data = await res.json();
+      if (data.success) {
+        setLinkedInConfig(data.data);
+        if (data.data.orgId) setOrgIdInput(data.data.orgId);
+      }
+    } catch (e) {}
+  };
+
   const fetchRequirements = async () => {
     setIsLoading(true);
     setErrorMsg(null);
@@ -119,11 +143,20 @@ export default function JobOpenings() {
 
   useEffect(() => {
     fetchMeta();
+    fetchLinkedInStatus();
   }, []);
 
   useEffect(() => {
     fetchRequirements();
   }, [search, selectedDept, selectedStatus, page]);
+
+  useEffect(() => {
+    if (openings && openings.length > 0) {
+      openings.forEach(op => {
+        fetchChannelsForJob(op.id);
+      });
+    }
+  }, [openings]);
 
   const resetForm = () => {
     setEditingJobId(null);
@@ -238,6 +271,7 @@ export default function JobOpenings() {
 
   const handlePublishJob = async (jobId) => {
     if (!checkActionPermission('job_openings', 'EDIT')) return;
+    setIsPublishingId(jobId);
     try {
       const res = await fetch(`/app/requirements/${jobId}/publish`, {
         method: 'POST',
@@ -246,15 +280,33 @@ export default function JobOpenings() {
           'Authorization': `Bearer ${getAuthToken()}`
         }
       });
+      
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        alert(errData.message || 'Unable to publish job. Please try again.');
+        return;
+      }
+
       const data = await res.json();
       if (data.success) {
-        alert('Job published successfully to Madhura Technologies Career Page!');
-        fetchRequirements();
+        // Refresh from server only after receiving successful response
+        await fetchRequirements();
+        await fetchChannelsForJob(jobId);
+        
+        const currentJob = openings.find(o => o.id === jobId);
+        setPublishSummary({
+          jobId,
+          job: currentJob,
+          channels: data.channels
+        });
       } else {
-        alert(data.message || 'Failed to publish job');
+        alert(data.message || 'Unable to publish job. Please try again.');
       }
     } catch (err) {
-      alert('Error connecting to backend server');
+      console.error('Publish network error:', err);
+      alert('Unable to publish job. Please check your internet connection and try again.');
+    } finally {
+      setIsPublishingId(null);
     }
   };
 
@@ -327,25 +379,28 @@ export default function JobOpenings() {
     } catch (e) {}
   };
 
-  const handleRetryChannel = async (jobId, channel) => {
+  const handleSaveLinkedInToken = async (e) => {
+    e.preventDefault();
+    setIsSavingToken(true);
     try {
-      const res = await fetch(`/app/requirements/${jobId}/retry-publish`, {
+      const res = await fetch('/app/auth/linkedin/token', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
-        body: JSON.stringify({ channel })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ accessToken: tokenInput, orgId: orgIdInput })
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Retry for ${channel}: ${data.result?.status}`);
-        fetchChannelsForJob(jobId);
+        alert('LinkedIn credentials saved successfully!');
+        fetchLinkedInStatus();
+        setTokenInput('');
+        setShowLinkedInModal(false);
       } else {
-        alert(data.message || 'Failed to retry channel');
+        alert(data.message || 'Failed to save credentials');
       }
     } catch (err) {
-      alert('Error retrying channel');
+      alert('Error connecting to backend');
+    } finally {
+      setIsSavingToken(false);
     }
   };
 
@@ -354,7 +409,29 @@ export default function JobOpenings() {
       navigator.clipboard.writeText(text);
     }
     setCopiedLinkType(type);
-    setTimeout(() => setCopiedLinkType(null), 2000);
+    setTimeout(() => setCopiedLinkType(null), 2200);
+  };
+
+  const getStatusBadgeStyle = (status) => {
+    switch (status) {
+      case 'Published':
+        return { bg: '#ECFDF5', color: '#059669', border: '#A7F3D0' };
+      case 'Open':
+        return { bg: '#EFF6FF', color: '#2563EB', border: '#BFDBFE' };
+      case 'Draft':
+        return { bg: '#FFFBEB', color: '#D97706', border: '#FDE68A' };
+      case 'Closed':
+        return { bg: '#F1F5F9', color: '#64748B', border: '#CBD5E1' };
+      case 'On Hold':
+        return { bg: '#FAF5FF', color: '#9333EA', border: '#E9D5FF' };
+      case 'Cancelled':
+      case 'Rejected':
+        return { bg: '#FEF2F2', color: '#DC2626', border: '#FECACA' };
+      case 'Approved':
+        return { bg: '#ECFDF5', color: '#10B981', border: '#A7F3D0' };
+      default:
+        return { bg: '#F8FAFC', color: '#475569', border: '#E2E8F0' };
+    }
   };
 
   const cardStyle = {
@@ -365,21 +442,85 @@ export default function JobOpenings() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: '"Inter", sans-serif' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: '"Inter", -apple-system, sans-serif' }}>
       
       {/* Header Area */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '700', color: '#1E293B' }}>Job Openings</h1>
-          <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Manage and track all job openings</p>
+          <h1 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '700', color: '#0F172A' }}>Job Openings</h1>
+          <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Manage requisitions and automatically publish organic posts to Madhura Technologies LinkedIn Company Page</p>
+        </div>
+        
+        {/* Header Actions */}
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          
+          {/* LinkedIn Integration Status & Settings button */}
+          <button
+            onClick={() => {
+              fetchLinkedInStatus();
+              setShowLinkedInModal(true);
+            }}
+            style={{
+              padding: '10px 16px',
+              borderRadius: '10px',
+              border: '1px solid #CBD5E1',
+              background: '#FFFFFF',
+              color: '#0F172A',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '9px',
+              fontSize: '13px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              boxShadow: '0 2px 5px rgba(0,0,0,0.04)',
+              transition: 'all 0.15s ease'
+            }}
+            title="Configure LinkedIn Integration & permissions"
+          >
+            <Linkedin size={17} color="#0A66C2" />
+            <span>LinkedIn Integration</span>
+            <span style={{ 
+              display: 'inline-block',
+              width: '8px', 
+              height: '8px', 
+              borderRadius: '50%', 
+              backgroundColor: (linkedInConfig?.hasToken) ? '#10B981' : '#F59E0B',
+              boxShadow: (linkedInConfig?.hasToken) ? '0 0 6px rgba(16, 185, 129, 0.6)' : '0 0 6px rgba(245, 158, 11, 0.6)'
+            }} />
+          </button>
+
+          {/* Create Opening */}
+          <button
+            disabled={!canCreate('job_openings')}
+            onClick={() => {
+              if (!checkActionPermission('job_openings', 'CREATE')) return;
+              setShowAddModal(true);
+            }}
+            style={{ 
+              padding: '10px 18px', 
+              borderRadius: '10px', 
+              border: 'none', 
+              background: canCreate('job_openings') ? 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)' : '#94A3B8', 
+              color: '#FFF', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              cursor: canCreate('job_openings') ? 'pointer' : 'not-allowed', 
+              fontSize: '14px', 
+              fontWeight: '600',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+            }}
+          >
+            <Plus size={16} /> Create Opening
+          </button>
         </div>
       </div>
 
       <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
         
         {/* Toolbar */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
-          <div style={{ display: 'flex', gap: '16px', flex: 1 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '16px', flex: 1, flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', width: '280px' }}>
               <Search size={18} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input 
@@ -407,35 +548,12 @@ export default function JobOpenings() {
             >
               <option value="">All Status</option>
               <option value="Open">Open</option>
+              <option value="Published">Published</option>
               <option value="Closed">Closed</option>
               <option value="Draft">Draft</option>
               <option value="Pending">Pending</option>
               <option value="Approved">Approved</option>
             </select>
-          </div>
-          <div>
-            <button
-              disabled={!canCreate('job_openings')}
-              onClick={() => {
-                if (!checkActionPermission('job_openings', 'CREATE')) return;
-                setShowAddModal(true);
-              }}
-              style={{ 
-                padding: '10px 16px', 
-                borderRadius: '8px', 
-                border: 'none', 
-                background: canCreate('job_openings') ? '#2952E3' : '#94A3B8', 
-                color: '#FFF', 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '8px', 
-                cursor: canCreate('job_openings') ? 'pointer' : 'not-allowed', 
-                fontSize: '14px', 
-                fontWeight: '500' 
-              }}
-            >
-              <Plus size={16} /> Create Opening
-            </button>
           </div>
         </div>
 
@@ -455,109 +573,319 @@ export default function JobOpenings() {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: '#F8FAFC' }}>
-                  <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Job ID</th>
-                  <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Job Title</th>
-                  <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Department</th>
-                  <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Location</th>
-                  <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Type</th>
-                  <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap', textAlign: 'center' }}>Vacancies</th>
-                  <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Posted Date</th>
-                  <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap', textAlign: 'center' }}>Status</th>
-                  <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap', textAlign: 'center' }}>Actions</th>
+                  <th style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Job ID</th>
+                  <th style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Job Title</th>
+                  <th style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Department</th>
+                  <th style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Location</th>
+                  <th style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Type</th>
+                  <th style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap', textAlign: 'center' }}>Vacancies</th>
+                  <th style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Publishing Channels</th>
+                  <th style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap', textAlign: 'center' }}>Overall Status</th>
+                  <th style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap', textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {openings.map((row, index) => (
-                  <tr key={row.id} style={{ borderBottom: index === openings.length - 1 ? 'none' : '1px solid #F8FAFC' }}>
-                    <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: '600', color: '#2952E3', whiteSpace: 'nowrap' }}>{row.requirement_code}</td>
-                    <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: '600', color: '#1E293B', whiteSpace: 'nowrap' }}>{row.job_title}</td>
-                    <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>{row.department_name}</td>
-                    <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>{row.location}</td>
-                    <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>{row.employment_type}</td>
-                    <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: '600', color: '#1E293B', whiteSpace: 'nowrap', textAlign: 'center' }}>{row.vacancies}</td>
-                    <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>
-                      {new Date(row.opening_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </td>
-                    <td style={{ padding: '16px 24px', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                      <span style={{ 
-                        padding: '4px 10px', 
-                        borderRadius: '20px', 
-                        fontSize: '12px', 
-                        fontWeight: '600', 
-                        backgroundColor: (row.status === 'Published' || row.status === 'Open' || row.status === 'Approved') ? '#ECFDF5' : (row.status === 'Draft' ? '#FFFBEB' : '#FEF2F2'), 
-                        color: (row.status === 'Published' || row.status === 'Open' || row.status === 'Approved') ? '#10B981' : (row.status === 'Draft' ? '#D97706' : '#EF4444') 
-                      }}>
-                        {row.status === 'Open' ? 'Published' : row.status}
-                      </span>
-                    </td>
-                    <td style={{ padding: '16px 24px', whiteSpace: 'nowrap', textAlign: 'right' }}>
-                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                        
-                        {/* Edit Job Button */}
-                        <button 
-                          disabled={!canEdit('job_openings')}
-                          onClick={() => handleEditClick(row)}
-                          title="Edit Job Opening"
-                          style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#334155', fontSize: '12px', fontWeight: '500', cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed' }}
-                        >
-                          Edit
-                        </button>
+                {openings.map((row, index) => {
+                  const statusStyle = getStatusBadgeStyle(row.status);
+                  const channels = channelStatuses[row.id] || [];
+                  const careerPageCh = channels.find(c => c.channel === 'CAREER_PAGE');
+                  const linkedInCh = channels.find(c => c.channel === 'LINKEDIN');
+                  const indeedCh = channels.find(c => c.channel === 'INDEED');
 
-                        {/* View Candidates */}
-                        <button 
-                          onClick={() => navigate(`/recruitment/candidates?job_title=${encodeURIComponent(row.job_title)}`)}
-                          title="View Applicants"
-                          style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', color: '#2563EB', fontSize: '12px', fontWeight: '500', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                        >
-                          <Users size={14} /> Candidates
-                        </button>
+                  const isCpPublished = careerPageCh?.status === 'PUBLISHED' || row.status === 'Published';
+                  const cpUrl = careerPageCh?.external_url || getTrackedUrl(row, 'CAREER_PAGE');
+                  
+                  const liStatus = (linkedInCh?.status || '').toUpperCase();
+                  const liUrl = linkedInCh?.external_url;
 
-                        {/* Publish Job Button */}
-                        {row.status !== 'Published' && row.status !== 'Open' && (
+                  const indeedStatus = indeedCh?.status || 'NOT_CONNECTED';
+                  const indeedUrl = indeedCh?.external_url;
+
+                  return (
+                    <tr key={row.id} style={{ borderBottom: index === openings.length - 1 ? 'none' : '1px solid #F8FAFC' }}>
+                      <td style={{ padding: '16px 20px', fontSize: '14px', fontWeight: '600', color: '#2563EB', whiteSpace: 'nowrap' }}>{row.requirement_code}</td>
+                      <td style={{ padding: '16px 20px', fontSize: '14px', fontWeight: '600', color: '#1E293B', whiteSpace: 'nowrap' }}>{row.job_title}</td>
+                      <td style={{ padding: '16px 20px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>{row.department_name}</td>
+                      <td style={{ padding: '16px 20px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>{row.location}</td>
+                      <td style={{ padding: '16px 20px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>{row.employment_type}</td>
+                      <td style={{ padding: '16px 20px', fontSize: '14px', fontWeight: '600', color: '#1E293B', whiteSpace: 'nowrap', textAlign: 'center' }}>{row.vacancies}</td>
+                      
+                      {/* Separate Publishing Channel Badges */}
+                      <td style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          
+                          {/* 1. Website Channel Status */}
+                          {isCpPublished ? (
+                            <a
+                              href={cpUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="Website (Career Page): Published & Live"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                textDecoration: 'none',
+                                background: '#ECFDF5',
+                                color: '#059669',
+                                border: '1px solid #A7F3D0',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Globe size={12} /> Website: Published <ExternalLink size={10} />
+                            </a>
+                          ) : (
+                            <span
+                              title="Website: Draft (Not Published)"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                background: '#F1F5F9',
+                                color: '#94A3B8',
+                                border: '1px solid #E2E8F0'
+                              }}
+                            >
+                              <Globe size={12} /> Website: Draft
+                            </span>
+                          )}
+
+                          {/* 2. LinkedIn Company Page Post Status */}
+                          {liStatus === 'PUBLISHED' ? (
+                            <a
+                              href={liUrl || `https://www.linkedin.com/company/${linkedInConfig?.orgId || '109901015'}/`}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="LinkedIn: Published on Madhura Technologies Company Page"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                textDecoration: 'none',
+                                background: '#ECFDF5',
+                                color: '#059669',
+                                border: '1px solid #A7F3D0',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Linkedin size={12} /> LinkedIn: Published <ExternalLink size={10} />
+                            </a>
+                          ) : liStatus === 'FAILED' ? (
+                            <span
+                              title={linkedInCh?.error_message || 'LinkedIn Company Page post failed.'}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                background: '#FEF2F2',
+                                color: '#DC2626',
+                                border: '1px solid #FECACA',
+                                cursor: 'help'
+                              }}
+                            >
+                              <Linkedin size={12} /> LinkedIn: Failed
+                            </span>
+                          ) : (!linkedInConfig?.hasToken) ? (
+                            <span
+                              title="LinkedIn organization posting permission (w_organization_social) is not authorized. Click LinkedIn Integration to connect."
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                background: '#FFFBEB',
+                                color: '#D97706',
+                                border: '1px solid #FDE68A',
+                                cursor: 'help'
+                              }}
+                            >
+                              <Linkedin size={12} /> LinkedIn: Authorization Required
+                            </span>
+                          ) : (
+                            <span
+                              title="LinkedIn: Ready to automatically publish on Madhura Technologies company page"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                background: '#EFF6FF',
+                                color: '#0A66C2',
+                                border: '1px solid #BFDBFE'
+                              }}
+                            >
+                              <Linkedin size={12} /> LinkedIn: Ready
+                            </span>
+                          )}
+
+                          {/* 3. Indeed Channel Status */}
+                          {indeedStatus === 'PUBLISHED' && indeedUrl ? (
+                            <a
+                              href={indeedUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              title="Indeed: Published"
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                textDecoration: 'none',
+                                background: '#ECFDF5',
+                                color: '#059669',
+                                border: '1px solid #A7F3D0',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              Indeed: Published <ExternalLink size={10} />
+                            </a>
+                          ) : (
+                            <span
+                              title="Indeed API integration is not connected."
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                background: '#F1F5F9',
+                                color: '#64748B',
+                                border: '1px solid #CBD5E1',
+                                cursor: 'help'
+                              }}
+                            >
+                              Indeed: Not Connected
+                            </span>
+                          )}
+
+                        </div>
+                      </td>
+
+                      {/* Overall Requisition Status */}
+                      <td style={{ padding: '16px 20px', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                        <span style={{ 
+                          padding: '4px 10px', 
+                          borderRadius: '20px', 
+                          fontSize: '12px', 
+                          fontWeight: '600', 
+                          backgroundColor: statusStyle.bg, 
+                          color: statusStyle.color,
+                          border: `1px solid ${statusStyle.border}`
+                        }}>
+                          {row.status}
+                        </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{ padding: '16px 20px', whiteSpace: 'nowrap', textAlign: 'right' }}>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                          
+                          {/* Edit Job Button */}
                           <button 
                             disabled={!canEdit('job_openings')}
-                            onClick={() => handlePublishJob(row.id)}
-                            style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: canEdit('job_openings') ? '#10B981' : '#94A3B8', color: '#FFF', fontSize: '12px', fontWeight: '600', cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed' }}
+                            onClick={() => handleEditClick(row)}
+                            title="Edit Job Opening"
+                            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#334155', fontSize: '12px', fontWeight: '500', cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed' }}
                           >
-                            Publish Job
+                            Edit
                           </button>
-                        )}
 
-                        {/* Tracking Links Button */}
-                        <button 
-                          onClick={() => {
-                            setSelectedJobForLinks(row);
-                            setShowLinksModal(true);
-                          }}
-                          style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#334155', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
-                        >
-                          Copy Links
-                        </button>
-
-                        {/* Close Job Button */}
-                        {row.status !== 'Closed' && (
+                          {/* View Candidates */}
                           <button 
-                            disabled={!canEdit('job_openings')}
-                            onClick={() => handleCloseJob(row.id)}
-                            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#475569', fontSize: '12px', fontWeight: '500', cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed' }}
+                            onClick={() => navigate(`/recruitment/candidates?job_title=${encodeURIComponent(row.job_title)}`)}
+                            title="View Applicants"
+                            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', color: '#2563EB', fontSize: '12px', fontWeight: '500', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                           >
-                            Close
+                            <Users size={14} /> Candidates
                           </button>
-                        )}
 
-                        {/* Delete Job Button */}
-                        <button 
-                          disabled={!canDelete('job_openings')}
-                          onClick={() => setDeleteConfirmJob(row)}
-                          style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', fontSize: '12px', fontWeight: '500', cursor: canDelete('job_openings') ? 'pointer' : 'not-allowed' }}
-                        >
-                          Delete
-                        </button>
+                          {/* Publish Job Button */}
+                          {row.status !== 'Published' && (
+                            <button 
+                              disabled={!canEdit('job_openings') || isPublishingId === row.id}
+                              onClick={() => handlePublishJob(row.id)}
+                              style={{ 
+                                padding: '6px 10px', 
+                                borderRadius: '6px', 
+                                border: 'none', 
+                                background: canEdit('job_openings') ? '#10B981' : '#94A3B8', 
+                                color: '#FFF', 
+                                fontSize: '12px', 
+                                fontWeight: '600', 
+                                cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                            >
+                              {isPublishingId === row.id ? 'Publishing...' : 'Publish Job'}
+                            </button>
+                          )}
 
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {/* Tracking Links Button */}
+                          <button 
+                            onClick={() => {
+                              setSelectedJobForLinks(row);
+                              setShowLinksModal(true);
+                            }}
+                            title="Application Tracking Links"
+                            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#334155', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+                          >
+                            Copy Links
+                          </button>
+
+                          {/* Close Job Button */}
+                          {row.status !== 'Closed' && (
+                            <button 
+                              disabled={!canEdit('job_openings')}
+                              onClick={() => handleCloseJob(row.id)}
+                              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#475569', fontSize: '12px', fontWeight: '500', cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed' }}
+                            >
+                              Close
+                            </button>
+                          )}
+
+                          {/* Delete Job Button */}
+                          <button 
+                            disabled={!canDelete('job_openings')}
+                            onClick={() => setDeleteConfirmJob(row)}
+                            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', fontSize: '12px', fontWeight: '500', cursor: canDelete('job_openings') ? 'pointer' : 'not-allowed' }}
+                          >
+                            Delete
+                          </button>
+
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -576,7 +904,7 @@ export default function JobOpenings() {
             >
               <ChevronLeft size={16} />
             </button>
-            <button style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2952E3', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#FFF', fontSize: '13px', fontWeight: '500' }}>
+            <button style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2563EB', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#FFF', fontSize: '13px', fontWeight: '500' }}>
               {page}
             </button>
             <button 
@@ -591,11 +919,370 @@ export default function JobOpenings() {
 
       </div>
 
+      {/* Multi-Channel Publish Result Modal */}
+      {publishSummary && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setPublishSummary(null)} />
+          <div className="modal-centered-content" style={{ width: '640px', maxWidth: '94vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#FFFFFF', borderRadius: '16px', boxShadow: '0 24px 48px rgba(15, 23, 42, 0.2)' }}>
+            
+            {/* Header */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
+                  <CheckCircle2 size={24} />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0F172A' }}>Publishing Status Summary</h2>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748B', fontWeight: '500' }}>{publishSummary.job?.job_title || `Job ID: ${publishSummary.jobId}`}</p>
+                </div>
+              </div>
+              <button onClick={() => setPublishSummary(null)} style={{ padding: '6px', background: 'transparent', border: 'none', borderRadius: '8px', cursor: 'pointer', color: '#94A3B8' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Scrollable Content Body */}
+            <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              
+              {/* 1. Website (Career Page) Status */}
+              <div style={{ padding: '16px', borderRadius: '12px', border: '1px solid #A7F3D0', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <Globe size={22} color="#059669" style={{ flexShrink: 0 }} />
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: '700', color: '#064E3B' }}>Website (Career Page)</span>
+                      <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '12px', background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>Published</span>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#047857', marginTop: '3px' }}>Live on Madhura Technologies Career Portal.</div>
+                  </div>
+                </div>
+                {publishSummary.channels?.CAREER_PAGE?.externalUrl && (
+                  <a
+                    href={publishSummary.channels.CAREER_PAGE.externalUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{
+                      padding: '8px 14px',
+                      background: '#059669',
+                      color: '#FFFFFF',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      boxShadow: '0 2px 6px rgba(5, 150, 105, 0.3)',
+                      flexShrink: 0
+                    }}
+                  >
+                    View Page <ExternalLink size={13} />
+                  </a>
+                )}
+              </div>
+
+              {/* 2. LinkedIn Company Page Post Status */}
+              {publishSummary.channels?.LINKEDIN?.status === 'PUBLISHED' ? (
+                <div style={{ padding: '16px', borderRadius: '12px', border: '1px solid #A7F3D0', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <Linkedin size={22} color="#0A66C2" style={{ flexShrink: 0 }} />
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '14px', fontWeight: '700', color: '#064E3B' }}>LinkedIn</span>
+                        <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '12px', background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>Published</span>
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#047857', marginTop: '3px' }}>Social media hiring announcement published to Madhura Technologies LinkedIn Page.</div>
+                    </div>
+                  </div>
+                  {publishSummary.channels?.LINKEDIN?.externalUrl && (
+                    <a
+                      href={publishSummary.channels.LINKEDIN.externalUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        padding: '8px 14px',
+                        background: '#0A66C2',
+                        color: '#FFFFFF',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        textDecoration: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        boxShadow: '0 2px 6px rgba(10, 102, 194, 0.3)',
+                        flexShrink: 0
+                      }}
+                    >
+                      View Post <ExternalLink size={13} />
+                    </a>
+                  )}
+                </div>
+              ) : (
+                <div style={{ padding: '16px', borderRadius: '12px', border: '1px solid #FECACA', background: '#FEF2F2', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <Linkedin size={20} color="#DC2626" style={{ flexShrink: 0 }} />
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '14px', fontWeight: '700', color: '#991B1B' }}>LinkedIn</span>
+                          <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '12px', background: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA' }}>
+                            {publishSummary.channels?.LINKEDIN?.status || 'Failed'}
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#B91C1C', marginTop: '4px', lineHeight: '1.5' }}>
+                          {publishSummary.channels?.LINKEDIN?.errorMessage || 'LinkedIn organization posting permission (w_organization_social) is not authorized.'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap', paddingTop: '8px', borderTop: '1px solid #FECACA' }}>
+                    <button
+                      onClick={() => {
+                        fetchLinkedInStatus();
+                        setShowLinkedInModal(true);
+                      }}
+                      style={{
+                        padding: '7px 14px',
+                        background: '#1E293B',
+                        color: '#FFFFFF',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <Settings size={13} /> Configure LinkedIn Integration
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* 3. Indeed Channel Status */}
+              <div style={{ padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', background: '#F8FAFC', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ width: '22px', height: '22px', borderRadius: '6px', background: '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800', color: '#475569' }}>
+                    IN
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: '700', color: '#334155' }}>Indeed</span>
+                      <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '12px', background: '#F1F5F9', color: '#64748B', border: '1px solid #CBD5E1' }}>
+                        Not Connected
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '12px', color: '#64748B', marginTop: '3px' }}>
+                      Indeed API integration is not connected.
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    setSelectedJobForLinks(publishSummary.job);
+                    setShowLinksModal(true);
+                  }}
+                  style={{ background: 'transparent', border: 'none', color: '#2563EB', fontSize: '12px', fontWeight: '600', cursor: 'pointer', textDecoration: 'underline' }}
+                >
+                  View Tracked Link
+                </button>
+              </div>
+
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
+              <button 
+                onClick={() => setPublishSummary(null)} 
+                style={{ padding: '10px 24px', background: '#0F172A', color: '#FFFFFF', borderRadius: '10px', fontSize: '13px', fontWeight: '600', border: 'none', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* LinkedIn Integration & Settings Modal */}
+      {showLinkedInModal && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setShowLinkedInModal(false)} />
+          <div className="modal-centered-content" style={{ width: '560px', maxWidth: '92vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#FFFFFF', borderRadius: '16px', boxShadow: '0 24px 48px rgba(15, 23, 42, 0.2)' }}>
+            
+            {/* Header */}
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#0A66C2' }}>
+                  <Linkedin size={24} />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0F172A' }}>LinkedIn Integration</h2>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748B' }}>Authorize organization posting permission for Madhura Technologies Company Page.</p>
+                </div>
+              </div>
+              <button onClick={() => setShowLinkedInModal(false)} style={{ padding: '6px', background: 'transparent', border: 'none', borderRadius: '8px', cursor: 'pointer', color: '#94A3B8' }}>
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Scrollable Content Body */}
+            <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              
+              {/* Status Diagnostic Card */}
+              <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#334155' }}>Connection Status:</span>
+                  <span style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '6px', 
+                    padding: '4px 10px', 
+                    borderRadius: '20px', 
+                    fontSize: '12px', 
+                    fontWeight: '700',
+                    background: linkedInConfig?.hasToken ? '#ECFDF5' : '#FFFBEB',
+                    color: linkedInConfig?.hasToken ? '#059669' : '#D97706',
+                    border: `1px solid ${linkedInConfig?.hasToken ? '#A7F3D0' : '#FDE68A'}`
+                  }}>
+                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: linkedInConfig?.hasToken ? '#10B981' : '#F59E0B' }} />
+                    {linkedInConfig?.hasToken ? 'Connected & Configured' : 'Action Required / Not Connected'}
+                  </span>
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748B' }}>
+                  <span>Requested Permission:</span>
+                  <span style={{ fontFamily: 'monospace', fontWeight: '600', color: '#0F172A' }}>w_organization_social, openid, profile</span>
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748B' }}>
+                  <span>Organization ID:</span>
+                  <span style={{ fontFamily: 'monospace', fontWeight: '700', color: '#0F172A' }}>{linkedInConfig?.orgId || '109901015'}</span>
+                </div>
+
+                {linkedInConfig?.tokenSnippet && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748B' }}>
+                    <span>Active Token:</span>
+                    <span style={{ fontFamily: 'monospace', color: '#64748B' }}>{linkedInConfig.tokenSnippet}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* PRIMARY CONNECT BUTTON (OAuth) */}
+              <div style={{ padding: '18px', border: '1px solid #BFDBFE', background: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)', borderRadius: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <div style={{ fontSize: '14px', fontWeight: '700', color: '#1E3A8A', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Zap size={16} color="#2563EB" /> 1-Click Connect with LinkedIn (Recommended)
+                  </div>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '12px', color: '#1E40AF', lineHeight: '1.5' }}>
+                    Authenticates and requests <code style={{ background: 'rgba(255,255,255,0.6)', padding: '2px 4px', borderRadius: '4px' }}>w_organization_social</code> permission to post to the Madhura Technologies company feed.
+                  </p>
+                </div>
+                
+                <div style={{ paddingTop: '4px' }}>
+                  <a
+                    href="http://localhost:5000/app/auth/linkedin/connect"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '10px',
+                      width: '100%',
+                      padding: '14px 20px',
+                      background: 'linear-gradient(135deg, #0A66C2 0%, #004182 100%)',
+                      color: '#FFFFFF',
+                      borderRadius: '12px',
+                      fontSize: '14px',
+                      fontWeight: '700',
+                      textDecoration: 'none',
+                      boxShadow: '0 4px 14px rgba(10, 102, 194, 0.35)',
+                      letterSpacing: '0.2px',
+                      transition: 'all 0.2s ease',
+                      boxSizing: 'border-box',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Linkedin size={20} />
+                    <span>Connect with LinkedIn</span>
+                  </a>
+                </div>
+              </div>
+
+              {/* MANUAL TOKEN ENTRY (Advanced) */}
+              <form onSubmit={handleSaveLinkedInToken} style={{ padding: '16px', border: '1px solid #E2E8F0', borderRadius: '14px', background: '#FFFFFF', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Key size={15} color="#64748B" /> Enter Access Token Manually
+                </div>
+                
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>LinkedIn Access Token</label>
+                  <input
+                    type="password"
+                    placeholder="Paste access token here..."
+                    value={tokenInput}
+                    onChange={e => setTokenInput(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #CBD5E1', borderRadius: '8px', fontSize: '12px', fontFamily: 'monospace', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>LinkedIn Organization ID</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 109901015"
+                    value={orgIdInput}
+                    onChange={e => setOrgIdInput(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #CBD5E1', borderRadius: '8px', fontSize: '12px', fontFamily: 'monospace', outline: 'none', boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-start', paddingTop: '4px' }}>
+                  <button
+                    type="submit"
+                    disabled={isSavingToken || (!tokenInput && !orgIdInput)}
+                    style={{
+                      padding: '10px 18px',
+                      background: '#1E293B',
+                      color: '#FFFFFF',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      border: 'none',
+                      cursor: (isSavingToken || (!tokenInput && !orgIdInput)) ? 'not-allowed' : 'pointer',
+                      opacity: (isSavingToken || (!tokenInput && !orgIdInput)) ? 0.6 : 1,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <ShieldCheck size={14} /> {isSavingToken ? 'Saving...' : 'Save Credentials'}
+                  </button>
+                </div>
+              </form>
+
+            </div>
+
+            {/* Footer */}
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
+              <button 
+                onClick={() => setShowLinkedInModal(false)} 
+                style={{ padding: '10px 20px', background: '#F1F5F9', color: '#475569', borderRadius: '10px', fontSize: '13px', fontWeight: '600', border: '1px solid #CBD5E1', cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Add Job Opening Modal */}
       {showAddModal && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
-          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
+          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
               <div>
                 <h2 className="text-xl font-bold text-[#0A1629]">{editingJobId ? 'Edit Job Opening' : 'Add Job Opening'}</h2>
@@ -723,6 +1410,7 @@ export default function JobOpenings() {
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
                   <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
                     <option value="Open">Open</option>
+                    <option value="Published">Published</option>
                     <option value="Closed">Closed</option>
                     <option value="Draft">Draft</option>
                     <option value="Pending">Pending</option>
@@ -751,8 +1439,8 @@ export default function JobOpenings() {
       {showLinksModal && selectedJobForLinks && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowLinksModal(false)} />
-          <div className="modal-centered-content" style={{ width: '650px', maxWidth: '90vw' }}>
-            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+          <div className="modal-centered-content" style={{ width: '650px', maxWidth: '90vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
               <div>
                 <h2 className="text-lg font-bold text-[#0A1629]">Job Application Tracking Links</h2>
                 <p className="text-xs text-slate-500 mt-1">Unique tracked URLs for job postings on external career portals.</p>
@@ -761,7 +1449,7 @@ export default function JobOpenings() {
                 <X size={18} className="text-slate-400" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto flex-1 min-h-0">
               <div className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                 <div className="text-xs font-bold text-slate-700 mb-1">LinkedIn Application Link</div>
                 <div className="flex items-center gap-2">
@@ -793,7 +1481,7 @@ export default function JobOpenings() {
                 <div className="flex items-center gap-2">
                   <input type="text" readOnly value={getTrackedUrl(selectedJobForLinks, 'NAUKRI')} className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-600" />
                   <button 
-                    onClick={() => copyToClipboard(getTrackedUrl(selectedJobForLinks, 'NAUKRI'), 'naukri')} 
+                    onClick={() => copyToClipboard(getTrackedUrl(selectedJobForLinks, 'naukri'), 'naukri')} 
                     className="px-3 py-2 bg-blue-600 text-white rounded text-xs font-semibold whitespace-nowrap hover:bg-blue-700"
                   >
                     {copiedLinkType === 'naukri' ? 'Copied!' : 'Copy Link'}
@@ -814,25 +1502,26 @@ export default function JobOpenings() {
                 </div>
               </div>
             </div>
-            <div className="p-4 border-t border-slate-200 flex justify-end">
+            <div className="p-4 border-t border-slate-200 flex justify-end shrink-0">
               <button onClick={() => setShowLinksModal(false)} className="px-5 py-2 bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold">Done</button>
             </div>
           </div>
         </>
       )}
+
       {/* Delete Confirmation Modal */}
       {deleteConfirmJob && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setDeleteConfirmJob(null)} />
-          <div className="modal-centered-content" style={{ width: '480px', maxWidth: '90vw' }}>
-            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+          <div className="modal-centered-content" style={{ width: '480px', maxWidth: '90vw', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-3 text-red-600">
                 <AlertTriangle size={24} />
                 <h3 className="text-lg font-bold">Delete Job Opening?</h3>
               </div>
               <button onClick={() => setDeleteConfirmJob(null)} className="text-slate-400 hover:text-slate-600">✕</button>
             </div>
-            <div className="p-6 space-y-3">
+            <div className="p-6 space-y-3 overflow-y-auto flex-1 min-h-0">
               <p className="text-sm text-slate-600 leading-relaxed">
                 Are you sure you want to delete <strong>{deleteConfirmJob.job_title}</strong>?
               </p>
@@ -840,7 +1529,7 @@ export default function JobOpenings() {
                 This action will immediately remove the job from all active publishing channels (MadhuraTech Career Page, LinkedIn, Indeed). Historical candidate applications will remain intact.
               </p>
             </div>
-            <div className="p-4 border-t border-slate-200 flex justify-end gap-3">
+            <div className="p-4 border-t border-slate-200 flex justify-end gap-3 shrink-0">
               <button onClick={() => setDeleteConfirmJob(null)} className="px-5 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-200">Cancel</button>
               <button onClick={() => handleDeleteJob(deleteConfirmJob.id)} className="px-5 py-2 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 shadow-md">Delete Job</button>
             </div>

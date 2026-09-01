@@ -25,21 +25,23 @@ class JobPublisher {
           published_at, last_synced_at, error_message
         ) VALUES (?, ?, ?, ?, ?, ?, NOW(), ?)
         ON DUPLICATE KEY UPDATE
-          external_job_id = VALUES(external_job_id),
+          external_job_id = COALESCE(VALUES(external_job_id), external_job_id),
           status = VALUES(status),
-          external_url = VALUES(external_url),
+          external_url = COALESCE(VALUES(external_url), external_url),
           published_at = COALESCE(VALUES(published_at), published_at),
           last_synced_at = NOW(),
           error_message = VALUES(error_message)
       `;
 
+      const normalizedStatus = String(res.status || 'FAILED').toUpperCase();
+      const isLive = normalizedStatus === 'PUBLISHED' || normalizedStatus === 'POSTED';
       const params = [
         jobId,
         channel,
         res.externalJobId || null,
-        res.status,
+        normalizedStatus,
         res.externalUrl || null,
-        res.status === 'PUBLISHED' ? new Date() : null,
+        isLive ? new Date() : null,
         res.errorMessage || null
       ];
 
