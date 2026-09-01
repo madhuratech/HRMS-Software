@@ -34,7 +34,7 @@ class JobPublisher {
       `;
 
       const normalizedStatus = String(res.status || 'FAILED').toUpperCase();
-      const isLive = normalizedStatus === 'PUBLISHED' || normalizedStatus === 'POSTED';
+      const isLive = normalizedStatus === 'PUBLISHED';
       const params = [
         jobId,
         channel,
@@ -53,20 +53,45 @@ class JobPublisher {
   }
 
   static async publishAll(job) {
-    const channels = ['CAREER_PAGE', 'LINKEDIN', 'INDEED'];
     const results = {};
 
-    for (const ch of channels) {
-      try {
-        const publisher = this.getPublisher(ch);
-        const res = await publisher.publish(job);
-        results[ch] = res;
-        await this.recordPublishStatus(job.id, ch, res);
-      } catch (err) {
-        const failRes = { success: false, status: 'FAILED', errorMessage: err.message };
-        results[ch] = failRes;
-        await this.recordPublishStatus(job.id, ch, failRes);
-      }
+    // 1. Publish to Career Page
+    try {
+      const cpRes = await CareerPagePublisher.publish(job);
+      results['CAREER_PAGE'] = cpRes;
+      await this.recordPublishStatus(job.id, 'CAREER_PAGE', cpRes);
+    } catch (err) {
+      const failRes = { success: false, status: 'FAILED', errorMessage: err.message };
+      results['CAREER_PAGE'] = failRes;
+      await this.recordPublishStatus(job.id, 'CAREER_PAGE', failRes);
+    }
+
+    // 2. Set LinkedIn to PUBLISHING temporarily if token is configured
+    const hasLinkedInToken = !!(process.env.LINKEDIN_ACCESS_TOKEN && process.env.LINKEDIN_ACCESS_TOKEN.trim().length > 20);
+    if (hasLinkedInToken) {
+      await this.recordPublishStatus(job.id, 'LINKEDIN', { status: 'PUBLISHING' });
+    }
+
+    // 3. Publish to LinkedIn Company Page via Posts API
+    try {
+      const liRes = await LinkedInPublisher.publish(job);
+      results['LINKEDIN'] = liRes;
+      await this.recordPublishStatus(job.id, 'LINKEDIN', liRes);
+    } catch (err) {
+      const failRes = { success: false, status: 'FAILED', errorMessage: err.message };
+      results['LINKEDIN'] = failRes;
+      await this.recordPublishStatus(job.id, 'LINKEDIN', failRes);
+    }
+
+    // 4. Handle Indeed Channel
+    try {
+      const indRes = await IndeedPublisher.publish(job);
+      results['INDEED'] = indRes;
+      await this.recordPublishStatus(job.id, 'INDEED', indRes);
+    } catch (err) {
+      const failRes = { success: false, status: 'FAILED', errorMessage: err.message };
+      results['INDEED'] = failRes;
+      await this.recordPublishStatus(job.id, 'INDEED', failRes);
     }
 
     return results;

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Search, Filter, Plus, MoreHorizontal, ChevronLeft, ChevronRight, X, 
   AlertTriangle, Users, Globe, ExternalLink, CheckCircle2, AlertCircle, 
-  RefreshCw, Linkedin, Copy, Check, Settings, Key, ShieldCheck, Zap
+  RefreshCw, Linkedin, Copy, Check, Settings, Key, ShieldCheck, Zap, Info
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { canCreate, canEdit, canDelete, checkActionPermission } from '../../lib/permissions';
@@ -52,6 +52,7 @@ export default function JobOpenings() {
   const [channelStatuses, setChannelStatuses] = useState({});
   const [publishSummary, setPublishSummary] = useState(null);
   const [isPublishingId, setIsPublishingId] = useState(null);
+  const [selectedErrorDetails, setSelectedErrorDetails] = useState(null);
 
   // LinkedIn Settings & OAuth Modal
   const [showLinkedInModal, setShowLinkedInModal] = useState(false);
@@ -658,13 +659,13 @@ export default function JobOpenings() {
                             </span>
                           )}
 
-                          {/* 2. LinkedIn Company Page Post Status */}
+                          {/* 2. LinkedIn Company Page Post Status (PUBLISHED, PUBLISHING, FAILED, READY, AUTH_REQUIRED) */}
                           {liStatus === 'PUBLISHED' ? (
                             <a
                               href={liUrl || `https://www.linkedin.com/company/${linkedInConfig?.orgId || '109901015'}/`}
                               target="_blank"
                               rel="noreferrer"
-                              title="LinkedIn: Published on Madhura Technologies Company Page"
+                              title="LinkedIn: Published ✓ (Click to view post on company feed)"
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -680,11 +681,33 @@ export default function JobOpenings() {
                                 cursor: 'pointer'
                               }}
                             >
-                              <Linkedin size={12} /> LinkedIn: Published <ExternalLink size={10} />
+                              <Linkedin size={12} /> LinkedIn: Published ✓ <ExternalLink size={10} />
                             </a>
-                          ) : liStatus === 'FAILED' ? (
+                          ) : liStatus === 'PUBLISHING' || isPublishingId === row.id ? (
                             <span
-                              title={linkedInCh?.error_message || 'LinkedIn Company Page post failed.'}
+                              title="LinkedIn: Publishing in progress..."
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                background: '#EFF6FF',
+                                color: '#2563EB',
+                                border: '1px solid #BFDBFE'
+                              }}
+                            >
+                              <RefreshCw size={11} className="animate-spin" /> LinkedIn: Publishing...
+                            </span>
+                          ) : liStatus === 'FAILED' ? (
+                            <button
+                              onClick={() => setSelectedErrorDetails({
+                                channel: 'LinkedIn',
+                                message: linkedInCh?.error_message || 'LinkedIn Company Page post failed.'
+                              })}
+                              title={`LinkedIn: Failed - Click to view error details:\n${linkedInCh?.error_message || ''}`}
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -696,14 +719,18 @@ export default function JobOpenings() {
                                 background: '#FEF2F2',
                                 color: '#DC2626',
                                 border: '1px solid #FECACA',
-                                cursor: 'help'
+                                cursor: 'pointer'
                               }}
                             >
-                              <Linkedin size={12} /> LinkedIn: Failed
-                            </span>
+                              <Linkedin size={12} /> LinkedIn: Failed <Info size={11} />
+                            </button>
                           ) : (!linkedInConfig?.hasToken) ? (
-                            <span
-                              title="LinkedIn organization posting permission (w_organization_social) is not authorized. Click LinkedIn Integration to connect."
+                            <button
+                              onClick={() => {
+                                fetchLinkedInStatus();
+                                setShowLinkedInModal(true);
+                              }}
+                              title="LinkedIn organization posting permission (w_organization_social) is not authorized. Click to connect."
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -715,14 +742,14 @@ export default function JobOpenings() {
                                 background: '#FFFBEB',
                                 color: '#D97706',
                                 border: '1px solid #FDE68A',
-                                cursor: 'help'
+                                cursor: 'pointer'
                               }}
                             >
                               <Linkedin size={12} /> LinkedIn: Authorization Required
-                            </span>
+                            </button>
                           ) : (
                             <span
-                              title="LinkedIn: Ready to automatically publish on Madhura Technologies company page"
+                              title="LinkedIn: Ready to automatically publish on Madhura Technologies company feed when Publish is clicked"
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -826,7 +853,7 @@ export default function JobOpenings() {
                             <Users size={14} /> Candidates
                           </button>
 
-                          {/* Publish Job Button */}
+                          {/* Publish Job Button (Single Unified Backend Endpoint) */}
                           {row.status !== 'Published' && (
                             <button 
                               disabled={!canEdit('job_openings') || isPublishingId === row.id}
@@ -919,6 +946,50 @@ export default function JobOpenings() {
 
       </div>
 
+      {/* API Error Details Dialog */}
+      {selectedErrorDetails && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setSelectedErrorDetails(null)} />
+          <div className="modal-centered-content" style={{ width: '520px', maxWidth: '92vw', background: '#FFFFFF', borderRadius: '16px', boxShadow: '0 24px 48px rgba(15, 23, 42, 0.2)', overflow: 'hidden' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #FEE2E2', background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <AlertCircle size={22} color="#DC2626" />
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#991B1B' }}>{selectedErrorDetails.channel} Publishing Error</h3>
+              </div>
+              <button onClick={() => setSelectedErrorDetails(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94A3B8' }}>
+                <X size={18} />
+              </button>
+            </div>
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <p style={{ margin: 0, fontSize: '13px', color: '#475569', lineHeight: '1.6' }}>
+                The LinkedIn Posts API returned the following response when trying to automatically create the company post:
+              </p>
+              <div style={{ padding: '14px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '10px', fontSize: '12px', fontFamily: 'monospace', color: '#0F172A', wordBreak: 'break-word', lineHeight: '1.5' }}>
+                {selectedErrorDetails.message}
+              </div>
+            </div>
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button 
+                onClick={() => {
+                  setSelectedErrorDetails(null);
+                  fetchLinkedInStatus();
+                  setShowLinkedInModal(true);
+                }}
+                style={{ padding: '8px 16px', background: '#2563EB', color: '#FFF', borderRadius: '8px', fontSize: '12px', fontWeight: '600', border: 'none', cursor: 'pointer' }}
+              >
+                Configure Integration
+              </button>
+              <button 
+                onClick={() => setSelectedErrorDetails(null)} 
+                style={{ padding: '8px 16px', background: '#F1F5F9', color: '#475569', borderRadius: '8px', fontSize: '12px', fontWeight: '600', border: '1px solid #CBD5E1', cursor: 'pointer' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
       {/* Multi-Channel Publish Result Modal */}
       {publishSummary && (
         <>
@@ -989,7 +1060,7 @@ export default function JobOpenings() {
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span style={{ fontSize: '14px', fontWeight: '700', color: '#064E3B' }}>LinkedIn</span>
-                        <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '12px', background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>Published</span>
+                        <span style={{ fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '12px', background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0' }}>Published ✓</span>
                       </div>
                       <div style={{ fontSize: '12px', color: '#047857', marginTop: '3px' }}>Social media hiring announcement published to Madhura Technologies LinkedIn Page.</div>
                     </div>
