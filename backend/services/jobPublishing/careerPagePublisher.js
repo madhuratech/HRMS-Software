@@ -17,10 +17,21 @@ class CareerPagePublisher {
    * PUBLISH JOB
    */
   static async publish(job) {
+
     return new Promise((resolve) => {
-      const jobTitle = job.job_title || job.title || 'job-opening';
-      const slug = getSlug(jobTitle, job.id);
-      const externalUrl = `https://madhuratech.com/career/job/${slug}`;
+
+      const jobTitle =
+        job.job_title ||
+        job.title ||
+        'job-opening';
+
+      const slug = getSlug(
+        jobTitle,
+        job.id
+      );
+
+      const externalUrl =
+        `https://madhuratech.com/career/${slug}`;
 
       const sql = `
         UPDATE requirements
@@ -32,73 +43,131 @@ class CareerPagePublisher {
         WHERE id = ?
       `;
 
-      db.query(sql, [job.id], (err, result) => {
-        if (err) {
-          console.error('[CareerPagePublisher.publish] Error:', err);
-          return resolve({
-            success: false,
-            status: 'FAILED',
-            errorMessage: err.message
-          });
-        }
+      db.query(
+        sql,
+        [job.id],
+        (err, result) => {
 
-        return resolve({
-          success: true,
-          status: 'PUBLISHED',
-          externalUrl,
-          externalJobId: String(job.id),
-          lastSyncedAt: new Date()
-        });
-      });
+          if (err) {
+
+            console.error(
+              '[CareerPagePublisher.publish]',
+              err
+            );
+
+            return resolve({
+              success: false,
+              status: 'FAILED',
+              errorMessage: err.message
+            });
+          }
+
+          console.log(
+            `[CareerPagePublisher] Job ${job.id} published`
+          );
+
+          return resolve({
+
+            success: true,
+
+            status: 'PUBLISHED',
+
+            externalUrl,
+
+            externalJobId:
+              String(job.id),
+
+            lastSyncedAt:
+              new Date()
+
+          });
+
+        }
+      );
+
     });
+
   }
+
 
   /**
    * UPDATE JOB
    */
   static async update(job) {
+
     return this.publish(job);
+
   }
+
 
   /**
    * CLOSE JOB
    */
   static async close(job) {
+
     return new Promise((resolve) => {
+
       const sql = `
         UPDATE requirements
         SET
           status = 'Closed',
-          closing_date = COALESCE(closing_date, CURRENT_DATE())
+          closing_date =
+            COALESCE(
+              closing_date,
+              CURRENT_DATE()
+            )
         WHERE id = ?
       `;
 
-      db.query(sql, [job.id], (err, result) => {
-        if (err) {
-          console.error('[CareerPagePublisher.close] Error:', err);
-          return resolve({
-            success: false,
-            status: 'FAILED',
-            errorMessage: err.message,
-            externalJobId: String(job.id)
-          });
-        }
+      db.query(
+        sql,
+        [job.id],
+        (err, result) => {
 
-        return resolve({
-          success: true,
-          status: 'CLOSED',
-          externalJobId: String(job.id),
-          lastSyncedAt: new Date()
-        });
-      });
+          if (err) {
+
+            console.error(
+              '[CareerPagePublisher.close]',
+              err
+            );
+
+            return resolve({
+              success: false,
+              status: 'FAILED',
+              errorMessage: err.message
+            });
+
+          }
+
+          return resolve({
+
+            success: true,
+
+            status: 'CLOSED',
+
+            externalJobId:
+              String(job.id),
+
+            lastSyncedAt:
+              new Date()
+
+          });
+
+        }
+      );
+
     });
+
   }
 
+
   /**
-   * DELETE / REMOVE JOB
+   * DELETE JOB
    */
   static async delete(job) {
+
     return new Promise((resolve) => {
+
       const sql = `
         UPDATE requirements
         SET
@@ -107,26 +176,48 @@ class CareerPagePublisher {
         WHERE id = ?
       `;
 
-      db.query(sql, [job.id], (err, result) => {
-        if (err) {
-          console.error('[CareerPagePublisher.delete] Error:', err);
-          return resolve({
-            success: false,
-            status: 'FAILED',
-            errorMessage: err.message,
-            externalJobId: String(job.id)
-          });
-        }
+      db.query(
+        sql,
+        [job.id],
+        (err, result) => {
 
-        return resolve({
-          success: true,
-          status: 'DELETED',
-          externalJobId: String(job.id),
-          lastSyncedAt: new Date()
-        });
-      });
+          if (err) {
+
+            console.error(
+              '[CareerPagePublisher.delete]',
+              err
+            );
+
+            return resolve({
+              success: false,
+              status: 'FAILED',
+              errorMessage: err.message
+            });
+
+          }
+
+          return resolve({
+
+            success: true,
+
+            status: 'DELETED',
+
+            externalJobId:
+              String(job.id),
+
+            lastSyncedAt:
+              new Date()
+
+          });
+
+        }
+      );
+
     });
+
   }
+
 }
 
-module.exports = CareerPagePublisher;
+module.exports =
+  CareerPagePublisher;
