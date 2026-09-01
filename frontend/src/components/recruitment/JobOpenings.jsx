@@ -762,13 +762,13 @@ export default function JobOpenings() {
                             >
                               <Linkedin size={12} /> LinkedIn: Failed <Info size={11} />
                             </button>
-                          ) : (!linkedInConfig?.hasToken) ? (
+                          ) : linkedInConfig?.isExpired ? (
                             <button
                               onClick={() => {
                                 fetchLinkedInStatus();
                                 setShowLinkedInModal(true);
                               }}
-                              title="LinkedIn organization posting permission (w_organization_social) is not authorized. Click to connect."
+                              title="LinkedIn access token has expired. Click to reconnect."
                               style={{
                                 display: 'inline-flex',
                                 alignItems: 'center',
@@ -783,7 +783,30 @@ export default function JobOpenings() {
                                 cursor: 'pointer'
                               }}
                             >
-                              <Linkedin size={12} /> LinkedIn: Authorization Required
+                              <Linkedin size={12} /> LinkedIn: Token Expired <RefreshCw size={10} />
+                            </button>
+                          ) : (!linkedInConfig?.hasToken) ? (
+                            <button
+                              onClick={() => {
+                                fetchLinkedInStatus();
+                                setShowLinkedInModal(true);
+                              }}
+                              title="LinkedIn account is not connected. Click to connect."
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: '600',
+                                background: '#F8FAFC',
+                                color: '#64748B',
+                                border: '1px solid #E2E8F0',
+                                cursor: 'pointer'
+                              }}
+                            >
+                              <Linkedin size={12} /> LinkedIn: Not Connected
                             </button>
                           ) : (
                             <span

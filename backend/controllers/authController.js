@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
 const emailService = require("../services/emailService");
+const OAuthIntegrationService = require("../services/OAuthIntegrationService");
 
 const JWT_SECRET = process.env.JWT_SECRET || "madhura_super_secret_key_2026";
 
@@ -562,13 +563,16 @@ exports.register = async (req, res) => {
 };
 
 /**
- * Initiates LinkedIn OAuth Flow requesting organization posting permission:
- * w_organization_social openid profile email
+const OAuthIntegrationService = require('../services/OAuthIntegrationService');
+
+/**
+ * Initiates LinkedIn OAuth Flow requesting standard enabled scopes:
+ * w_member_social openid profile email (or configured LINKEDIN_SCOPE)
  */
 exports.connectLinkedIn = async (req, res) => {
   const clientId = process.env.LINKEDIN_CLIENT_ID;
   const redirectUri = process.env.LINKEDIN_REDIRECT_URI || 'http://localhost:5000/api/auth/linkedin/callback';
-  const scopes = 'w_organization_social openid profile email';
+  const scopes = process.env.LINKEDIN_SCOPE || 'w_member_social openid profile email';
 
   if (!clientId) {
     return res.status(400).send(`
@@ -593,7 +597,8 @@ exports.connectLinkedIn = async (req, res) => {
 
 /**
  * Handles LinkedIn OAuth Callback, exchanges code for access token,
- * provides detailed error handling for all error types, and redirects back to /recruitment/jobs.
+ * fetches member profile identity, stores everything in the database,
+ * and redirects back to /recruitment/jobs.
  */
 exports.linkedinCallback = async (req, res) => {
   const { code, error, error_description } = req.query;
@@ -723,38 +728,49 @@ exports.linkedinCallback = async (req, res) => {
 
     const accessToken = tokenData.access_token;
     const expiresIn = tokenData.expires_in || 5184000;
-    const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
     const expiresInDays = Math.round(expiresIn / 86400);
 
-    // 5. Store returned access token in runtime process.env
-    process.env.LINKEDIN_ACCESS_TOKEN = accessToken;
-    process.env.LINKEDIN_TOKEN_EXPIRES_AT = expiresAt;
+    // 5. Fetch authenticated user profile identity from OpenID userinfo
+    let memberUrn = null;
+    let accountName = 'LinkedIn Member';
 
-    // 6. Persist access token and expiration into backend/.env file on disk
     try {
-      const fs = require('fs');
-      const path = require('path');
-      const envPath = path.join(__dirname, '..', '.env');
-      if (fs.existsSync(envPath)) {
-        let envContent = fs.readFileSync(envPath, 'utf8');
-        if (envContent.includes('LINKEDIN_ACCESS_TOKEN=')) {
-          envContent = envContent.replace(/LINKEDIN_ACCESS_TOKEN=.*/, `LINKEDIN_ACCESS_TOKEN=${accessToken}`);
-        } else {
-          envContent += `\nLINKEDIN_ACCESS_TOKEN=${accessToken}\n`;
+      const userinfoRes = await fetch('https://api.linkedin.com/v2/userinfo', {
+        headers: { 'Authorization': `Bearer ${accessToken}` }
+      });
+      if (userinfoRes.ok) {
+        const userInfo = await userinfoRes.json();
+        if (userInfo.sub) {
+          memberUrn = `urn:li:person:${userInfo.sub}`;
         }
-        if (envContent.includes('LINKEDIN_TOKEN_EXPIRES_AT=')) {
-          envContent = envContent.replace(/LINKEDIN_TOKEN_EXPIRES_AT=.*/, `LINKEDIN_TOKEN_EXPIRES_AT=${expiresAt}`);
-        } else {
-          envContent += `\nLINKEDIN_TOKEN_EXPIRES_AT=${expiresAt}\n`;
+        if (userInfo.name) {
+          accountName = userInfo.name;
         }
-        fs.writeFileSync(envPath, envContent, 'utf8');
-        console.log('✅ Successfully stored LINKEDIN_ACCESS_TOKEN in backend/.env');
       }
-    } catch (fileErr) {
-      console.error('Failed to update .env with access token:', fileErr);
+    } catch (uErr) {
+      console.warn('[LinkedIn OAuth] Could not fetch userinfo:', uErr.message);
     }
 
-    // 7. Render success page with automatic 2-second redirect to /recruitment/jobs
+    const orgId = process.env.LINKEDIN_ORGANIZATION_ID || '109901015';
+    const orgUrn = orgId ? `urn:li:organization:${orgId}` : null;
+
+    // 6. Persist access token securely in database (oauth_integrations table)
+    await OAuthIntegrationService.saveLinkedInToken({
+      accessToken,
+      refreshToken: tokenData.refresh_token,
+      expiresIn,
+      scope: tokenData.scope,
+      memberUrn,
+      orgUrn,
+      accountName
+    });
+
+    // Also update runtime process.env
+    process.env.LINKEDIN_ACCESS_TOKEN = accessToken;
+
+    console.log(`✅ LinkedIn OAuth connection saved in database for: ${accountName} (${memberUrn || orgUrn})`);
+
+    // 7. Render success page with automatic redirect to /recruitment/jobs
     return res.send(`
       <!DOCTYPE html>
       <html>
@@ -771,7 +787,7 @@ exports.linkedinCallback = async (req, res) => {
           </div>
           <h1 style="font-size: 22px; font-weight: 700; color: #0F172A; margin: 0 0 12px 0;">LinkedIn Connected Successfully!</h1>
           <p style="font-size: 14px; color: #64748B; line-height: 1.6; margin: 0 0 20px 0;">
-            Authentication completed successfully. Redirecting to Job Openings...
+            Connected as <strong>${accountName}</strong>. Ready to automatically publish hiring posts on LinkedIn.
           </p>
           <div style="background: #F1F5F9; border-radius: 8px; padding: 10px 16px; margin-bottom: 24px; font-size: 13px; color: #334155;">
             <strong>Token Validity:</strong> Active for approx. ${expiresInDays} days
@@ -802,29 +818,29 @@ exports.linkedinCallback = async (req, res) => {
 };
 
 /**
- * Returns current LinkedIn integration status and configuration diagnostics
+ * Returns current LinkedIn integration status and configuration diagnostics from database
  */
 exports.getLinkedInStatus = async (req, res) => {
   const clientId = process.env.LINKEDIN_CLIENT_ID;
   const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
-  const accessToken = process.env.LINKEDIN_ACCESS_TOKEN;
-  const expiresAt = process.env.LINKEDIN_TOKEN_EXPIRES_AT;
-  const orgId = process.env.LINKEDIN_ORGANIZATION_ID;
+  const orgId = process.env.LINKEDIN_ORGANIZATION_ID || '109901015';
 
-  const isConfigured = !!(clientId && clientSecret && orgId);
-  const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false;
-  const hasToken = !!(accessToken && accessToken.length > 20 && !isExpired);
+  const integration = await OAuthIntegrationService.getLinkedInIntegration();
+  const isConfigured = !!(clientId && clientSecret);
 
   return res.json({
     success: true,
     data: {
       configured: isConfigured,
-      hasToken,
-      isExpired,
-      expiresAt: expiresAt || null,
+      hasToken: integration.hasToken,
+      isExpired: integration.isExpired,
+      status: integration.status,
+      expiresAt: integration.expiresAt || null,
+      accountName: integration.accountName || null,
+      memberUrn: integration.memberUrn || null,
       orgId: orgId || null,
       clientId: clientId ? `${clientId.slice(0, 4)}...` : null,
-      tokenSnippet: hasToken ? `${accessToken.slice(0, 8)}...${accessToken.slice(-6)}` : null
+      tokenSnippet: integration.hasToken && integration.accessToken ? `${integration.accessToken.slice(0, 8)}...${integration.accessToken.slice(-6)}` : null
     }
   });
 };
@@ -838,35 +854,29 @@ exports.saveLinkedInToken = async (req, res) => {
     return res.status(400).json({ success: false, message: 'Please provide an accessToken or orgId.' });
   }
 
-  if (accessToken) process.env.LINKEDIN_ACCESS_TOKEN = accessToken.trim();
-  if (orgId) process.env.LINKEDIN_ORGANIZATION_ID = orgId.trim();
-
-  try {
-    const fs = require('fs');
-    const path = require('path');
-    const envPath = path.join(__dirname, '..', '.env');
-    if (fs.existsSync(envPath)) {
-      let envContent = fs.readFileSync(envPath, 'utf8');
-      if (accessToken) {
-        if (envContent.includes('LINKEDIN_ACCESS_TOKEN=')) {
-          envContent = envContent.replace(/LINKEDIN_ACCESS_TOKEN=.*/, `LINKEDIN_ACCESS_TOKEN=${accessToken.trim()}`);
-        } else {
-          envContent += `\nLINKEDIN_ACCESS_TOKEN=${accessToken.trim()}\n`;
-        }
-      }
-      if (orgId) {
-        if (envContent.includes('LINKEDIN_ORGANIZATION_ID=')) {
-          envContent = envContent.replace(/LINKEDIN_ORGANIZATION_ID=.*/, `LINKEDIN_ORGANIZATION_ID=${orgId.trim()}`);
-        } else {
-          envContent += `\nLINKEDIN_ORGANIZATION_ID=${orgId.trim()}\n`;
-        }
-      }
-      fs.writeFileSync(envPath, envContent, 'utf8');
-    }
-    return res.json({ success: true, message: 'LinkedIn credentials updated successfully.' });
-  } catch (err) {
-    return res.status(500).json({ success: false, message: 'Failed to write credentials to .env', error: err.message });
+  if (accessToken) {
+    await OAuthIntegrationService.saveLinkedInToken({
+      accessToken: accessToken.trim(),
+      expiresIn: 5184000,
+      scope: 'w_member_social openid profile email',
+      orgUrn: orgId ? `urn:li:organization:${orgId.trim()}` : null
+    });
+    process.env.LINKEDIN_ACCESS_TOKEN = accessToken.trim();
   }
+
+  if (orgId) {
+    process.env.LINKEDIN_ORGANIZATION_ID = orgId.trim();
+  }
+
+  return res.json({ success: true, message: 'LinkedIn credentials stored successfully in database.' });
+};
+
+/**
+ * Disconnects LinkedIn
+ */
+exports.disconnectLinkedIn = async (req, res) => {
+  await OAuthIntegrationService.disconnectLinkedIn();
+  return res.json({ success: true, message: 'LinkedIn disconnected successfully.' });
 };
 
 

@@ -1,4 +1,5 @@
 const db = require('../config/database');
+const OAuthIntegrationService = require('./OAuthIntegrationService');
 
 function getSlug(title, id) {
   const cleanTitle = String(title || 'job')
@@ -10,24 +11,10 @@ function getSlug(title, id) {
 }
 
 /**
- * Dedicated LinkedIn Posts Service for Automated Company/Page Posts
+ * Dedicated LinkedIn Posts Service for Automated Company/Member Posts
  * Endpoint: POST https://api.linkedin.com/rest/posts
  */
 class LinkedInJobService {
-
-  static getDiagnostics() {
-    const clientId = process.env.LINKEDIN_CLIENT_ID;
-    const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
-    const accessToken = process.env.LINKEDIN_ACCESS_TOKEN;
-    const orgId = process.env.LINKEDIN_ORGANIZATION_ID || '109901015';
-
-    return {
-      hasClientId: !!clientId,
-      hasClientSecret: !!clientSecret,
-      hasAccessToken: !!(accessToken && accessToken.trim().length > 20),
-      orgId
-    };
-  }
 
   static async getExistingPublishing(jobId) {
     return new Promise((resolve) => {
@@ -75,52 +62,52 @@ class LinkedInJobService {
   static formatPostContent(job, applyUrl) {
     const title = job.job_title || job.title || 'Career Opportunity';
     const dept = job.department_name || job.department || 'Software Development';
-    const loc = job.location || 'Coimbatore, Tamil Nadu, India';
+    const loc = job.location || 'Coimbatore, Tamil Nadu';
     const empType = job.employment_type || 'Full Time';
     const vacancies = job.vacancies || 1;
-    const tagTitle = title.replace(/[^a-zA-Z0-9]/g, '');
-    const tagDept = dept.replace(/[^a-zA-Z0-9]/g, '');
 
     let text = `🚀 WE ARE HIRING!\n\n`;
     text += `${title}\n\n`;
     text += `📍 Location: ${loc}\n`;
-    text += `💼 Employment Type: ${empType}\n`;
-    text += `👥 Open Positions: ${vacancies}\n\n`;
+    text += `🏢 Department: ${dept}\n`;
+    text += `💼 Job Type: ${empType}\n`;
+    text += `👥 Vacancies: ${vacancies}\n\n`;
 
     if (job.job_description) {
       const cleanDesc = String(job.job_description).replace(/<[^>]*>?/gm, '').trim();
-      const snippet = cleanDesc.length > 220 ? cleanDesc.slice(0, 217) + '...' : cleanDesc;
+      const snippet = cleanDesc.length > 200 ? cleanDesc.slice(0, 197) + '...' : cleanDesc;
       text += `${snippet}\n\n`;
-    } else {
-      text += `Join Madhura Technologies and build amazing products with our team.\n\n`;
     }
 
+    text += `Join Madhura Technologies!\n\n`;
     text += `Apply now:\n${applyUrl}\n\n`;
-    text += `#Hiring #Jobs #${tagDept} #MadhuraTechnologies #${tagTitle}`;
+    text += `#Hiring #Jobs #${dept.replace(/[^a-zA-Z0-9]/g, '')} #MadhuraTechnologies`;
 
     return text;
   }
 
   /**
-   * Publishes an automated server-side organic post to LinkedIn
+   * Publishes an automated server-side organic post to LinkedIn feed
    */
   static async publishJob(job) {
     const jobId = job.id;
-    const jobTitle = job.job_title || job.title || 'Untitled Job';
-    const slug = getSlug(jobTitle, jobId);
     const applyUrl = 'https://madhuratech.com/career';
 
     console.log('[LinkedIn] Starting automatic post publishing');
 
-    const diag = this.getDiagnostics();
-    const token = process.env.LINKEDIN_ACCESS_TOKEN;
-    const orgId = diag.orgId;
+    // 1. Fetch token and account identity from database
+    const integration = await OAuthIntegrationService.getLinkedInIntegration();
+    const token = integration.accessToken;
+    const isExpired = integration.isExpired;
+    const hasToken = integration.hasToken;
 
-    console.log(`[LinkedIn] Token found: ${diag.hasAccessToken ? 'YES' : 'NO'}`);
+    console.log(`[LinkedIn] Token found: ${token ? 'YES' : 'NO'}`);
+    console.log(`[LinkedIn] Token expired: ${isExpired ? 'YES' : 'NO'}`);
 
-    if (!diag.hasAccessToken) {
-      console.log('[LinkedIn] Token expired: YES');
-      const errorMsg = 'LinkedIn organization posting permission is not authorized for this application. Access token is missing or not configured.';
+    // Validate token existence
+    if (!token || token.trim().length < 20) {
+      const errorMsg = 'LinkedIn account is not connected. Please connect LinkedIn first.';
+      console.log(`[LinkedIn] Aborting: ${errorMsg}`);
       await this.recordPublishingStatus(jobId, null, 'FAILED', errorMsg, null);
       return {
         success: false,
@@ -129,7 +116,19 @@ class LinkedInJobService {
       };
     }
 
-    // Prevent duplicate publishing if already published to LinkedIn
+    // Validate token expiry
+    if (isExpired) {
+      const errorMsg = 'LinkedIn access token has expired. Please reconnect LinkedIn.';
+      console.log(`[LinkedIn] Aborting: ${errorMsg}`);
+      await this.recordPublishingStatus(jobId, null, 'FAILED', errorMsg, null);
+      return {
+        success: false,
+        status: 'FAILED',
+        errorMessage: errorMsg
+      };
+    }
+
+    // 2. Duplicate prevention check
     const existing = await this.getExistingPublishing(jobId);
     if (existing && existing.status === 'PUBLISHED' && existing.external_job_id) {
       console.log(`[LinkedIn] Job ID: ${jobId} already published to LinkedIn (Post ID: ${existing.external_job_id}). Skipping duplicate post.`);
@@ -143,29 +142,39 @@ class LinkedInJobService {
       };
     }
 
-    // Determine author URN (Organization or Member)
-    let authorUrn = `urn:li:organization:${orgId}`;
+    // 3. Determine Author URN (Organization or Member)
+    let authorUrn = integration.organizationUrn;
+    if (!authorUrn && process.env.LINKEDIN_ORGANIZATION_ID) {
+      authorUrn = `urn:li:organization:${process.env.LINKEDIN_ORGANIZATION_ID}`;
+    }
+    if (!authorUrn && integration.memberUrn) {
+      authorUrn = integration.memberUrn;
+    }
+    if (!authorUrn) {
+      authorUrn = 'urn:li:organization:109901015';
+    }
+
     console.log(`[LinkedIn] Author URN: ${authorUrn}`);
 
     const endpoint = 'https://api.linkedin.com/rest/posts';
     const postContent = this.formatPostContent(job, applyUrl);
 
-    const payload = {
-      author: authorUrn,
-      commentary: postContent,
-      visibility: 'PUBLIC',
-      distribution: {
-        feedDistribution: 'MAIN_FEED',
-        targetEntities: [],
-        thirdPartyDistributionChannels: []
-      },
-      lifecycleState: 'PUBLISHED',
-      isReshareDisabledByAuthor: false
-    };
+    const makePostRequest = async (author) => {
+      const payload = {
+        author,
+        commentary: postContent,
+        visibility: 'PUBLIC',
+        distribution: {
+          feedDistribution: 'MAIN_FEED',
+          targetEntities: [],
+          thirdPartyDistributionChannels: []
+        },
+        lifecycleState: 'PUBLISHED',
+        isReshareDisabledByAuthor: false
+      };
 
-    console.log('[LinkedIn] Sending post request');
+      console.log(`[LinkedIn] Sending post request as: ${author}`);
 
-    try {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -179,15 +188,33 @@ class LinkedInJobService {
 
       console.log(`[LinkedIn] Response status: ${response.status}`);
       const responseText = await response.text();
-      console.log(`[LinkedIn] Response body: ${responseText.slice(0, 300)}`);
+      console.log(`[LinkedIn] Response body: ${responseText.slice(0, 400)}`);
 
       let data = null;
       try { data = JSON.parse(responseText); } catch (e) {}
 
+      return { response, responseText, data };
+    };
+
+    try {
+      let { response, responseText, data } = await makePostRequest(authorUrn);
+
+      // If posting as Organization failed with 403 / unauthorized scope, fallback to Member URN if available
+      if (response.status === 403 && authorUrn.startsWith('urn:li:organization:') && integration.memberUrn) {
+        console.log(`[LinkedIn] Organization posting not permitted. Retrying as authenticated member: ${integration.memberUrn}`);
+        const memberResult = await makePostRequest(integration.memberUrn);
+        response = memberResult.response;
+        responseText = memberResult.responseText;
+        data = memberResult.data;
+        if (response.status === 201 || response.status === 200) {
+          authorUrn = integration.memberUrn;
+        }
+      }
+
       // 201 Created or 200 OK -> Post successfully published!
       if (response.status === 201 || response.status === 200) {
         const postUrn = response.headers.get('x-restli-id') || data?.id;
-        const postUrl = postUrn ? `https://www.linkedin.com/feed/update/${encodeURIComponent(postUrn)}` : `https://www.linkedin.com/company/${orgId}/`;
+        const postUrl = postUrn ? `https://www.linkedin.com/feed/update/${encodeURIComponent(postUrn)}` : 'https://www.linkedin.com/feed/';
 
         console.log(`[LinkedIn] Token expired: NO`);
         console.log(`[LinkedIn] Post ID: ${postUrn}`);
@@ -204,10 +231,10 @@ class LinkedInJobService {
         };
       }
 
-      // Handle 401 (token expired)
+      // 401 Unauthorized (Expired or Revoked Token)
       if (response.status === 401) {
         console.log('[LinkedIn] Token expired: YES');
-        const errorMsg = 'LinkedIn access token is expired or invalid. Please re-authenticate via OAuth.';
+        const errorMsg = 'LinkedIn access token has expired. Please reconnect LinkedIn.';
         await this.recordPublishingStatus(jobId, null, 'FAILED', errorMsg, null);
         return {
           success: false,
@@ -216,10 +243,11 @@ class LinkedInJobService {
         };
       }
 
-      // Handle 403 (Forbidden / Scope / Organization ACL)
+      // 403 Forbidden (Scope or Organization Posting Permission Missing)
       if (response.status === 403) {
-        console.log('[LinkedIn] Token expired: NO');
-        const errorMsg = 'LinkedIn organization posting permission (w_organization_social) is not authorized or administrator role is missing for this company page.';
+        const errorMsg = authorUrn.startsWith('urn:li:organization:')
+          ? 'LinkedIn organization posting permission is not authorized for this application.'
+          : 'LinkedIn posting permission is not available for this application.';
         await this.recordPublishingStatus(jobId, null, 'FAILED', errorMsg, null);
         return {
           success: false,
@@ -228,7 +256,7 @@ class LinkedInJobService {
         };
       }
 
-      // Other API errors
+      // Other API errors (preserve real API message)
       const errorMsg = data?.message || responseText.slice(0, 300) || `LinkedIn API error (${response.status})`;
       await this.recordPublishingStatus(jobId, null, 'FAILED', errorMsg, null);
 
@@ -239,7 +267,7 @@ class LinkedInJobService {
       };
 
     } catch (netErr) {
-      console.log(`[LinkedIn] Network Error: ${netErr.message}`);
+      console.log(`[LinkedIn] Network Exception: ${netErr.message}`);
       await this.recordPublishingStatus(jobId, null, 'FAILED', netErr.message, null);
       return {
         success: false,
@@ -247,18 +275,6 @@ class LinkedInJobService {
         errorMessage: netErr.message
       };
     }
-  }
-
-  static async closeJob(job) {
-    const jobId = job.id;
-    await this.recordPublishingStatus(jobId, null, 'CLOSED', null, null);
-    return { success: true, status: 'CLOSED', jobId };
-  }
-
-  static async deleteJob(job) {
-    const jobId = job.id;
-    await this.recordPublishingStatus(jobId, null, 'DELETED', null, null);
-    return { success: true, status: 'DELETED', jobId };
   }
 }
 
