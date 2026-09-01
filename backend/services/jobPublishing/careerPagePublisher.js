@@ -31,7 +31,7 @@ class CareerPagePublisher {
       );
 
       const externalUrl =
-        `https://madhuratech.com/career/${slug}`;
+        `https://madhuratech.com/career/`;
 
       const sql = `
         UPDATE requirements
