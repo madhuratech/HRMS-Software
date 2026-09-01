@@ -7,13 +7,14 @@ function createSlug(title, id) {
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-');
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-');
   return `${cleanTitle}-${id}`;
 }
 
 class PublicJobsController {
   
-  // GET /api/public/jobs - List published active jobs
+  // GET /api/public/jobs - List all published active jobs
   static async listJobs(req, res) {
     try {
       res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
@@ -23,13 +24,18 @@ class PublicJobsController {
       const { search, department, employment_type, location } = req.query;
 
       let sql = `
-        SELECT r.*, d.dept_name as department_name
+        SELECT 
+          r.*,
+          d.dept_name as department_name,
+          COALESCE(jp.status, 'PUBLISHED') as career_page_status,
+          jp.external_url
         FROM requirements r
         LEFT JOIN departments d ON d.id = r.department_id
-        WHERE (LOWER(r.status) IN ('published', 'open', 'approved'))
+        LEFT JOIN job_publishings jp ON (jp.job_id = r.id AND jp.channel = 'CAREER_PAGE')
+        WHERE (LOWER(r.status) IN ('published', 'open', 'approved') OR jp.status = 'PUBLISHED')
           AND r.deleted_at IS NULL
           AND LOWER(r.status) NOT IN ('closed', 'draft', 'archived', 'deleted')
-          AND (r.closing_date IS NULL OR r.closing_date >= CURRENT_DATE())
+          AND (jp.status IS NULL OR jp.status != 'CLOSED')
       `;
 
       const params = [];
@@ -63,32 +69,41 @@ class PublicJobsController {
           return response(res, false, 500, 'Failed to fetch public job openings');
         }
 
-        const formattedJobs = (rows || []).map(r => ({
-          id: r.id,
-          jobId: r.requirement_code,
-          requirementCode: r.requirement_code,
-          title: r.job_title,
-          slug: createSlug(r.job_title, r.id),
-          department: r.department_name || 'Software Development',
-          location: r.location || 'Coimbatore',
-          employmentType: r.employment_type || 'Full Time',
-          experience: `${r.experience_from || 0}-${r.experience_to || 5} Years`,
-          experienceFrom: r.experience_from,
-          experienceTo: r.experience_to,
-          vacancies: r.vacancies || 1,
-          salaryMin: r.salary_from,
-          salaryMax: r.salary_to,
-          description: r.job_description || '',
-          jobSummary: r.job_description || '',
-          responsibilities: r.responsibilities || '',
-          requirements: r.requirements || '',
-          skills: r.skills || '',
-          status: 'PUBLISHED',
-          isActive: true,
-          postedDate: r.opening_date ? String(r.opening_date).split('T')[0] : String(r.created_at).split('T')[0],
-          publishedAt: r.opening_date || r.created_at,
-          closingDate: r.closing_date
-        }));
+        const formattedJobs = (rows || []).map(r => {
+          const slug = createSlug(r.job_title, r.id);
+          const applyUrl = `https://madhuratech.com/career/job/${slug}`;
+
+          return {
+            id: r.id,
+            jobId: r.requirement_code,
+            requirementCode: r.requirement_code,
+            title: r.job_title,
+            jobTitle: r.job_title,
+            slug,
+            department: r.department_name || 'Software Development',
+            departmentName: r.department_name || 'Software Development',
+            location: r.location || 'Coimbatore',
+            employmentType: r.employment_type || 'Full Time',
+            experience: `${r.experience_from || 0}-${r.experience_to || 5} Years`,
+            experienceFrom: r.experience_from || 0,
+            experienceTo: r.experience_to || 5,
+            vacancies: r.vacancies || 1,
+            salaryMin: r.salary_from,
+            salaryMax: r.salary_to,
+            description: r.job_description || '',
+            jobSummary: r.job_description || '',
+            skills: r.skills || '',
+            status: 'PUBLISHED',
+            isActive: true,
+            postedDate: r.opening_date ? String(r.opening_date).split('T')[0] : String(r.created_at).split('T')[0],
+            publishedAt: r.opening_date || r.created_at,
+            closingDate: r.closing_date,
+            applyUrl,
+            jobUrl: applyUrl
+          };
+        });
+
+        console.log('Published jobs:', formattedJobs);
 
         if (req.query.format === 'array') {
           return res.status(200).json(formattedJobs);
@@ -141,30 +156,36 @@ class PublicJobsController {
         }
 
         const r = rows[0];
+        const jobSlug = createSlug(r.job_title, r.id);
+        const applyUrl = `https://madhuratech.com/career/job/${jobSlug}`;
 
         const publicJob = {
           id: r.id,
           jobId: r.requirement_code,
           requirementCode: r.requirement_code,
           title: r.job_title,
-          slug: createSlug(r.job_title, r.id),
+          jobTitle: r.job_title,
+          slug: jobSlug,
           department: r.department_name || 'Software Development',
+          departmentName: r.department_name || 'Software Development',
           location: r.location || 'Coimbatore',
           employmentType: r.employment_type || 'Full Time',
           experience: `${r.experience_from || 0}-${r.experience_to || 5} Years`,
+          experienceFrom: r.experience_from || 0,
+          experienceTo: r.experience_to || 5,
           vacancies: r.vacancies || 1,
           salaryMin: r.salary_from,
           salaryMax: r.salary_to,
           description: r.job_description || '',
           jobSummary: r.job_description || '',
-          responsibilities: r.responsibilities || '',
-          requirements: r.requirements || '',
           skills: r.skills || '',
           status: 'PUBLISHED',
           isActive: true,
           postedDate: r.opening_date ? String(r.opening_date).split('T')[0] : String(r.created_at).split('T')[0],
           publishedAt: r.opening_date || r.created_at,
-          closingDate: r.closing_date
+          closingDate: r.closing_date,
+          applyUrl,
+          jobUrl: applyUrl
         };
 
         return res.status(200).json({

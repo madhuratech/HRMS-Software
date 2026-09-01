@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 
 export default function PublicCareerPage() {
   const [jobs, setJobs] = useState([]);
+  const [allJobs, setAllJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [department, setDepartment] = useState('');
@@ -21,8 +22,15 @@ export default function PublicCareerPage() {
 
       const res = await fetch(url, { cache: 'no-store', headers: { 'Pragma': 'no-cache' } });
       const data = await res.json();
+      
       const jobList = Array.isArray(data) ? data : (data.data || data.jobs || []);
+      
+      console.log('Jobs received:', jobList);
+      
       setJobs(jobList);
+      if (!department && !search) {
+        setAllJobs(jobList);
+      }
     } catch (err) {
       console.error('Error loading public jobs:', err);
       setJobs([]);
@@ -34,6 +42,11 @@ export default function PublicCareerPage() {
   useEffect(() => {
     fetchPublicJobs();
   }, [search, department]);
+
+  // Extract unique departments dynamically
+  const dynamicDepartments = Array.from(
+    new Set(allJobs.map(j => j.department || j.departmentName).filter(Boolean))
+  );
 
   return (
     <div style={{ fontFamily: '"Inter", -apple-system, sans-serif', background: '#F8FAFC', minHeight: '100vh', color: '#1E293B' }}>
@@ -85,11 +98,18 @@ export default function PublicCareerPage() {
               style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', color: '#475569', background: '#F8FAFC' }}
             >
               <option value="">All Departments</option>
-              <option value="Engineering">Engineering</option>
-              <option value="Human Resources">Human Resources</option>
-              <option value="Design">Design</option>
-              <option value="Finance">Finance</option>
-              <option value="Sales">Sales</option>
+              {dynamicDepartments.map((dept, idx) => (
+                <option key={idx} value={dept}>{dept}</option>
+              ))}
+              {dynamicDepartments.length === 0 && (
+                <>
+                  <option value="Software Development">Software Development</option>
+                  <option value="Human Resources">Human Resources</option>
+                  <option value="Engineering">Engineering</option>
+                  <option value="Design">Design</option>
+                  <option value="Sales">Sales</option>
+                </>
+              )}
             </select>
           </div>
         </div>
@@ -99,15 +119,15 @@ export default function PublicCareerPage() {
       <div style={{ maxWidth: '1100px', margin: '48px auto', padding: '0 24px' }}>
         <div style={{ marginBottom: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <h2 style={{ fontSize: '24px', fontWeight: '700', margin: '0 0 4px' }}>Open Positions</h2>
+            <h2 style={{ fontSize: '24px', fontWeight: '700', margin: '0 0 4px' }}>Current Openings</h2>
             <p style={{ fontSize: '14px', color: '#64748B', margin: 0 }}>Explore active job opportunities and apply directly</p>
           </div>
           <div style={{ fontSize: '14px', fontWeight: '600', color: '#2563EB', background: '#EFF6FF', padding: '6px 14px', borderRadius: '20px' }}>
-            {jobs.length} Active Roles
+            {jobs.length} Active {jobs.length === 1 ? 'Role' : 'Roles'}
           </div>
         </div>
 
-        {/* Jobs List */}
+        {/* Dynamic Jobs List */}
         {loading ? (
           <div style={{ padding: '64px', textAlign: 'center', color: '#64748B' }}>
             Loading job openings...
@@ -120,68 +140,78 @@ export default function PublicCareerPage() {
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {jobs.map(job => (
-              <div 
-                key={job.id} 
-                style={{ 
-                  background: '#FFFFFF', 
-                  borderRadius: '16px', 
-                  padding: '24px', 
-                  border: '1px solid #E2E8F0', 
-                  display: 'flex', 
-                  justifySpace: 'between', 
-                  alignItems: 'center', 
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
-                  transition: 'transform 0.15s, box-shadow 0.15s'
-                }}
-              >
-                <div style={{ flex: 1, paddingRight: '24px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-                    <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#0F172A', margin: 0 }}>{job.title}</h3>
-                    <span style={{ fontSize: '12px', fontWeight: '600', padding: '2px 8px', borderRadius: '12px', background: '#EFF6FF', color: '#2563EB' }}>
-                      {job.employmentType}
-                    </span>
-                  </div>
+            {jobs.map((job, index) => {
+              const formattedNumber = String(index + 1).padStart(2, '0');
+              const jobTitle = job.jobTitle || job.title || 'Job Opening';
+              const departmentName = job.department || job.departmentName || 'Software Development';
+              const jobSlug = job.slug || `${job.id}`;
 
-                  <div style={{ display: 'flex', gap: '20px', fontSize: '13px', color: '#64748B', flexWrap: 'wrap', marginBottom: '12px' }}>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Building size={14} /> {job.department}</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={14} /> {job.location}</span>
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Briefcase size={14} /> {job.experience}</span>
-                  </div>
-
-                  {job.skills && (
-                    <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                      {job.skills.split(',').slice(0, 5).map((skill, idx) => (
-                        <span key={idx} style={{ fontSize: '11px', background: '#F1F5F9', color: '#475569', padding: '3px 8px', borderRadius: '6px' }}>
-                          {skill.trim()}
-                        </span>
-                      ))}
+              return (
+                <div 
+                  key={job.id} 
+                  style={{ 
+                    background: '#FFFFFF', 
+                    borderRadius: '16px', 
+                    padding: '24px', 
+                    border: '1px solid #E2E8F0', 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)',
+                    transition: 'transform 0.15s, box-shadow 0.15s'
+                  }}
+                >
+                  <div style={{ flex: 1, paddingRight: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: '800', color: '#2563EB', background: '#EFF6FF', padding: '3px 8px', borderRadius: '6px' }}>
+                        {formattedNumber}
+                      </span>
+                      <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#0F172A', margin: 0 }}>{jobTitle}</h3>
+                      <span style={{ fontSize: '12px', fontWeight: '600', padding: '2px 8px', borderRadius: '12px', background: '#F1F5F9', color: '#475569' }}>
+                        {job.employmentType}
+                      </span>
                     </div>
-                  )}
-                </div>
 
-                <div>
-                  <Link 
-                    to={`/career/job/${job.slug}`}
-                    style={{ 
-                      display: 'inline-flex', 
-                      alignItems: 'center', 
-                      gap: '8px', 
-                      padding: '12px 20px', 
-                      background: '#2563EB', 
-                      color: '#FFFFFF', 
-                      borderRadius: '10px', 
-                      textDecoration: 'none', 
-                      fontSize: '14px', 
-                      fontWeight: '600',
-                      boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
-                    }}
-                  >
-                    View Details & Apply <ArrowRight size={16} />
-                  </Link>
+                    <div style={{ display: 'flex', gap: '20px', fontSize: '13px', color: '#64748B', flexWrap: 'wrap', marginBottom: '12px' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '600', color: '#334155' }}><Building size={14} color="#2563EB" /> {departmentName}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><MapPin size={14} /> {job.location}</span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Briefcase size={14} /> {job.experience}</span>
+                    </div>
+
+                    {job.skills && (
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                        {job.skills.split(',').slice(0, 5).map((skill, idx) => (
+                          <span key={idx} style={{ fontSize: '11px', background: '#F8FAFC', color: '#475569', border: '1px solid #E2E8F0', padding: '3px 8px', borderRadius: '6px' }}>
+                            {skill.trim()}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <Link 
+                      to={`/career/job/${jobSlug}`}
+                      style={{ 
+                        display: 'inline-flex', 
+                        alignItems: 'center', 
+                        gap: '8px', 
+                        padding: '12px 20px', 
+                        background: '#2563EB', 
+                        color: '#FFFFFF', 
+                        borderRadius: '10px', 
+                        textDecoration: 'none', 
+                        fontSize: '14px', 
+                        fontWeight: '600',
+                        boxShadow: '0 4px 12px rgba(37,99,235,0.2)'
+                      }}
+                    >
+                      View Details & Apply <ArrowRight size={16} />
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
