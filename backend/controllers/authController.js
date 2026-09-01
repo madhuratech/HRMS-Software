@@ -722,12 +722,15 @@ exports.linkedinCallback = async (req, res) => {
     }
 
     const accessToken = tokenData.access_token;
-    const expiresInDays = Math.round((tokenData.expires_in || 5184000) / 86400);
+    const expiresIn = tokenData.expires_in || 5184000;
+    const expiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
+    const expiresInDays = Math.round(expiresIn / 86400);
 
     // 5. Store returned access token in runtime process.env
     process.env.LINKEDIN_ACCESS_TOKEN = accessToken;
+    process.env.LINKEDIN_TOKEN_EXPIRES_AT = expiresAt;
 
-    // 6. Persist access token into backend/.env file on disk
+    // 6. Persist access token and expiration into backend/.env file on disk
     try {
       const fs = require('fs');
       const path = require('path');
@@ -738,6 +741,11 @@ exports.linkedinCallback = async (req, res) => {
           envContent = envContent.replace(/LINKEDIN_ACCESS_TOKEN=.*/, `LINKEDIN_ACCESS_TOKEN=${accessToken}`);
         } else {
           envContent += `\nLINKEDIN_ACCESS_TOKEN=${accessToken}\n`;
+        }
+        if (envContent.includes('LINKEDIN_TOKEN_EXPIRES_AT=')) {
+          envContent = envContent.replace(/LINKEDIN_TOKEN_EXPIRES_AT=.*/, `LINKEDIN_TOKEN_EXPIRES_AT=${expiresAt}`);
+        } else {
+          envContent += `\nLINKEDIN_TOKEN_EXPIRES_AT=${expiresAt}\n`;
         }
         fs.writeFileSync(envPath, envContent, 'utf8');
         console.log('✅ Successfully stored LINKEDIN_ACCESS_TOKEN in backend/.env');
@@ -763,7 +771,7 @@ exports.linkedinCallback = async (req, res) => {
           </div>
           <h1 style="font-size: 22px; font-weight: 700; color: #0F172A; margin: 0 0 12px 0;">LinkedIn Connected Successfully!</h1>
           <p style="font-size: 14px; color: #64748B; line-height: 1.6; margin: 0 0 20px 0;">
-            Authentication completed using standard OpenID Connect profile scopes. Redirecting to Job Openings...
+            Authentication completed successfully. Redirecting to Job Openings...
           </p>
           <div style="background: #F1F5F9; border-radius: 8px; padding: 10px 16px; margin-bottom: 24px; font-size: 13px; color: #334155;">
             <strong>Token Validity:</strong> Active for approx. ${expiresInDays} days
@@ -800,16 +808,20 @@ exports.getLinkedInStatus = async (req, res) => {
   const clientId = process.env.LINKEDIN_CLIENT_ID;
   const clientSecret = process.env.LINKEDIN_CLIENT_SECRET;
   const accessToken = process.env.LINKEDIN_ACCESS_TOKEN;
+  const expiresAt = process.env.LINKEDIN_TOKEN_EXPIRES_AT;
   const orgId = process.env.LINKEDIN_ORGANIZATION_ID;
 
   const isConfigured = !!(clientId && clientSecret && orgId);
-  const hasToken = !!(accessToken && accessToken.length > 20);
+  const isExpired = expiresAt ? new Date(expiresAt) < new Date() : false;
+  const hasToken = !!(accessToken && accessToken.length > 20 && !isExpired);
 
   return res.json({
     success: true,
     data: {
       configured: isConfigured,
       hasToken,
+      isExpired,
+      expiresAt: expiresAt || null,
       orgId: orgId || null,
       clientId: clientId ? `${clientId.slice(0, 4)}...` : null,
       tokenSnippet: hasToken ? `${accessToken.slice(0, 8)}...${accessToken.slice(-6)}` : null

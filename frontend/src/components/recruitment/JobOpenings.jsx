@@ -311,6 +311,44 @@ export default function JobOpenings() {
     }
   };
 
+  const handleRetryLinkedInPublish = async (jobId) => {
+    try {
+      setIsPublishingId(jobId);
+      const res = await fetch(`/app/requirements/${jobId}/publish-linkedin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`
+        }
+      });
+      const data = await res.json();
+      if (data.success && data.status === 'PUBLISHED') {
+        alert('LinkedIn social media post published successfully!');
+        if (publishSummary) {
+          setPublishSummary(prev => prev ? {
+            ...prev,
+            channels: {
+              ...prev.channels,
+              LINKEDIN: data.result
+            }
+          } : null);
+        }
+        if (selectedErrorDetails) {
+          setSelectedErrorDetails(null);
+        }
+      } else {
+        const err = data.errorMessage || data.result?.errorMessage || data.message || 'LinkedIn publishing failed.';
+        alert(`LinkedIn Post Failed:\n${err}`);
+      }
+      await fetchRequirements();
+      await fetchChannelsForJob(jobId);
+    } catch (e) {
+      alert(`Network error: ${e.message}`);
+    } finally {
+      setIsPublishingId(null);
+    }
+  };
+
   const handleCloseJob = async (jobId) => {
     if (!checkActionPermission('job_openings', 'EDIT')) return;
     try {
@@ -704,7 +742,8 @@ export default function JobOpenings() {
                             <button
                               onClick={() => setSelectedErrorDetails({
                                 channel: 'LinkedIn',
-                                message: linkedInCh?.error_message || 'LinkedIn Company Page post failed.'
+                                message: linkedInCh?.error_message || 'LinkedIn Company Page post failed.',
+                                jobId: row.id
                               })}
                               title={`LinkedIn: Failed - Click to view error details:\n${linkedInCh?.error_message || ''}`}
                               style={{
@@ -968,6 +1007,28 @@ export default function JobOpenings() {
               </div>
             </div>
             <div style={{ padding: '16px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              {selectedErrorDetails.jobId && (
+                <button
+                  disabled={isPublishingId === selectedErrorDetails.jobId}
+                  onClick={() => handleRetryLinkedInPublish(selectedErrorDetails.jobId)}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#059669',
+                    color: '#FFF',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    border: 'none',
+                    cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <RefreshCw size={13} className={isPublishingId === selectedErrorDetails.jobId ? 'animate-spin' : ''} />
+                  {isPublishingId === selectedErrorDetails.jobId ? 'Retrying...' : 'Retry LinkedIn Publishing'}
+                </button>
+              )}
               <button 
                 onClick={() => {
                   setSelectedErrorDetails(null);
@@ -976,7 +1037,7 @@ export default function JobOpenings() {
                 }}
                 style={{ padding: '8px 16px', background: '#2563EB', color: '#FFF', borderRadius: '8px', fontSize: '12px', fontWeight: '600', border: 'none', cursor: 'pointer' }}
               >
-                Configure Integration
+                Reconnect LinkedIn
               </button>
               <button 
                 onClick={() => setSelectedErrorDetails(null)} 
@@ -1109,6 +1170,26 @@ export default function JobOpenings() {
 
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '8px', flexWrap: 'wrap', paddingTop: '8px', borderTop: '1px solid #FECACA' }}>
                     <button
+                      disabled={isPublishingId === publishSummary.jobId}
+                      onClick={() => handleRetryLinkedInPublish(publishSummary.jobId)}
+                      style={{
+                        padding: '7px 14px',
+                        background: '#059669',
+                        color: '#FFFFFF',
+                        borderRadius: '8px',
+                        fontSize: '12px',
+                        fontWeight: '600',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      <RefreshCw size={13} className={isPublishingId === publishSummary.jobId ? 'animate-spin' : ''} />
+                      {isPublishingId === publishSummary.jobId ? 'Retrying...' : 'Retry LinkedIn Publishing'}
+                    </button>
+                    <button
                       onClick={() => {
                         fetchLinkedInStatus();
                         setShowLinkedInModal(true);
@@ -1127,7 +1208,7 @@ export default function JobOpenings() {
                         gap: '6px'
                       }}
                     >
-                      <Settings size={13} /> Configure LinkedIn Integration
+                      <Settings size={13} /> Reconnect LinkedIn
                     </button>
                   </div>
                 </div>

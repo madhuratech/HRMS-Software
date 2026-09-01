@@ -158,27 +158,21 @@ class RequirementController {
       const LinkedInJobService = require('../services/linkedinJobService');
       const result = await LinkedInJobService.publishJob(job);
 
-      if (result.success) {
-        return res.status(200).json({
-          success: true,
-          jobId: result.jobId,
-          linkedinStatus: result.linkedinStatus,
-          linkedinJobId: result.linkedinJobId
-        });
-      } else {
-        return res.status(200).json({
-          success: false,
-          jobId: result.jobId,
-          linkedinStatus: result.linkedinStatus,
-          error: result.error
-        });
-      }
+      return res.status(200).json({
+        success: result.success,
+        jobId,
+        result,
+        status: result.status,
+        externalJobId: result.externalJobId,
+        externalUrl: result.externalUrl,
+        errorMessage: result.errorMessage
+      });
     } catch (err) {
       return res.status(500).json({
         success: false,
         jobId: req.params.id,
-        linkedinStatus: 'failed',
-        error: err.message
+        status: 'FAILED',
+        errorMessage: err.message
       });
     }
   }
