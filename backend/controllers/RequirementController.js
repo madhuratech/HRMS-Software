@@ -34,15 +34,6 @@ class RequirementController {
     }
   }
 
-  static async softDelete(req, res) {
-    try {
-      const userId = req.user?.id || 1;
-      await RequirementService.softDelete(req.params.id, userId);
-      return response(res, true, 200, 'Requirement soft deleted successfully');
-    } catch (err) {
-      return response(res, false, 500, 'Failed to delete requirement', null, err.message);
-    }
-  }
 
   static async restore(req, res) {
     try {

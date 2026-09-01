@@ -95,13 +95,15 @@ class RequirementService {
   }
 
   static async softDelete(id, userId) {
-    // Hard delete since there's no deleted_at column in requirements
     await Requirement.beginTransaction();
     try {
-      await Requirement.query(`DELETE FROM requirements WHERE id = ?`, [id]);
+      await Requirement.query(
+        `UPDATE requirements SET deleted_at = NOW(), deleted_by = ?, status = 'Closed' WHERE id = ?`,
+        [userId, id]
+      );
       try {
         await Requirement.query(
-          `INSERT INTO requirement_audit_logs (requirement_id, action, performed_by, remarks) VALUES (?, 'DELETED', ?, 'Deleted')`,
+          `INSERT INTO requirement_audit_logs (requirement_id, action, performed_by, remarks) VALUES (?, 'DELETED', ?, 'Soft Deleted')`,
           [id, userId]
         );
       } catch (e) {}
@@ -114,7 +116,24 @@ class RequirementService {
   }
 
   static async restore(id, userId) {
-    return true; // No-op
+    await Requirement.beginTransaction();
+    try {
+      await Requirement.query(
+        `UPDATE requirements SET deleted_at = NULL, deleted_by = NULL, status = 'Open' WHERE id = ?`,
+        [id]
+      );
+      try {
+        await Requirement.query(
+          `INSERT INTO requirement_audit_logs (requirement_id, action, performed_by, remarks) VALUES (?, 'RESTORED', ?, 'Restored')`,
+          [id, userId]
+        );
+      } catch (e) {}
+      await Requirement.commit();
+      return true;
+    } catch (error) {
+      await Requirement.rollback();
+      throw error;
+    }
   }
 
   static async getById(id) {
@@ -147,7 +166,7 @@ class RequirementService {
       LEFT JOIN designations des ON r.designation_id = des.id
       LEFT JOIN employees hm ON r.hiring_manager = hm.id
       LEFT JOIN employees rb ON r.requested_by = rb.id
-      WHERE 1=1
+      WHERE (r.deleted_at IS NULL)
     `;
     const params = [];
 

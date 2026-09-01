@@ -4,7 +4,7 @@ function getSlug(title, id) {
   const cleanTitle = String(title || 'job-opening')
     .toLowerCase()
     .trim()
-    .replace(/[^a-z0-9\s-]/g, ' ')
+    .replace(/[^a-z0-9\s-]/g, '')
     .replace(/\s+/g, '-')
     .replace(/-+/g, '-')
     .replace(/^-|-$/g, '');
@@ -13,22 +13,11 @@ function getSlug(title, id) {
 }
 
 class CareerPagePublisher {
-
-<<<<<<< Updated upstream
-  static async publish(job) {
-    return new Promise((resolve) => {
-      const jobTitle = job.job_title || job.title || 'job-opening';
-      const slug = getSlug(jobTitle, job.id);
-      const externalUrl = `https://madhuratech.com/career`;
-=======
   /**
-   * ==========================================
-   * PUBLISH JOB
-   * ==========================================
+   * Publish job to public career page
    */
   static async publish(job) {
     return new Promise((resolve) => {
-
       if (!job || !job.id) {
         return resolve({
           success: false,
@@ -37,46 +26,23 @@ class CareerPagePublisher {
         });
       }
 
-      const jobTitle =
-        job.job_title ||
-        job.title ||
-        'job-opening';
-
+      const jobTitle = job.job_title || job.title || 'job-opening';
       const slug = getSlug(jobTitle, job.id);
-
-      const externalUrl =
-        `https://madhuratech.com/career/?job=${encodeURIComponent(slug)}`;
->>>>>>> Stashed changes
+      const externalUrl = `https://madhuratech.com/career/?job=${encodeURIComponent(slug)}`;
 
       const sql = `
         UPDATE requirements
         SET
           status = 'Published',
           opening_date = COALESCE(opening_date, CURRENT_DATE()),
-<<<<<<< Updated upstream
-          deleted_at = NULL
-        WHERE id = ?
-      `;
-=======
           closing_date = NULL,
           deleted_at = NULL
         WHERE id = ?
       `;
 
       db.query(sql, [job.id], (err, result) => {
->>>>>>> Stashed changes
-
-      db.query(sql, [job.id], (err, result) => {
         if (err) {
-<<<<<<< Updated upstream
-          console.error('[CareerPagePublisher.publish] Error:', err);
-=======
-          console.error(
-            '[CareerPagePublisher.publish] DB Error:',
-            err
-          );
-
->>>>>>> Stashed changes
+          console.error('[CareerPagePublisher.publish] DB Error:', err);
           return resolve({
             success: false,
             status: 'FAILED',
@@ -86,17 +52,6 @@ class CareerPagePublisher {
         }
 
         if (!result || result.affectedRows === 0) {
-<<<<<<< Updated upstream
-          console.warn(`[CareerPagePublisher.publish] No rows found for job ID: ${job.id}`);
-          return resolve({
-            success: false,
-            status: 'NOT_FOUND',
-            externalJobId: String(job.id),
-            errorMessage: `Job ID ${job.id} was not found in requirements table`
-          });
-        }
-
-=======
           return resolve({
             success: false,
             status: 'FAILED',
@@ -105,48 +60,31 @@ class CareerPagePublisher {
           });
         }
 
-        console.log(
-          `[CareerPagePublisher] Job ${job.id} PUBLISHED`
-        );
+        console.log(`[CareerPagePublisher] Job ${job.id} PUBLISHED successfully`);
 
->>>>>>> Stashed changes
         return resolve({
           success: true,
           status: 'PUBLISHED',
+          externalUrl,
           externalJobId: String(job.id),
-          externalUrl: externalUrl,
           lastSyncedAt: new Date()
         });
       });
     });
   }
 
-<<<<<<< Updated upstream
-=======
-
   /**
-   * ==========================================
-   * UPDATE JOB
-   * ==========================================
+   * Update job on public career page
    */
->>>>>>> Stashed changes
   static async update(job) {
     return this.publish(job);
   }
 
-<<<<<<< Updated upstream
-  static async close(job) {
-    return new Promise((resolve) => {
-=======
-
   /**
-   * ==========================================
-   * CLOSE JOB
-   * ==========================================
+   * Close job on public career page
    */
   static async close(job) {
     return new Promise((resolve) => {
-
       if (!job || !job.id) {
         return resolve({
           success: false,
@@ -155,37 +93,17 @@ class CareerPagePublisher {
         });
       }
 
->>>>>>> Stashed changes
       const sql = `
         UPDATE requirements
         SET
           status = 'Closed',
-<<<<<<< Updated upstream
           closing_date = COALESCE(closing_date, CURRENT_DATE())
         WHERE id = ?
       `;
-=======
-          closing_date = COALESCE(
-            closing_date,
-            CURRENT_DATE()
-          )
-        WHERE id = ?
-      `;
-
-      db.query(sql, [job.id], (err, result) => {
->>>>>>> Stashed changes
 
       db.query(sql, [job.id], (err, result) => {
         if (err) {
-<<<<<<< Updated upstream
-          console.error('[CareerPagePublisher.close] Error:', err);
-=======
-          console.error(
-            '[CareerPagePublisher.close] DB Error:',
-            err
-          );
-
->>>>>>> Stashed changes
+          console.error('[CareerPagePublisher.close] DB Error:', err);
           return resolve({
             success: false,
             status: 'FAILED',
@@ -197,24 +115,14 @@ class CareerPagePublisher {
         if (!result || result.affectedRows === 0) {
           return resolve({
             success: false,
-<<<<<<< Updated upstream
-            status: 'NOT_FOUND',
-            errorMessage: `Job ID ${job.id} not found`,
-=======
             status: 'FAILED',
             errorMessage: `Job ${job.id} was not found`,
->>>>>>> Stashed changes
             externalJobId: String(job.id)
           });
         }
 
-<<<<<<< Updated upstream
-=======
-        console.log(
-          `[CareerPagePublisher] Job ${job.id} CLOSED`
-        );
+        console.log(`[CareerPagePublisher] Job ${job.id} CLOSED successfully`);
 
->>>>>>> Stashed changes
         return resolve({
           success: true,
           status: 'CLOSED',
@@ -225,25 +133,11 @@ class CareerPagePublisher {
     });
   }
 
-<<<<<<< Updated upstream
-  static async delete(job) {
-    return new Promise((resolve) => {
-=======
-
   /**
-   * ==========================================
-   * DELETE JOB
-   * ==========================================
-   *
-   * IMPORTANT:
-   * This is a SOFT DELETE.
-   *
-   * The database row remains available for HRMS,
-   * but the public API will NEVER return it.
+   * Delete job from public career page (Soft Delete)
    */
   static async delete(job) {
     return new Promise((resolve) => {
-
       if (!job || !job.id) {
         return resolve({
           success: false,
@@ -252,38 +146,18 @@ class CareerPagePublisher {
         });
       }
 
->>>>>>> Stashed changes
       const sql = `
         UPDATE requirements
         SET
-          status = 'Deleted',
-<<<<<<< Updated upstream
-          deleted_at = NOW()
-        WHERE id = ?
-      `;
-=======
+          status = 'Closed',
           deleted_at = NOW(),
-          closing_date = COALESCE(
-            closing_date,
-            CURRENT_DATE()
-          )
+          closing_date = COALESCE(closing_date, CURRENT_DATE())
         WHERE id = ?
       `;
-
-      db.query(sql, [job.id], (err, result) => {
->>>>>>> Stashed changes
 
       db.query(sql, [job.id], (err, result) => {
         if (err) {
-<<<<<<< Updated upstream
-          console.error('[CareerPagePublisher.delete] Error:', err);
-=======
-          console.error(
-            '[CareerPagePublisher.delete] DB Error:',
-            err
-          );
-
->>>>>>> Stashed changes
+          console.error('[CareerPagePublisher.delete] DB Error:', err);
           return resolve({
             success: false,
             status: 'FAILED',
@@ -292,8 +166,6 @@ class CareerPagePublisher {
           });
         }
 
-<<<<<<< Updated upstream
-=======
         if (!result || result.affectedRows === 0) {
           return resolve({
             success: false,
@@ -303,11 +175,8 @@ class CareerPagePublisher {
           });
         }
 
-        console.log(
-          `[CareerPagePublisher] Job ${job.id} DELETED FROM PUBLIC CAREERS`
-        );
+        console.log(`[CareerPagePublisher] Job ${job.id} DELETED from public careers`);
 
->>>>>>> Stashed changes
         return resolve({
           success: true,
           status: 'DELETED',
