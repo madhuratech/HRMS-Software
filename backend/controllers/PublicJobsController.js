@@ -350,6 +350,17 @@ class PublicJobsController {
         }
       }
 
+      const parseSalary = (val) => {
+        if (val === undefined || val === null || val === '') return null;
+        const num = parseFloat(String(val).replace(/[^0-9.]/g, ''));
+        return isNaN(num) ? null : num;
+      };
+
+      const currentSalaryVal = parseSalary(req.body.currentSalary || req.body.current_salary);
+      const expectedSalaryVal = parseSalary(expectedSalary || req.body.expectedSalary || req.body.expected_salary);
+      const currentCompanyVal = currentCompany || req.body.currentCompany || req.body.current_company || null;
+      const noticePeriodVal = noticePeriod || req.body.noticePeriod || req.body.notice_period || 'Immediate';
+
       // Query complete job requirements (including skills, education, experience, salary)
       db.query(
         `SELECT * FROM requirements 
@@ -387,8 +398,8 @@ class PublicJobsController {
             education: extractedResumeData.education || null,
             skills: mergedSkillsList,
             extracted_resume_skills: extractedResumeData.skills || [],
-            expected_salary: expectedSalary ? parseFloat(expectedSalary) || null : null,
-            notice_period: noticePeriod || 'Immediate',
+            expected_salary: expectedSalaryVal,
+            notice_period: noticePeriodVal,
             screening_answers: screeningAns
           };
 
@@ -429,6 +440,7 @@ class PublicJobsController {
                     experience = ?,
                     skills = ?,
                     current_company = ?,
+                    current_salary = ?,
                     expected_salary = ?,
                     notice_period = ?,
                     status = 'Applied',
@@ -450,9 +462,10 @@ class PublicJobsController {
                   finalOrigName,
                   totalExperience || experience || extractedResumeData.experience || '0-1 Years',
                   finalSkills,
-                  currentCompany || null,
-                  expectedSalary ? parseFloat(expectedSalary) || null : null,
-                  noticePeriod || 'Immediate',
+                  currentCompanyVal,
+                  currentSalaryVal,
+                  expectedSalaryVal,
+                  noticePeriodVal,
                   targetJob.id,
                   atsScore,
                   atsBreakdown,
@@ -524,6 +537,7 @@ class PublicJobsController {
                     experience,
                     skills,
                     current_company,
+                    current_salary,
                     expected_salary,
                     notice_period,
                     address,
@@ -534,7 +548,7 @@ class PublicJobsController {
                     screening_answers,
                     created_by,
                     updated_by
-                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Applied', ?, ?, ?, ?, 1, 1)
+                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Applied', ?, ?, ?, ?, 1, 1)
                 `;
 
                 const insertParams = [
@@ -549,9 +563,10 @@ class PublicJobsController {
                   originalResumeName,
                   totalExperience || experience || extractedResumeData.experience || '0-1 Years',
                   mergedSkillsStr,
-                  currentCompany || null,
-                  expectedSalary ? parseFloat(expectedSalary) || null : null,
-                  noticePeriod || 'Immediate',
+                  currentCompanyVal,
+                  currentSalaryVal,
+                  expectedSalaryVal,
+                  noticePeriodVal,
                   currentLocation || address || null,
                   targetJob.id,
                   atsScore,
