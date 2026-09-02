@@ -15,4 +15,9 @@ router.post('/', authenticateJWT, upload.single('resume'), validationMiddleware(
 router.put('/:id', authenticateJWT, upload.single('resume'), validationMiddleware(validateCandidate), CandidateController.update);
 router.delete('/:id', authenticateJWT, CandidateController.delete);
 
+// Dedicated Evaluation routes (Shortlist / Reject with backend validation)
+router.get('/:id/ats-evaluation', authenticateJWT, CandidateController.getAtsEvaluation);
+router.post('/:id/evaluate', authenticateJWT, CandidateController.evaluate);
+router.put('/:id/evaluate', authenticateJWT, CandidateController.evaluate);
+
 module.exports = router;

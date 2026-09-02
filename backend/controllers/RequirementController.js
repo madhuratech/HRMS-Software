@@ -171,14 +171,38 @@ class RequirementController {
   static async close(req, res) {
     try {
       const jobId = req.params.id;
+      const {
+        scope = 'EVERYWHERE',
+        channels = { CAREER_PAGE: true, LINKEDIN: true, INDEED: true },
+        reason = ''
+      } = req.body || {};
+      const userId = req.user?.id || 1;
+
       const job = await RequirementService.getById(jobId);
       if (!job) return response(res, false, 404, 'Job opening not found');
 
-      const channelsResult = await JobPublisher.closeAll(job);
+      // Always update HRMS status to Closed
+      await RequirementService.updateStatus(
+        jobId, 'Closed', 'Closed',
+        reason || 'Job closed by user', userId
+      );
+
+      let channelsResult = {};
+      if (scope === 'EVERYWHERE') {
+        // Only close the channels the user selected
+        const selectedChannels = Object.entries(channels)
+          .filter(([, selected]) => selected)
+          .map(([ch]) => ch);
+        if (selectedChannels.length > 0) {
+          channelsResult = await JobPublisher.closeSelected(job, selectedChannels);
+        }
+      }
 
       return res.status(200).json({
         success: true,
-        message: 'Job closed across all active channels.',
+        message: scope === 'EVERYWHERE'
+          ? 'Job closed in HRMS and selected publishing channels.'
+          : 'Job closed internally in HRMS.',
         jobId,
         channels: channelsResult
       });
@@ -236,9 +260,27 @@ class RequirementController {
 
   static async reopen(req, res) {
     try {
+      const jobId = req.params.id;
+      const {
+        channels = { CAREER_PAGE: true, LINKEDIN: false, INDEED: false },
+        remarks = 'Reopened by user'
+      } = req.body || {};
       const userId = req.user?.id || 1;
-      await RequirementService.updateStatus(req.params.id, 'Open', 'Approved', req.body.remarks || 'Reopened by user', userId);
-      return response(res, true, 200, 'Requirement reopened successfully');
+
+      await RequirementService.updateStatus(jobId, 'Open', 'Approved', remarks, userId);
+
+      // Republish to selected channels
+      const job = await RequirementService.getById(jobId);
+      const selectedChannels = Object.entries(channels)
+        .filter(([, selected]) => selected)
+        .map(([ch]) => ch);
+
+      let channelsResult = {};
+      if (selectedChannels.length > 0 && job) {
+        channelsResult = await JobPublisher.publishSelected(job, selectedChannels);
+      }
+
+      return response(res, true, 200, 'Job reopened successfully', { channels: channelsResult });
     } catch (err) {
       return response(res, false, 500, 'Failed to reopen requirement', null, err.message);
     }

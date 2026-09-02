@@ -1,5 +1,7 @@
 const db = require('../config/database');
 const response = require('../utils/response');
+const AtsScoringService = require('../services/AtsScoringService');
+const ResumeParserService = require('../services/ResumeParserService');
 
 function createSlug(title, id) {
   const cleanTitle = String(title || 'job-opening')
@@ -329,34 +331,34 @@ class PublicJobsController {
         );
       }
 
+      console.log({
+        filename: req.file?.filename,
+        originalname: req.file?.originalname,
+        path: req.file?.path
+      });
+
       let resumePath = null;
+      let originalResumeName = null;
+      let extractedResumeData = { skills: [], education: null, experience: null };
       if (req.file) {
         resumePath = '/uploads/' + req.file.filename;
+        originalResumeName = req.file.originalname;
+        try {
+          extractedResumeData = await ResumeParserService.parseResume(resumePath);
+        } catch (parseErr) {
+          console.warn('[applyForJob] Resume extraction notice:', parseErr.message);
+        }
       }
 
-      // Application is allowed ONLY for currently published and active jobs
-      const jobSql = `
-        SELECT
-          id,
-          job_title,
-          department_id
-        FROM requirements
-        WHERE
-          (id = ? OR requirement_code = ?)
-          AND r.deleted_at IS NULL
-          AND LOWER(status) IN ('published', 'open', 'approved')
-          AND LOWER(status) NOT IN ('closed', 'draft', 'archived', 'deleted')
-          AND (
-            closing_date IS NULL
-            OR closing_date >= CURRENT_DATE()
-          )
-        LIMIT 1
-      `;
-
+      // Query complete job requirements (including skills, education, experience, salary)
       db.query(
-        'SELECT id, job_title, department_id FROM requirements WHERE (id = ? OR requirement_code = ?) AND deleted_at IS NULL AND LOWER(status) IN (\'published\', \'open\', \'approved\') LIMIT 1',
+        `SELECT * FROM requirements 
+         WHERE (id = ? OR requirement_code = ?) 
+           AND deleted_at IS NULL 
+           AND LOWER(status) IN ('published', 'open', 'approved') 
+         LIMIT 1`,
         [jobId, jobId],
-        (err, jobRows) => {
+        async (err, jobRows) => {
           if (err || !jobRows || jobRows.length === 0) {
             return response(
               res,
@@ -368,12 +370,52 @@ class PublicJobsController {
 
           const targetJob = jobRows[0];
 
+          // Priority merge skills: 1. Resume skills, 2. Form skills
+          const mergedSkillsList = ResumeParserService.mergeSkills({
+            resumeSkills: extractedResumeData.skills || [],
+            formSkills: req.body.skills || ''
+          });
+          const mergedSkillsStr = mergedSkillsList.join(', ');
+
+          const screeningAns = req.body.screeningAnswers || req.body.screening_answers || null;
+          const candidateDataForAts = {
+            candidate_name: nameToUse,
+            email: emailToUse,
+            mobile_number: phoneToUse,
+            job_position: targetJob.job_title,
+            experience: totalExperience || experience || extractedResumeData.experience || '0-1 Years',
+            education: extractedResumeData.education || null,
+            skills: mergedSkillsList,
+            extracted_resume_skills: extractedResumeData.skills || [],
+            expected_salary: expectedSalary ? parseFloat(expectedSalary) || null : null,
+            notice_period: noticePeriod || 'Immediate',
+            screening_answers: screeningAns
+          };
+
+          const atsResult = AtsScoringService.calculateAtsScore(candidateDataForAts, targetJob, screeningAns);
+          const atsScore = atsResult.totalAtsScore;
+          const atsBreakdown = JSON.stringify(atsResult.breakdown);
+          const screeningAnsStr = screeningAns ? (typeof screeningAns === 'object' ? JSON.stringify(screeningAns) : screeningAns) : null;
+
           db.query(
-            'SELECT id FROM candidates WHERE LOWER(email) = ? OR mobile_number = ?',
+            'SELECT id, resume, original_resume, original_resume_name, skills FROM candidates WHERE LOWER(email) = ? OR mobile_number = ?',
             [emailToUse, phoneToUse],
             (cErr, existingCandidates) => {
               if (existingCandidates && existingCandidates.length > 0) {
                 const candidateId = existingCandidates[0].id;
+                const existingCand = existingCandidates[0];
+
+                console.log("APPLICATION CREATE (EXISTING CANDIDATE UPDATE)");
+                console.log("candidate:", candidateId);
+                console.log("job:", targetJob.id);
+                console.log("file:", req.file?.filename);
+                console.log("original:", req.file?.originalname);
+                console.trace();
+
+                // If existing candidate had skills and no new skills, retain them
+                const finalSkills = mergedSkillsStr || existingCand.skills || '';
+                const finalResume = resumePath || existingCand.original_resume || existingCand.resume;
+                const finalOrigName = originalResumeName || existingCand.original_resume_name;
 
                 const updateSql = `
                   UPDATE candidates SET
@@ -381,12 +423,19 @@ class PublicJobsController {
                     mobile_number = ?,
                     job_position = ?,
                     department_id = ?,
-                    resume = COALESCE(?, resume),
+                    resume = ?,
+                    original_resume = ?,
+                    original_resume_name = ?,
                     experience = ?,
+                    skills = ?,
                     current_company = ?,
                     expected_salary = ?,
                     notice_period = ?,
                     status = 'Applied',
+                    requirement_id = ?,
+                    ats_score = ?,
+                    ats_breakdown = ?,
+                    screening_answers = COALESCE(?, screening_answers),
                     updated_at = NOW()
                   WHERE id = ?
                 `;
@@ -396,11 +445,18 @@ class PublicJobsController {
                   phoneToUse,
                   targetJob.job_title,
                   targetJob.department_id || 1,
-                  resumePath,
-                  totalExperience || experience || '0-1 Years',
+                  finalResume,
+                  finalResume,
+                  finalOrigName,
+                  totalExperience || experience || extractedResumeData.experience || '0-1 Years',
+                  finalSkills,
                   currentCompany || null,
                   expectedSalary ? parseFloat(expectedSalary) || null : null,
                   noticePeriod || 'Immediate',
+                  targetJob.id,
+                  atsScore,
+                  atsBreakdown,
+                  screeningAnsStr,
                   candidateId
                 ];
 
@@ -410,11 +466,47 @@ class PublicJobsController {
                     return response(res, false, 500, 'Failed to update candidate application.');
                   }
 
-                  return res.status(200).json({
-                    success: true,
-                    message: 'Your application has been submitted successfully.',
-                    candidateId,
-                    jobId: targetJob.id
+                  // Record in candidate_applications for job-specific ATS tracking
+                  db.query(`
+                    INSERT INTO candidate_applications (
+                      candidate_id, requirement_id, job_position, status, ats_score, ats_breakdown, screening_answers, resume, original_resume, original_resume_name, skills
+                    ) VALUES (?, ?, ?, 'Applied', ?, ?, ?, ?, ?, ?, ?)
+                    ON DUPLICATE KEY UPDATE
+                      status = 'Applied', ats_score = VALUES(ats_score), ats_breakdown = VALUES(ats_breakdown), resume = VALUES(resume), original_resume = VALUES(original_resume), original_resume_name = VALUES(original_resume_name), skills = VALUES(skills), updated_at = NOW()
+                  `, [candidateId, targetJob.id, targetJob.job_title, atsScore, atsBreakdown, screeningAnsStr, finalResume, finalResume, finalOrigName, finalSkills], (appErr, appInsertRes) => {
+                    if (appErr) console.warn('[applyForJob] Application Log Error:', appErr.message);
+
+                    const targetAppId = appInsertRes?.insertId;
+                    const queryAppSql = targetAppId 
+                      ? 'SELECT id, resume, original_resume, original_resume_name, generated_resume FROM candidate_applications WHERE id = ?'
+                      : 'SELECT id, resume, original_resume, original_resume_name, generated_resume FROM candidate_applications WHERE candidate_id = ? AND requirement_id = ? ORDER BY id DESC LIMIT 1';
+                    const queryAppParams = targetAppId ? [targetAppId] : [candidateId, targetJob.id];
+
+                    db.query(queryAppSql, queryAppParams, (qErr, qRows) => {
+                      if (qRows && qRows.length > 0) {
+                        const appRow = qRows[0];
+                        console.log({
+                          id: appRow.id,
+                          resume: appRow.resume,
+                          original_resume: appRow.original_resume,
+                          original_resume_name: appRow.original_resume_name,
+                          generated_resume: appRow.generated_resume
+                        });
+                      }
+                    });
+
+                    return res.status(200).json({
+                      success: true,
+                      message: 'Your application has been submitted successfully.',
+                      candidateId,
+                      jobId: targetJob.id,
+                      atsScore,
+                      extractedSkills: mergedSkillsList,
+                      atsBreakdown: atsResult.breakdown,
+                      resume_path: finalResume,
+                      original_resume: finalResume,
+                      original_resume_name: finalOrigName
+                    });
                   });
                 });
               } else {
@@ -427,15 +519,22 @@ class PublicJobsController {
                     department_id,
                     job_position,
                     resume,
+                    original_resume,
+                    original_resume_name,
                     experience,
+                    skills,
                     current_company,
                     expected_salary,
                     notice_period,
                     address,
                     status,
+                    requirement_id,
+                    ats_score,
+                    ats_breakdown,
+                    screening_answers,
                     created_by,
                     updated_by
-                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Applied', 1, 1)
+                  ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Applied', ?, ?, ?, ?, 1, 1)
                 `;
 
                 const insertParams = [
@@ -446,11 +545,18 @@ class PublicJobsController {
                   targetJob.department_id || 1,
                   targetJob.job_title,
                   resumePath,
-                  totalExperience || experience || '0-1 Years',
+                  resumePath,
+                  originalResumeName,
+                  totalExperience || experience || extractedResumeData.experience || '0-1 Years',
+                  mergedSkillsStr,
                   currentCompany || null,
                   expectedSalary ? parseFloat(expectedSalary) || null : null,
                   noticePeriod || 'Immediate',
-                  currentLocation || address || null
+                  currentLocation || address || null,
+                  targetJob.id,
+                  atsScore,
+                  atsBreakdown,
+                  screeningAnsStr
                 ];
 
                 db.query(insertSql, insertParams, (iErr, iRes) => {
@@ -459,11 +565,51 @@ class PublicJobsController {
                     return response(res, false, 500, 'Failed to save application.');
                   }
 
-                  return res.status(201).json({
-                    success: true,
-                    message: 'Your application has been submitted successfully.',
-                    candidateId: iRes.insertId,
-                    jobId: targetJob.id
+                  const newCandidateId = iRes.insertId;
+
+                  console.log("APPLICATION CREATE (NEW CANDIDATE)");
+                  console.log("candidate:", newCandidateId);
+                  console.log("job:", targetJob.id);
+                  console.log("file:", req.file?.filename);
+                  console.log("original:", req.file?.originalname);
+                  console.trace();
+
+                  // Insert into candidate_applications
+                  db.query(`
+                    INSERT INTO candidate_applications (
+                      candidate_id, requirement_id, job_position, status, ats_score, ats_breakdown, screening_answers, resume, original_resume, original_resume_name, skills
+                    ) VALUES (?, ?, ?, 'Applied', ?, ?, ?, ?, ?, ?, ?)
+                  `, [newCandidateId, targetJob.id, targetJob.job_title, atsScore, atsBreakdown, screeningAnsStr, resumePath, resumePath, originalResumeName, mergedSkillsStr], (appErr, appInsertRes) => {
+                    if (appErr) console.warn('[applyForJob] Application Log Error:', appErr.message);
+
+                    const targetAppId = appInsertRes?.insertId;
+                    if (targetAppId) {
+                      db.query('SELECT id, resume, original_resume, original_resume_name, generated_resume FROM candidate_applications WHERE id = ?', [targetAppId], (qErr, qRows) => {
+                        if (qRows && qRows.length > 0) {
+                          const appRow = qRows[0];
+                          console.log({
+                            id: appRow.id,
+                            resume: appRow.resume,
+                            original_resume: appRow.original_resume,
+                            original_resume_name: appRow.original_resume_name,
+                            generated_resume: appRow.generated_resume
+                          });
+                        }
+                      });
+                    }
+
+                    return res.status(201).json({
+                      success: true,
+                      message: 'Your application has been submitted successfully.',
+                      candidateId: newCandidateId,
+                      jobId: targetJob.id,
+                      atsScore,
+                      extractedSkills: mergedSkillsList,
+                      atsBreakdown: atsResult.breakdown,
+                      resume_path: resumePath,
+                      original_resume: resumePath,
+                      original_resume_name: originalResumeName
+                    });
                   });
                 });
               }

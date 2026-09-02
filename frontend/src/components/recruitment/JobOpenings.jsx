@@ -1,11 +1,84 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Search, Filter, Plus, MoreHorizontal, ChevronLeft, ChevronRight, X, 
-  AlertTriangle, Users, Globe, ExternalLink, CheckCircle2, AlertCircle, 
+import {
+  Search, Filter, Plus, MoreHorizontal, ChevronLeft, ChevronRight, X,
+  AlertTriangle, Users, Globe, ExternalLink, CheckCircle2, AlertCircle,
   RefreshCw, Linkedin, Copy, Check, Settings, Key, ShieldCheck, Zap, Info
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { canCreate, canEdit, canDelete, checkActionPermission } from '../../lib/permissions';
+
+// ─── Custom Dropdown ─────────────────────────────────────────────────────────
+function CustomSelect({ id, value, onChange, options, placeholder = 'Select...', accentColor = '#3B82F6', isOpen, onToggle, onClose }) {
+  const selected = options.find(o => String(o.value) === String(value));
+  return (
+    <div style={{ position: 'relative', zIndex: isOpen ? 9001 : 1 }}>
+      <button
+        type="button"
+        onClick={e => { e.stopPropagation(); onToggle(); }}
+        style={{
+          width: '100%', height: '40px', padding: '0 36px 0 12px',
+          border: `1.5px solid ${isOpen ? accentColor : '#E2E8F0'}`,
+          borderRadius: '9px', fontSize: '13px',
+          color: selected ? '#1E293B' : '#94A3B8',
+          background: isOpen ? '#fff' : '#FAFAFA',
+          outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit',
+          cursor: 'pointer', textAlign: 'left',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          transition: 'all 0.15s',
+          boxShadow: isOpen ? `0 0 0 3px ${accentColor}22` : 'none'
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+          {selected ? selected.label : placeholder}
+        </span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke={isOpen ? accentColor : '#94A3B8'} strokeWidth="2.5"
+          style={{ position: 'absolute', right: '12px', flexShrink: 0, transition: 'transform 0.2s', transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)' }}>
+          <polyline points="6 9 12 15 18 9" />
+        </svg>
+      </button>
+      {isOpen && (
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+          background: '#fff', border: `1.5px solid ${accentColor}50`,
+          borderRadius: '10px',
+          boxShadow: '0 12px 32px rgba(10,22,41,0.16), 0 2px 8px rgba(10,22,41,0.08)',
+          zIndex: 9999, maxHeight: '188px', overflowY: 'auto',
+          animation: 'dropdownIn 0.18s cubic-bezier(0.16,1,0.3,1)'
+        }}>
+          {options.map(opt => {
+            const isSel = String(opt.value) === String(value);
+            return (
+              <div key={opt.value}
+                onClick={() => { onChange(String(opt.value)); onClose(); }}
+                onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = '#F8FAFC'; }}
+                onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = isSel ? `${accentColor}12` : 'transparent'; }}
+                style={{
+                  padding: '9px 14px', fontSize: '13px', cursor: 'pointer',
+                  color: isSel ? accentColor : '#334155',
+                  background: isSel ? `${accentColor}12` : 'transparent',
+                  fontWeight: isSel ? '600' : '400',
+                  display: 'flex', alignItems: 'center', gap: '8px',
+                  transition: 'background 0.1s'
+                }}
+              >
+                <span style={{ width: '14px', flexShrink: 0 }}>
+                  {isSel && (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={accentColor} strokeWidth="2.8">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  )}
+                </span>
+                {opt.label}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function JobOpenings() {
   const navigate = useNavigate();
@@ -61,6 +134,22 @@ export default function JobOpenings() {
   const [orgIdInput, setOrgIdInput] = useState('');
   const [isSavingToken, setIsSavingToken] = useState(false);
 
+  // Dropdown open state (key of which custom dropdown is open)
+  const [openDropdown, setOpenDropdown] = useState(null);
+
+  // ── Publish / Close / Reopen Flow States ───────────────────────────────────
+  const [publishModalJob, setPublishModalJob] = useState(null); // { id, job_title, channel }
+  const [closeModalJob, setCloseModalJob] = useState(null);
+  const [closeScope, setCloseScope] = useState('HRMS_ONLY');
+  const [closeChannels, setCloseChannels] = useState({ CAREER_PAGE: true, LINKEDIN: true, INDEED: true });
+  const [closeReason, setCloseReason] = useState('Job Filled');
+  const [isClosingId, setIsClosingId] = useState(null);
+  const [reopenModalJob, setReopenModalJob] = useState(null);
+  const [reopenChannels, setReopenChannels] = useState({ CAREER_PAGE: true, LINKEDIN: false, INDEED: false });
+  const [isReopeningId, setIsReopeningId] = useState(null);
+  const [platformDropdownJobId, setPlatformDropdownJobId] = useState(null);
+  // ────────────────────────────────────────────────────────────────────────────
+
   // Filter States
   const [search, setSearch] = useState('');
   const [selectedDept, setSelectedDept] = useState('');
@@ -108,7 +197,7 @@ export default function JobOpenings() {
         setLinkedInConfig(data.data);
         if (data.data.orgId) setOrgIdInput(data.data.orgId);
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const fetchRequirements = async () => {
@@ -270,46 +359,33 @@ export default function JobOpenings() {
     }
   };
 
-  const handlePublishJob = async (jobId) => {
+  const handlePublishChannel = async (jobId, channel) => {
     if (!checkActionPermission('job_openings', 'EDIT')) return;
+    setPublishModalJob(null);
     setIsPublishingId(jobId);
     try {
-      const res = await fetch(`/app/requirements/${jobId}/publish`, {
+      const endpoint = channel === 'LINKEDIN'
+        ? `/app/requirements/${jobId}/publish-linkedin`
+        : `/app/requirements/${jobId}/publish`;
+      const res = await fetch(endpoint, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        }
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` }
       });
-      
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        alert(errData.message || 'Unable to publish job. Please try again.');
-        return;
-      }
-
       const data = await res.json();
-      if (data.success) {
-        // Refresh from server only after receiving successful response
-        await fetchRequirements();
-        await fetchChannelsForJob(jobId);
-        
-        const currentJob = openings.find(o => o.id === jobId);
-        setPublishSummary({
-          jobId,
-          job: currentJob,
-          channels: data.channels
-        });
-      } else {
-        alert(data.message || 'Unable to publish job. Please try again.');
+      await fetchRequirements();
+      await fetchChannelsForJob(jobId);
+      if (!data.success) {
+        alert(data.message || data.errorMessage || 'Publishing failed. Please try again.');
       }
     } catch (err) {
-      console.error('Publish network error:', err);
-      alert('Unable to publish job. Please check your internet connection and try again.');
+      alert('Network error: ' + err.message);
     } finally {
       setIsPublishingId(null);
     }
   };
+
+  // Legacy: still used by old publish-all path if needed
+  const handlePublishJob = async (jobId) => handlePublishChannel(jobId, 'ALL');
 
   const handleRetryLinkedInPublish = async (jobId) => {
     try {
@@ -350,26 +426,64 @@ export default function JobOpenings() {
   };
 
   const handleCloseJob = async (jobId) => {
+    // Legacy stub — now handled via modal
+    setCloseModalJob(openings.find(o => o.id === jobId) || { id: jobId, job_title: '' });
+    setCloseScope('HRMS_ONLY');
+    setCloseChannels({ CAREER_PAGE: true, LINKEDIN: true, INDEED: true });
+    setCloseReason('Job Filled');
+  };
+
+  const handleCloseJobConfirmed = async () => {
+    if (!closeModalJob) return;
+    const jobId = closeModalJob.id;
     if (!checkActionPermission('job_openings', 'EDIT')) return;
+    setIsClosingId(jobId);
     try {
       const res = await fetch(`/app/requirements/${jobId}/close`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        }
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ scope: closeScope, channels: closeChannels, reason: closeReason })
       });
       const data = await res.json();
       if (data.success) {
-        alert('Job status updated to Closed.');
+        setCloseModalJob(null);
         fetchRequirements();
+        fetchChannelsForJob(jobId);
       } else {
         alert(data.message || 'Failed to close job');
       }
     } catch (err) {
-      alert('Error connecting to server');
+      alert('Error: ' + err.message);
+    } finally {
+      setIsClosingId(null);
     }
   };
+
+  const handleReopenJobConfirmed = async () => {
+    if (!reopenModalJob) return;
+    const jobId = reopenModalJob.id;
+    setIsReopeningId(jobId);
+    try {
+      const res = await fetch(`/app/requirements/${jobId}/reopen`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },
+        body: JSON.stringify({ channels: reopenChannels })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setReopenModalJob(null);
+        fetchRequirements();
+        fetchChannelsForJob(jobId);
+      } else {
+        alert(data.message || 'Failed to reopen job');
+      }
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      setIsReopeningId(null);
+    }
+  };
+
 
   const getSlug = (title, id) => {
     const clean = String(title || 'job').toLowerCase().trim().replace(/[^a-z0-9\s-]/g, '').replace(/\s+/g, '-');
@@ -414,7 +528,7 @@ export default function JobOpenings() {
       if (data.success) {
         setChannelStatuses(prev => ({ ...prev, [jobId]: data.channels }));
       }
-    } catch (e) {}
+    } catch (e) { }
   };
 
   const handleSaveLinkedInToken = async (e) => {
@@ -472,6 +586,21 @@ export default function JobOpenings() {
     }
   };
 
+  // ── Platform Status Display Helper ─────────────────────────────────────────
+  const getPlatformStatusDisplay = (status) => {
+    switch ((status || '').toUpperCase()) {
+      case 'PUBLISHED':     return { dot: '#10B981', label: '✓ Published',      textColor: '#059669' };
+      case 'PUBLISHING':    return { dot: '#F59E0B', label: '⟳ Publishing...',   textColor: '#D97706' };
+      case 'FAILED':        return { dot: '#EF4444', label: '✕ Failed',          textColor: '#DC2626' };
+      case 'CLOSED':        return { dot: '#64748B', label: '● Closed',          textColor: '#475569' };
+      case 'EXPIRED':       return { dot: '#8B5CF6', label: '● Expired',         textColor: '#7C3AED' };
+      case 'NOT_CONNECTED': return { dot: '#CBD5E1', label: '○ Not Connected',   textColor: '#94A3B8' };
+      case 'DRAFT':         return { dot: '#CBD5E1', label: '○ Not Published',   textColor: '#94A3B8' };
+      default:              return { dot: '#CBD5E1', label: `○ ${status || 'Not Published'}`, textColor: '#94A3B8' };
+    }
+  };
+  // ────────────────────────────────────────────────────────────────────────────
+
   const cardStyle = {
     background: '#FFFFFF',
     borderRadius: '16px',
@@ -481,17 +610,17 @@ export default function JobOpenings() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: '"Inter", -apple-system, sans-serif' }}>
-      
+
       {/* Header Area */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '700', color: '#0F172A' }}>Job Openings</h1>
           <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Manage requisitions and automatically publish organic posts to Madhura Technologies LinkedIn Company Page</p>
         </div>
-        
+
         {/* Header Actions */}
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          
+
           {/* LinkedIn Integration Status & Settings button */}
           <button
             onClick={() => {
@@ -517,11 +646,11 @@ export default function JobOpenings() {
           >
             <Linkedin size={17} color="#0A66C2" />
             <span>LinkedIn Integration</span>
-            <span style={{ 
+            <span style={{
               display: 'inline-block',
-              width: '8px', 
-              height: '8px', 
-              borderRadius: '50%', 
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
               backgroundColor: (linkedInConfig?.hasToken) ? '#10B981' : '#F59E0B',
               boxShadow: (linkedInConfig?.hasToken) ? '0 0 6px rgba(16, 185, 129, 0.6)' : '0 0 6px rgba(245, 158, 11, 0.6)'
             }} />
@@ -534,17 +663,17 @@ export default function JobOpenings() {
               if (!checkActionPermission('job_openings', 'CREATE')) return;
               setShowAddModal(true);
             }}
-            style={{ 
-              padding: '10px 18px', 
-              borderRadius: '10px', 
-              border: 'none', 
-              background: canCreate('job_openings') ? 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)' : '#94A3B8', 
-              color: '#FFF', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px', 
-              cursor: canCreate('job_openings') ? 'pointer' : 'not-allowed', 
-              fontSize: '14px', 
+            style={{
+              padding: '10px 18px',
+              borderRadius: '10px',
+              border: 'none',
+              background: canCreate('job_openings') ? 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)' : '#94A3B8',
+              color: '#FFF',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              cursor: canCreate('job_openings') ? 'pointer' : 'not-allowed',
+              fontSize: '14px',
               fontWeight: '600',
               boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
             }}
@@ -554,33 +683,33 @@ export default function JobOpenings() {
         </div>
       </div>
 
-      <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-        
+      <div style={{ ...cardStyle, padding: 0 }}>
+
         {/* Toolbar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9', flexWrap: 'wrap', gap: '12px' }}>
           <div style={{ display: 'flex', gap: '16px', flex: 1, flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', width: '280px' }}>
               <Search size={18} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input 
-                type="text" 
-                placeholder="Search job title..." 
+              <input
+                type="text"
+                placeholder="Search job title..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 style={{ width: '100%', padding: '10px 10px 10px 40px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px' }}
               />
             </div>
-            <select 
-              value={selectedDept} 
+            <select
+              value={selectedDept}
               onChange={e => setSelectedDept(e.target.value)}
               style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '14px', color: '#334155', outline: 'none', cursor: 'pointer' }}
             >
               <option value="">All Departments</option>
-              { (meta.departments || []).map(d => (
+              {(meta.departments || []).map(d => (
                 <option key={d.id} value={d.id}>{d.name}</option>
               ))}
             </select>
-            <select 
-              value={selectedStatus} 
+            <select
+              value={selectedStatus}
               onChange={e => setSelectedStatus(e.target.value)}
               style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '14px', color: '#334155', outline: 'none', cursor: 'pointer' }}
             >
@@ -607,7 +736,7 @@ export default function JobOpenings() {
           <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No job openings found.</div>
         ) : (
           /* Table */
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflowX: 'auto', minHeight: '420px' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
                 <tr style={{ background: '#F8FAFC' }}>
@@ -617,7 +746,7 @@ export default function JobOpenings() {
                   <th style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Location</th>
                   <th style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Type</th>
                   <th style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap', textAlign: 'center' }}>Vacancies</th>
-                  <th style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Publishing Channels</th>
+                  <th style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Publishing</th>
                   <th style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap', textAlign: 'center' }}>Overall Status</th>
                   <th style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap', textAlign: 'center' }}>Actions</th>
                 </tr>
@@ -630,14 +759,21 @@ export default function JobOpenings() {
                   const linkedInCh = channels.find(c => c.channel === 'LINKEDIN');
                   const indeedCh = channels.find(c => c.channel === 'INDEED');
 
-                  const isCpPublished = careerPageCh?.status === 'PUBLISHED' || row.status === 'Published';
-                  const cpUrl = careerPageCh?.external_url || getTrackedUrl(row, 'CAREER_PAGE');
-                  
-                  const liStatus = (linkedInCh?.status || '').toUpperCase();
-                  const liUrl = linkedInCh?.external_url;
+                  // Status determinations
+                  const cpStatus = row.status === 'Closed' ? 'CLOSED' : (careerPageCh?.status === 'PUBLISHED' || row.status === 'Published' ? 'PUBLISHED' : (careerPageCh?.status || 'DRAFT'));
+                  const liStatusRaw = (linkedInCh?.status || '').toUpperCase();
+                  const liStatus = row.status === 'Closed' ? 'CLOSED' : (liStatusRaw || (linkedInConfig?.hasToken ? 'DRAFT' : 'NOT_CONNECTED'));
+                  const indeedStatus = row.status === 'Closed' ? 'EXPIRED' : (indeedCh?.status || 'NOT_CONNECTED');
 
-                  const indeedStatus = indeedCh?.status || 'NOT_CONNECTED';
-                  const indeedUrl = indeedCh?.external_url;
+                  const cpDisp = getPlatformStatusDisplay(cpStatus);
+                  const liDisp = getPlatformStatusDisplay(liStatus);
+                  const indeedDisp = getPlatformStatusDisplay(indeedStatus);
+
+                  const cpUrl = careerPageCh?.external_url || getTrackedUrl(row, 'CAREER_PAGE');
+                  const liUrl = linkedInCh?.external_url || `https://www.linkedin.com/company/${linkedInConfig?.orgId || '109901015'}/`;
+
+                  const isPlatformOpen = platformDropdownJobId === row.id;
+                  const isLowerRow = index >= Math.max(1, openings.length - 3);
 
                   return (
                     <tr key={row.id} style={{ borderBottom: index === openings.length - 1 ? 'none' : '1px solid #F8FAFC' }}>
@@ -647,243 +783,182 @@ export default function JobOpenings() {
                       <td style={{ padding: '16px 20px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>{row.location}</td>
                       <td style={{ padding: '16px 20px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>{row.employment_type}</td>
                       <td style={{ padding: '16px 20px', fontSize: '14px', fontWeight: '600', color: '#1E293B', whiteSpace: 'nowrap', textAlign: 'center' }}>{row.vacancies}</td>
-                      
-                      {/* Separate Publishing Channel Badges */}
-                      <td style={{ padding: '16px 20px', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          
-                          {/* 1. Website Channel Status */}
-                          {isCpPublished ? (
-                            <a
-                              href={cpUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              title="Website (Career Page): Published & Live"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                fontSize: '11px',
-                                fontWeight: '600',
-                                textDecoration: 'none',
-                                background: '#ECFDF5',
-                                color: '#059669',
-                                border: '1px solid #A7F3D0',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <Globe size={12} /> Website: Published <ExternalLink size={10} />
-                            </a>
-                          ) : (
-                            <span
-                              title="Website: Draft (Not Published)"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                fontSize: '11px',
-                                fontWeight: '600',
-                                background: '#F1F5F9',
-                                color: '#94A3B8',
-                                border: '1px solid #E2E8F0'
-                              }}
-                            >
-                              <Globe size={12} /> Website: Draft
-                            </span>
-                          )}
 
-                          {/* 2. LinkedIn Company Page Post Status (PUBLISHED, PUBLISHING, FAILED, READY, AUTH_REQUIRED) */}
-                          {liStatus === 'PUBLISHED' ? (
-                            <a
-                              href={liUrl || `https://www.linkedin.com/company/${linkedInConfig?.orgId || '109901015'}/`}
-                              target="_blank"
-                              rel="noreferrer"
-                              title="LinkedIn: Published ✓ (Click to view post on company feed)"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                fontSize: '11px',
-                                fontWeight: '600',
-                                textDecoration: 'none',
-                                background: '#ECFDF5',
-                                color: '#059669',
-                                border: '1px solid #A7F3D0',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <Linkedin size={12} /> LinkedIn: Published ✓ <ExternalLink size={10} />
-                            </a>
-                          ) : liStatus === 'PUBLISHING' || isPublishingId === row.id ? (
-                            <span
-                              title="LinkedIn: Publishing in progress..."
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                fontSize: '11px',
-                                fontWeight: '600',
-                                background: '#EFF6FF',
-                                color: '#2563EB',
-                                border: '1px solid #BFDBFE'
-                              }}
-                            >
-                              <RefreshCw size={11} className="animate-spin" /> LinkedIn: Publishing...
-                            </span>
-                          ) : liStatus === 'FAILED' ? (
+                      {/* Clean Straight Publishing Column */}
+                      <td style={{ padding: '16px 20px', whiteSpace: 'nowrap', position: 'relative' }}>
+                        {row.status === 'Closed' ? (
+                          <span style={{ fontSize: '12px', fontWeight: '500', color: '#64748B' }}>Closed</span>
+                        ) : (
+                          <div style={{ position: 'relative', display: 'inline-block' }}>
                             <button
-                              onClick={() => setSelectedErrorDetails({
-                                channel: 'LinkedIn',
-                                message: linkedInCh?.error_message || 'LinkedIn Company Page post failed.',
-                                jobId: row.id
-                              })}
-                              title={`LinkedIn: Failed - Click to view error details:\n${linkedInCh?.error_message || ''}`}
+                              onClick={() => setPlatformDropdownJobId(isPlatformOpen ? null : row.id)}
                               style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '4px 8px',
+                                padding: '6px 12px',
                                 borderRadius: '6px',
-                                fontSize: '11px',
-                                fontWeight: '600',
-                                background: '#FEF2F2',
-                                color: '#DC2626',
-                                border: '1px solid #FECACA',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <Linkedin size={12} /> LinkedIn: Failed <Info size={11} />
-                            </button>
-                          ) : linkedInConfig?.isExpired ? (
-                            <button
-                              onClick={() => {
-                                fetchLinkedInStatus();
-                                setShowLinkedInModal(true);
-                              }}
-                              title="LinkedIn access token has expired. Click to reconnect."
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                fontSize: '11px',
-                                fontWeight: '600',
-                                background: '#FFFBEB',
-                                color: '#D97706',
-                                border: '1px solid #FDE68A',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <Linkedin size={12} /> LinkedIn: Token Expired <RefreshCw size={10} />
-                            </button>
-                          ) : (!linkedInConfig?.hasToken) ? (
-                            <button
-                              onClick={() => {
-                                fetchLinkedInStatus();
-                                setShowLinkedInModal(true);
-                              }}
-                              title="LinkedIn account is not connected. Click to connect."
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                fontSize: '11px',
-                                fontWeight: '600',
-                                background: '#F8FAFC',
-                                color: '#64748B',
-                                border: '1px solid #E2E8F0',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              <Linkedin size={12} /> LinkedIn: Not Connected
-                            </button>
-                          ) : (
-                            <span
-                              title="LinkedIn: Ready to automatically publish on Madhura Technologies company feed when Publish is clicked"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                fontSize: '11px',
-                                fontWeight: '600',
-                                background: '#EFF6FF',
-                                color: '#0A66C2',
-                                border: '1px solid #BFDBFE'
-                              }}
-                            >
-                              <Linkedin size={12} /> LinkedIn: Ready
-                            </span>
-                          )}
-
-                          {/* 3. Indeed Channel Status */}
-                          {indeedStatus === 'PUBLISHED' && indeedUrl ? (
-                            <a
-                              href={indeedUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              title="Indeed: Published"
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                fontSize: '11px',
-                                fontWeight: '600',
-                                textDecoration: 'none',
-                                background: '#ECFDF5',
-                                color: '#059669',
-                                border: '1px solid #A7F3D0',
-                                cursor: 'pointer'
-                              }}
-                            >
-                              Indeed: Published <ExternalLink size={10} />
-                            </a>
-                          ) : (
-                            <span
-                              title="Indeed API integration is not connected."
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                fontSize: '11px',
-                                fontWeight: '600',
-                                background: '#F1F5F9',
-                                color: '#64748B',
                                 border: '1px solid #CBD5E1',
-                                cursor: 'help'
+                                background: isPlatformOpen ? '#EFF6FF' : '#F8FAFC',
+                                color: isPlatformOpen ? '#2563EB' : '#334155',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                cursor: 'pointer',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                transition: 'all 0.15s'
                               }}
                             >
-                              Indeed: Not Connected
-                            </span>
-                          )}
+                              Choose Platform <span style={{ fontSize: '9px' }}>▼</span>
+                            </button>
 
-                        </div>
+                              {/* Platform Popover Dropdown */}
+                              {isPlatformOpen && (
+                                <>
+                                  <div
+                                    onClick={() => setPlatformDropdownJobId(null)}
+                                    style={{ position: 'fixed', inset: 0, zIndex: 9000 }}
+                                  />
+                                  <div style={{
+                                    position: 'absolute',
+                                    top: 'calc(100% + 6px)',
+                                    left: 0,
+                                    zIndex: 9999,
+                                    width: '280px',
+                                    maxHeight: '320px',
+                                    overflowY: 'auto',
+                                    background: '#FFFFFF',
+                                    borderRadius: '12px',
+                                    border: '1px solid #E2E8F0',
+                                    boxShadow: '0 12px 28px rgba(15,23,42,0.18)',
+                                    padding: '12px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: '10px'
+                                  }}>
+                                    <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em', borderBottom: '1px solid #F1F5F9', paddingBottom: '6px' }}>
+                                      Choose Publishing Platform
+                                    </div>
+
+                                    {/* 1. Website Option */}
+                                    <div style={{ padding: '8px 10px', borderRadius: '8px', background: '#F8FAFC', border: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                      <div>
+                                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#1E293B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <Globe size={14} color="#2563EB" /> Website
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: cpDisp.textColor, marginTop: '2px', fontWeight: '500' }}>
+                                          {cpDisp.label}
+                                        </div>
+                                      </div>
+                                      {cpStatus === 'PUBLISHED' ? (
+                                        <a
+                                          href={cpUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          style={{ padding: '4px 8px', borderRadius: '6px', background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                                        >
+                                          View Job Page <ExternalLink size={10} />
+                                        </a>
+                                      ) : (
+                                        <button
+                                          disabled={!canEdit('job_openings') || isPublishingId === row.id}
+                                          onClick={() => {
+                                            setPlatformDropdownJobId(null);
+                                            setPublishModalJob({ id: row.id, job_title: row.job_title, channel: 'CAREER_PAGE', channelName: 'Website' });
+                                          }}
+                                          style={{ padding: '4px 10px', borderRadius: '6px', background: '#2563EB', color: '#FFF', border: 'none', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}
+                                        >
+                                          Publish
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    {/* 2. LinkedIn Option */}
+                                    <div style={{ padding: '8px 10px', borderRadius: '8px', background: '#F8FAFC', border: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                      <div>
+                                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#1E293B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <Linkedin size={14} color="#0A66C2" /> LinkedIn
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: liDisp.textColor, marginTop: '2px', fontWeight: '500' }}>
+                                          {liDisp.label}
+                                        </div>
+                                      </div>
+                                      {liStatus === 'PUBLISHED' ? (
+                                        <a
+                                          href={liUrl}
+                                          target="_blank"
+                                          rel="noreferrer"
+                                          style={{ padding: '4px 8px', borderRadius: '6px', background: '#ECFDF5', color: '#059669', border: '1px solid #A7F3D0', fontSize: '11px', fontWeight: '600', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                                        >
+                                          View Post <ExternalLink size={10} />
+                                        </a>
+                                      ) : liStatus === 'FAILED' ? (
+                                        <button
+                                          onClick={() => {
+                                            setPlatformDropdownJobId(null);
+                                            setPublishModalJob({ id: row.id, job_title: row.job_title, channel: 'LINKEDIN', channelName: 'LinkedIn' });
+                                          }}
+                                          style={{ padding: '4px 10px', borderRadius: '6px', background: '#EF4444', color: '#FFF', border: 'none', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}
+                                        >
+                                          Retry
+                                        </button>
+                                      ) : (!linkedInConfig?.hasToken) ? (
+                                        <button
+                                          onClick={() => {
+                                            setPlatformDropdownJobId(null);
+                                            fetchLinkedInStatus();
+                                            setShowLinkedInModal(true);
+                                          }}
+                                          style={{ padding: '4px 8px', borderRadius: '6px', background: '#FFFBEB', color: '#D97706', border: '1px solid #FDE68A', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}
+                                        >
+                                          Connect
+                                        </button>
+                                      ) : (
+                                        <button
+                                          disabled={!canEdit('job_openings') || isPublishingId === row.id}
+                                          onClick={() => {
+                                            setPlatformDropdownJobId(null);
+                                            setPublishModalJob({ id: row.id, job_title: row.job_title, channel: 'LINKEDIN', channelName: 'LinkedIn' });
+                                          }}
+                                          style={{ padding: '4px 10px', borderRadius: '6px', background: '#0A66C2', color: '#FFF', border: 'none', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}
+                                        >
+                                          Publish
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    {/* 3. Indeed Option */}
+                                    <div style={{ padding: '8px 10px', borderRadius: '8px', background: '#F8FAFC', border: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                      <div>
+                                        <div style={{ fontSize: '13px', fontWeight: '600', color: '#1E293B', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <span style={{ fontSize: '13px', fontWeight: '700', color: '#2164f3' }}>in</span> Indeed
+                                        </div>
+                                        <div style={{ fontSize: '11px', color: indeedDisp.textColor, marginTop: '2px', fontWeight: '500' }}>
+                                          {indeedDisp.label}
+                                        </div>
+                                      </div>
+                                      <button
+                                        disabled
+                                        title="Indeed API integration is currently not connected"
+                                        style={{ padding: '4px 8px', borderRadius: '6px', background: '#F1F5F9', color: '#94A3B8', border: '1px solid #E2E8F0', fontSize: '11px', fontWeight: '600', cursor: 'not-allowed' }}
+                                      >
+                                        Not Connected
+                                      </button>
+                                    </div>
+
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
                       </td>
 
                       {/* Overall Requisition Status */}
                       <td style={{ padding: '16px 20px', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                        <span style={{ 
-                          padding: '4px 10px', 
-                          borderRadius: '20px', 
-                          fontSize: '12px', 
-                          fontWeight: '600', 
-                          backgroundColor: statusStyle.bg, 
+                        <span style={{
+                          padding: '4px 10px',
+                          borderRadius: '20px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          backgroundColor: statusStyle.bg,
                           color: statusStyle.color,
                           border: `1px solid ${statusStyle.border}`
                         }}>
@@ -891,83 +966,99 @@ export default function JobOpenings() {
                         </span>
                       </td>
 
-                      {/* Actions */}
+                      {/* Actions Column */}
                       <td style={{ padding: '16px 20px', whiteSpace: 'nowrap', textAlign: 'right' }}>
                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center' }}>
-                          
-                          {/* Edit Job Button */}
-                          <button 
-                            disabled={!canEdit('job_openings')}
-                            onClick={() => handleEditClick(row)}
-                            title="Edit Job Opening"
-                            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#334155', fontSize: '12px', fontWeight: '500', cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed' }}
-                          >
-                            Edit
-                          </button>
 
-                          {/* View Candidates */}
-                          <button 
-                            onClick={() => navigate(`/recruitment/candidates?job_title=${encodeURIComponent(row.job_title)}`)}
-                            title="View Applicants"
-                            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', color: '#2563EB', fontSize: '12px', fontWeight: '500', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                          >
-                            <Users size={14} /> Candidates
-                          </button>
+                          {row.status === 'Closed' ? (
+                            <>
+                              {/* View Button for Closed Job */}
+                              <button
+                                onClick={() => handleEditClick(row)}
+                                title="View Job Details"
+                                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#334155', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+                              >
+                                View
+                              </button>
 
-                          {/* Publish Job Button (Single Unified Backend Endpoint) */}
-                          {row.status !== 'Published' && (
-                            <button 
-                              disabled={!canEdit('job_openings') || isPublishingId === row.id}
-                              onClick={() => handlePublishJob(row.id)}
-                              style={{ 
-                                padding: '6px 10px', 
-                                borderRadius: '6px', 
-                                border: 'none', 
-                                background: canEdit('job_openings') ? '#10B981' : '#94A3B8', 
-                                color: '#FFF', 
-                                fontSize: '12px', 
-                                fontWeight: '600', 
-                                cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                              }}
-                            >
-                              {isPublishingId === row.id ? 'Publishing...' : 'Publish Job'}
-                            </button>
+                              {/* View Candidates */}
+                              <button
+                                onClick={() => navigate(`/recruitment/candidates?job_title=${encodeURIComponent(row.job_title)}`)}
+                                title="View Applicants"
+                                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', color: '#2563EB', fontSize: '12px', fontWeight: '500', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              >
+                                <Users size={14} /> Candidates
+                              </button>
+
+                              {/* Reopen Job Button */}
+                              <button
+                                disabled={!canEdit('job_openings')}
+                                onClick={() => {
+                                  setReopenModalJob(row);
+                                  setReopenChannels({ CAREER_PAGE: true, LINKEDIN: false, INDEED: false });
+                                }}
+                                style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: '#2563EB', color: '#FFF', fontSize: '12px', fontWeight: '600', cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed' }}
+                              >
+                                Reopen
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              {/* Edit Job Button */}
+                              <button
+                                disabled={!canEdit('job_openings')}
+                                onClick={() => handleEditClick(row)}
+                                title="Edit Job Opening"
+                                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#334155', fontSize: '12px', fontWeight: '500', cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed' }}
+                              >
+                                Edit
+                              </button>
+
+                              {/* View Candidates */}
+                              <button
+                                onClick={() => navigate(`/recruitment/candidates?job_title=${encodeURIComponent(row.job_title)}`)}
+                                title="View Applicants"
+                                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', color: '#2563EB', fontSize: '12px', fontWeight: '500', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              >
+                                <Users size={14} /> Candidates
+                              </button>
+
+                              {/* Tracking Links Button */}
+                              <button
+                                onClick={() => {
+                                  setSelectedJobForLinks(row);
+                                  setShowLinksModal(true);
+                                }}
+                                title="Application Tracking Links"
+                                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#334155', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+                              >
+                                Copy Links
+                              </button>
+
+                              {/* Close Job Flow Button */}
+                              <button
+                                disabled={!canEdit('job_openings')}
+                                onClick={() => {
+                                  setCloseModalJob(row);
+                                  setCloseScope('HRMS_ONLY');
+                                  setCloseChannels({ CAREER_PAGE: true, LINKEDIN: true, INDEED: true });
+                                  setCloseReason('Job Filled');
+                                }}
+                                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#475569', fontSize: '12px', fontWeight: '500', cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                              >
+                                Close <span style={{ fontSize: '9px' }}>▼</span>
+                              </button>
+
+                              {/* Delete Job Button */}
+                              <button
+                                disabled={!canDelete('job_openings')}
+                                onClick={() => setDeleteConfirmJob(row)}
+                                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', fontSize: '12px', fontWeight: '500', cursor: canDelete('job_openings') ? 'pointer' : 'not-allowed' }}
+                              >
+                                Delete
+                              </button>
+                            </>
                           )}
-
-                          {/* Tracking Links Button */}
-                          <button 
-                            onClick={() => {
-                              setSelectedJobForLinks(row);
-                              setShowLinksModal(true);
-                            }}
-                            title="Application Tracking Links"
-                            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#334155', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
-                          >
-                            Copy Links
-                          </button>
-
-                          {/* Close Job Button */}
-                          {row.status !== 'Closed' && (
-                            <button 
-                              disabled={!canEdit('job_openings')}
-                              onClick={() => handleCloseJob(row.id)}
-                              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#475569', fontSize: '12px', fontWeight: '500', cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed' }}
-                            >
-                              Close
-                            </button>
-                          )}
-
-                          {/* Delete Job Button */}
-                          <button 
-                            disabled={!canDelete('job_openings')}
-                            onClick={() => setDeleteConfirmJob(row)}
-                            style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', fontSize: '12px', fontWeight: '500', cursor: canDelete('job_openings') ? 'pointer' : 'not-allowed' }}
-                          >
-                            Delete
-                          </button>
 
                         </div>
                       </td>
@@ -985,7 +1076,7 @@ export default function JobOpenings() {
             Showing {((page - 1) * limit) + 1} to {Math.min(page * limit, total)} of {total} entries
           </div>
           <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <button 
+            <button
               disabled={page <= 1}
               onClick={() => setPage(page - 1)}
               style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: page <= 1 ? 'not-allowed' : 'pointer', color: '#64748B', opacity: page <= 1 ? 0.5 : 1 }}
@@ -995,7 +1086,7 @@ export default function JobOpenings() {
             <button style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#2563EB', border: 'none', borderRadius: '6px', cursor: 'pointer', color: '#FFF', fontSize: '13px', fontWeight: '500' }}>
               {page}
             </button>
-            <button 
+            <button
               disabled={page * limit >= total}
               onClick={() => setPage(page + 1)}
               style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: page * limit >= total ? 'not-allowed' : 'pointer', color: '#64748B', opacity: page * limit >= total ? 0.5 : 1 }}
@@ -1052,7 +1143,7 @@ export default function JobOpenings() {
                   {isPublishingId === selectedErrorDetails.jobId ? 'Retrying...' : 'Retry LinkedIn Publishing'}
                 </button>
               )}
-              <button 
+              <button
                 onClick={() => {
                   setSelectedErrorDetails(null);
                   fetchLinkedInStatus();
@@ -1062,8 +1153,8 @@ export default function JobOpenings() {
               >
                 Reconnect LinkedIn
               </button>
-              <button 
-                onClick={() => setSelectedErrorDetails(null)} 
+              <button
+                onClick={() => setSelectedErrorDetails(null)}
                 style={{ padding: '8px 16px', background: '#F1F5F9', color: '#475569', borderRadius: '8px', fontSize: '12px', fontWeight: '600', border: '1px solid #CBD5E1', cursor: 'pointer' }}
               >
                 Close
@@ -1078,7 +1169,7 @@ export default function JobOpenings() {
         <>
           <div className="modal-backdrop-blur" onClick={() => setPublishSummary(null)} />
           <div className="modal-centered-content" style={{ width: '640px', maxWidth: '94vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#FFFFFF', borderRadius: '16px', boxShadow: '0 24px 48px rgba(15, 23, 42, 0.2)' }}>
-            
+
             {/* Header */}
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1097,7 +1188,7 @@ export default function JobOpenings() {
 
             {/* Scrollable Content Body */}
             <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              
+
               {/* 1. Website (Career Page) Status */}
               <div style={{ padding: '16px', borderRadius: '12px', border: '1px solid #A7F3D0', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1255,7 +1346,7 @@ export default function JobOpenings() {
                     </div>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => {
                     setSelectedJobForLinks(publishSummary.job);
                     setShowLinksModal(true);
@@ -1270,8 +1361,8 @@ export default function JobOpenings() {
 
             {/* Footer */}
             <div style={{ padding: '16px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
-              <button 
-                onClick={() => setPublishSummary(null)} 
+              <button
+                onClick={() => setPublishSummary(null)}
                 style={{ padding: '10px 24px', background: '#0F172A', color: '#FFFFFF', borderRadius: '10px', fontSize: '13px', fontWeight: '600', border: 'none', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}
               >
                 Done
@@ -1286,7 +1377,7 @@ export default function JobOpenings() {
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowLinkedInModal(false)} />
           <div className="modal-centered-content" style={{ width: '560px', maxWidth: '92vw', maxHeight: '88vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#FFFFFF', borderRadius: '16px', boxShadow: '0 24px 48px rgba(15, 23, 42, 0.2)' }}>
-            
+
             {/* Header */}
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -1305,18 +1396,18 @@ export default function JobOpenings() {
 
             {/* Scrollable Content Body */}
             <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              
+
               {/* Status Diagnostic Card */}
               <div style={{ padding: '16px', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span style={{ fontSize: '12px', fontWeight: '700', color: '#334155' }}>Connection Status:</span>
-                  <span style={{ 
-                    display: 'inline-flex', 
-                    alignItems: 'center', 
-                    gap: '6px', 
-                    padding: '4px 10px', 
-                    borderRadius: '20px', 
-                    fontSize: '12px', 
+                  <span style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '4px 10px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
                     fontWeight: '700',
                     background: linkedInConfig?.hasToken ? '#ECFDF5' : '#FFFBEB',
                     color: linkedInConfig?.hasToken ? '#059669' : '#D97706',
@@ -1326,12 +1417,12 @@ export default function JobOpenings() {
                     {linkedInConfig?.hasToken ? 'Connected & Configured' : 'Action Required / Not Connected'}
                   </span>
                 </div>
-                
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748B' }}>
                   <span>Requested Permission:</span>
                   <span style={{ fontFamily: 'monospace', fontWeight: '600', color: '#0F172A' }}>w_organization_social, openid, profile</span>
                 </div>
-                
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748B' }}>
                   <span>Organization ID:</span>
                   <span style={{ fontFamily: 'monospace', fontWeight: '700', color: '#0F172A' }}>{linkedInConfig?.orgId || '109901015'}</span>
@@ -1355,7 +1446,7 @@ export default function JobOpenings() {
                     Authenticates and requests <code style={{ background: 'rgba(255,255,255,0.6)', padding: '2px 4px', borderRadius: '4px' }}>w_organization_social</code> permission to post to the Madhura Technologies company feed.
                   </p>
                 </div>
-                
+
                 <div style={{ paddingTop: '4px' }}>
                   <a
                     href="http://localhost:5000/app/auth/linkedin/connect"
@@ -1390,7 +1481,7 @@ export default function JobOpenings() {
                 <div style={{ fontSize: '13px', fontWeight: '700', color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <Key size={15} color="#64748B" /> Enter Access Token Manually
                 </div>
-                
+
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>LinkedIn Access Token</label>
                   <input
@@ -1441,8 +1532,8 @@ export default function JobOpenings() {
 
             {/* Footer */}
             <div style={{ padding: '16px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', flexShrink: 0 }}>
-              <button 
-                onClick={() => setShowLinkedInModal(false)} 
+              <button
+                onClick={() => setShowLinkedInModal(false)}
                 style={{ padding: '10px 20px', background: '#F1F5F9', color: '#475569', borderRadius: '10px', fontSize: '13px', fontWeight: '600', border: '1px solid #CBD5E1', cursor: 'pointer' }}
               >
                 Close
@@ -1456,153 +1547,277 @@ export default function JobOpenings() {
       {showAddModal && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
-          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-[#0A1629]">{editingJobId ? 'Edit Job Opening' : 'Add Job Opening'}</h2>
-                <p className="text-sm text-slate-500 mt-1">{editingJobId ? 'Update requisition details and publishing preferences.' : 'Configure a new requisition and publish opening.'}</p>
+          <div className="modal-centered-content" style={{
+            width: '1060px', maxWidth: '94vw', maxHeight: '92vh',
+            display: 'flex', flexDirection: 'column', overflow: 'hidden',
+            borderRadius: '20px',
+            boxShadow: '0 32px 80px rgba(10,22,41,0.24), 0 8px 24px rgba(10,22,41,0.12)'
+          }}>
+
+            {/* Header */}
+            <div style={{
+              padding: '22px 28px 18px',
+              background: 'linear-gradient(135deg, #0A1629 0%, #1a3558 100%)',
+              display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
+              borderBottom: '1px solid rgba(255,255,255,0.07)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{
+                  width: '40px', height: '40px', borderRadius: '11px',
+                  background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  boxShadow: '0 4px 14px rgba(59,130,246,0.45)'
+                }}>
+                  <Plus size={18} color="#fff" strokeWidth={2.5} />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: '#fff', letterSpacing: '-0.01em' }}>
+                    {editingJobId ? 'Edit Job Opening' : 'New Job Opening'}
+                  </h2>
+                  <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#94A3B8' }}>
+                    {editingJobId ? 'Update requisition details and publishing preferences' : 'Fill in the details to configure and publish this requisition'}
+                  </p>
+                </div>
               </div>
-              <button onClick={() => { setShowAddModal(false); resetForm(); }} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <X size={20} className="text-slate-400" />
+              <button
+                onClick={() => { setShowAddModal(false); resetForm(); }}
+                style={{
+                  width: '32px', height: '32px', borderRadius: '8px', border: 'none', cursor: 'pointer',
+                  background: 'rgba(255,255,255,0.08)', color: '#94A3B8',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  transition: 'all 0.15s'
+                }}
+                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.16)'; e.currentTarget.style.color = '#fff'; }}
+                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#94A3B8'; }}
+              >
+                <X size={15} />
               </button>
             </div>
-            <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Job Title <span className="text-red-500">*</span></label>
-                  <input type="text" required value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. Senior React Developer" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+
+            {/* Body */}
+            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden', background: '#F1F5F9' }}>
+              <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 24px' }}>
+
+                {/* Overlay to close dropdowns when clicking outside */}
+                {openDropdown && <div onClick={() => setOpenDropdown(null)} style={{ position: 'fixed', inset: 0, zIndex: 9000 }} />}
+
+                {/* Section 1: Basic Information */}
+                <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #E2E8F0', boxShadow: '0 1px 4px rgba(10,22,41,0.05)', flexShrink: 0, marginBottom: '16px' }}>
+                  <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '9px', borderBottom: '1px solid #EEF2FF', background: 'linear-gradient(135deg, #EFF6FF 0%, #F8FAFF 100%)', borderRadius: '13px 13px 0 0' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.2"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /></svg>
+                    </div>
+                    <span style={{ fontSize: '12.5px', fontWeight: '700', color: '#1E293B', letterSpacing: '0.01em' }}>Basic Information</span>
+                    <span style={{ marginLeft: 'auto', fontSize: '10.5px', color: '#94A3B8', fontWeight: '500' }}>Core job details</span>
+                  </div>
+                  <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Job Title <span style={{ color: '#EF4444' }}>*</span></label>
+                      <input type="text" required value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. Senior React Developer"
+                        style={{ width: '100%', height: '40px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '9px', fontSize: '13px', color: '#1E293B', background: '#FAFAFA', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                        onFocus={e => e.target.style.borderColor = '#3B82F6'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Department <span style={{ color: '#EF4444' }}>*</span></label>
+                      <CustomSelect id="dept" accentColor="#3B82F6"
+                        value={formData.department} onChange={v => setFormData({ ...formData, department: v })}
+                        placeholder="Select Department"
+                        options={[{ value: '', label: 'Select Department' }, ...meta.departments.map(d => ({ value: d.id, label: d.name }))]}
+                        isOpen={openDropdown === 'dept'}
+                        onToggle={() => setOpenDropdown(openDropdown === 'dept' ? null : 'dept')}
+                        onClose={() => setOpenDropdown(null)} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Designation <span style={{ color: '#EF4444' }}>*</span></label>
+                      <CustomSelect id="desig" accentColor="#3B82F6"
+                        value={formData.designation} onChange={v => setFormData({ ...formData, designation: v })}
+                        placeholder="Select Designation"
+                        options={[{ value: '', label: 'Select Designation' }, ...meta.designations.map(d => ({ value: d.id, label: d.name }))]}
+                        isOpen={openDropdown === 'desig'}
+                        onToggle={() => setOpenDropdown(openDropdown === 'desig' ? null : 'desig')}
+                        onClose={() => setOpenDropdown(null)} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Employment Type <span style={{ color: '#EF4444' }}>*</span></label>
+                      <CustomSelect id="emptype" accentColor="#3B82F6"
+                        value={formData.type} onChange={v => setFormData({ ...formData, type: v })}
+                        placeholder="Select Type"
+                        options={['Full Time', 'Part Time', 'Contract', 'Internship', 'Temporary', 'Freelancer', 'Remote', 'Hybrid'].map(t => ({ value: t, label: t }))}
+                        isOpen={openDropdown === 'emptype'}
+                        onToggle={() => setOpenDropdown(openDropdown === 'emptype' ? null : 'emptype')}
+                        onClose={() => setOpenDropdown(null)} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Job Location <span style={{ color: '#EF4444' }}>*</span></label>
+                      <input type="text" required value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="e.g. Coimbatore / Remote"
+                        style={{ width: '100%', height: '40px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '9px', fontSize: '13px', color: '#1E293B', background: '#FAFAFA', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                        onFocus={e => e.target.style.borderColor = '#3B82F6'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Vacancies <span style={{ color: '#EF4444' }}>*</span></label>
+                      <input type="number" required min="1" value={formData.vacancies} onChange={e => setFormData({ ...formData, vacancies: e.target.value })} placeholder="e.g. 3"
+                        style={{ width: '100%', height: '40px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '9px', fontSize: '13px', color: '#1E293B', background: '#FAFAFA', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                        onFocus={e => e.target.style.borderColor = '#3B82F6'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                    </div>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Job Description <span style={{ color: '#EF4444' }}>*</span></label>
+                      <textarea required value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Describe key responsibilities, expectations, and role objectives..."
+                        style={{ width: '100%', height: '90px', padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: '9px', fontSize: '13px', color: '#1E293B', background: '#FAFAFA', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical', lineHeight: '1.55' }}
+                        onFocus={e => e.target.style.borderColor = '#3B82F6'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                    </div>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Skills Required</label>
+                      <input type="text" value={formData.skills} onChange={e => setFormData({ ...formData, skills: e.target.value })} placeholder="e.g. React.js, Node.js, TypeScript, MySQL"
+                        style={{ width: '100%', height: '40px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '9px', fontSize: '13px', color: '#1E293B', background: '#FAFAFA', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                        onFocus={e => e.target.style.borderColor = '#3B82F6'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Department <span className="text-red-500">*</span></label>
-                  <select required value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Department</option>
-                    {meta.departments.map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
+
+                {/* Sections 2 + 3 side by side */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+
+                  {/* Section 2: Experience & Compensation */}
+                  <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #E2E8F0', boxShadow: '0 1px 4px rgba(10,22,41,0.05)', flexShrink: 0 }}>
+                    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '9px', borderBottom: '1px solid #ECFDF5', background: 'linear-gradient(135deg, #ECFDF5 0%, #F8FFFC 100%)', borderRadius: '13px 13px 0 0' }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                      </div>
+                      <span style={{ fontSize: '12.5px', fontWeight: '700', color: '#1E293B' }}>Experience & Pay</span>
+                    </div>
+                    <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      {[
+                        { label: 'Exp. From (Yrs)', key: 'experienceFrom', req: true },
+                        { label: 'Exp. To (Yrs)', key: 'experienceTo', req: true },
+                        { label: 'Salary From (₹)', key: 'salaryFrom', req: false },
+                        { label: 'Salary To (₹)', key: 'salaryTo', req: false },
+                      ].map(f => (
+                        <div key={f.key}>
+                          <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}{f.req && <span style={{ color: '#EF4444' }}> *</span>}</label>
+                          <input type="number" required={f.req} min="0" value={formData[f.key]} onChange={e => setFormData({ ...formData, [f.key]: e.target.value })}
+                            style={{ width: '100%', height: '40px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '9px', fontSize: '13px', color: '#1E293B', background: '#FAFAFA', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                            onFocus={e => e.target.style.borderColor = '#10B981'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Section 3: Schedule & Priority */}
+                  <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #E2E8F0', boxShadow: '0 1px 4px rgba(10,22,41,0.05)', flexShrink: 0 }}>
+                    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '9px', borderBottom: '1px solid #FEF9C3', background: 'linear-gradient(135deg, #FFFBEB 0%, #FFFDF5 100%)', borderRadius: '13px 13px 0 0' }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: '#FFFBEB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2.2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                      </div>
+                      <span style={{ fontSize: '12.5px', fontWeight: '700', color: '#1E293B' }}>Schedule & Priority</span>
+                    </div>
+                    <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Opening Date <span style={{ color: '#EF4444' }}>*</span></label>
+                        <input type="date" required value={formData.openingDate} onChange={e => setFormData({ ...formData, openingDate: e.target.value })}
+                          style={{ width: '100%', height: '40px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '9px', fontSize: '13px', color: '#1E293B', background: '#FAFAFA', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                          onFocus={e => e.target.style.borderColor = '#F59E0B'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Closing Date <span style={{ color: '#EF4444' }}>*</span></label>
+                        <input type="date" required value={formData.closingDate} onChange={e => setFormData({ ...formData, closingDate: e.target.value })}
+                          style={{ width: '100%', height: '40px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '9px', fontSize: '13px', color: '#1E293B', background: '#FAFAFA', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
+                          onFocus={e => e.target.style.borderColor = '#F59E0B'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                      </div>
+                      <div style={{ gridColumn: '1 / -1' }}>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Priority <span style={{ color: '#EF4444' }}>*</span></label>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '8px' }}>
+                          {[
+                            { v: 'Low', c: '#22C55E', bg: '#F0FDF4', border: '#BBF7D0' },
+                            { v: 'Medium', c: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A' },
+                            { v: 'High', c: '#F97316', bg: '#FFF7ED', border: '#FED7AA' },
+                            { v: 'Critical', c: '#EF4444', bg: '#FFF1F2', border: '#FECDD3' },
+                          ].map(p => (
+                            <button type="button" key={p.v} onClick={() => setFormData({ ...formData, priority: p.v })}
+                              style={{
+                                padding: '7px 4px', borderRadius: '8px', fontSize: '11.5px', fontWeight: '600', cursor: 'pointer',
+                                border: `1.5px solid ${formData.priority === p.v ? p.c : '#E2E8F0'}`,
+                                background: formData.priority === p.v ? p.bg : '#FAFAFA',
+                                color: formData.priority === p.v ? p.c : '#94A3B8',
+                                transition: 'all 0.15s'
+                              }}
+                            >{p.v}</button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 4: Team & Organization */}
+                <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #E2E8F0', boxShadow: '0 1px 4px rgba(10,22,41,0.05)', flexShrink: 0, marginBottom: '4px' }}>
+                  <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '9px', borderBottom: '1px solid #F3F0FF', background: 'linear-gradient(135deg, #F5F3FF 0%, #FAF9FF 100%)', borderRadius: '13px 13px 0 0' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                    </div>
+                    <span style={{ fontSize: '12.5px', fontWeight: '700', color: '#1E293B' }}>Team & Organization</span>
+                    <span style={{ marginLeft: 'auto', fontSize: '10.5px', color: '#94A3B8', fontWeight: '500' }}>Optional</span>
+                  </div>
+                  <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                    {[
+                      { label: 'Hiring Manager', key: 'hiringManager', did: 'mgr', opts: meta.employees, placeholder: 'Select Manager' },
+                      { label: 'Requested By', key: 'requestedBy', did: 'req', opts: meta.employees, placeholder: 'Select Requester' },
+                      { label: 'Branch', key: 'branch', did: 'br', opts: meta.branches, placeholder: 'Select Branch' },
+                      { label: 'Company', key: 'company', did: 'co', opts: meta.companies, placeholder: 'Select Company' },
+                    ].map(f => (
+                      <div key={f.key}>
+                        <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</label>
+                        <CustomSelect id={f.did} accentColor="#8B5CF6"
+                          value={formData[f.key]} onChange={v => setFormData({ ...formData, [f.key]: v })}
+                          placeholder={f.placeholder}
+                          options={[{ value: '', label: f.placeholder }, ...f.opts.map(o => ({ value: o.id, label: o.name }))]}
+                          isOpen={openDropdown === f.did}
+                          onToggle={() => setOpenDropdown(openDropdown === f.did ? null : f.did)}
+                          onClose={() => setOpenDropdown(null)} />
+                      </div>
                     ))}
-                  </select>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</label>
+                      <CustomSelect id="status" accentColor="#8B5CF6"
+                        value={formData.status} onChange={v => setFormData({ ...formData, status: v })}
+                        placeholder="Select Status"
+                        options={['Open', 'Draft', 'Pending', 'Approved', 'Published', 'Closed'].map(s => ({ value: s, label: s }))}
+                        isOpen={openDropdown === 'status'}
+                        onToggle={() => setOpenDropdown(openDropdown === 'status' ? null : 'status')}
+                        onClose={() => setOpenDropdown(null)} />
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Designation <span className="text-red-500">*</span></label>
-                  <select required value={formData.designation} onChange={e => setFormData({ ...formData, designation: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Designation</option>
-                    {meta.designations.map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Employment Type <span className="text-red-500">*</span></label>
-                  <select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Full Time">Full Time</option>
-                    <option value="Part Time">Part Time</option>
-                    <option value="Contract">Contract</option>
-                    <option value="Internship">Internship</option>
-                    <option value="Temporary">Temporary</option>
-                    <option value="Freelancer">Freelancer</option>
-                    <option value="Remote">Remote</option>
-                    <option value="Hybrid">Hybrid</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Job Location <span className="text-red-500">*</span></label>
-                  <input type="text" required value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="e.g. Bangalore / Remote" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Number of Vacancies <span className="text-red-500">*</span></label>
-                  <input type="number" required min="1" value={formData.vacancies} onChange={e => setFormData({ ...formData, vacancies: e.target.value })} placeholder="e.g. 3" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Experience From (Years) <span className="text-red-500">*</span></label>
-                  <input type="number" required min="0" value={formData.experienceFrom} onChange={e => setFormData({ ...formData, experienceFrom: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Experience To (Years) <span className="text-red-500">*</span></label>
-                  <input type="number" required min="0" value={formData.experienceTo} onChange={e => setFormData({ ...formData, experienceTo: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Salary From</label>
-                  <input type="number" value={formData.salaryFrom} onChange={e => setFormData({ ...formData, salaryFrom: e.target.value })} placeholder="e.g. 500000" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Salary To</label>
-                  <input type="number" value={formData.salaryTo} onChange={e => setFormData({ ...formData, salaryTo: e.target.value })} placeholder="e.g. 1000000" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Hiring Manager</label>
-                  <select value={formData.hiringManager} onChange={e => setFormData({ ...formData, hiringManager: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Hiring Manager</option>
-                    {meta.employees.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Requested By</label>
-                  <select value={formData.requestedBy} onChange={e => setFormData({ ...formData, requestedBy: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Requester</option>
-                    {meta.employees.map(emp => (
-                      <option key={emp.id} value={emp.id}>{emp.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Opening Date <span className="text-red-500">*</span></label>
-                  <input type="date" required value={formData.openingDate} onChange={e => setFormData({ ...formData, openingDate: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Closing Date <span className="text-red-500">*</span></label>
-                  <input type="date" required value={formData.closingDate} onChange={e => setFormData({ ...formData, closingDate: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Priority <span className="text-red-500">*</span></label>
-                  <select value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                    <option value="Critical">Critical</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Branch</label>
-                  <select value={formData.branch} onChange={e => setFormData({ ...formData, branch: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Branch</option>
-                    {meta.branches.map(b => (
-                      <option key={b.id} value={b.id}>{b.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Company</label>
-                  <select value={formData.company} onChange={e => setFormData({ ...formData, company: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Company</option>
-                    {meta.companies.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Open">Open</option>
-                    <option value="Published">Published</option>
-                    <option value="Closed">Closed</option>
-                    <option value="Draft">Draft</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Approved">Approved</option>
-                  </select>
-                </div>
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Job Description <span className="text-red-500">*</span></label>
-                  <textarea required value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Provide key responsibilities and expectations..." style={{ height: '100px' }} className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
-                </div>
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Skills Required</label>
-                  <input type="text" value={formData.skills} onChange={e => setFormData({ ...formData, skills: e.target.value })} placeholder="e.g. React.js, Redux, TypeScript, Tailwind CSS" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
+
               </div>
-              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
-                <button type="button" onClick={() => { setShowAddModal(false); resetForm(); }} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-                <button type="submit" className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">{editingJobId ? 'Update Opening' : 'Save Job Opening'}</button>
+
+              {/* Footer */}
+              <div style={{
+                padding: '14px 24px', borderTop: '1px solid #E2E8F0', background: '#fff', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+              }}>
+                <p style={{ margin: 0, fontSize: '11.5px', color: '#94A3B8' }}>
+                  Fields marked <span style={{ color: '#EF4444', fontWeight: '700' }}>*</span> are required
+                </p>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <button type="button" onClick={() => { setShowAddModal(false); resetForm(); }}
+                    style={{ padding: '0 20px', height: '38px', border: '1.5px solid #CBD5E1', borderRadius: '9px', fontSize: '13px', fontWeight: '600', color: '#475569', background: '#fff', cursor: 'pointer' }}
+                    onMouseEnter={e => e.currentTarget.style.background = '#F8FAFC'}
+                    onMouseLeave={e => e.currentTarget.style.background = '#fff'}>
+                    Cancel
+                  </button>
+                  <button type="submit"
+                    style={{
+                      padding: '0 24px', height: '38px', border: 'none', borderRadius: '9px', fontSize: '13px', fontWeight: '700',
+                      color: '#fff', cursor: 'pointer', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)',
+                      boxShadow: '0 3px 12px rgba(37,99,235,0.35)',
+                      display: 'flex', alignItems: 'center', gap: '7px', transition: 'all 0.15s'
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 18px rgba(37,99,235,0.45)'; }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 3px 12px rgba(37,99,235,0.35)'; }}>
+                    <CheckCircle2 size={14} />
+                    {editingJobId ? 'Update Opening' : 'Save Job Opening'}
+                  </button>
+                </div>
               </div>
             </form>
           </div>
@@ -1628,8 +1843,8 @@ export default function JobOpenings() {
                 <div className="text-xs font-bold text-slate-700 mb-1">LinkedIn Application Link</div>
                 <div className="flex items-center gap-2">
                   <input type="text" readOnly value={getTrackedUrl(selectedJobForLinks, 'LINKEDIN')} className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-600" />
-                  <button 
-                    onClick={() => copyToClipboard(getTrackedUrl(selectedJobForLinks, 'LINKEDIN'), 'linkedin')} 
+                  <button
+                    onClick={() => copyToClipboard(getTrackedUrl(selectedJobForLinks, 'LINKEDIN'), 'linkedin')}
                     className="px-3 py-2 bg-blue-600 text-white rounded text-xs font-semibold whitespace-nowrap hover:bg-blue-700"
                   >
                     {copiedLinkType === 'linkedin' ? 'Copied!' : 'Copy Link'}
@@ -1641,8 +1856,8 @@ export default function JobOpenings() {
                 <div className="text-xs font-bold text-slate-700 mb-1">Indeed Application Link</div>
                 <div className="flex items-center gap-2">
                   <input type="text" readOnly value={getTrackedUrl(selectedJobForLinks, 'INDEED')} className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-600" />
-                  <button 
-                    onClick={() => copyToClipboard(getTrackedUrl(selectedJobForLinks, 'INDEED'), 'indeed')} 
+                  <button
+                    onClick={() => copyToClipboard(getTrackedUrl(selectedJobForLinks, 'INDEED'), 'indeed')}
                     className="px-3 py-2 bg-blue-600 text-white rounded text-xs font-semibold whitespace-nowrap hover:bg-blue-700"
                   >
                     {copiedLinkType === 'indeed' ? 'Copied!' : 'Copy Link'}
@@ -1654,8 +1869,8 @@ export default function JobOpenings() {
                 <div className="text-xs font-bold text-slate-700 mb-1">Naukri Application Link</div>
                 <div className="flex items-center gap-2">
                   <input type="text" readOnly value={getTrackedUrl(selectedJobForLinks, 'NAUKRI')} className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-600" />
-                  <button 
-                    onClick={() => copyToClipboard(getTrackedUrl(selectedJobForLinks, 'naukri'), 'naukri')} 
+                  <button
+                    onClick={() => copyToClipboard(getTrackedUrl(selectedJobForLinks, 'naukri'), 'naukri')}
                     className="px-3 py-2 bg-blue-600 text-white rounded text-xs font-semibold whitespace-nowrap hover:bg-blue-700"
                   >
                     {copiedLinkType === 'naukri' ? 'Copied!' : 'Copy Link'}
@@ -1667,8 +1882,8 @@ export default function JobOpenings() {
                 <div className="text-xs font-bold text-slate-700 mb-1">Direct Madhura Career Page Link</div>
                 <div className="flex items-center gap-2">
                   <input type="text" readOnly value={getTrackedUrl(selectedJobForLinks, 'CAREER_PAGE')} className="w-full p-2 bg-white border border-slate-200 rounded text-xs text-slate-600" />
-                  <button 
-                    onClick={() => copyToClipboard(getTrackedUrl(selectedJobForLinks, 'direct'), 'direct')} 
+                  <button
+                    onClick={() => copyToClipboard(getTrackedUrl(selectedJobForLinks, 'direct'), 'direct')}
                     className="px-3 py-2 bg-slate-800 text-white rounded text-xs font-semibold whitespace-nowrap hover:bg-slate-900"
                   >
                     {copiedLinkType === 'direct' ? 'Copied!' : 'Copy Link'}
@@ -1706,6 +1921,226 @@ export default function JobOpenings() {
             <div className="p-4 border-t border-slate-200 flex justify-end gap-3 shrink-0">
               <button onClick={() => setDeleteConfirmJob(null)} className="px-5 py-2 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-200">Cancel</button>
               <button onClick={() => handleDeleteJob(deleteConfirmJob.id)} className="px-5 py-2 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 shadow-md">Delete Job</button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* 1. Publish Confirmation Modal */}
+      {publishModalJob && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setPublishModalJob(null)} />
+          <div className="modal-centered-content" style={{ width: '480px', maxWidth: '90vw', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1E293B' }}>
+                <Globe size={20} color="#2563EB" />
+                <h3 style={{ fontSize: '16px', fontWeight: '700', margin: 0 }}>Publish Job to {publishModalJob.channelName}?</h3>
+              </div>
+              <button onClick={() => setPublishModalJob(null)} style={{ border: 'none', background: 'transparent', fontSize: '18px', color: '#94A3B8', cursor: 'pointer' }}>✕</button>
+            </div>
+            <div style={{ padding: '20px 24px', flex: 1 }}>
+              <p style={{ fontSize: '14px', color: '#475569', margin: '0 0 12px', lineHeight: '1.5' }}>
+                Are you sure you want to publish <strong>"{publishModalJob.job_title}"</strong> to {publishModalJob.channelName}?
+              </p>
+              <div style={{ padding: '10px 12px', borderRadius: '8px', background: '#EFF6FF', border: '1px solid #BFDBFE', fontSize: '12px', color: '#1D4ED8' }}>
+                This job will immediately become visible to candidates on {publishModalJob.channelName}.
+              </div>
+            </div>
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: '#F8FAFC' }}>
+              <button
+                onClick={() => setPublishModalJob(null)}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', color: '#475569', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                disabled={isPublishingId === publishModalJob.id}
+                onClick={() => handlePublishChannel(publishModalJob.id, publishModalJob.channel)}
+                style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: '#2563EB', color: '#FFF', fontSize: '13px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 2px 6px rgba(37,99,235,0.3)' }}
+              >
+                {isPublishingId === publishModalJob.id ? 'Publishing...' : 'Publish Now'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* 2. Close Job Confirmation Modal */}
+      {closeModalJob && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setCloseModalJob(null)} />
+          <div className="modal-centered-content" style={{ width: '520px', maxWidth: '90vw', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFFBEB' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#D97706' }}>
+                <AlertTriangle size={22} />
+                <h3 style={{ fontSize: '16px', fontWeight: '700', margin: 0 }}>Close Job Opening?</h3>
+              </div>
+              <button onClick={() => setCloseModalJob(null)} style={{ border: 'none', background: 'transparent', fontSize: '18px', color: '#94A3B8', cursor: 'pointer' }}>✕</button>
+            </div>
+
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '16px', flex: 1, overflowY: 'auto' }}>
+              <div>
+                <p style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#1E293B' }}>
+                  "{closeModalJob.job_title}"
+                </p>
+                <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748B' }}>
+                  Choose how you want to close this job:
+                </p>
+              </div>
+
+              {/* Radio Options */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <label style={{
+                  padding: '12px 14px', borderRadius: '10px', border: `1.5px solid ${closeScope === 'HRMS_ONLY' ? '#2563EB' : '#E2E8F0'}`,
+                  background: closeScope === 'HRMS_ONLY' ? '#EFF6FF' : '#FFF', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '10px'
+                }}>
+                  <input
+                    type="radio"
+                    name="closeScope"
+                    checked={closeScope === 'HRMS_ONLY'}
+                    onChange={() => setCloseScope('HRMS_ONLY')}
+                    style={{ marginTop: '3px' }}
+                  />
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B' }}>Close only in HRMS</div>
+                    <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>The job will be closed internally. External postings remain unaffected.</div>
+                  </div>
+                </label>
+
+                <label style={{
+                  padding: '12px 14px', borderRadius: '10px', border: `1.5px solid ${closeScope === 'EVERYWHERE' ? '#2563EB' : '#E2E8F0'}`,
+                  background: closeScope === 'EVERYWHERE' ? '#EFF6FF' : '#FFF', cursor: 'pointer', display: 'flex', alignItems: 'flex-start', gap: '10px'
+                }}>
+                  <input
+                    type="radio"
+                    name="closeScope"
+                    checked={closeScope === 'EVERYWHERE'}
+                    onChange={() => setCloseScope('EVERYWHERE')}
+                    style={{ marginTop: '3px' }}
+                  />
+                  <div>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B' }}>Close everywhere</div>
+                    <div style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>The job will also be closed / unpublished on selected platforms.</div>
+                  </div>
+                </label>
+              </div>
+
+              {/* Checkboxes if Close Everywhere */}
+              {closeScope === 'EVERYWHERE' && (
+                <div style={{ padding: '12px 14px', borderRadius: '10px', background: '#F8FAFC', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Publishing platforms to close:
+                  </div>
+                  <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
+                    {[
+                      { key: 'CAREER_PAGE', label: 'Website' },
+                      { key: 'LINKEDIN', label: 'LinkedIn' },
+                      { key: 'INDEED', label: 'Indeed' }
+                    ].map(ch => (
+                      <label key={ch.key} style={{ fontSize: '13px', color: '#1E293B', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={!!closeChannels[ch.key]}
+                          onChange={e => setCloseChannels({ ...closeChannels, [ch.key]: e.target.checked })}
+                        />
+                        {ch.label}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Optional Reason Dropdown */}
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
+                  Optional reason:
+                </label>
+                <select
+                  value={closeReason}
+                  onChange={e => setCloseReason(e.target.value)}
+                  style={{ width: '100%', height: '38px', padding: '0 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '13px', color: '#1E293B', background: '#FFF', outline: 'none' }}
+                >
+                  <option value="Job Filled">Job Filled</option>
+                  <option value="Hiring Cancelled">Hiring Cancelled</option>
+                  <option value="Position On Hold">Position On Hold</option>
+                  <option value="Duplicate Job">Duplicate Job</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: '#F8FAFC' }}>
+              <button
+                onClick={() => setCloseModalJob(null)}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', color: '#475569', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                disabled={isClosingId === closeModalJob.id}
+                onClick={handleCloseJobConfirmed}
+                style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: '#EF4444', color: '#FFF', fontSize: '13px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 2px 6px rgba(239,68,68,0.3)' }}
+              >
+                {isClosingId === closeModalJob.id ? 'Closing...' : 'Close Job'}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* 3. Reopen Job Confirmation Modal */}
+      {reopenModalJob && (
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setReopenModalJob(null)} />
+          <div className="modal-centered-content" style={{ width: '480px', maxWidth: '90vw', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#1E293B' }}>
+                <RefreshCw size={20} color="#2563EB" />
+                <h3 style={{ fontSize: '16px', fontWeight: '700', margin: 0 }}>Reopen Job Opening?</h3>
+              </div>
+              <button onClick={() => setReopenModalJob(null)} style={{ border: 'none', background: 'transparent', fontSize: '18px', color: '#94A3B8', cursor: 'pointer' }}>✕</button>
+            </div>
+
+            <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
+              <p style={{ margin: 0, fontSize: '14px', fontWeight: '600', color: '#1E293B' }}>
+                "{reopenModalJob.job_title}"
+              </p>
+              <p style={{ margin: 0, fontSize: '12px', color: '#64748B' }}>
+                Select platforms to publish when reopened:
+              </p>
+
+              <div style={{ padding: '12px 14px', borderRadius: '10px', background: '#F8FAFC', border: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {[
+                  { key: 'CAREER_PAGE', label: 'Website' },
+                  { key: 'LINKEDIN', label: 'LinkedIn' },
+                  { key: 'INDEED', label: 'Indeed' }
+                ].map(ch => (
+                  <label key={ch.key} style={{ fontSize: '13px', color: '#1E293B', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={!!reopenChannels[ch.key]}
+                      onChange={e => setReopenChannels({ ...reopenChannels, [ch.key]: e.target.checked })}
+                    />
+                    {ch.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ padding: '16px 24px', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', gap: '10px', background: '#F8FAFC' }}>
+              <button
+                onClick={() => setReopenModalJob(null)}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', color: '#475569', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+              >
+                Cancel
+              </button>
+              <button
+                disabled={isReopeningId === reopenModalJob.id}
+                onClick={handleReopenJobConfirmed}
+                style={{ padding: '8px 20px', borderRadius: '8px', border: 'none', background: '#2563EB', color: '#FFF', fontSize: '13px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 2px 6px rgba(37,99,235,0.3)' }}
+              >
+                {isReopeningId === reopenModalJob.id ? 'Reopening...' : 'Reopen Job'}
+              </button>
             </div>
           </div>
         </>

@@ -1,211 +1,419 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../../lib/api';
-import { Search, Filter, Download, Plus, MoreVertical, Gift, Clock, Award, Star } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell, Label } from 'recharts';
+import { useToast } from '../ui/Toast';
+import { 
+  Search, Plus, Gift, Clock, Award, Star, Loader2, AlertCircle, 
+  CheckCircle2, XCircle, X, Check, ShieldCheck 
+} from 'lucide-react';
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 export default function BonusIncentives() {
+  const { addToast } = useToast();
   const [bonuses, setBonuses] = useState([]);
+  const [activeEmployees, setActiveEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+
+  // Modals
+  const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // Form State
+  const [employeeId, setEmployeeId] = useState('');
+  const [bonusType, setBonusType] = useState('Performance Bonus');
+  const [amount, setAmount] = useState('');
+  const [reason, setReason] = useState('');
+  const [applicableMonth, setApplicableMonth] = useState(MONTHS[new Date().getMonth()]);
+  const [applicableYear, setApplicableYear] = useState(new Date().getFullYear().toString());
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [bonusesData, empData] = await Promise.all([
+        apiFetch('/payroll/bonuses'),
+        apiFetch('/employees?status=Active')
+      ]);
+
+      if (Array.isArray(bonusesData)) setBonuses(bonusesData);
+      else setBonuses([]);
+
+      if (Array.isArray(empData)) setActiveEmployees(empData);
+      else if (empData && Array.isArray(empData.data)) setActiveEmployees(empData.data);
+    } catch (err) {
+      console.error("Failed to load bonuses:", err);
+      addToast('Failed to load bonus & incentive records', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    apiFetch('/payroll/bonuses')
-      .then(data => {
-        if (Array.isArray(data)) setBonuses(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to fetch bonuses:", err);
-        setLoading(false);
-      });
+    loadData();
   }, []);
+
+  const handleCreateBonus = async (e) => {
+    e.preventDefault();
+    if (!employeeId || !amount) {
+      addToast('Please select an employee and specify the bonus amount', 'warning');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const payload = {
+        employee_id: employeeId,
+        bonus_type: bonusType,
+        amount: parseFloat(amount),
+        reason: reason.trim(),
+        applicable_month: applicableMonth,
+        applicable_year: parseInt(applicableYear, 10)
+      };
+
+      const res = await apiFetch('/payroll/bonuses', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      if (res && res.success) {
+        addToast('Bonus record added and approved for payroll!', 'success');
+        setShowModal(false);
+        setAmount('');
+        setReason('');
+        loadData();
+      } else {
+        addToast(res.message || 'Failed to add bonus', 'error');
+      }
+    } catch (err) {
+      addToast(err.message || 'Error creating bonus', 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdateStatus = async (id, newStatus) => {
+    try {
+      const res = await apiFetch(`/payroll/bonuses/${id}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res && res.success) {
+        addToast(`Bonus marked as ${newStatus}`, 'success');
+        loadData();
+      } else {
+        addToast(res.message || 'Failed to update status', 'error');
+      }
+    } catch (err) {
+      addToast('Error updating status', 'error');
+    }
+  };
 
   const totalBonusAmount = bonuses.reduce((acc, b) => acc + (parseFloat(b.amount) || 0), 0);
   const pendingBonusAmount = bonuses.filter(b => b.status === 'Pending').reduce((acc, b) => acc + (parseFloat(b.amount) || 0), 0);
+  const approvedBonusAmount = bonuses.filter(b => b.status === 'Approved').reduce((acc, b) => acc + (parseFloat(b.amount) || 0), 0);
+  const processedBonusAmount = bonuses.filter(b => b.status === 'Processed').reduce((acc, b) => acc + (parseFloat(b.amount) || 0), 0);
 
   const kpiData = [
-    { title: 'Total Bonus Paid', value: `₹ ${totalBonusAmount.toLocaleString('en-IN')}`, icon: <Gift size={20} color="#10B981" />, bgColor: '#ECFDF5' },
-    { title: 'Pending Bonus', value: `₹ ${pendingBonusAmount.toLocaleString('en-IN')}`, icon: <Clock size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
-    { title: 'Total Incentives', value: `₹ ${(totalBonusAmount * 0.6).toLocaleString('en-IN')}`, icon: <Award size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
-    { title: 'Performance Rewards', value: `₹ ${(totalBonusAmount * 0.4).toLocaleString('en-IN')}`, icon: <Star size={20} color="#8B5CF6" />, bgColor: '#F5F3FF' },
+    { title: 'Total Bonuses Granted', value: `₹ ${totalBonusAmount.toLocaleString('en-IN')}`, icon: <Gift size={20} color="#2563EB" />, bgColor: '#EFF6FF' },
+    { title: 'Approved for Payroll', value: `₹ ${approvedBonusAmount.toLocaleString('en-IN')}`, icon: <Award size={20} color="#10B981" />, bgColor: '#ECFDF5' },
+    { title: 'Disbursed in Payslips', value: `₹ ${processedBonusAmount.toLocaleString('en-IN')}`, icon: <ShieldCheck size={20} color="#8B5CF6" />, bgColor: '#F5F3FF' },
+    { title: 'Pending Approval', value: `₹ ${pendingBonusAmount.toLocaleString('en-IN')}`, icon: <Clock size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
   ];
 
-  const tableData = bonuses.length > 0 ? bonuses.map((b, idx) => ({
-    id: b.id || idx + 1,
-    name: b.employeeName || 'Employee',
-    type: b.type || 'Performance Bonus',
-    rating: '5/5',
-    amount: `₹ ${parseFloat(b.amount || 0).toLocaleString('en-IN')}`,
-    status: b.status || 'Approved',
-    date: b.date || new Date().toLocaleDateString('en-GB')
-  })) : [
-    { id: 1, name: 'Rahul Verma', type: 'Performance Bonus', rating: '5/5', amount: '₹ 50,000', status: 'Approved', date: new Date().toLocaleDateString('en-GB') }
-  ];
+  const filteredBonuses = bonuses.filter(b => {
+    const q = search.toLowerCase();
+    const name = (b.employeeName || '').toLowerCase();
+    const type = (b.type || b.bonus_type || '').toLowerCase();
+    const code = (b.emp_code || '').toLowerCase();
+    return !search.trim() || name.includes(q) || type.includes(q) || code.includes(q);
+  });
 
-  const barData = [
-    { name: 'Engineering', Bonus: 40000, Incentive: 24000 },
-    { name: 'Sales', Bonus: 30000, Incentive: 50000 },
-    { name: 'Marketing', Bonus: 20000, Incentive: 15000 },
-    { name: 'HR', Bonus: 15000, Incentive: 5000 },
-  ];
-
-  const pieData = [
-    { name: 'Performance', value: 45, color: '#2952E3' },
-    { name: 'Sales Incentive', value: 30, color: '#10B981' },
-    { name: 'Festival', value: 15, color: '#F59E0B' },
-    { name: 'Retention', value: 10, color: '#8B5CF6' },
-  ];
   const cardStyle = {
     background: '#FFFFFF',
     borderRadius: '16px',
-    padding: '24px',
-    boxShadow: '0 8px 24px rgba(15,23,42,0.08)',
+    padding: '20px 24px',
+    boxShadow: '0 4px 16px rgba(15,23,42,0.06)',
+    border: '1px solid #F1F5F9',
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    boxSizing: 'border-box'
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', fontFamily: '"Inter", sans-serif' }}>
 
-      {/* Top Toolbar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '16px', flex: 1 }}>
-          <div style={{ position: 'relative', width: '300px' }}>
-            <Search size={18} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-            <input
-              type="text"
-              placeholder="Search Employee..."
-              style={{ width: '100%', padding: '10px 10px 10px 40px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px' }}
-            />
-          </div>
-          <button style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500', color: '#334155' }}>
-            <Filter size={16} /> Bonus Type
-          </button>
+      {/* Top Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+        <div>
+          <h1 style={{ margin: '0 0 4px 0', fontSize: '22px', fontWeight: '700', color: '#1E293B' }}>Bonuses & Incentives</h1>
+          <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>Manage performance incentives, festival rewards, and auto-link to payroll generation</p>
         </div>
-        <div style={{ display: 'flex', gap: '16px' }}>
-          <button style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500', color: '#334155' }}>
-            <Download size={16} /> Export
-          </button>
-          <button style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
-            <Plus size={16} /> Declare Bonus
-          </button>
-        </div>
+        <button
+          onClick={() => {
+            setEmployeeId(activeEmployees[0]?.id || '');
+            setShowModal(true);
+          }}
+          style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}
+        >
+          <Plus size={16} /> Add Bonus / Incentive
+        </button>
       </div>
 
       {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
         {kpiData.map((kpi, idx) => (
-          <div key={idx} style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: '16px', padding: '20px' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: kpi.bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div key={idx} style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: '16px', padding: '18px 20px' }}>
+            <div style={{ width: '44px', height: '44px', borderRadius: '12px', background: kpi.bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {kpi.icon}
             </div>
-            <div>
-              <div style={{ fontSize: '13px', color: '#64748B', fontWeight: '500', marginBottom: '4px' }}>{kpi.title}</div>
-              <div style={{ fontSize: '24px', color: '#1E293B', fontWeight: '700' }}>{kpi.value}</div>
+            <div style={{ minWidth: 0, flex: 1 }}>
+              <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{kpi.title}</div>
+              <div style={{ fontSize: '20px', color: '#1E293B', fontWeight: '800' }}>{kpi.value}</div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Charts Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px' }}>
-        <div style={cardStyle}>
-          <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Department Performance Bonus</h3>
-          <div style={{ height: '250px', width: '100%' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} dy={10} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#64748B', fontSize: 12 }} dx={-10} tickFormatter={(val) => `₹${val / 1000}k`} />
-                <Tooltip cursor={{ fill: '#F8FAFC' }} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                <Bar dataKey="Bonus" fill="#2952E3" radius={[4, 4, 0, 0]} maxBarSize={40} />
-                <Bar dataKey="Incentive" fill="#10B981" radius={[4, 4, 0, 0]} maxBarSize={40} />
-              </BarChart>
-            </ResponsiveContainer>
+      {/* Main Table Container */}
+      <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+        
+        {/* Table Toolbar */}
+        <div style={{ padding: '18px 24px', borderBottom: '1px solid #F1F5F9', background: '#FAFBFF', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ position: 'relative', width: '300px' }}>
+            <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+            <input
+              type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search employee or bonus type..."
+              style={{ width: '100%', padding: '9px 12px 9px 36px', borderRadius: '8px', border: '1px solid #CBD5E1', outline: 'none', fontSize: '13px', color: '#334155' }}
+            />
           </div>
         </div>
 
-        <div style={cardStyle}>
-          <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Bonus Distribution</h3>
-          <div style={{ height: '220px', width: '100%' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={pieData} innerRadius={65} outerRadius={90} paddingAngle={5} dataKey="value" cx="50%" cy="50%">
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                  <Label
-                    value="600k"
-                    position="center"
-                    fill="#1E293B"
-                    style={{ fontSize: '24px', fontWeight: '700' }}
-                  />
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', justifyContent: 'center', marginTop: '16px' }}>
-            {pieData.map((item, idx) => (
-              <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#475569' }}>
-                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: item.color }}></div>
-                {item.name}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Main Table */}
-      <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
-          <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Bonus & Incentive Records</h3>
-        </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr>
-                <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Employee</th>
-                <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Bonus Type</th>
-                <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Performance Rating</th>
-                <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Amount</th>
-                <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Payment Date</th>
-                <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Status</th>
-                <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tableData.map((row) => (
-                <tr key={row.id} style={{ borderBottom: '1px solid #F8FAFC' }}>
-                  <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: '600', color: '#334155' }}>{row.name}</td>
-                  <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569' }}>{row.type}</td>
-                  <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569', textAlign: 'center' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#F8FAFC', padding: '4px 8px', borderRadius: '6px' }}>
-                      <Star size={14} color={row.rating !== 'N/A' ? '#F59E0B' : '#94A3B8'} fill={row.rating !== 'N/A' ? '#F59E0B' : 'none'} />
-                      <span style={{ fontSize: '12px', fontWeight: '600' }}>{row.rating}</span>
-                    </div>
-                  </td>
-                  <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: '600', color: '#1E293B' }}>{row.amount}</td>
-                  <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569' }}>{row.date}</td>
-                  <td style={{ padding: '16px 24px', textAlign: 'center' }}>
-                    <span style={{
-                      padding: '6px 12px',
-                      borderRadius: '20px',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      backgroundColor: row.status === 'Paid' ? '#ECFDF5' : row.status === 'Approved' ? '#EFF6FF' : '#FFFBEB',
-                      color: row.status === 'Paid' ? '#10B981' : row.status === 'Approved' ? '#2952E3' : '#F59E0B'
-                    }}>
-                      {row.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: '16px 24px', textAlign: 'center' }}>
-                    <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}><MoreVertical size={16} /></button>
-                  </td>
+        {/* Table Content */}
+        <div style={{ width: '100%', maxWidth: '100%', minWidth: 0, overflowX: 'auto', boxSizing: 'border-box' }}>
+          {loading ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>
+              <Loader2 className="animate-spin text-blue-600" size={28} style={{ margin: '0 auto 8px' }} />
+              <span>Loading bonus records...</span>
+            </div>
+          ) : filteredBonuses.length === 0 ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: '#94A3B8' }}>
+              <AlertCircle size={28} color="#CBD5E1" style={{ margin: '0 auto 8px' }} />
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#475569' }}>No bonus or incentive records found</div>
+              <p style={{ fontSize: '12px', color: '#94A3B8', marginTop: '2px' }}>Click "Add Bonus / Incentive" to reward an employee.</p>
+            </div>
+          ) : (
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Employee</th>
+                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Department</th>
+                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Reward Type</th>
+                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Amount</th>
+                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Applicable Period</th>
+                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'center' }}>Payroll Status</th>
+                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'right' }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {filteredBonuses.map((row) => (
+                  <tr key={row.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <td style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '700', color: '#1E293B' }}>
+                      {row.employeeName}
+                      <span style={{ display: 'block', fontSize: '11px', color: '#64748B', fontWeight: '500' }}>{row.emp_code}</span>
+                    </td>
+                    <td style={{ padding: '16px 20px', fontSize: '13px', color: '#475569' }}>{row.department || 'General'}</td>
+                    <td style={{ padding: '16px 20px', fontSize: '13px', color: '#334155', fontWeight: '600' }}>{row.bonus_type || row.type}</td>
+                    <td style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '700', color: '#10B981' }}>
+                      ₹ {parseFloat(row.amount || 0).toLocaleString('en-IN')}
+                    </td>
+                    <td style={{ padding: '16px 20px', fontSize: '13px', color: '#475569' }}>
+                      {row.applicable_month ? `${row.applicable_month} ${row.applicable_year || ''}` : row.date || 'Immediate'}
+                    </td>
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
+                      <span style={{
+                        padding: '4px 10px',
+                        borderRadius: '20px',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        backgroundColor: row.status === 'Processed' ? '#EFF6FF' : row.status === 'Approved' ? '#ECFDF5' : '#FFFBEB',
+                        color: row.status === 'Processed' ? '#2563EB' : row.status === 'Approved' ? '#059669' : '#D97706',
+                        border: row.status === 'Processed' ? '1px solid #BFDBFE' : row.status === 'Approved' ? '1px solid #A7F3D0' : '1px solid #FDE68A'
+                      }}>
+                        {row.status === 'Processed' ? '✓ Processed in Payroll' : row.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                      {row.status !== 'Processed' && (
+                        <div style={{ display: 'inline-flex', gap: '6px' }}>
+                          {row.status !== 'Approved' && (
+                            <button
+                              onClick={() => handleUpdateStatus(row.id, 'Approved')}
+                              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #A7F3D0', background: '#ECFDF5', color: '#059669', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+                            >
+                              <Check size={12} /> Approve
+                            </button>
+                          )}
+                          {row.status !== 'Rejected' && (
+                            <button
+                              onClick={() => handleUpdateStatus(row.id, 'Rejected')}
+                              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+                            >
+                              <X size={12} /> Reject
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       </div>
+
+      {/* Modal: Add Bonus */}
+      {showModal && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)' }}>
+          <div style={{ width: '520px', maxWidth: '95vw', background: '#FFFFFF', borderRadius: '20px', boxShadow: '0 25px 60px -12px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+            
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', background: '#FAFBFF', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Gift size={18} color="#2563EB" />
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#1E293B' }}>Add Bonus / Incentive</h3>
+              </div>
+              <button onClick={() => setShowModal(false)} style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                <X size={14} color="#64748B" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateBonus} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
+                  Select Employee <span style={{ color: '#EF4444' }}>*</span>
+                </label>
+                <select
+                  required
+                  value={employeeId}
+                  onChange={e => setEmployeeId(e.target.value)}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
+                >
+                  <option value="">-- Choose Employee --</option>
+                  {activeEmployees.map(e => (
+                    <option key={e.id} value={e.id}>
+                      {e.name} ({e.employee_id || `EMP${e.id}`}) • {e.department || 'General'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
+                    Reward Type <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <select
+                    value={bonusType}
+                    onChange={e => setBonusType(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
+                  >
+                    <option value="Performance Bonus">Performance Bonus</option>
+                    <option value="Festival Bonus">Festival Bonus</option>
+                    <option value="Sales Incentive">Sales Incentive</option>
+                    <option value="Retention Reward">Retention Reward</option>
+                    <option value="Spot Award">Spot Award</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
+                    Amount (₹) <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={amount}
+                    onChange={e => setAmount(e.target.value)}
+                    placeholder="e.g. 5000"
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px' }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
+                    Applicable Payroll Month
+                  </label>
+                  <select
+                    value={applicableMonth}
+                    onChange={e => setApplicableMonth(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
+                  >
+                    {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
+                    Year
+                  </label>
+                  <select
+                    value={applicableYear}
+                    onChange={e => setApplicableYear(e.target.value)}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
+                  >
+                    <option value="2025">2025</option>
+                    <option value="2026">2026</option>
+                    <option value="2027">2027</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
+                  Reason / Description
+                </label>
+                <textarea
+                  rows={2}
+                  value={reason}
+                  onChange={e => setReason(e.target.value)}
+                  placeholder="e.g. Exceptional Q3 sales performance achievement"
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  style={{ padding: '10px 18px', borderRadius: '10px', border: '1px solid #CBD5E1', background: '#FFF', color: '#64748B', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  style={{ padding: '10px 24px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#FFF', fontSize: '13px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  {saving ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle2 size={16} />}
+                  Add & Approve
+                </button>
+              </div>
+
+            </form>
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

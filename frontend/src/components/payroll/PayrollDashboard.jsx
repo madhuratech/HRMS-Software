@@ -40,7 +40,7 @@ export default function PayrollDashboard({ defaultTab = 'structure' }) {
   };
 
   return (
-    <div style={{ padding: '24px', background: '#F8FAFC', minHeight: '100vh', fontFamily: 'Inter, sans-serif' }}>
+    <div style={{ padding: '0', background: '#F8FAFC', minHeight: '100%', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', fontFamily: 'Inter, sans-serif' }}>
       
       {/* Temporary Tab Navigation for Demonstration (Remove if routing is handled externally) */}
       <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', marginBottom: '24px', paddingBottom: '12px', borderBottom: '1px solid #E2E8F0' }}>

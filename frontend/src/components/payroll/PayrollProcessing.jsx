@@ -1,195 +1,368 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../../lib/api';
-import { Play, Calendar, Filter, Users, FileText, CheckCircle2, Circle, ArrowRight, IndianRupee } from 'lucide-react';
+import { useToast } from '../ui/Toast';
+import { useNavigate } from 'react-router-dom';
+import { 
+  Play, CheckCircle2, AlertCircle, Clock, Users, Building2, 
+  Wallet, ShieldCheck, ArrowRight, Loader2, Sparkles, RefreshCw, FileText, Check
+} from 'lucide-react';
 
-const workflowSteps = [
-  { step: 1, name: 'Attendance Verification', status: 'completed' },
-  { step: 2, name: 'Leave Calculation', status: 'completed' },
-  { step: 3, name: 'Overtime Calculation', status: 'completed' },
-  { step: 4, name: 'Salary Calculation', status: 'in-progress' },
-  { step: 5, name: 'Tax Calculation', status: 'pending' },
-  { step: 6, name: 'Payroll Completed', status: 'pending' },
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
 ];
 
 export default function PayrollProcessing() {
-  const [runs, setRuns] = useState([]);
+  const { addToast } = useToast();
+  const navigate = useNavigate();
+
+  const [month, setMonth] = useState(MONTHS[new Date().getMonth()]);
+  const [year, setYear] = useState(new Date().getFullYear().toString());
+  const [scope, setScope] = useState('all'); // 'all' | 'department' | 'employee'
+  const [departmentId, setDepartmentId] = useState('');
+  const [employeeId, setEmployeeId] = useState('');
+
+  const [activeEmployees, setActiveEmployees] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [structures, setStructures] = useState([]);
+  const [bonuses, setBonuses] = useState([]);
+  const [claims, setClaims] = useState([]);
+  const [loans, setLoans] = useState([]);
+  const [existingPayslips, setExistingPayslips] = useState([]);
+
   const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
+
+  const loadPipelineData = async () => {
+    setLoading(true);
+    try {
+      const [empData, deptData, structData, bonusData, claimData, loanData, payslipData] = await Promise.all([
+        apiFetch('/employees?status=Active'),
+        apiFetch('/departments'),
+        apiFetch('/payroll/structures'),
+        apiFetch('/payroll/bonuses'),
+        apiFetch('/payroll/reimbursements'),
+        apiFetch('/payroll/loans'),
+        apiFetch(`/payroll/payslips?month=${month}&year=${year}`)
+      ]);
+
+      if (Array.isArray(empData)) setActiveEmployees(empData);
+      else if (empData && Array.isArray(empData.data)) setActiveEmployees(empData.data);
+
+      if (Array.isArray(deptData)) setDepartments(deptData);
+      if (Array.isArray(structData)) setStructures(structData);
+      if (Array.isArray(bonusData)) setBonuses(bonusData);
+      if (Array.isArray(claimData)) setClaims(claimData);
+      if (Array.isArray(loanData)) setLoans(loanData);
+
+      if (payslipData && Array.isArray(payslipData.data)) setExistingPayslips(payslipData.data);
+      else if (Array.isArray(payslipData)) setExistingPayslips(payslipData);
+      else setExistingPayslips([]);
+    } catch (err) {
+      console.error("Failed to load processing pipeline data:", err);
+      addToast('Failed to load payroll pipeline data', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    apiFetch('/payroll/runs')
-      .then(data => {
-        if (Array.isArray(data)) {
-          setRuns(data);
-        }
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to load payroll runs:", err);
-        setLoading(false);
+    loadPipelineData();
+  }, [month, year]);
+
+  const handleRunPayroll = async () => {
+    setProcessing(true);
+    try {
+      const payload = {
+        month,
+        year: parseInt(year, 10),
+        scope,
+        department_id: scope === 'department' ? departmentId : null,
+        employee_id: scope === 'employee' ? employeeId : null
+      };
+
+      const res = await apiFetch('/payroll/generate', {
+        method: 'POST',
+        body: JSON.stringify(payload)
       });
-  }, []);
 
-  const latestRun = runs[0] || {};
-  const processedCount = latestRun.processed_employees || 450;
-  const totalCount = latestRun.total_employees || 480;
-  const pendingCount = totalCount - processedCount;
+      if (res && res.success) {
+        addToast(res.message || 'Payroll generated successfully!', 'success');
+        loadPipelineData();
+      } else {
+        addToast(res.message || 'Failed to generate payroll', 'error');
+      }
+    } catch (err) {
+      addToast(err.message || 'Error generating payroll', 'error');
+    } finally {
+      setProcessing(false);
+    }
+  };
 
-  const kpiData = [
-    { title: 'Employees Processed', value: `${processedCount} / ${totalCount}`, icon: <Users size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
-    { title: 'Pending Payroll', value: String(pendingCount), icon: <FileText size={20} color="#F59E0B" />, bgColor: '#FFFBEB' },
-    { title: 'Gross Payroll', value: latestRun.gross_amount ? `₹ ${(latestRun.gross_amount / 100000).toFixed(1)}L` : '₹ 45.2L', icon: <IndianRupee size={20} color="#10B981" />, bgColor: '#ECFDF5' },
-    { title: 'Net Payroll', value: latestRun.net_amount ? `₹ ${(latestRun.net_amount / 100000).toFixed(1)}L` : '₹ 38.8L', icon: <IndianRupee size={20} color="#8B5CF6" />, bgColor: '#F5F3FF' },
-  ];
+  const totalEmployeesCount = activeEmployees.length;
+  const alreadyGeneratedCount = existingPayslips.length;
+  const pendingGenerationCount = Math.max(0, totalEmployeesCount - alreadyGeneratedCount);
 
-  const tableData = [
-    { id: 1, dept: 'Engineering', emp: 145, gross: '₹ 15,20,000', net: '₹ 12,80,000', status: 'Processed' },
-    { id: 2, dept: 'Sales', emp: 82, gross: '₹ 6,40,000', net: '₹ 5,30,000', status: 'Processed' },
-    { id: 3, dept: 'Marketing', emp: 45, gross: '₹ 3,80,000', net: '₹ 3,20,000', status: 'Processed' },
-    { id: 4, dept: 'Customer Support', emp: 120, gross: '₹ 5,60,000', net: '₹ 4,90,000', status: 'Pending' },
-    { id: 5, dept: 'Human Resources', emp: 15, gross: '₹ 1,80,000', net: '₹ 1,50,000', status: 'Pending' },
-  ];
+  const totalGrossGenerated = existingPayslips.reduce((acc, p) => acc + (parseFloat(p.gross_salary) || 0), 0);
+  const totalDeductionsGenerated = existingPayslips.reduce((acc, p) => acc + (parseFloat(p.total_deductions) || 0), 0);
+  const totalNetGenerated = existingPayslips.reduce((acc, p) => acc + (parseFloat(p.net_salary) || 0), 0);
+
+  // Department Aggregation
+  const deptSummaryMap = {};
+  existingPayslips.forEach(p => {
+    const dept = p.department || 'General';
+    if (!deptSummaryMap[dept]) {
+      deptSummaryMap[dept] = { name: dept, count: 0, gross: 0, deductions: 0, net: 0, status: p.status };
+    }
+    deptSummaryMap[dept].count += 1;
+    deptSummaryMap[dept].gross += parseFloat(p.gross_salary || 0);
+    deptSummaryMap[dept].deductions += parseFloat(p.total_deductions || 0);
+    deptSummaryMap[dept].net += parseFloat(p.net_salary || 0);
+  });
+  const deptSummaries = Object.values(deptSummaryMap);
+
   const cardStyle = {
     background: '#FFFFFF',
     borderRadius: '16px',
-    padding: '24px',
-    boxShadow: '0 8px 24px rgba(15,23,42,0.08)',
+    padding: '20px 24px',
+    boxShadow: '0 4px 16px rgba(15,23,42,0.06)',
+    border: '1px solid #F1F5F9',
+    width: '100%',
+    maxWidth: '100%',
+    minWidth: 0,
+    boxSizing: 'border-box'
   };
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+  const steps = [
+    { title: '1. Salary Structures', desc: `${structures.length} active structures mapped to staff`, status: 'Ready' },
+    { title: '2. Attendance & LOP', desc: 'Auto-calculates payable days & unpaid leaves', status: 'Active' },
+    { title: '3. Bonuses & Incentives', desc: `${bonuses.filter(b => b.status === 'Approved').length} approved bonuses pending payout`, status: 'Integrated' },
+    { title: '4. Expense Reimbursements', desc: `${claims.filter(c => c.status === 'Approved').length} approved claims ready to merge`, status: 'Integrated' },
+    { title: '5. Loan EMI Recovery', desc: `${loans.filter(l => l.status === 'Active').length} active loan EMI deductions`, status: 'Integrated' },
+    { title: '6. Statutory Deductions', desc: 'PF (12%), ESI (0.75%), PT (₹200) & TDS rules', status: 'Configured' },
+  ];
 
-      {/* Top Toolbar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '16px', flex: 1 }}>
-          <button style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500', color: '#334155' }}>
-            <Calendar size={16} /> October 2026
-          </button>
-          <button style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500', color: '#334155' }}>
-            <Filter size={16} /> All Departments
-          </button>
-        </div>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box', fontFamily: '"Inter", sans-serif' }}>
+
+      {/* Top Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
         <div>
-          <button style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600' }}>
-            <Play size={16} /> Process Payroll
-          </button>
+          <h1 style={{ margin: '0 0 4px 0', fontSize: '22px', fontWeight: '700', color: '#1E293B' }}>Payroll Processing Engine</h1>
+          <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>Unified execution pipeline computing attendance, earnings, claims, loan EMIs, and statutory taxes</p>
         </div>
+        <button
+          onClick={() => navigate('/payroll/generate-payslips')}
+          style={{ padding: '10px 18px', borderRadius: '10px', border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+        >
+          <FileText size={16} /> Go to Payslips & PDF Downloads
+        </button>
       </div>
 
-      {/* KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '24px' }}>
-        {kpiData.map((kpi, idx) => (
-          <div key={idx} style={{ ...cardStyle, display: 'flex', alignItems: 'center', gap: '16px', padding: '20px' }}>
-            <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: kpi.bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              {kpi.icon}
+      {/* Pipeline Checklist Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+        {steps.map((s, idx) => (
+          <div key={idx} style={{ ...cardStyle, padding: '18px 20px', display: 'flex', alignItems: 'flex-start', gap: '14px', borderLeft: '4px solid #2563EB' }}>
+            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <CheckCircle2 size={18} color="#2563EB" />
             </div>
-            <div>
-              <div style={{ fontSize: '13px', color: '#64748B', fontWeight: '500', marginBottom: '4px' }}>{kpi.title}</div>
-              <div style={{ fontSize: '24px', color: '#1E293B', fontWeight: '700' }}>{kpi.value}</div>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B' }}>{s.title}</div>
+                <span style={{ fontSize: '10px', fontWeight: '700', color: '#059669', background: '#ECFDF5', padding: '2px 6px', borderRadius: '4px' }}>{s.status}</span>
+              </div>
+              <div style={{ fontSize: '11px', color: '#64748B' }}>{s.desc}</div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Workflow Progress */}
-      <div style={{ ...cardStyle, padding: '24px' }}>
-        <h3 style={{ margin: '0 0 20px 0', fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Payroll Workflow</h3>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative' }}>
-
-          <div style={{ position: 'absolute', top: '16px', left: '40px', right: '40px', height: '2px', background: '#E2E8F0', zIndex: 1 }}></div>
-
-          {workflowSteps.map((step, idx) => (
-            <div key={idx} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', zIndex: 2, background: '#FFF', padding: '0 10px' }}>
-              <div style={{
-                width: '32px', height: '32px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                background: step.status === 'completed' ? '#10B981' : step.status === 'in-progress' ? '#2952E3' : '#F1F5F9',
-                color: step.status === 'pending' ? '#94A3B8' : '#FFF',
-                border: step.status === 'pending' ? '2px solid #E2E8F0' : 'none'
-              }}>
-                {step.status === 'completed' ? <CheckCircle2 size={20} /> : <span style={{ fontSize: '14px', fontWeight: '600' }}>{step.step}</span>}
-              </div>
-              <div style={{ fontSize: '13px', fontWeight: '500', color: step.status === 'pending' ? '#94A3B8' : '#1E293B', textAlign: 'center', maxWidth: '100px' }}>
-                {step.name}
-              </div>
+      {/* Interactive Execution Controller Card */}
+      <div style={{ ...cardStyle, background: 'linear-gradient(135deg, #1E3A8A, #1D4ED8)', color: '#FFFFFF' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '20px' }}>
+          
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
+              <Sparkles size={18} color="#93C5FD" />
+              <span style={{ fontSize: '12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.6px', color: '#BFDBFE' }}>Execution Control Panel</span>
             </div>
-          ))}
+            <h2 style={{ margin: '0 0 6px 0', fontSize: '20px', fontWeight: '800', color: '#FFFFFF' }}>Calculate Payroll for {month} {year}</h2>
+            <p style={{ margin: 0, fontSize: '12px', color: '#DBEAFE' }}>
+              {pendingGenerationCount > 0 
+                ? `${pendingGenerationCount} active employee(s) ready to be calculated and generated.`
+                : `All active employees have already been generated for ${month} ${year}.`
+              }
+            </p>
+          </div>
+
+          {/* Form Filter Row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            
+            <div>
+              <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', color: '#BFDBFE', marginBottom: '4px' }}>Month</label>
+              <select
+                value={month}
+                onChange={e => setMonth(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #93C5FD', background: '#FFFFFF', color: '#1E293B', fontSize: '13px', fontWeight: '600', outline: 'none' }}
+              >
+                {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', color: '#BFDBFE', marginBottom: '4px' }}>Year</label>
+              <select
+                value={year}
+                onChange={e => setYear(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #93C5FD', background: '#FFFFFF', color: '#1E293B', fontSize: '13px', fontWeight: '600', outline: 'none' }}
+              >
+                <option value="2025">2025</option>
+                <option value="2026">2026</option>
+                <option value="2027">2027</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', color: '#BFDBFE', marginBottom: '4px' }}>Scope</label>
+              <select
+                value={scope}
+                onChange={e => setScope(e.target.value)}
+                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #93C5FD', background: '#FFFFFF', color: '#1E293B', fontSize: '13px', fontWeight: '600', outline: 'none' }}
+              >
+                <option value="all">All Active Staff</option>
+                <option value="department">By Department</option>
+                <option value="employee">Individual Staff</option>
+              </select>
+            </div>
+
+            {scope === 'department' && (
+              <div>
+                <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', color: '#BFDBFE', marginBottom: '4px' }}>Department</label>
+                <select
+                  value={departmentId}
+                  onChange={e => setDepartmentId(e.target.value)}
+                  style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #93C5FD', background: '#FFFFFF', color: '#1E293B', fontSize: '13px', fontWeight: '600', outline: 'none' }}
+                >
+                  <option value="">-- Choose Dept --</option>
+                  {departments.map(d => <option key={d.id} value={d.id}>{d.dept_name}</option>)}
+                </select>
+              </div>
+            )}
+
+            {scope === 'employee' && (
+              <div>
+                <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', color: '#BFDBFE', marginBottom: '4px' }}>Employee</label>
+                <select
+                  value={employeeId}
+                  onChange={e => setEmployeeId(e.target.value)}
+                  style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #93C5FD', background: '#FFFFFF', color: '#1E293B', fontSize: '13px', fontWeight: '600', outline: 'none' }}
+                >
+                  <option value="">-- Choose Employee --</option>
+                  {activeEmployees.map(e => <option key={e.id} value={e.id}>{e.name} ({e.employee_id || `EMP${e.id}`})</option>)}
+                </select>
+              </div>
+            )}
+
+            <div style={{ marginTop: '16px' }}>
+              <button
+                onClick={handleRunPayroll}
+                disabled={processing}
+                style={{ padding: '9px 24px', borderRadius: '10px', border: 'none', background: '#FFFFFF', color: '#1D4ED8', fontSize: '13px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)' }}
+              >
+                {processing ? <Loader2 size={16} className="animate-spin text-blue-600" /> : <Play size={16} fill="#1D4ED8" />}
+                Execute Payroll Run
+              </button>
+            </div>
+
+          </div>
+
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '3fr 1fr', gap: '24px' }}>
+      {/* Summary Metrics for Selected Period */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+        <div style={{ ...cardStyle, padding: '18px 20px' }}>
+          <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '2px' }}>Employees Generated</div>
+          <div style={{ fontSize: '20px', fontWeight: '800', color: '#1E293B' }}>{alreadyGeneratedCount} / {totalEmployeesCount}</div>
+          <div style={{ fontSize: '11px', color: '#10B981', marginTop: '2px', fontWeight: '600' }}>{pendingGenerationCount} Pending Run</div>
+        </div>
 
-        {/* Main Table */}
-        <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', alignSelf: 'start' }}>
-          <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Department Summary</h3>
+        <div style={{ ...cardStyle, padding: '18px 20px' }}>
+          <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '2px' }}>Gross Calculated</div>
+          <div style={{ fontSize: '20px', fontWeight: '800', color: '#2563EB' }}>₹ {totalGrossGenerated.toLocaleString('en-IN')}</div>
+          <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>Includes Base + Bonus + Claims</div>
+        </div>
+
+        <div style={{ ...cardStyle, padding: '18px 20px' }}>
+          <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '2px' }}>Total Deductions</div>
+          <div style={{ fontSize: '20px', fontWeight: '800', color: '#DC2626' }}>₹ {totalDeductionsGenerated.toLocaleString('en-IN')}</div>
+          <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>PF + PT + LOP + Loan EMIs</div>
+        </div>
+
+        <div style={{ ...cardStyle, padding: '18px 20px' }}>
+          <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '2px' }}>Total Net Payable</div>
+          <div style={{ fontSize: '20px', fontWeight: '800', color: '#10B981' }}>₹ {totalNetGenerated.toLocaleString('en-IN')}</div>
+          <div style={{ fontSize: '11px', color: '#10B981', marginTop: '2px', fontWeight: '600' }}>Ready for Disbursement</div>
+        </div>
+      </div>
+
+      {/* Department Breakdown Table */}
+      <div style={{ ...cardStyle, padding: 0, overflow: 'hidden', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+        <div style={{ padding: '18px 24px', borderBottom: '1px solid #F1F5F9', background: '#FAFBFF', display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#1E293B' }}>Department Payroll Aggregation</h3>
+            <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748B' }}>Breakdown of generated figures for {month} {year}</p>
           </div>
-          <div style={{ overflowX: 'auto' }}>
+        </div>
+
+        <div style={{ width: '100%', maxWidth: '100%', minWidth: 0, overflowX: 'auto', boxSizing: 'border-box' }}>
+          {deptSummaries.length === 0 ? (
+            <div style={{ padding: '40px', textAlign: 'center', color: '#94A3B8' }}>
+              <AlertCircle size={28} color="#CBD5E1" style={{ margin: '0 auto 8px' }} />
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#475569' }}>No payroll runs executed yet for {month} {year}</div>
+              <p style={{ fontSize: '12px', color: '#94A3B8', marginTop: '2px' }}>Click "Execute Payroll Run" above to generate department figures.</p>
+            </div>
+          ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
-                <tr>
-                  <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Department</th>
-                  <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Employees</th>
-                  <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Gross Salary</th>
-                  <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Net Salary</th>
-                  <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Status</th>
+                <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Department</th>
+                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Employees Processed</th>
+                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Total Gross</th>
+                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Total Deductions</th>
+                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Total Net Payable</th>
+                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'center' }}>Run Status</th>
                 </tr>
               </thead>
               <tbody>
-                {tableData.map((row) => (
-                  <tr key={row.id} style={{ borderBottom: '1px solid #F8FAFC' }}>
-                    <td style={{ padding: '16px 24px', fontSize: '14px', fontWeight: '600', color: '#334155' }}>{row.dept}</td>
-                    <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569' }}>{row.emp}</td>
-                    <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569', fontWeight: '500' }}>{row.gross}</td>
-                    <td style={{ padding: '16px 24px', fontSize: '14px', color: '#1E293B', fontWeight: '600' }}>{row.net}</td>
-                    <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                {deptSummaries.map((d, idx) => (
+                  <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <td style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '700', color: '#1E293B' }}>{d.name}</td>
+                    <td style={{ padding: '16px 20px', fontSize: '13px', color: '#475569', fontWeight: '600' }}>{d.count} Staff</td>
+                    <td style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '700', color: '#1E293B' }}>₹ {d.gross.toLocaleString('en-IN')}</td>
+                    <td style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '700', color: '#DC2626' }}>₹ {d.deductions.toLocaleString('en-IN')}</td>
+                    <td style={{ padding: '16px 20px', fontSize: '13px', fontWeight: '700', color: '#10B981' }}>₹ {d.net.toLocaleString('en-IN')}</td>
+                    <td style={{ padding: '16px 20px', textAlign: 'center' }}>
                       <span style={{
-                        padding: '6px 12px',
+                        padding: '4px 10px',
                         borderRadius: '20px',
-                        fontSize: '12px',
-                        fontWeight: '600',
-                        backgroundColor: row.status === 'Processed' ? '#ECFDF5' : '#FFFBEB',
-                        color: row.status === 'Processed' ? '#10B981' : '#F59E0B'
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        backgroundColor: '#ECFDF5',
+                        color: '#059669',
+                        border: '1px solid #A7F3D0'
                       }}>
-                        {row.status}
+                        {d.status || 'Generated'}
                       </span>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          </div>
+          )}
         </div>
-
-        {/* Right Widget */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <div style={cardStyle}>
-            <h3 style={{ margin: '0 0 20px 0', fontSize: '15px', fontWeight: '600', color: '#1E293B' }}>Payroll Checklist</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {[
-                { name: 'Attendance Completed', status: 'done' },
-                { name: 'Leave Approved', status: 'done' },
-                { name: 'Salary Generated', status: 'pending' },
-                { name: 'Payslips Ready', status: 'pending' },
-              ].map((item, idx) => (
-                <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  {item.status === 'done' ? (
-                    <CheckCircle2 size={18} color="#10B981" />
-                  ) : (
-                    <Circle size={18} color="#CBD5E1" />
-                  )}
-                  <div style={{ fontSize: '14px', color: item.status === 'done' ? '#334155' : '#64748B', fontWeight: item.status === 'done' ? '500' : '400' }}>
-                    {item.name}
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button style={{ width: '100%', marginTop: '24px', padding: '10px 0', borderRadius: '8px', border: '1px solid #2952E3', background: '#EFF6FF', color: '#2952E3', fontSize: '13px', fontWeight: '600', cursor: 'pointer' }}>
-              Review Anomalies
-            </button>
-          </div>
-        </div>
-
       </div>
+
     </div>
   );
 }

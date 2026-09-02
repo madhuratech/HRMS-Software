@@ -72,13 +72,40 @@ app.use(cors({
   credentials: true
 }));
 app.use(express.json());
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Serve static uploads
+app.use("/uploads", express.static(uploadsDir, {
+  setHeaders: (res) => {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+  }
+}));
+
+// Safe endpoint for static upload files
+app.get("/uploads/:filename", (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(uploadsDir, filename);
+  if (fs.existsSync(filePath)) {
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return res.sendFile(path.resolve(filePath));
+  }
+  return res.status(404).json({ success: false, message: 'Original uploaded resume file not found' });
+});
 
 app.get("/", (req, res) => {
   res.send("HRM Backend Running");
 });
 
 app.use("/api/public/jobs", require("./routes/publicJobs"));
+app.use("/api/applications", require("./routes/applications"));
+app.use("/app/applications", require("./routes/applications"));
 app.use("/api/jobs", require("./routes/requirements"));
 app.use("/api/attendance", require("./routes/attendanceRoute"));
 app.use("/app/attendance", require("./routes/attendanceRoute"));
@@ -107,6 +134,7 @@ app.use("/app/promotions", require("./routes/promotions"));
 app.use("/app/leaves", require("./routes/leaves"));
 app.use("/app/organization", require("./routes/organizationRoute"));
 app.use("/app/payroll", require("./routes/payroll"));
+app.use("/api/payroll", require("./routes/payroll"));
 app.use("/app/tickets", require("./routes/tickets"));
 app.use("/app/rbac", require("./routes/rbacRoute"));
 app.use("/app/notifications", require("./routes/notifications"));

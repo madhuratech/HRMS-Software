@@ -5,7 +5,7 @@ import { MapPin, Briefcase, Building, Calendar, ArrowLeft, CheckCircle2, FileTex
 export default function PublicJobDetails() {
   const { slug } = useParams();
   const [searchParams] = useSearchParams();
-  
+
   // Capture tracking source parameter from URL (e.g. ?source=linkedin)
   const sourceParam = (searchParams.get('source') || 'CAREER_PAGE').toUpperCase();
 
@@ -63,6 +63,8 @@ export default function PublicJobDetails() {
 
   const handleFormSubmit = async (e) => {
     e.preventDefault();
+    if (submitting) return;
+
     if (!formData.fullName || !formData.email || !formData.phone) {
       alert('Full Name, Email, and Phone Number are required.');
       return;
@@ -78,17 +80,27 @@ export default function PublicJobDetails() {
       data.append('fullName', formData.fullName);
       data.append('email', formData.email);
       data.append('phone', formData.phone);
-      data.append('currentLocation', formData.currentLocation);
-      data.append('totalExperience', formData.totalExperience);
-      data.append('currentCompany', formData.currentCompany);
-      data.append('currentDesignation', formData.currentDesignation);
-      data.append('expectedSalary', formData.expectedSalary);
-      data.append('noticePeriod', formData.noticePeriod);
-      data.append('linkedin', formData.linkedin);
-      data.append('portfolio', formData.portfolio);
-      data.append('coverLetter', formData.coverLetter);
-      data.append('source', sourceParam);
+      data.append('currentLocation', formData.currentLocation || '');
+      data.append('totalExperience', formData.totalExperience || '');
+      data.append('currentCompany', formData.currentCompany || '');
+      data.append('currentDesignation', formData.currentDesignation || '');
+      data.append('expectedSalary', formData.expectedSalary || '');
+      data.append('noticePeriod', formData.noticePeriod || '');
+      data.append('linkedin', formData.linkedin || '');
+      data.append('portfolio', formData.portfolio || '');
+      data.append('coverLetter', formData.coverLetter || '');
+      data.append('source', sourceParam || '');
       data.append('resume', resumeFile);
+
+      console.log("========== RESUME UPLOAD DEBUG ==========");
+      console.log("Selected Resume File:", resumeFile);
+      console.log("File Name:", resumeFile?.name);
+      console.log("File Type:", resumeFile?.type);
+      console.log("File Size:", resumeFile?.size);
+      for (const [key, value] of data.entries()) {
+        console.log(key, value);
+      }
+      console.log("=========================================");
 
       const res = await fetch(`${API_URL}/api/public/jobs/${job.id}/apply`, {
         method: 'POST',
@@ -135,7 +147,7 @@ export default function PublicJobDetails() {
 
   return (
     <div style={{ fontFamily: '"Inter", -apple-system, sans-serif', background: '#F8FAFC', minHeight: '100vh', color: '#1E293B' }}>
-      
+
       {/* Brand Header */}
       <header style={{ background: '#0F172A', color: '#FFFFFF', padding: '16px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -154,7 +166,7 @@ export default function PublicJobDetails() {
 
       {/* Main Container */}
       <div style={{ maxWidth: '1000px', margin: '40px auto', padding: '0 24px' }}>
-        
+
         {/* Job Header Card */}
         <div style={{ background: '#FFFFFF', borderRadius: '16px', padding: '32px', border: '1px solid #E2E8F0', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)', marginBottom: '32px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
@@ -163,7 +175,7 @@ export default function PublicJobDetails() {
                 {job.department}
               </span>
               <h1 style={{ fontSize: '28px', fontWeight: '800', color: '#0F172A', margin: '4px 0 12px' }}>{job.title}</h1>
-              
+
               <div style={{ display: 'flex', gap: '20px', fontSize: '14px', color: '#64748B', flexWrap: 'wrap' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><MapPin size={16} /> {job.location}</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}><Briefcase size={16} /> {job.experience}</span>
@@ -172,7 +184,7 @@ export default function PublicJobDetails() {
               </div>
             </div>
 
-            <button 
+            <button
               onClick={() => setShowApplyModal(true)}
               style={{ padding: '14px 28px', background: '#2563EB', color: '#FFF', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 14px rgba(37,99,235,0.3)' }}
             >
@@ -183,9 +195,9 @@ export default function PublicJobDetails() {
 
         {/* Content Breakdown Grid */}
         <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: '32px' }}>
-          
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            
+
             {/* Job Summary */}
             {job.jobSummary && (
               <div style={{ background: '#FFFFFF', borderRadius: '16px', padding: '28px', border: '1px solid #E2E8F0' }}>
@@ -216,7 +228,7 @@ export default function PublicJobDetails() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div style={{ background: '#FFFFFF', borderRadius: '16px', padding: '24px', border: '1px solid #E2E8F0', spaceY: '16px' }}>
               <h4 style={{ fontSize: '15px', fontWeight: '700', margin: '0 0 16px', borderBottom: '1px solid #F1F5F9', paddingBottom: '12px' }}>Job Snapshot</h4>
-              
+
               <div style={{ fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '12px', color: '#64748B' }}>
                 <div>
                   <span style={{ color: '#94A3B8', display: 'block', marginBottom: '2px' }}>Required Experience</span>
@@ -233,7 +245,7 @@ export default function PublicJobDetails() {
               </div>
 
               <div style={{ marginTop: '24px' }}>
-                <button 
+                <button
                   onClick={() => setShowApplyModal(true)}
                   style={{ width: '100%', padding: '12px', background: '#2563EB', color: '#FFF', border: 'none', borderRadius: '8px', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}
                 >
@@ -252,7 +264,7 @@ export default function PublicJobDetails() {
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowApplyModal(false)} />
           <div className="modal-centered-content" style={{ width: '650px', maxWidth: '95vw', maxHeight: '90vh' }}>
-            
+
             <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
               <div>
                 <h3 className="text-xl font-bold text-slate-800">Apply for {job.title}</h3>
@@ -270,7 +282,7 @@ export default function PublicJobDetails() {
                 <p className="text-sm text-slate-600 max-w-md mx-auto">
                   Your application for <strong>{job.title}</strong> has been submitted successfully to Madhura HRMS ATS. Our recruitment team will review your profile.
                 </p>
-                <button 
+                <button
                   onClick={() => {
                     setShowApplyModal(false);
                     setSubmittedSuccess(false);
@@ -282,7 +294,7 @@ export default function PublicJobDetails() {
               </div>
             ) : (
               <form onSubmit={handleFormSubmit} className="p-6 overflow-y-auto flex-1 space-y-4 text-xs">
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">Full Name <span className="text-red-500">*</span></label>
@@ -340,19 +352,19 @@ export default function PublicJobDetails() {
 
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Resume Upload <span className="text-red-500">*</span> (PDF, DOC, DOCX)</label>
-                  <input 
-                    type="file" 
-                    required 
+                  <input
+                    type="file"
+                    required
                     accept=".pdf,.doc,.docx"
                     onChange={e => setResumeFile(e.target.files[0] || null)}
-                    className="w-full p-2 border border-slate-200 rounded-lg text-xs" 
+                    className="w-full p-2 border border-slate-200 rounded-lg text-xs"
                   />
                 </div>
 
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Cover Letter / Notes</label>
-                  <textarea 
-                    rows={3} 
+                  <textarea
+                    rows={3}
                     value={formData.coverLetter}
                     onChange={e => setFormData({ ...formData, coverLetter: e.target.value })}
                     placeholder="Briefly introduce yourself and why you're a great fit for this position..."

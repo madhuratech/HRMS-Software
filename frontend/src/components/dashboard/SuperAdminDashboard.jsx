@@ -93,12 +93,12 @@ const KpiCard = ({ label, value, trend, trendLabel, iconBg, iconColor, iconSymbo
     borderRadius: 14,
     border: '1px solid #E5E7EB',
     boxShadow: '0 4px 16px rgba(15,23,42,0.04)',
-    padding: '16px 18px',
+    padding: '14px 16px',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
-    flex: '1 1 0',
     minWidth: 0,
+    width: '100%',
     boxSizing: 'border-box',
     transition: 'all 200ms ease',
   }} className="hover:-translate-y-[2px] hover:shadow-md">
@@ -106,26 +106,26 @@ const KpiCard = ({ label, value, trend, trendLabel, iconBg, iconColor, iconSymbo
     {/* Top Row: Left Text (Title + Value) and Right Icon Box */}
     <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', width: '100%', gap: 6 }}>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontSize: 12, fontWeight: 500, color: '#6B7280', marginBottom: 4, lineHeight: 1.3 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: '#6B7280', marginBottom: 4, lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
           {label}
         </div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: '#0F172A', lineHeight: 1.1 }}>{value}</div>
+        <div style={{ fontSize: 20, fontWeight: 800, color: '#0F172A', lineHeight: 1.1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{value}</div>
       </div>
 
       <div style={{
         width: 32, height: 32, borderRadius: 8,
         background: iconBg, color: iconColor,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 15, fontWeight: 700, flexShrink: 0,
+        fontSize: 14, fontWeight: 700, flexShrink: 0,
       }}>
         {iconSymbol}
       </div>
     </div>
 
     {/* Bottom Row: Growth Percentage Text */}
-    <div style={{ fontSize: 12, fontWeight: 600, color: '#10B981', display: 'flex', alignItems: 'center', gap: 6, marginTop: 14, lineHeight: 1.4 }}>
+    <div style={{ fontSize: 11, fontWeight: 600, color: '#10B981', display: 'flex', alignItems: 'center', gap: 4, marginTop: 10, lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
       <span>↑ {trend}</span>
-      <span style={{ color: '#9CA3AF', fontWeight: 400, fontSize: 11 }}>{trendLabel}</span>
+      <span style={{ color: '#9CA3AF', fontWeight: 400, fontSize: 10 }}>{trendLabel}</span>
     </div>
 
   </div>
@@ -290,14 +290,17 @@ export function SuperAdminDashboard() {
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box', background: '#F8FAFC', minHeight: '100vh', padding: 0 }}>
 
-      {/* ── FIRST ROW: 5 KPI Cards Grid ── */}
+      {/* ── FIRST ROW: 5 KPI Cards in a Single Line ── */}
       <div
-        className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-6"
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: 16,
-          marginBottom: 24
+          gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+          gap: 12,
+          marginBottom: 24,
+          width: '100%',
+          maxWidth: '100%',
+          minWidth: 0,
+          boxSizing: 'border-box'
         }}
       >
         <KpiCard label="Total Revenue" value={revenueValue} trend="12.5%" trendLabel="vs last month" iconBg="#F3E8FF" iconColor="#7C3AED" iconSymbol="₹" />

@@ -150,6 +150,25 @@ export default function Candidates() {
   const handleUpdateStatus = async (candidateId, newStatus) => {
     setActiveMenuId(null);
     try {
+      if (newStatus === 'Shortlisted' || newStatus === 'Rejected') {
+        const res = await fetch(`/app/candidates/${candidateId}/evaluate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getAuthToken()}`
+          },
+          body: JSON.stringify({ action: newStatus === 'Shortlisted' ? 'SHORTLIST' : 'REJECT' })
+        });
+        const resData = await res.json();
+        if (resData.success) {
+          addToast(`Candidate stage moved to "${newStatus}"`, 'success');
+          fetchCandidates();
+        } else {
+          addToast(resData.message || `Failed to move candidate to ${newStatus}`, 'error');
+        }
+        return;
+      }
+
       const res = await fetch(`/app/candidates/${candidateId}`, {
         method: 'PUT',
         headers: {
@@ -468,6 +487,7 @@ export default function Candidates() {
                 <tr style={{ background: '#F8FAFC' }}>
                   <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Candidate</th>
                   <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Job Title</th>
+                  <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap', textAlign: 'center' }}>ATS Score</th>
                   <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap', textAlign: 'center' }}>Stage</th>
                   <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Experience</th>
                   <th style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Applied On</th>
@@ -478,13 +498,15 @@ export default function Candidates() {
               <tbody>
                 {candidatesData.length === 0 ? (
                   <tr>
-                    <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No candidates found</td>
+                    <td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No candidates found</td>
                   </tr>
                 ) : (
                   candidatesData.map((row, index) => {
                     const initials = row.candidate_name ? row.candidate_name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'CD';
                     const appliedDate = row.created_at ? new Date(row.created_at).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : '-';
                     const isMenuOpen = activeMenuId === row.id;
+                    const atsVal = Math.round(Number(row.ats_score) || 0);
+                    const atsColor = atsVal >= 80 ? '#10B981' : atsVal >= 60 ? '#2563EB' : '#F59E0B';
 
                     return (
                       <tr key={row.id} style={{ borderBottom: index === candidatesData.length - 1 ? 'none' : '1px solid #F8FAFC' }}>
@@ -501,6 +523,16 @@ export default function Candidates() {
                         </td>
                         <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>{row.job_position}</td>
                         <td style={{ padding: '16px 24px', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ width: '48px', height: '6px', borderRadius: '3px', background: '#F1F5F9', overflow: 'hidden' }}>
+                              <div style={{ width: `${atsVal}%`, height: '100%', background: atsColor, borderRadius: '3px' }}></div>
+                            </div>
+                            <span style={{ fontSize: '12px', fontWeight: '700', color: atsColor }}>
+                              {atsVal}%
+                            </span>
+                          </div>
+                        </td>
+                        <td style={{ padding: '16px 24px', whiteSpace: 'nowrap', textAlign: 'center' }}>
                           <span style={{ 
                             padding: '4px 10px', 
                             borderRadius: '20px', 
@@ -509,9 +541,10 @@ export default function Candidates() {
                             backgroundColor: getStageColor(row.status).bg, 
                             color: getStageColor(row.status).text 
                           }}>
-                            {row.status}
+                            {row.status === 'Shortlisted' ? '✓ Shortlisted' : row.status === 'Rejected' ? '✕ Rejected' : row.status}
                           </span>
                         </td>
+
                         <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>{row.experience ? `${row.experience} Yrs` : '-'}</td>
                         <td style={{ padding: '16px 24px', fontSize: '14px', color: '#475569', whiteSpace: 'nowrap' }}>{appliedDate}</td>
                         <td style={{ padding: '16px 24px', whiteSpace: 'nowrap' }}>
@@ -547,6 +580,15 @@ export default function Candidates() {
                                 Candidate Actions
                               </div>
 
+                              {['Applied', 'Pending', 'Under Review', 'Screening Completed'].includes(row.status) && (
+                                <button
+                                  onClick={() => { setSelectedCandidate(row); setShowViewModal(true); setActiveMenuId(null); }}
+                                  style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', fontSize: '13px', color: '#2563EB', fontWeight: '600', background: '#EFF6FF', border: 'none', borderRadius: '6px', cursor: 'pointer', marginBottom: '4px' }}
+                                >
+                                  <CheckCircle2 size={15} color="#2563EB" /> Review & Evaluate Candidate
+                                </button>
+                              )}
+
                               <button
                                 onClick={() => { setSelectedCandidate(row); setShowViewModal(true); setActiveMenuId(null); }}
                                 style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', fontSize: '13px', color: '#334155', fontWeight: '500', background: 'none', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
@@ -563,50 +605,62 @@ export default function Candidates() {
                                 <Edit3 size={15} color="#8B5CF6" /> Edit Candidate Info
                               </button>
 
-                              <button
-                                onClick={() => { setSelectedCandidate(row); setShowScheduleModal(true); setActiveMenuId(null); }}
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', fontSize: '13px', color: '#334155', fontWeight: '500', background: 'none', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                                className="hover:bg-slate-50"
-                              >
-                                <Calendar size={15} color="#D97706" /> Schedule Interview
-                              </button>
+                              {row.status !== 'Rejected' && (
+                                <>
+                                  <button
+                                    onClick={() => { setSelectedCandidate(row); setShowScheduleModal(true); setActiveMenuId(null); }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', fontSize: '13px', color: '#334155', fontWeight: '500', background: 'none', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+                                    className="hover:bg-slate-50"
+                                  >
+                                    <Calendar size={15} color="#D97706" /> Schedule Interview
+                                  </button>
 
-                              <button
-                                onClick={() => { setSelectedCandidate(row); setShowOfferModal(true); setActiveMenuId(null); }}
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', fontSize: '13px', color: '#334155', fontWeight: '500', background: 'none', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                                className="hover:bg-slate-50"
-                              >
-                                <Send size={15} color="#059669" /> Issue Offer Letter
-                              </button>
+                                  <button
+                                    onClick={() => { setSelectedCandidate(row); setShowOfferModal(true); setActiveMenuId(null); }}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', fontSize: '13px', color: '#334155', fontWeight: '500', background: 'none', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+                                    className="hover:bg-slate-50"
+                                  >
+                                    <Send size={15} color="#059669" /> Issue Offer Letter
+                                  </button>
 
-                              <button
-                                onClick={() => handleHireCandidate(row)}
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', fontSize: '13px', color: '#059669', fontWeight: '600', background: '#ECFDF5', border: 'none', borderRadius: '6px', cursor: 'pointer', margin: '4px 0' }}
-                              >
-                                <UserCheck size={15} color="#059669" /> Hire & Move to Onboarding
-                              </button>
+                                  <button
+                                    onClick={() => handleHireCandidate(row)}
+                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', fontSize: '13px', color: '#059669', fontWeight: '600', background: '#ECFDF5', border: 'none', borderRadius: '6px', cursor: 'pointer', margin: '4px 0' }}
+                                  >
+                                    <UserCheck size={15} color="#059669" /> Hire & Move to Onboarding
+                                  </button>
+                                </>
+                              )}
 
                               <div style={{ height: '1px', background: '#F1F5F9', margin: '4px 0' }} />
 
-                              <div style={{ padding: '4px 10px', fontSize: '11px', fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase' }}>
-                                Move Stage
-                              </div>
+                              {row.status !== 'Rejected' && (
+                                <>
+                                  <div style={{ padding: '4px 10px', fontSize: '11px', fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase' }}>
+                                    Move Stage
+                                  </div>
 
-                              {['Applied', 'Shortlisted', 'Interview Scheduled', 'Selected', 'Hired', 'On Hold', 'Rejected'].map(stg => (
-                                <button
-                                  key={stg}
-                                  onClick={() => handleUpdateStatus(row.id, stg)}
-                                  style={{
-                                    display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
-                                    padding: '6px 10px', fontSize: '12px', color: row.status === stg ? '#2563EB' : '#475569',
-                                    fontWeight: row.status === stg ? '700' : '500',
-                                    background: row.status === stg ? '#EFF6FF' : 'none', border: 'none', borderRadius: '6px', cursor: 'pointer'
-                                  }}
-                                  className="hover:bg-slate-50"
-                                >
-                                  <CheckCircle2 size={13} color={row.status === stg ? '#2563EB' : '#94A3B8'} /> {stg}
-                                </button>
-                              ))}
+                                  {(['Applied', 'Pending', 'Under Review'].includes(row.status)
+                                    ? ['Shortlisted', 'Rejected', 'Interview Scheduled', 'On Hold']
+                                    : ['Interview Scheduled', 'Selected', 'Hired', 'On Hold']
+                                  ).map(stg => (
+                                    <button
+                                      key={stg}
+                                      onClick={() => handleUpdateStatus(row.id, stg)}
+                                      style={{
+                                        display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
+                                        padding: '6px 10px', fontSize: '12px', color: row.status === stg ? '#2563EB' : '#475569',
+                                        fontWeight: row.status === stg ? '700' : '500',
+                                        background: row.status === stg ? '#EFF6FF' : 'none', border: 'none', borderRadius: '6px', cursor: 'pointer'
+                                      }}
+                                      className="hover:bg-slate-50"
+                                    >
+                                      <CheckCircle2 size={13} color={row.status === stg ? '#2563EB' : '#94A3B8'} /> {stg}
+                                    </button>
+                                  ))}
+                                </>
+                              )}
+
 
                               <div style={{ height: '1px', background: '#F1F5F9', margin: '4px 0' }} />
 
@@ -690,6 +744,79 @@ export default function Candidates() {
             </div>
 
             <div className="p-6 space-y-6 overflow-y-auto" style={{ maxHeight: '75vh' }}>
+              {/* ATS Score & Match Breakdown */}
+              {(() => {
+                const atsScore = Math.round(Number(selectedCandidate.ats_score) || 0);
+                let b = selectedCandidate.ats_breakdown;
+                if (typeof b === 'string') {
+                  try { b = JSON.parse(b); } catch (e) { b = null; }
+                }
+                const breakdown = b || {
+                  skillsMatch: Math.round(atsScore * 0.4),
+                  skillsTotal: 40,
+                  experienceMatch: Math.round(atsScore * 0.2),
+                  experienceTotal: 20,
+                  educationMatch: Math.round(atsScore * 0.1),
+                  educationTotal: 10,
+                  screeningMatch: Math.round(atsScore * 0.2),
+                  screeningTotal: 20,
+                  otherMatch: Math.round(atsScore * 0.1),
+                  otherTotal: 10
+                };
+
+                return (
+                  <div className="p-4 bg-white rounded-xl border border-slate-200 shadow-sm space-y-3">
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                      <span className="text-xs font-bold text-slate-800">AUTOMATED ATS EVALUATION</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-500">Overall Match:</span>
+                        <span className={`text-sm font-extrabold px-2.5 py-0.5 rounded-full ${atsScore >= 80 ? 'bg-emerald-100 text-emerald-700' : atsScore >= 60 ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'}`}>
+                          {atsScore}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div className="p-2.5 bg-slate-50 rounded-lg">
+                        <div className="flex justify-between text-slate-600 font-semibold mb-1">
+                          <span>Skills Match</span>
+                          <span className="text-blue-600">{breakdown.skillsMatch}/{breakdown.skillsTotal || 40} pts</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                          <div style={{ width: `${(breakdown.skillsMatch / (breakdown.skillsTotal || 40)) * 100}%` }} className="h-full bg-blue-600 rounded-full"></div>
+                        </div>
+                      </div>
+                      <div className="p-2.5 bg-slate-50 rounded-lg">
+                        <div className="flex justify-between text-slate-600 font-semibold mb-1">
+                          <span>Experience Match</span>
+                          <span className="text-blue-600">{breakdown.experienceMatch}/{breakdown.experienceTotal || 20} pts</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                          <div style={{ width: `${(breakdown.experienceMatch / (breakdown.experienceTotal || 20)) * 100}%` }} className="h-full bg-blue-600 rounded-full"></div>
+                        </div>
+                      </div>
+                      <div className="p-2.5 bg-slate-50 rounded-lg">
+                        <div className="flex justify-between text-slate-600 font-semibold mb-1">
+                          <span>Education Match</span>
+                          <span className="text-blue-600">{breakdown.educationMatch}/{breakdown.educationTotal || 10} pts</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                          <div style={{ width: `${(breakdown.educationMatch / (breakdown.educationTotal || 10)) * 100}%` }} className="h-full bg-blue-600 rounded-full"></div>
+                        </div>
+                      </div>
+                      <div className="p-2.5 bg-slate-50 rounded-lg">
+                        <div className="flex justify-between text-slate-600 font-semibold mb-1">
+                          <span>Screening Match</span>
+                          <span className="text-blue-600">{breakdown.screeningMatch}/{breakdown.screeningTotal || 20} pts</span>
+                        </div>
+                        <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                          <div style={{ width: `${(breakdown.screeningMatch / (breakdown.screeningTotal || 20)) * 100}%` }} className="h-full bg-blue-600 rounded-full"></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl">
                 <div>
                   <span className="text-xs text-slate-500 font-semibold block">JOB POSITION</span>
@@ -708,6 +835,7 @@ export default function Candidates() {
                   <span className="text-sm font-semibold text-slate-800 flex items-center gap-1.5 mt-0.5"><Phone size={14} color="#2563EB" /> {selectedCandidate.mobile_number || '-'}</span>
                 </div>
               </div>
+
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -746,11 +874,11 @@ export default function Candidates() {
                   <div>
                     <span className="text-xs text-slate-500 font-semibold block">ATTACHED RESUME</span>
                     <span className="text-sm font-medium text-slate-800 flex items-center gap-1 mt-0.5">
-                      <FileText size={15} color="#2563EB" /> Resume Document
+                      <FileText size={15} color="#2563EB" /> {selectedCandidate.original_resume_name || 'Resume Document'}
                     </span>
                   </div>
                   <a
-                    href={selectedCandidate.resume}
+                    href={selectedCandidate.resume?.startsWith('http') ? selectedCandidate.resume : `${import.meta.env.VITE_BACKEND_URL || (window.location.port === '3000' ? 'http://localhost:5000' : window.location.origin)}${selectedCandidate.resume?.startsWith('/') ? '' : '/'}${selectedCandidate.resume}`}
                     target="_blank"
                     rel="noreferrer"
                     className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors"

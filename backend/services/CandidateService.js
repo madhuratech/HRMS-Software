@@ -1,33 +1,142 @@
 const Candidate = require('../models/Candidate');
+const AtsScoringService = require('./AtsScoringService');
+const ResumeParserService = require('./ResumeParserService');
 
 class CandidateService {
+  /**
+   * Helper: Resolve requirement by ID or job position
+   */
+  static async resolveRequirement(requirementId, jobPosition) {
+    if (requirementId) {
+      const rows = await Candidate.query('SELECT * FROM requirements WHERE id = ?', [requirementId]);
+      if (rows.length > 0) return rows[0];
+    }
+    if (jobPosition) {
+      const rows = await Candidate.query(
+        'SELECT * FROM requirements WHERE LOWER(job_title) = LOWER(?) ORDER BY id DESC LIMIT 1',
+        [jobPosition]
+      );
+      if (rows.length > 0) return rows[0];
+    }
+    return null;
+  }
+
   static async create(data, userId) {
-    // Check if email already exists
-    const existing = await Candidate.query('SELECT id FROM candidates WHERE email = ?', [data.email]);
-    if (existing.length > 0) {
-      throw new Error('Email address already registered');
+    // Extract resume text & skills if resume file is present
+    let extractedResumeData = { skills: [], education: null, experience: null };
+    if (data.resume || data.original_resume) {
+      try {
+        extractedResumeData = await ResumeParserService.parseResume(data.original_resume || data.resume);
+      } catch (e) {
+        console.warn('[CandidateService.create] Resume extraction notice:', e.message);
+      }
     }
 
-    const sql = `
-      INSERT INTO candidates (
-        candidate_name, email, mobile_number, gender, department_id, job_position,
-        date_of_birth, resume, experience, current_company, current_salary, expected_salary,
-        notice_period, skills, address, status, created_by, updated_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
+    // Merge skills with priority
+    const mergedSkillsList = ResumeParserService.mergeSkills({
+      resumeSkills: extractedResumeData.skills || [],
+      formSkills: data.skills || ''
+    });
+    const finalSkills = mergedSkillsList.length > 0 ? mergedSkillsList.join(', ') : (data.skills || null);
+    const finalExperience = data.experience || extractedResumeData.experience || null;
 
-    const params = [
-      data.candidate_name, data.email, data.mobile_number, data.gender || 'Male', data.department_id, data.job_position,
-      data.date_of_birth || null, data.resume || null, data.experience || null, data.current_company || null,
-      data.current_salary || null, data.expected_salary || null, data.notice_period || null, data.skills || null,
-      data.address || null, data.status || 'Applied', userId, userId
-    ];
+    // Resolve matching job requirement for deterministic ATS scoring
+    const requirement = await this.resolveRequirement(data.requirement_id, data.job_position);
+    const requirementId = requirement ? requirement.id : (data.requirement_id || null);
+
+    // Automatic ATS scoring
+    const candidateDataForAts = {
+      ...data,
+      skills: mergedSkillsList,
+      extracted_resume_skills: extractedResumeData.skills || [],
+      extracted_education: extractedResumeData.education,
+      extracted_experience: extractedResumeData.experience,
+      experience: finalExperience
+    };
+
+    const atsResult = AtsScoringService.calculateAtsScore(candidateDataForAts, requirement, data.screening_answers);
+    const atsScore = atsResult.totalAtsScore;
+    const atsBreakdown = JSON.stringify(atsResult.breakdown);
+    const screeningScore = data.screening_score != null ? data.screening_score : atsResult.screeningScore;
+    const screeningAnswers = typeof data.screening_answers === 'object' ? JSON.stringify(data.screening_answers) : (data.screening_answers || null);
+
+    const emailToUse = (data.email || '').trim().toLowerCase();
+    const existing = await Candidate.query('SELECT id, resume, original_resume, original_resume_name FROM candidates WHERE LOWER(email) = ?', [emailToUse]);
 
     await Candidate.beginTransaction();
     try {
-      const result = await Candidate.query(sql, params);
+      let candidateId;
+
+      if (existing.length > 0) {
+        // Candidate already exists — update profile with new application info
+        candidateId = existing[0].id;
+        const finalResume = data.original_resume || data.resume || existing[0].original_resume || existing[0].resume;
+        const finalOrigName = data.original_resume_name || existing[0].original_resume_name;
+
+        await Candidate.query(`
+          UPDATE candidates SET
+            candidate_name = ?, mobile_number = COALESCE(?, mobile_number), gender = COALESCE(?, gender),
+            department_id = COALESCE(?, department_id), job_position = COALESCE(?, job_position),
+            date_of_birth = COALESCE(?, date_of_birth), resume = ?, original_resume = ?, original_resume_name = ?,
+            experience = COALESCE(?, experience), current_company = COALESCE(?, current_company),
+            current_salary = COALESCE(?, current_salary), expected_salary = COALESCE(?, expected_salary),
+            notice_period = COALESCE(?, notice_period), skills = COALESCE(?, skills), address = COALESCE(?, address),
+            status = 'Applied', requirement_id = COALESCE(?, requirement_id), ats_score = ?, ats_breakdown = ?,
+            screening_score = ?, screening_answers = COALESCE(?, screening_answers), updated_by = ?, updated_at = NOW()
+          WHERE id = ?
+        `, [
+          data.candidate_name, data.mobile_number, data.gender, data.department_id,
+          data.job_position || (requirement ? requirement.job_title : null), data.date_of_birth || null,
+          finalResume, finalResume, finalOrigName, finalExperience, data.current_company,
+          data.current_salary, data.expected_salary, data.notice_period, finalSkills, data.address,
+          requirementId, atsScore, atsBreakdown, screeningScore, screeningAnswers, userId, candidateId
+        ]);
+      } else {
+        // New unique candidate
+        const sql = `
+          INSERT INTO candidates (
+            candidate_name, email, mobile_number, gender, department_id, job_position,
+            date_of_birth, resume, original_resume, original_resume_name, experience, current_company, current_salary, expected_salary,
+            notice_period, skills, address, status, requirement_id, ats_score, ats_breakdown,
+            screening_score, screening_answers, created_by, updated_by
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+
+        const params = [
+          data.candidate_name, emailToUse, data.mobile_number, data.gender || 'Male', data.department_id, data.job_position || (requirement ? requirement.job_title : null),
+          data.date_of_birth || null, data.resume || null, data.original_resume || data.resume || null, data.original_resume_name || null, finalExperience, data.current_company || null,
+          data.current_salary || null, data.expected_salary || null, data.notice_period || null, finalSkills,
+          data.address || null, data.status || 'Applied', requirementId, atsScore, atsBreakdown,
+          screeningScore, screeningAnswers, userId, userId
+        ];
+
+        const result = await Candidate.query(sql, params);
+        candidateId = result.insertId;
+      }
+
+      // Track in candidate_applications for job-specific ATS scores
+      if (requirementId) {
+        const finalResume = data.original_resume || data.resume || null;
+        const finalOrigName = data.original_resume_name || null;
+
+        await Candidate.query(`
+          INSERT INTO candidate_applications (
+            candidate_id, requirement_id, job_position, status, ats_score, ats_breakdown,
+            screening_score, screening_answers, evaluation_status, resume, original_resume, original_resume_name, skills
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'PENDING', ?, ?, ?, ?)
+          ON DUPLICATE KEY UPDATE
+            status = 'Applied', ats_score = VALUES(ats_score), ats_breakdown = VALUES(ats_breakdown),
+            resume = VALUES(resume), original_resume = VALUES(original_resume), original_resume_name = VALUES(original_resume_name),
+            skills = VALUES(skills), updated_at = NOW()
+        `, [
+          candidateId, requirementId, data.job_position || (requirement ? requirement.job_title : 'Mobile App Developer'),
+          data.status || 'Applied', atsScore, atsBreakdown, screeningScore, screeningAnswers,
+          finalResume, finalResume, finalOrigName, finalSkills
+        ]);
+      }
+
       await Candidate.commit();
-      return { id: result.insertId };
+      return { id: candidateId, ats_score: atsScore, ats_breakdown: atsResult.breakdown };
     } catch (error) {
       await Candidate.rollback();
       throw error;
@@ -54,6 +163,7 @@ class CandidateService {
     const job_position = data.job_position !== undefined ? data.job_position : existing.job_position;
     const date_of_birth = data.date_of_birth !== undefined ? data.date_of_birth : existing.date_of_birth;
     const resume = data.resume !== undefined ? data.resume : existing.resume;
+    const original_resume_name = data.original_resume_name !== undefined ? data.original_resume_name : existing.original_resume_name;
     const experience = data.experience !== undefined ? data.experience : existing.experience;
     const current_company = data.current_company !== undefined ? data.current_company : existing.current_company;
     const current_salary = data.current_salary !== undefined ? data.current_salary : existing.current_salary;
@@ -62,26 +172,63 @@ class CandidateService {
     const skills = data.skills !== undefined ? data.skills : existing.skills;
     const address = data.address !== undefined ? data.address : existing.address;
     const status = data.status !== undefined ? data.status : existing.status;
+    const requirement_id = data.requirement_id !== undefined ? data.requirement_id : existing.requirement_id;
+
+    // Recalculate ATS score automatically if relevant candidate details changed
+    const requirement = await this.resolveRequirement(requirement_id, job_position);
+    const screeningAnswers = data.screening_answers !== undefined
+      ? (typeof data.screening_answers === 'object' ? JSON.stringify(data.screening_answers) : data.screening_answers)
+      : existing.screening_answers;
+
+    const mergedCandidate = {
+      skills, experience, notice_period, expected_salary, job_position,
+      screening_score: existing.screening_score
+    };
+    const atsResult = AtsScoringService.calculateAtsScore(mergedCandidate, requirement, screeningAnswers);
+    const ats_score = atsResult.totalAtsScore;
+    const ats_breakdown = JSON.stringify(atsResult.breakdown);
 
     const sql = `
       UPDATE candidates SET
         candidate_name = ?, email = ?, mobile_number = ?, gender = ?, department_id = ?, job_position = ?,
-        date_of_birth = ?, resume = ?, experience = ?, current_company = ?,
+        date_of_birth = ?, resume = ?, original_resume_name = ?, experience = ?, current_company = ?,
         current_salary = ?, expected_salary = ?, notice_period = ?, skills = ?, address = ?,
-        status = ?, updated_by = ?
+        status = ?, requirement_id = ?, ats_score = ?, ats_breakdown = ?, updated_by = ?
       WHERE id = ?
     `;
 
     const params = [
       candidate_name, email, mobile_number, gender, department_id, job_position,
-      date_of_birth, resume, experience, current_company,
+      date_of_birth, resume, original_resume_name, experience, current_company,
       current_salary, expected_salary, notice_period, skills, address,
-      status, userId, id
+      status, requirement ? requirement.id : requirement_id, ats_score, ats_breakdown, userId, id
     ];
 
     await Candidate.beginTransaction();
     try {
       await Candidate.query(sql, params);
+
+      // Also update matching candidate_applications if present
+      if (requirement) {
+        const appExists = await Candidate.query(
+          'SELECT id FROM candidate_applications WHERE candidate_id = ? AND requirement_id = ?',
+          [id, requirement.id]
+        );
+        if (appExists.length > 0) {
+          await Candidate.query(`
+            UPDATE candidate_applications SET
+              job_position = ?, status = ?, ats_score = ?, ats_breakdown = ?, resume = ?, original_resume_name = ?
+            WHERE id = ?
+          `, [job_position, status, ats_score, ats_breakdown, resume, original_resume_name, appExists[0].id]);
+        } else {
+          await Candidate.query(`
+            INSERT INTO candidate_applications (
+              candidate_id, requirement_id, job_position, status, ats_score, ats_breakdown, resume, original_resume_name
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `, [id, requirement.id, job_position, status, ats_score, ats_breakdown, resume, original_resume_name]);
+        }
+      }
+
       await Candidate.commit();
       return true;
     } catch (error) {
@@ -93,6 +240,7 @@ class CandidateService {
   static async delete(id) {
     await Candidate.beginTransaction();
     try {
+      await Candidate.query('DELETE FROM candidate_applications WHERE candidate_id = ?', [id]);
       await Candidate.query('DELETE FROM candidates WHERE id = ?', [id]);
       await Candidate.commit();
       return true;
@@ -104,20 +252,70 @@ class CandidateService {
 
   static async getById(id) {
     const rows = await Candidate.query(
-      `SELECT c.*, d.dept_name as department_name
+      `SELECT c.*, d.dept_name as department_name, r.job_title as requirement_job_title
        FROM candidates c
        LEFT JOIN departments d ON c.department_id = d.id
+       LEFT JOIN requirements r ON c.requirement_id = r.id
        WHERE c.id = ?`,
       [id]
     );
-    return rows[0] || null;
+    if (!rows[0]) return null;
+
+    const candidate = rows[0];
+
+    // Parse ats_breakdown if present or generate deterministic breakdown
+    if (candidate.ats_breakdown && typeof candidate.ats_breakdown === 'string') {
+      try {
+        candidate.ats_breakdown = JSON.parse(candidate.ats_breakdown);
+      } catch (e) {
+        candidate.ats_breakdown = null;
+      }
+    }
+
+    if (!candidate.ats_breakdown || candidate.ats_score == null) {
+      const requirement = await this.resolveRequirement(candidate.requirement_id, candidate.job_position);
+      const computed = AtsScoringService.calculateAtsScore(candidate, requirement, candidate.screening_answers);
+      candidate.ats_score = candidate.ats_score || computed.totalAtsScore;
+      candidate.ats_breakdown = computed.breakdown;
+    }
+
+    // Attach all job-specific applications for candidate
+    const applications = await Candidate.query(`
+      SELECT ca.*, r.job_title as requirement_title, r.requirement_code
+      FROM candidate_applications ca
+      LEFT JOIN requirements r ON ca.requirement_id = r.id
+      WHERE ca.candidate_id = ?
+      ORDER BY ca.created_at DESC
+    `, [id]);
+
+    candidate.applications = applications.map(app => {
+      let b = app.ats_breakdown;
+      if (typeof b === 'string') {
+        try { b = JSON.parse(b); } catch (e) { b = null; }
+      }
+      return { ...app, ats_breakdown: b };
+    });
+
+    return candidate;
   }
 
   static async list(filters, pagination) {
     let sql = `
-      SELECT c.*, d.dept_name as department_name
+      SELECT 
+        c.*, 
+        COALESCE(ca.id, c.id) as application_id,
+        COALESCE(ca.resume, c.resume) as application_resume,
+        COALESCE(ca.original_resume_name, c.original_resume_name) as application_original_resume_name,
+        COALESCE(ca.ats_score, c.ats_score) as application_ats_score,
+        COALESCE(ca.ats_breakdown, c.ats_breakdown) as application_ats_breakdown,
+        d.dept_name as department_name, 
+        r.job_title as requirement_job_title
       FROM candidates c
+      LEFT JOIN candidate_applications ca ON ca.id = (
+        SELECT id FROM candidate_applications WHERE candidate_id = c.id ORDER BY id DESC LIMIT 1
+      )
       LEFT JOIN departments d ON c.department_id = d.id
+      LEFT JOIN requirements r ON COALESCE(ca.requirement_id, c.requirement_id) = r.id
       WHERE 1=1
     `;
     const params = [];
@@ -162,7 +360,37 @@ class CandidateService {
     params.push(pagination.limit, pagination.offset);
 
     const rows = await Candidate.query(sql, params);
-    
+
+    // Format and calculate breakdown for any legacy records missing ATS score
+    const formattedRows = await Promise.all(rows.map(async (row) => {
+      let breakdown = row.application_ats_breakdown || row.ats_breakdown;
+      if (typeof breakdown === 'string') {
+        try {
+          breakdown = JSON.parse(breakdown);
+        } catch (e) {
+          breakdown = null;
+        }
+      }
+
+      let score = row.application_ats_score != null ? row.application_ats_score : row.ats_score;
+      if (score == null || !breakdown) {
+        const requirement = await this.resolveRequirement(row.requirement_id, row.job_position);
+        const computed = AtsScoringService.calculateAtsScore(row, requirement, row.screening_answers);
+        score = score || computed.totalAtsScore;
+        breakdown = breakdown || computed.breakdown;
+      }
+
+      return {
+        ...row,
+        application_id: row.application_id || row.id,
+        candidate_id: row.id,
+        resume: row.application_resume || row.resume,
+        original_resume_name: row.application_original_resume_name || row.original_resume_name,
+        ats_score: Number(score) || 0,
+        ats_breakdown: breakdown
+      };
+    }));
+
     // Count query
     let countSql = `
       SELECT COUNT(*) as count
@@ -172,6 +400,7 @@ class CandidateService {
     `;
     const countParams = [];
     if (filters.search) {
+      const term = `%${filters.search}%`;
       countSql += ` AND (c.candidate_name LIKE ? OR c.email LIKE ? OR c.mobile_number LIKE ? OR c.job_position LIKE ? OR d.dept_name LIKE ? OR c.status LIKE ?)`;
       countParams.push(term, term, term, term, term, term);
     }
@@ -201,14 +430,219 @@ class CandidateService {
 
     const totalResult = await Candidate.query(countSql, countParams);
     return {
-      rows,
+      rows: formattedRows,
       total: totalResult[0].count
     };
   }
 
   static async dropdown() {
-    const rows = await Candidate.query('SELECT id, candidate_name as name, email, job_position FROM candidates ORDER BY candidate_name ASC');
+    const rows = await Candidate.query('SELECT id, candidate_name as name, email, job_position, status, ats_score FROM candidates ORDER BY candidate_name ASC');
     return rows;
+  }
+
+  /**
+   * Evaluate Candidate (Shortlist or Reject)
+   * Enforces strict backend validation against already finalized candidates.
+   */
+  static async evaluateCandidate(candidateId, evaluationPayload, userId) {
+    const candidate = await this.getById(candidateId);
+    if (!candidate) {
+      const err = new Error('Candidate not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    // Backend validation: Check if candidate already has a final decision
+    const finalizedStatuses = [
+      'shortlisted',
+      'rejected',
+      'interview scheduled',
+      'interview completed',
+      'selected',
+      'hired',
+      'withdrawn'
+    ];
+    const currentStatusNormalized = String(candidate.status || '').trim().toLowerCase();
+
+    if (finalizedStatuses.includes(currentStatusNormalized)) {
+      const err = new Error('This candidate has already received a final evaluation.');
+      err.statusCode = 400;
+      err.status = candidate.status;
+      throw err;
+    }
+
+    // Action validation
+    const action = String(evaluationPayload.action || evaluationPayload.status || '').toUpperCase();
+    let newStatus = '';
+    let evalStatus = '';
+
+    if (action === 'SHORTLIST' || action === 'SHORTLISTED') {
+      newStatus = 'Shortlisted';
+      evalStatus = 'SHORTLISTED';
+    } else if (action === 'REJECT' || action === 'REJECTED') {
+      newStatus = 'Rejected';
+      evalStatus = 'REJECTED';
+    } else {
+      const err = new Error('Invalid evaluation action. Must be Shortlist or Reject.');
+      err.statusCode = 400;
+      throw err;
+    }
+
+    const notes = evaluationPayload.remarks || evaluationPayload.recruiterNotes || evaluationPayload.rejectionReason || `Evaluated as ${newStatus}`;
+
+    await Candidate.beginTransaction();
+    try {
+      // 1. Update candidates table
+      await Candidate.query(`
+        UPDATE candidates SET
+          status = ?,
+          evaluation_status = ?,
+          evaluated_at = NOW(),
+          evaluated_by = ?,
+          evaluation_notes = ?,
+          updated_by = ?
+        WHERE id = ?
+      `, [newStatus, evalStatus, userId, notes, userId, candidateId]);
+
+      // 2. Update candidate_applications table if job-specific application exists
+      await Candidate.query(`
+        UPDATE candidate_applications SET
+          status = ?,
+          evaluation_status = ?,
+          evaluated_at = NOW(),
+          evaluated_by = ?,
+          evaluation_notes = ?
+        WHERE candidate_id = ?
+      `, [newStatus, evalStatus, userId, notes, candidateId]);
+
+      await Candidate.commit();
+
+      return {
+        id: candidateId,
+        status: newStatus,
+        evaluation_status: evalStatus,
+        evaluation_notes: notes,
+        evaluated_at: new Date()
+      };
+    } catch (error) {
+      await Candidate.rollback();
+      throw error;
+    }
+  }
+
+  /**
+   * Get Live ATS Evaluation for a Candidate
+   * Parses candidate resume, compares with linked job requirements, computes 100% dynamic score breakdown,
+   * and saves updated scores and skills to database.
+   */
+  static async getAtsEvaluation(candidateId) {
+    const candidate = await this.getById(candidateId);
+    if (!candidate) {
+      const err = new Error('Candidate not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    // Resolve matching job requirement
+    const requirement = await this.resolveRequirement(candidate.requirement_id, candidate.job_position);
+
+    // Extract resume text and skills if candidate has resume
+    let extractedResumeData = { skills: [], education: null, experience: null };
+    if (candidate.resume) {
+      try {
+        extractedResumeData = await ResumeParserService.parseResume(candidate.resume);
+      } catch (e) {
+        console.warn('[CandidateService.getAtsEvaluation] Resume extraction notice:', e.message);
+      }
+    }
+
+    // Merge skills priority: 1. Resume skills, 2. Form/candidate skills, 3. Profile
+    const mergedSkills = ResumeParserService.mergeSkills({
+      resumeSkills: extractedResumeData.skills || [],
+      formSkills: candidate.skills || '',
+      profileSkills: candidate.skills || ''
+    });
+
+    const candidateDataForAts = {
+      ...candidate,
+      skills: mergedSkills,
+      extracted_resume_skills: extractedResumeData.skills || [],
+      extracted_education: extractedResumeData.education,
+      extracted_experience: extractedResumeData.experience,
+      experience: candidate.experience || extractedResumeData.experience || '0-1 Years'
+    };
+
+    // Calculate real-time ATS score
+    const atsResult = AtsScoringService.calculateAtsScore(candidateDataForAts, requirement, candidate.screening_answers);
+    const atsScore = atsResult.totalAtsScore;
+    const atsBreakdown = JSON.stringify(atsResult.breakdown);
+
+    // Persist updated skills & ATS evaluation in database
+    const mergedSkillsStr = mergedSkills.join(', ');
+    if (mergedSkillsStr && mergedSkillsStr !== candidate.skills) {
+      await Candidate.query(
+        'UPDATE candidates SET skills = ?, ats_score = ?, ats_breakdown = ? WHERE id = ?',
+        [mergedSkillsStr, atsScore, atsBreakdown, candidateId]
+      );
+    } else {
+      await Candidate.query(
+        'UPDATE candidates SET ats_score = ?, ats_breakdown = ? WHERE id = ?',
+        [atsScore, atsBreakdown, candidateId]
+      );
+    }
+
+    return {
+      success: true,
+      application: {
+        id: candidate.id,
+        candidateId: candidate.id,
+        jobId: requirement ? requirement.id : candidate.requirement_id,
+        candidateName: candidate.candidate_name,
+        email: candidate.email,
+        phone: candidate.mobile_number,
+        resumeUrl: candidate.resume,
+        originalResumeName: candidate.original_resume_name,
+        status: candidate.status,
+        evaluationStatus: candidate.evaluation_status,
+        evaluationNotes: candidate.evaluation_notes,
+        appliedAt: candidate.created_at
+      },
+      candidate: {
+        id: candidate.id,
+        name: candidate.candidate_name,
+        email: candidate.email,
+        phone: candidate.mobile_number,
+        resume: candidate.resume,
+        originalResumeName: candidate.original_resume_name,
+        skills: mergedSkills,
+        resumeSkills: extractedResumeData.skills || [],
+        experience: candidate.experience || extractedResumeData.experience || '0-1 Years',
+        education: candidate.education || extractedResumeData.education || 'Graduate',
+        currentCompany: candidate.current_company,
+        currentSalary: candidate.current_salary,
+        expectedSalary: candidate.expected_salary,
+        noticePeriod: candidate.notice_period || 'Immediate'
+      },
+      job: requirement ? {
+        id: requirement.id,
+        title: requirement.job_title,
+        requirementCode: requirement.requirement_code,
+        skills: requirement.skills ? ResumeParserService.extractSkillsFromText(requirement.skills) : [],
+        requiredSkills: atsResult.breakdown?.skills?.matchedSkills?.concat(atsResult.breakdown?.skills?.missingSkills || []) || [],
+        experienceRequired: `${requirement.experience_from || 0} - ${requirement.experience_to || 0} Years`,
+        salaryRange: requirement.salary_to ? `₹${Number(requirement.salary_from || 0).toLocaleString()} - ₹${Number(requirement.salary_to).toLocaleString()}` : 'N/A'
+      } : {
+        title: candidate.job_position,
+        requiredSkills: [],
+        experienceRequired: 'N/A'
+      },
+      atsScore: {
+        total: atsScore,
+        maximum: 100,
+        matchLevel: atsResult.matchLevel,
+        breakdown: atsResult.breakdown
+      }
+    };
   }
 }
 

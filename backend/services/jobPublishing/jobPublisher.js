@@ -98,9 +98,11 @@ class JobPublisher {
   }
 
   static async closeAll(job) {
-    const channels = ['CAREER_PAGE', 'LINKEDIN', 'INDEED'];
-    const results = {};
+    return this.closeSelected(job, ['CAREER_PAGE', 'LINKEDIN', 'INDEED']);
+  }
 
+  static async closeSelected(job, channels = []) {
+    const results = {};
     for (const ch of channels) {
       try {
         const publisher = this.getPublisher(ch);
@@ -113,7 +115,23 @@ class JobPublisher {
         await this.recordPublishStatus(job.id, ch, failRes);
       }
     }
+    return results;
+  }
 
+  static async publishSelected(job, channels = []) {
+    const results = {};
+    for (const ch of channels) {
+      try {
+        const publisher = this.getPublisher(ch);
+        const res = await publisher.publish(job);
+        results[ch] = res;
+        await this.recordPublishStatus(job.id, ch, res);
+      } catch (err) {
+        const failRes = { success: false, status: 'FAILED', errorMessage: err.message };
+        results[ch] = failRes;
+        await this.recordPublishStatus(job.id, ch, failRes);
+      }
+    }
     return results;
   }
 

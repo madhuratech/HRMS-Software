@@ -1,13 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, FileText, Eye, Download, ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
-import { apiFetch } from '../../lib/api';
+import { 
+  DollarSign, FileText, Eye, Download, ShieldCheck, 
+  Loader2, AlertCircle, Calendar, CheckCircle2, Printer, X 
+} from 'lucide-react';
+import { apiFetch, getAuthToken } from '../../lib/api';
+import { useToast } from '../ui/Toast';
 
 export function MyPayroll() {
+  const { addToast } = useToast();
   const [loading, setLoading] = useState(true);
   const [payslips, setPayslips] = useState([]);
   const [selectedMonth, setSelectedMonth] = useState('All Months');
-  const [userName, setUserName] = useState('Dhilipan P');
-  const [empId, setEmpId] = useState('EMP0015');
+  const [userName, setUserName] = useState('');
+  const [empId, setEmpId] = useState('');
+
+  // Payslip View Modal
+  const [showModal, setShowModal] = useState(false);
+  const [activePayslip, setActivePayslip] = useState(null);
 
   useEffect(() => {
     const auth = localStorage.getItem('hrms_auth');
@@ -15,32 +24,25 @@ export function MyPayroll() {
       try {
         const parsed = JSON.parse(auth);
         if (parsed.user && parsed.user.name) setUserName(parsed.user.name);
-        if (parsed.user && parsed.user.emp_id) setEmpId(parsed.user.emp_id);
+        if (parsed.user && (parsed.user.emp_id || parsed.user.employee_id)) {
+          setEmpId(parsed.user.emp_id || parsed.user.employee_id);
+        }
       } catch (e) {}
     }
 
     const fetchPayrollData = async () => {
       setLoading(true);
       try {
-        const res = await apiFetch('/payroll');
+        const res = await apiFetch('/payroll/my-payroll');
         if (res && res.success && Array.isArray(res.data)) {
-          const formatted = res.data.map((p, idx) => ({
-            id: p.id || `PAY-${idx + 1}`,
-            month: p.month || p.payroll_period || 'July 2026',
-            basic: p.basic_salary ? `₹${Number(p.basic_salary).toLocaleString()}` : '₹30,000',
-            hra: p.hra ? `₹${Number(p.hra).toLocaleString()}` : '₹12,000',
-            allowances: p.allowances ? `₹${Number(p.allowances).toLocaleString()}` : '₹6,800',
-            deductions: p.deductions ? `₹${Number(p.deductions).toLocaleString()}` : '₹3,000',
-            net: p.net_salary ? `₹${Number(p.net_salary).toLocaleString()}` : '₹45,800',
-            status: p.status || 'Paid',
-            date: p.processed_date || '01 Aug 2026'
-          }));
-          setPayslips(formatted);
+          setPayslips(res.data);
+        } else if (Array.isArray(res)) {
+          setPayslips(res);
         } else {
           setPayslips([]);
         }
       } catch (err) {
-        console.error("Failed to load payroll database records:", err);
+        console.error("Failed to load employee payroll records:", err);
       } finally {
         setLoading(false);
       }
@@ -49,29 +51,81 @@ export function MyPayroll() {
     fetchPayrollData();
   }, []);
 
+  // Format currency
+  const fmt = (num) => `₹ ${Number(num || 0).toLocaleString('en-IN')}`;
+
+  // Download PDF helper
+  const handleDownload = async (record) => {
+    try {
+      addToast('Downloading payslip PDF...', 'info');
+      const token = getAuthToken();
+      const res = await fetch(`/app/payroll/${record.id}/download-pdf`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!res.ok) throw new Error('Download failed');
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const code = record.emp_code || `EMP${record.employee_id}`;
+      a.download = `Payslip_${code}_${record.month}_${record.year}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      addToast('Payslip downloaded successfully', 'success');
+    } catch (e) {
+      addToast('Could not download payslip PDF', 'error');
+    }
+  };
+
+  const handleView = async (record) => {
+    try {
+      const res = await apiFetch(`/payroll/${record.id}/payslip`);
+      if (res && res.success && res.data) {
+        setActivePayslip(res.data);
+      } else {
+        setActivePayslip(record);
+      }
+      setShowModal(true);
+    } catch (e) {
+      setActivePayslip(record);
+      setShowModal(true);
+    }
+  };
+
   const filtered = selectedMonth === 'All Months' 
     ? payslips 
-    : payslips.filter(p => p.month === selectedMonth);
+    : payslips.filter(p => `${p.month} ${p.year}` === selectedMonth || p.month === selectedMonth);
+
+  const monthsList = ['All Months', ...new Set(payslips.map(p => `${p.month} ${p.year}`))];
+
+  const latest = payslips[0];
+  const monthlySalary = latest ? Number(latest.net_salary || 0) : 0;
+  const grossSalary = latest ? Number(latest.gross_salary || 0) : 0;
+  const annualCtc = grossSalary * 12;
 
   const cardStyle = {
     background: '#FFFFFF',
     borderRadius: '16px',
     padding: '24px',
     boxShadow: '0 4px 16px rgba(15,23,42,0.04)',
-    border: '1px solid #E5E7EB'
+    border: '1px solid #E2E8F0'
   };
 
   if (loading) {
     return (
-      <div className="min-h-[400px] flex flex-col items-center justify-center space-y-3">
-        <Loader2 className="animate-spin text-blue-600" size={36} />
-        <p className="text-sm font-semibold text-slate-600">Loading payroll records...</p>
+      <div style={{ minHeight: '400px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+        <Loader2 className="animate-spin" size={36} color="#2563EB" />
+        <p style={{ fontSize: '13px', fontWeight: '600', color: '#64748B' }}>Loading your official payroll records...</p>
       </div>
     );
   }
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif" }} className="space-y-6">
+    <div style={{ fontFamily: '"Inter", sans-serif', display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
       {/* Header Banner */}
       <div style={{
@@ -82,12 +136,14 @@ export function MyPayroll() {
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        boxShadow: '0 10px 25px -5px rgba(37,99,235,0.25)'
+        boxShadow: '0 10px 25px -5px rgba(37,99,235,0.25)',
+        flexWrap: 'wrap',
+        gap: '16px'
       }}>
         <div>
           <h1 style={{ margin: 0, fontSize: '22px', fontWeight: '700' }}>My Salary & Payslips</h1>
           <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#DBEAFE' }}>
-            Private Payroll Record • {userName} ({empId})
+            Confidential Payroll Record • {userName || 'Employee'} {empId ? `(${empId})` : ''}
           </p>
         </div>
         <div style={{
@@ -100,90 +156,127 @@ export function MyPayroll() {
           alignItems: 'center',
           gap: '6px'
         }}>
-          <ShieldCheck size={16} /> Confidential
+          <ShieldCheck size={16} /> Verified Corporate Record
         </div>
       </div>
 
       {/* Top Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
         <div style={cardStyle}>
-          <span className="text-xs font-semibold text-slate-400 block mb-1">Current Monthly Salary</span>
-          <strong className="text-2xl font-extrabold text-blue-600">
-            {payslips.length > 0 ? payslips[0].net : '₹ 45,800'}
+          <span style={{ fontSize: '12px', fontWeight: '600', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'block', marginBottom: '4px' }}>
+            Latest Disbursed Net Pay
+          </span>
+          <strong style={{ fontSize: '24px', fontWeight: '800', color: '#2563EB', display: 'block' }}>
+            {monthlySalary > 0 ? fmt(monthlySalary) : 'Pending Generation'}
           </strong>
-          <span className="text-[11px] text-slate-500 block mt-2">Net Pay (Disbursed via Bank Transfer)</span>
+          <span style={{ fontSize: '12px', color: '#64748B', display: 'block', marginTop: '6px' }}>
+            {latest ? `For ${latest.month} ${latest.year} • ${latest.status}` : 'No payslips generated yet'}
+          </span>
         </div>
 
         <div style={cardStyle}>
-          <span className="text-xs font-semibold text-slate-400 block mb-1">Annual CTC</span>
-          <strong className="text-2xl font-extrabold text-slate-800">₹ 6,00,000</strong>
-          <span className="text-[11px] text-emerald-600 font-semibold block mt-2">Active Structure 2026</span>
+          <span style={{ fontSize: '12px', fontWeight: '600', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'block', marginBottom: '4px' }}>
+            Gross Monthly Earnings
+          </span>
+          <strong style={{ fontSize: '24px', fontWeight: '800', color: '#1E293B', display: 'block' }}>
+            {grossSalary > 0 ? fmt(grossSalary) : 'Pending Generation'}
+          </strong>
+          <span style={{ fontSize: '12px', color: '#16A34A', fontWeight: '600', display: 'block', marginTop: '6px' }}>
+            Annualized CTC: {annualCtc > 0 ? fmt(annualCtc) : 'TBD'}
+          </span>
         </div>
 
         <div style={cardStyle}>
-          <span className="text-xs font-semibold text-slate-400 block mb-1">Bank Details</span>
-          <strong className="text-sm font-bold text-slate-800 block">HDFC Bank • ****4829</strong>
-          <span className="text-[11px] text-slate-500 block mt-1">IFSC: HDFC0001234</span>
+          <span style={{ fontSize: '12px', fontWeight: '600', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'block', marginBottom: '4px' }}>
+            Payment Account & Mode
+          </span>
+          <strong style={{ fontSize: '14px', fontWeight: '700', color: '#1E293B', display: 'block' }}>
+            {latest ? (latest.payment_mode || 'Direct Bank Transfer') : 'Corporate Payroll Account'}
+          </strong>
+          <span style={{ fontSize: '12px', color: '#64748B', display: 'block', marginTop: '6px' }}>
+            Disbursed via automated bank transfer
+          </span>
         </div>
       </div>
 
       {/* Payslip History Table */}
       <div style={cardStyle}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h3 className="text-base font-bold text-slate-900">Payslip History</h3>
-            <p className="text-xs text-slate-500">View and download your monthly salary statements</p>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#1E293B' }}>Payslip History</h3>
+            <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748B' }}>View and download your monthly salary statements</p>
           </div>
-          <div className="w-48">
+          <div>
             <select
               value={selectedMonth}
               onChange={(e) => setSelectedMonth(e.target.value)}
-              className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white outline-none cursor-pointer"
+              style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '12px', fontWeight: '600', color: '#334155', background: '#FFF', outline: 'none', cursor: 'pointer' }}
             >
-              <option>All Months</option>
-              {payslips.map(p => <option key={p.id}>{p.month}</option>)}
+              {monthsList.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
         </div>
 
         {filtered.length === 0 ? (
-          <div className="p-8 text-center bg-slate-50 rounded-xl border border-slate-100 text-slate-400 text-xs">
-            <AlertCircle size={24} className="mx-auto mb-2 text-slate-300" />
-            No payroll records found in database.
+          <div style={{ padding: '40px', textAlign: 'center', background: '#F8FAFC', borderRadius: '12px', border: '1px solid #F1F5F9', color: '#64748B' }}>
+            <AlertCircle size={28} color="#94A3B8" style={{ margin: '0 auto 8px' }} />
+            <div style={{ fontSize: '14px', fontWeight: '600' }}>No payslips generated for this period</div>
+            <p style={{ fontSize: '12px', color: '#94A3B8', marginTop: '4px' }}>Once your company HR/Finance team processes payroll for the month, your statement will be available here.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
               <thead>
-                <tr className="border-b border-slate-200 text-xs font-semibold text-slate-500 bg-slate-50">
-                  <th className="py-3 px-4">Period</th>
-                  <th className="py-3 px-4">Basic</th>
-                  <th className="py-3 px-4">HRA</th>
-                  <th className="py-3 px-4">Allowances</th>
-                  <th className="py-3 px-4">Deductions</th>
-                  <th className="py-3 px-4">Net Salary</th>
-                  <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                <tr style={{ background: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Pay Period</th>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Basic</th>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>HRA</th>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Allowances</th>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Deductions</th>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Net Salary</th>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'center' }}>Status</th>
+                  <th style={{ padding: '12px 16px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {filtered.map(row => (
-                  <tr key={row.id} className="hover:bg-slate-50/80 transition-colors">
-                    <td className="py-3 px-4 font-bold text-slate-900">{row.month}</td>
-                    <td className="py-3 px-4 text-slate-600">{row.basic}</td>
-                    <td className="py-3 px-4 text-slate-600">{row.hra}</td>
-                    <td className="py-3 px-4 text-slate-600">{row.allowances}</td>
-                    <td className="py-3 px-4 text-rose-600 font-semibold">{row.deductions}</td>
-                    <td className="py-3 px-4 font-extrabold text-blue-600">{row.net}</td>
-                    <td className="py-3 px-4">
-                      <span className="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-600">
+              <tbody>
+                {filtered.map((row) => (
+                  <tr key={row.id} style={{ borderBottom: '1px solid #F1F5F9' }}>
+                    <td style={{ padding: '14px 16px', fontSize: '13px', fontWeight: '700', color: '#1E293B' }}>
+                      {row.month} {row.year}
+                    </td>
+                    <td style={{ padding: '14px 16px', fontSize: '13px', color: '#475569' }}>{fmt(row.basic)}</td>
+                    <td style={{ padding: '14px 16px', fontSize: '13px', color: '#475569' }}>{fmt(row.hra)}</td>
+                    <td style={{ padding: '14px 16px', fontSize: '13px', color: '#475569' }}>{fmt(row.allowances)}</td>
+                    <td style={{ padding: '14px 16px', fontSize: '13px', color: '#DC2626', fontWeight: '600' }}>- {fmt(row.total_deductions)}</td>
+                    <td style={{ padding: '14px 16px', fontSize: '14px', fontWeight: '800', color: '#2563EB' }}>{fmt(row.net_salary)}</td>
+                    <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                      <span style={{
+                        padding: '4px 10px',
+                        borderRadius: '20px',
+                        fontSize: '11px',
+                        fontWeight: '700',
+                        background: row.status === 'Paid' ? '#ECFDF5' : '#EFF6FF',
+                        color: row.status === 'Paid' ? '#059669' : '#2563EB',
+                        border: row.status === 'Paid' ? '1px solid #A7F3D0' : '1px solid #BFDBFE'
+                      }}>
                         {row.status}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right space-x-2">
-                      <button className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-600 font-bold rounded-lg transition-colors inline-flex items-center gap-1 text-[11px]">
-                        <Download size={13} /> Payslip
-                      </button>
+                    <td style={{ padding: '14px 16px', textAlign: 'right' }}>
+                      <div style={{ display: 'inline-flex', gap: '8px' }}>
+                        <button
+                          onClick={() => handleView(row)}
+                          style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', color: '#2563EB', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          <Eye size={12} /> View
+                        </button>
+                        <button
+                          onClick={() => handleDownload(row)}
+                          style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#2563EB', color: '#FFF', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          <Download size={12} /> PDF
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -192,6 +285,90 @@ export function MyPayroll() {
           </div>
         )}
       </div>
+
+      {/* Payslip View Modal */}
+      {showModal && activePayslip && (() => {
+        const p = activePayslip;
+        const company = p.company || {};
+        const empCode = p.emp_code || `EMP${p.employee_id}`;
+
+        return (
+          <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)' }}>
+            <div style={{ width: '800px', maxWidth: '95vw', maxHeight: '92vh', display: 'flex', flexDirection: 'column', background: '#FFFFFF', borderRadius: '20px', boxShadow: '0 25px 60px -12px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
+              
+              <div style={{ padding: '16px 24px', borderBottom: '1px solid #F1F5F9', background: '#FAFBFF', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '14px', fontWeight: '700', color: '#1E293B' }}>Payslip • {p.month} {p.year}</span>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => handleDownload(p)} style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#2563EB', color: '#FFF', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <Download size={13} /> Download PDF
+                  </button>
+                  <button onClick={() => setShowModal(false)} style={{ width: '32px', height: '32px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
+                    <X size={14} color="#64748B" />
+                  </button>
+                </div>
+              </div>
+
+              <div style={{ padding: '28px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #0F172A', paddingBottom: '16px' }}>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '800', color: '#1E3A8A' }}>{company.company_name || 'Madhura Technologies'}</h2>
+                    <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748B' }}>{company.head_office_address || 'Tamil Nadu, India'}</p>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '800', color: '#0F172A' }}>SALARY PAYSLIP</div>
+                    <div style={{ fontSize: '12px', color: '#2563EB', fontWeight: '700' }}>{p.month} {p.year}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', padding: '12px', background: '#F8FAFC', borderRadius: '10px', fontSize: '12px' }}>
+                  <div><span style={{ color: '#64748B' }}>Employee Name:</span> <strong style={{ color: '#1E293B' }}>{p.employee_name}</strong></div>
+                  <div><span style={{ color: '#64748B' }}>Employee ID:</span> <strong style={{ color: '#1E293B' }}>{empCode}</strong></div>
+                  <div><span style={{ color: '#64748B' }}>Department:</span> <strong style={{ color: '#1E293B' }}>{p.department || 'General'}</strong></div>
+                  <div><span style={{ color: '#64748B' }}>Designation:</span> <strong style={{ color: '#1E293B' }}>{p.designation || 'Staff'}</strong></div>
+                </div>
+
+                <div style={{ border: '1px solid #CBD5E1', borderRadius: '10px', overflow: 'hidden' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#1E3A8A', color: '#FFF', fontWeight: '700', fontSize: '12px', padding: '8px 14px' }}>
+                    <div>EARNINGS</div>
+                    <div>DEDUCTIONS</div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', fontSize: '12px' }}>
+                    <div style={{ padding: '12px 14px', borderRight: '1px solid #E2E8F0', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Basic:</span> <strong>{fmt(p.basic)}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>HRA:</span> <strong>{fmt(p.hra)}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Allowances:</span> <strong>{fmt(p.allowances)}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Bonus:</span> <strong>{fmt(p.bonus)}</strong></div>
+                    </div>
+                    <div style={{ padding: '12px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>PF (12%):</span> <strong style={{ color: '#DC2626' }}>{fmt(p.pf)}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>ESI:</span> <strong style={{ color: '#DC2626' }}>{fmt(p.esi)}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Tax / PT:</span> <strong style={{ color: '#DC2626' }}>{fmt(p.tax)}</strong></div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>LOP:</span> <strong style={{ color: '#DC2626' }}>{fmt(p.lop_amount)}</strong></div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', background: '#F8FAFC', borderTop: '1px solid #CBD5E1', padding: '10px 14px', fontSize: '12px', fontWeight: '700' }}>
+                    <div>Gross: {fmt(p.gross_salary)}</div>
+                    <div style={{ color: '#DC2626' }}>Total Deductions: - {fmt(p.total_deductions)}</div>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', background: '#ECFDF5', borderRadius: '10px', border: '1px solid #86EFAC' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', fontWeight: '700', color: '#166534', textTransform: 'uppercase' }}>Net Pay Disbursed</div>
+                    <div style={{ fontSize: '11px', color: '#15803D' }}>Paid via Bank Transfer</div>
+                  </div>
+                  <div style={{ fontSize: '22px', fontWeight: '900', color: '#14532D' }}>{fmt(p.net_salary)}</div>
+                </div>
+              </div>
+
+              <div style={{ padding: '12px 24px', borderTop: '1px solid #F1F5F9', background: '#F8FAFC', display: 'flex', justifyContent: 'flex-end' }}>
+                <button onClick={() => setShowModal(false)} style={{ padding: '8px 18px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', color: '#64748B', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>Close</button>
+              </div>
+
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );
