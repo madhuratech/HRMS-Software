@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { getAvatarUrl } from '../../lib/utils';
 import { Calendar as CalendarIcon, Filter, MoreHorizontal, ChevronDown, Plus, X, Check, Trash2, RotateCcw } from 'lucide-react';
@@ -323,15 +324,7 @@ export default function Overtime() {
             <form onSubmit={handleSave} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Employee *</label>
-                <select
-                  value={formData.employee_id}
-                  onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', boxSizing: 'border-box', color: '#0F172A' }}
-                >
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.dept || 'Employee'})</option>
-                  ))}
-                </select>
+                <AppDropdown value={formData.employee_id} options={[, ...(employees || [])]} size="sm" />
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>

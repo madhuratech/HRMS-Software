@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Download, Plus, Eye, FileText, CheckCircle, Clock, XCircle, AlertTriangle, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { apiFetch, formatDate } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { hasPermission } from '../../lib/permissions';
 
 export function DigitalSignatures() {
   const { addToast } = useToast();
@@ -135,12 +137,14 @@ export function DigitalSignatures() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button onClick={() => setShowAddModal(true)} style={{
-            display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
-            background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
-          }}>
-            <Plus size={16} /> Request Signature
-          </button>
+          {hasPermission('documents', 'doc_signatures', 'create') && (
+            <button onClick={() => setShowAddModal(true)} style={{
+              display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
+              background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
+            }}>
+              <Plus size={16} /> Request Signature
+            </button>
+          )}
         </div>
       </div>
 
@@ -188,9 +192,11 @@ export function DigitalSignatures() {
                       </span>
                     </td>
                     <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
-                      <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
-                        Delete
-                      </button>
+                      {hasPermission('documents', 'doc_signatures', 'delete') && (
+                        <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
+                          Delete
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -225,7 +231,7 @@ export function DigitalSignatures() {
       </div>
 
       {/* Request Modal */}
-      {showAddModal && (
+      {showAddModal && hasPermission('documents', 'doc_signatures', 'create') && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
           <div className="modal-centered-content" style={{ width: '600px', maxWidth: '90vw', maxHeight: '90vh' }}>
@@ -254,12 +260,12 @@ export function DigitalSignatures() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-white">
-                    <option value="Pending">Pending</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Declined">Declined</option>
-                    <option value="Expired">Expired</option>
-                  </select>
+                  <AppDropdown
+                value={formData.status}
+                onChange={v => setFormData({ ...formData, status: v })}
+                options={[{value:'Pending',label:'Pending'},{value:'Completed',label:'Completed'},{value:'Declined',label:'Declined'},{value:'Expired',label:'Expired'}]}
+                size="sm"
+              />
                 </div>
               </div>
               <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">

@@ -1,15 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const RequirementController = require('../controllers/RequirementController');
-const { authenticateJWT, checkRole } = require('../middlewares/auth');
+const { authenticateJWT, checkPermission } = require('../middlewares/auth');
 const validationMiddleware = require('../middlewares/validation');
 const { validateRequirement } = require('../validators/requirementValidator');
 const upload = require('../utils/fileUpload');
-
-// Base Roles allowed to view requirements list
-const readRoles = ['Super Admin', 'SUPER_ADMIN', 'HR Admin', 'HR Manager', 'Department Manager', 'Viewer', 'Team Leader', 'TEAM_LEADER', 'Employee', 'EMPLOYEE', 'ALL'];
-const writeRoles = ['Super Admin', 'SUPER_ADMIN', 'HR Admin', 'HR Manager', 'Department Manager', 'Team Leader', 'TEAM_LEADER', 'Employee', 'EMPLOYEE', 'ALL'];
-const adminRoles = ['Super Admin', 'SUPER_ADMIN', 'HR Admin', 'HR Manager', 'Team Leader', 'TEAM_LEADER'];
 
 const db = require('../config/database');
 
@@ -38,27 +33,27 @@ router.get('/meta/all', authenticateJWT, (req, res) => {
   });
 });
 
-router.get('/', authenticateJWT, checkRole(readRoles), RequirementController.list);
-router.get('/dropdown', authenticateJWT, checkRole(readRoles), RequirementController.dropdown);
-router.get('/dashboard', authenticateJWT, checkRole(readRoles), RequirementController.getDashboard);
-router.get('/:id', authenticateJWT, checkRole(readRoles), RequirementController.getById);
+router.get('/', authenticateJWT, checkPermission('recruitment', 'job_openings', 'view'), RequirementController.list);
+router.get('/dropdown', authenticateJWT, checkPermission('recruitment', 'job_openings', 'view'), RequirementController.dropdown);
+router.get('/dashboard', authenticateJWT, checkPermission('recruitment', 'job_openings', 'view'), RequirementController.getDashboard);
+router.get('/:id', authenticateJWT, checkPermission('recruitment', 'job_openings', 'view'), RequirementController.getById);
 
-router.post('/', authenticateJWT, checkRole(writeRoles), upload.single('attachment'), validationMiddleware(validateRequirement), RequirementController.create);
-router.put('/:id', authenticateJWT, checkRole(writeRoles), upload.single('attachment'), validationMiddleware(validateRequirement), RequirementController.update);
-router.delete('/:id', authenticateJWT, checkRole(writeRoles), RequirementController.softDelete);
+router.post('/', authenticateJWT, checkPermission('recruitment', 'job_openings', 'create'), upload.single('attachment'), validationMiddleware(validateRequirement), RequirementController.create);
+router.put('/:id', authenticateJWT, checkPermission('recruitment', 'job_openings', 'edit'), upload.single('attachment'), validationMiddleware(validateRequirement), RequirementController.update);
+router.delete('/:id', authenticateJWT, checkPermission('recruitment', 'job_openings', 'delete'), RequirementController.softDelete);
 
-router.post('/:id/restore', authenticateJWT, checkRole(writeRoles), RequirementController.restore);
-router.post('/:id/publish', authenticateJWT, checkRole(writeRoles), RequirementController.publish);
-router.post('/:id/publish-linkedin', authenticateJWT, checkRole(writeRoles), RequirementController.publishLinkedIn);
-router.get('/:id/publishing-channels', authenticateJWT, RequirementController.getPublishingChannels);
-router.post('/:id/retry-publish', authenticateJWT, checkRole(writeRoles), RequirementController.retryPublishChannel);
-router.post('/:id/approve', authenticateJWT, checkRole(adminRoles), RequirementController.approve);
-router.post('/:id/reject', authenticateJWT, checkRole(adminRoles), RequirementController.reject);
-router.post('/:id/close', authenticateJWT, checkRole(writeRoles), RequirementController.close);
-router.post('/:id/reopen', authenticateJWT, checkRole(writeRoles), RequirementController.reopen);
-router.post('/:id/duplicate', authenticateJWT, checkRole(writeRoles), RequirementController.duplicate);
+router.post('/:id/restore', authenticateJWT, checkPermission('recruitment', 'job_openings', 'edit'), RequirementController.restore);
+router.post('/:id/publish', authenticateJWT, checkPermission('recruitment', 'job_openings', 'edit'), RequirementController.publish);
+router.post('/:id/publish-linkedin', authenticateJWT, checkPermission('recruitment', 'job_openings', 'edit'), RequirementController.publishLinkedIn);
+router.get('/:id/publishing-channels', authenticateJWT, checkPermission('recruitment', 'job_openings', 'view'), RequirementController.getPublishingChannels);
+router.post('/:id/retry-publish', authenticateJWT, checkPermission('recruitment', 'job_openings', 'edit'), RequirementController.retryPublishChannel);
+router.post('/:id/approve', authenticateJWT, checkPermission('recruitment', 'job_openings', 'edit'), RequirementController.approve);
+router.post('/:id/reject', authenticateJWT, checkPermission('recruitment', 'job_openings', 'edit'), RequirementController.reject);
+router.post('/:id/close', authenticateJWT, checkPermission('recruitment', 'job_openings', 'edit'), RequirementController.close);
+router.post('/:id/reopen', authenticateJWT, checkPermission('recruitment', 'job_openings', 'edit'), RequirementController.reopen);
+router.post('/:id/duplicate', authenticateJWT, checkPermission('recruitment', 'job_openings', 'create'), RequirementController.duplicate);
 
-router.post('/bulk-delete', authenticateJWT, checkRole(writeRoles), RequirementController.bulkDelete);
-router.post('/bulk-status', authenticateJWT, checkRole(adminRoles), RequirementController.bulkStatusUpdate);
+router.post('/bulk-delete', authenticateJWT, checkPermission('recruitment', 'job_openings', 'delete'), RequirementController.bulkDelete);
+router.post('/bulk-status', authenticateJWT, checkPermission('recruitment', 'job_openings', 'edit'), RequirementController.bulkStatusUpdate);
 
 module.exports = router;

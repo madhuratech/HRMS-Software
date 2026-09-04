@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import {
   Search, Filter, Plus, MoreHorizontal, ChevronLeft, ChevronRight, X,
   AlertTriangle, Users, Globe, ExternalLink, CheckCircle2, AlertCircle,
@@ -698,29 +699,18 @@ export default function JobOpenings() {
                 style={{ width: '100%', padding: '10px 10px 10px 40px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px' }}
               />
             </div>
-            <select
-              value={selectedDept}
-              onChange={e => setSelectedDept(e.target.value)}
-              style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '14px', color: '#334155', outline: 'none', cursor: 'pointer' }}
-            >
-              <option value="">All Departments</option>
-              {(meta.departments || []).map(d => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
-            <select
-              value={selectedStatus}
-              onChange={e => setSelectedStatus(e.target.value)}
-              style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '14px', color: '#334155', outline: 'none', cursor: 'pointer' }}
-            >
-              <option value="">All Status</option>
-              <option value="Open">Open</option>
-              <option value="Published">Published</option>
-              <option value="Closed">Closed</option>
-              <option value="Draft">Draft</option>
-              <option value="Pending">Pending</option>
-              <option value="Approved">Approved</option>
-            </select>
+            <AppDropdown
+                value={selectedDept}
+                onChange={v => setSelectedDept(v)}
+                options={[{value:'',label:'All Departments'}]}
+                size="sm"
+              />
+            <AppDropdown
+                value={selectedStatus}
+                onChange={v => setSelectedStatus(v)}
+                options={[{value:'',label:'All Status'},{value:'Open',label:'Open'},{value:'Published',label:'Published'},{value:'Closed',label:'Closed'},{value:'Draft',label:'Draft'},{value:'Pending',label:'Pending'},{value:'Approved',label:'Approved'}]}
+                size="sm"
+              />
           </div>
         </div>
 
@@ -2055,17 +2045,12 @@ export default function JobOpenings() {
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#475569', marginBottom: '6px' }}>
                   Optional reason:
                 </label>
-                <select
-                  value={closeReason}
-                  onChange={e => setCloseReason(e.target.value)}
-                  style={{ width: '100%', height: '38px', padding: '0 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '13px', color: '#1E293B', background: '#FFF', outline: 'none' }}
-                >
-                  <option value="Job Filled">Job Filled</option>
-                  <option value="Hiring Cancelled">Hiring Cancelled</option>
-                  <option value="Position On Hold">Position On Hold</option>
-                  <option value="Duplicate Job">Duplicate Job</option>
-                  <option value="Other">Other</option>
-                </select>
+                <AppDropdown
+                value={closeReason}
+                onChange={v => setCloseReason(v)}
+                options={[{value:'Job Filled',label:'Job Filled'},{value:'Hiring Cancelled',label:'Hiring Cancelled'},{value:'Position On Hold',label:'Position On Hold'},{value:'Duplicate Job',label:'Duplicate Job'},{value:'Other',label:'Other'}]}
+                size="sm"
+              />
               </div>
             </div>
 

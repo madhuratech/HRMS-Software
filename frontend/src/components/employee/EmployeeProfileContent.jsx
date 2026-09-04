@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { useNavigate } from 'react-router-dom';
-import { Edit2, Mail, Phone, MapPin, Briefcase, Calendar, DollarSign, Clock, FileText, Monitor, TrendingUp, Folder, User, Camera, Trash2, ChevronDown, Check } from 'lucide-react';
+import { Edit2, Mail, Phone, MapPin, Briefcase, Calendar, DollarSign, Clock, FileText, Monitor, TrendingUp, Folder, User, Camera, Trash2, ChevronDown, Check, Plus, ShieldCheck, CheckCircle2, AlertCircle, XCircle, Building2, HelpCircle } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import EmployeeAvatar from './EmployeeAvatar';
 import './employee-module.css';
 import { apiFetch, getAuthToken } from '../../lib/api';
 
 const tabs = [
-  'Overview', 'Employment', 'Salary', 'Attendance', 'Leave',
+  'Overview', 'Employment', 'Previous Experience', 'Salary', 'Attendance', 'Leave',
   'Documents', 'Performance'
 ];
 
@@ -52,6 +53,8 @@ export default function EmployeeProfileContent() {
     dob: '',
     gender: '',
     employmentType: '',
+    experience: '',
+    shiftType: '',
     salary: '',
     address: '',
     emergencyContact: '',
@@ -64,6 +67,11 @@ export default function EmployeeProfileContent() {
     managerName: '',
     teamName: ''
   });
+
+  // Previous Experience State
+  const [previousExperiences, setPreviousExperiences] = useState([]);
+  const [experienceSummary, setExperienceSummary] = useState(null);
+  const [loadingExp, setLoadingExp] = useState(false);
 
   const [currentEmpId, setCurrentEmpId] = useState(() => {
     if (isTeamLeaderRole || isEmployeeRole) return authUserId;
@@ -194,7 +202,39 @@ export default function EmployeeProfileContent() {
       .then(data => Array.isArray(data) && setBranches(data)).catch(() => { });
     apiFetch('/employees/lookup/teams')
       .then(data => Array.isArray(data) && setTeams(data)).catch(() => { });
+
+    // Fetch previous experiences
+    fetchPreviousExperiences();
   }, [currentEmpId]);
+
+  const fetchPreviousExperiences = () => {
+    if (!currentEmpId) return;
+    setLoadingExp(true);
+    apiFetch(`/employees/${currentEmpId}/previous-experiences`)
+      .then(res => {
+        if (res && res.success) {
+          setPreviousExperiences(res.experiences || []);
+          if (res.summary) {
+            setExperienceSummary(res.summary);
+            setSummaryForm({
+              experience_type: res.summary.experience_type || 'Experienced',
+              total_experience_years: res.summary.total_experience_years || 0,
+              total_experience_months: res.summary.total_experience_months || 0,
+              relevant_experience_years: res.summary.relevant_experience_years || 0,
+              relevant_experience_months: res.summary.relevant_experience_months || 0
+            });
+          }
+        } else {
+          setPreviousExperiences([]);
+        }
+        setLoadingExp(false);
+      })
+      .catch(err => {
+        console.error("Error loading previous experiences:", err);
+        setPreviousExperiences([]);
+        setLoadingExp(false);
+      });
+  };
 
   if (loading) {
     return (
@@ -238,6 +278,8 @@ export default function EmployeeProfileContent() {
       dob: profile.dob ? new Date(profile.dob).toISOString().split('T')[0] : '',
       gender: profile.gender || '',
       employmentType: profile.employmentType || 'Full-time',
+      experience: profile.experience || '',
+      shiftType: profile.shiftType || 'Regular Shift',
       salary: profile.salary || '0',
       address: profile.address || '',
       emergencyContact: profile.emergencyContact || '',
@@ -262,6 +304,8 @@ export default function EmployeeProfileContent() {
       dob: editForm.dob,
       gender: editForm.gender,
       employmentType: editForm.employmentType,
+      experience: editForm.experience,
+      shiftType: editForm.shiftType,
       salary: parseFloat(editForm.salary) || 0,
       address: editForm.address,
       emergencyContact: editForm.emergencyContact,
@@ -628,11 +672,240 @@ export default function EmployeeProfileContent() {
             </div>
             <div>
               <p className="hrms-text-muted hrms-text-xs" style={{ marginBottom: '4px' }}>Employment Type</p>
-              <p className="hrms-font-medium hrms-text-sm">{profile.employmentType}</p>
+              <p className="hrms-font-medium hrms-text-sm">{profile.employmentType || '—'}</p>
+            </div>
+            <div>
+              <p className="hrms-text-muted hrms-text-xs" style={{ marginBottom: '4px' }}>Employee Experience</p>
+              <p className="hrms-font-medium hrms-text-sm">{profile.experience || '—'}</p>
+            </div>
+            <div>
+              <p className="hrms-text-muted hrms-text-xs" style={{ marginBottom: '4px' }}>Shift Type</p>
+              <p className="hrms-font-medium hrms-text-sm">{profile.shiftType || '—'}</p>
             </div>
           </div>
         </div>
       )}
+
+      {/* PREVIOUS EXPERIENCE TAB */}
+      {activeTab === 'Previous Experience' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Summary Card */}
+          <div className="hrms-card" style={{ background: 'linear-gradient(135deg, #F8FAFC 0%, #EFF6FF 100%)', border: '1px solid #DBEAFE', borderRadius: '16px', padding: '24px' }}>
+            <div className="hrms-flex-between" style={{ alignItems: 'flex-start', marginBottom: '20px' }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#1E293B' }}>Previous Experience & History</h3>
+                  <span style={{
+                    padding: '4px 12px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    backgroundColor: (experienceSummary?.experience_type || profile.experienceType) === 'Fresher' ? '#F3E8FF' : '#DCFCE7',
+                    color: (experienceSummary?.experience_type || profile.experienceType) === 'Fresher' ? '#7E22CE' : '#15803D'
+                  }}>
+                    {experienceSummary?.experience_type || profile.experienceType || 'Experienced'}
+                  </span>
+                </div>
+                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748B' }}>
+                  Preserved candidate work history and verified previous employment references.
+                </p>
+              </div>
+            </div>
+
+            {/* Experience Metrics */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Clock size={20} />
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: '#64748B', textTransform: 'uppercase' }}>Total Experience</p>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: '700', color: '#0F172A' }}>
+                    {experienceSummary?.total_experience_years || profile.totalExperienceYears || 0} Yrs {experienceSummary?.total_experience_months || profile.totalExperienceMonths || 0} Mos
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#ECFDF5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Briefcase size={20} />
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: '#64748B', textTransform: 'uppercase' }}>Relevant Experience</p>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: '700', color: '#0F172A' }}>
+                    {experienceSummary?.relevant_experience_years || profile.relevantExperienceYears || 0} Yrs {experienceSummary?.relevant_experience_months || profile.relevantExperienceMonths || 0} Mos
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#F8FAFC', color: '#64748B', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <Building2 size={20} />
+                </div>
+                <div>
+                  <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: '#64748B', textTransform: 'uppercase' }}>Previous Companies</p>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '16px', fontWeight: '700', color: '#0F172A' }}>
+                    {previousExperiences.length} Recorded
+                  </p>
+                </div>
+              </div>
+
+              {profile.candidateId && (
+                <div style={{ background: '#FFFFFF', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '10px', background: '#FDF4FF', color: '#A855F7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ShieldCheck size={20} />
+                  </div>
+                  <div>
+                    <p style={{ margin: 0, fontSize: '12px', fontWeight: '600', color: '#64748B', textTransform: 'uppercase' }}>Candidate Source</p>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '14px', fontWeight: '700', color: '#9333EA' }}>
+                      Linked #{profile.candidateId}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Previous Companies History List */}
+          <div className="hrms-card">
+            <h3 className="hrms-font-semibold hrms-mb-6" style={{ fontSize: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Building2 size={18} color="#2563EB" /> Previous Employment Records
+            </h3>
+
+            {loadingExp ? (
+              <div style={{ textAlign: 'center', padding: '30px', color: '#64748B' }}>Loading previous experiences...</div>
+            ) : previousExperiences.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '40px 20px', background: '#F8FAFC', borderRadius: '12px', border: '1px dashed #CBD5E1' }}>
+                <Building2 size={36} color="#94A3B8" style={{ margin: '0 auto 12px auto' }} />
+                <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '600', color: '#334155' }}>No Previous Employment Records Found</h4>
+                <p style={{ margin: '6px 0 0 0', fontSize: '13px', color: '#64748B', maxWidth: '400px', marginLeft: 'auto', marginRight: 'auto' }}>
+                  {(experienceSummary?.experience_type || profile.experienceType) === 'Fresher'
+                    ? 'This employee joined as a Fresher with zero prior professional experience.'
+                    : 'No previous employment history records have been recorded yet.'}
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {previousExperiences.map((exp, index) => {
+                  const getVerBadge = (st) => {
+                    switch (st) {
+                      case 'Verified':
+                        return { bg: '#DCFCE7', text: '#15803D', icon: <CheckCircle2 size={13} /> };
+                      case 'Rejected':
+                        return { bg: '#FEE2E2', text: '#B91C1C', icon: <XCircle size={13} /> };
+                      case 'Unable to Verify':
+                        return { bg: '#F1F5F9', text: '#475569', icon: <HelpCircle size={13} /> };
+                      default:
+                        return { bg: '#FEF3C7', text: '#B45309', icon: <Clock size={13} /> };
+                    }
+                  };
+
+                  const vBadge = getVerBadge(exp.verification_status);
+
+                  const startDateStr = exp.start_date ? new Date(exp.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—';
+                  const endDateStr = exp.is_currently_working
+                    ? 'Present'
+                    : (exp.end_date ? new Date(exp.end_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—');
+
+                  return (
+                    <div
+                      key={exp.id}
+                      style={{
+                        padding: '20px',
+                        background: '#FFFFFF',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: '12px',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.02)',
+                        transition: 'all 0.15s ease'
+                      }}
+                    >
+                      <div className="hrms-flex-between" style={{ alignItems: 'flex-start', marginBottom: '14px' }}>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                            <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0F172A' }}>
+                              {exp.company_name}
+                            </h4>
+                            <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', background: '#EFF6FF', color: '#2563EB' }}>
+                              {exp.employment_type || 'Full Time'}
+                            </span>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '2px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', background: vBadge.bg, color: vBadge.text }}>
+                              {vBadge.icon} {exp.verification_status || 'Pending'}
+                            </span>
+                            {exp.candidate_experience_id && (
+                              <span style={{ padding: '2px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '600', background: '#F8FAFC', color: '#64748B', border: '1px solid #E2E8F0' }}>
+                                Ref #{exp.candidate_experience_id}
+                              </span>
+                            )}
+                          </div>
+                          <p style={{ margin: '4px 0 0 0', fontSize: '14px', fontWeight: '600', color: '#475569' }}>
+                            {exp.designation} {exp.department ? `• ${exp.department}` : ''}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Info Grid */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', background: '#F8FAFC', padding: '14px', borderRadius: '8px', marginBottom: '12px' }}>
+                        <div>
+                          <p style={{ margin: 0, fontSize: '11px', fontWeight: '600', color: '#64748B', textTransform: 'uppercase' }}>Duration</p>
+                          <p style={{ margin: '2px 0 0 0', fontSize: '13px', fontWeight: '600', color: '#1E293B' }}>
+                            {startDateStr} — {endDateStr} {exp.duration_months ? `(${exp.duration_months} Mos)` : ''}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p style={{ margin: 0, fontSize: '11px', fontWeight: '600', color: '#64748B', textTransform: 'uppercase' }}>Location</p>
+                          <p style={{ margin: '2px 0 0 0', fontSize: '13px', fontWeight: '500', color: '#1E293B' }}>
+                            {exp.company_location || '—'}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p style={{ margin: 0, fontSize: '11px', fontWeight: '600', color: '#64748B', textTransform: 'uppercase' }}>Last Drawn CTC</p>
+                          <p style={{ margin: '2px 0 0 0', fontSize: '13px', fontWeight: '600', color: '#059669' }}>
+                            {exp.last_drawn_ctc ? `₹${Number(exp.last_drawn_ctc).toLocaleString()}` : '—'}
+                          </p>
+                        </div>
+
+                        <div>
+                          <p style={{ margin: 0, fontSize: '11px', fontWeight: '600', color: '#64748B', textTransform: 'uppercase' }}>Reason for Leaving</p>
+                          <p style={{ margin: '2px 0 0 0', fontSize: '13px', fontWeight: '500', color: '#1E293B' }}>
+                            {exp.reason_for_leaving || '—'}
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* References & Verification details */}
+                      {(exp.reporting_manager || exp.reference_name || exp.verification_notes) && (
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '14px', fontSize: '12px', color: '#475569', paddingTop: '6px' }}>
+                          {exp.reporting_manager && (
+                            <div>
+                              <span style={{ fontWeight: '600', color: '#334155' }}>Manager: </span>
+                              {exp.reporting_manager}
+                            </div>
+                          )}
+                          {exp.reference_name && (
+                            <div>
+                              <span style={{ fontWeight: '600', color: '#334155' }}>Reference: </span>
+                              {exp.reference_name} {exp.reference_designation ? `(${exp.reference_designation})` : ''} {exp.reference_contact ? `• ${exp.reference_contact}` : ''}
+                            </div>
+                          )}
+                          {exp.verification_notes && (
+                            <div style={{ gridColumn: '1 / -1', background: '#F1F5F9', padding: '8px 12px', borderRadius: '6px' }}>
+                              <span style={{ fontWeight: '600', color: '#1E293B' }}>HR Verification Notes: </span>
+                              {exp.verification_notes}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
 
       {activeTab === 'Salary' && (
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
@@ -784,20 +1057,21 @@ export default function EmployeeProfileContent() {
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Gender</label>
-                  <select className="hrms-select" value={editForm.gender} onChange={e => setEditForm({ ...editForm, gender: e.target.value })}>
-                    <option value="">Select Gender</option>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
+                  <AppDropdown
+                    value={editForm.gender}
+                    onChange={v => setEditForm({ ...editForm, gender: v })}
+                    options={[{value:'',label:'Select Gender'},{value:'Male',label:'Male'},{value:'Female',label:'Female'},{value:'Other',label:'Other'}]}
+                    size="sm"
+                  />
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Employment Type</label>
-                  <select className="hrms-select" value={editForm.employmentType} onChange={e => setEditForm({ ...editForm, employmentType: e.target.value })}>
-                    <option value="Full-time">Full-time</option>
-                    <option value="Part-time">Part-time</option>
-                    <option value="Contract">Contract</option>
-                  </select>
+                  <AppDropdown
+                    value={editForm.employmentType}
+                    onChange={v => setEditForm({ ...editForm, employmentType: v })}
+                    options={[{value:'Full-time',label:'Full-time'},{value:'Part-time',label:'Part-time'},{value:'Contract',label:'Contract'}]}
+                    size="sm"
+                  />
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Monthly Gross Salary (INR)</label>
@@ -833,35 +1107,63 @@ export default function EmployeeProfileContent() {
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Branch</label>
-                  <select className="hrms-select" value={editForm.branch} onChange={e => setEditForm({ ...editForm, branch: e.target.value })}>
-                    <option value="">Select Branch</option>
-                    {branches.map(b => <option key={b.id} value={b.branch_name}>{b.branch_name}</option>)}
-                    {editForm.branch && !branches.find(b => b.branch_name === editForm.branch) && <option value={editForm.branch}>{editForm.branch}</option>}
-                  </select>
+                  <AppDropdown
+                    value={editForm.branch}
+                    onChange={v => setEditForm({ ...editForm, branch: v })}
+                    options={[{value:'',label:'Select Branch'}, ...(branches || [])]}
+                    size="sm"
+                  />
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Department</label>
-                  <select className="hrms-select" value={editForm.department} onChange={e => setEditForm({ ...editForm, department: e.target.value })}>
-                    <option value="">Select Department</option>
-                    {departments.map(d => <option key={d.id} value={d.dept_name}>{d.dept_name}</option>)}
-                    {editForm.department && !departments.find(d => d.dept_name === editForm.department) && <option value={editForm.department}>{editForm.department}</option>}
-                  </select>
+                  <AppDropdown
+                    value={editForm.department}
+                    onChange={v => setEditForm({ ...editForm, department: v })}
+                    options={[{value:'',label:'Select Department'}, ...(departments || [])]}
+                    size="sm"
+                  />
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Designation</label>
-                  <select className="hrms-select" value={editForm.designation} onChange={e => setEditForm({ ...editForm, designation: e.target.value })}>
-                    <option value="">Select Designation</option>
-                    {designations.map(d => <option key={d.id} value={d.role_name}>{d.role_name}</option>)}
-                    {editForm.designation && !designations.find(d => d.role_name === editForm.designation) && <option value={editForm.designation}>{editForm.designation}</option>}
-                  </select>
+                  <AppDropdown
+                    value={editForm.designation}
+                    onChange={v => setEditForm({ ...editForm, designation: v })}
+                    options={[{value:'',label:'Select Designation'}, ...(designations || [])]}
+                    size="sm"
+                  />
                 </div>
                 <div className="hrms-input-group">
                   <label className="hrms-label">Team</label>
-                  <select className="hrms-select" value={editForm.teamName} onChange={e => setEditForm({ ...editForm, teamName: e.target.value })}>
-                    <option value="">Select Team</option>
-                    {teams.map(t => <option key={t.id} value={t.name}>{t.name}</option>)}
-                    {editForm.teamName && !teams.find(t => t.name === editForm.teamName) && <option value={editForm.teamName}>{editForm.teamName}</option>}
-                  </select>
+                  <AppDropdown
+                    value={editForm.teamName}
+                    onChange={v => setEditForm({ ...editForm, teamName: v })}
+                    options={[{value:'',label:'Select Team'}, ...(teams || [])]}
+                    size="sm"
+                  />
+                </div>
+                <div className="hrms-input-group">
+                  <label className="hrms-label">Employee Experience</label>
+                  <input
+                    type="text"
+                    className="hrms-input"
+                    value={editForm.experience}
+                    onChange={e => setEditForm({ ...editForm, experience: e.target.value })}
+                    placeholder="e.g. 3 Years"
+                  />
+                </div>
+                <div className="hrms-input-group">
+                  <label className="hrms-label">Employee Shift Type</label>
+                  <AppDropdown
+                    value={editForm.shiftType}
+                    onChange={v => setEditForm({ ...editForm, shiftType: v })}
+                    placeholder="Select Shift Type"
+                    options={[
+                      { value: 'Regular Shift', label: 'Regular Shift' },
+                      { value: 'Rotational Shift', label: 'Rotational Shift' },
+                      { value: 'Contract Shift', label: 'Contract Shift' }
+                    ]}
+                    size="sm"
+                  />
                 </div>
                 <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
                   <label className="hrms-label">Manager Name</label>
@@ -876,6 +1178,9 @@ export default function EmployeeProfileContent() {
           </div>
         </div>
       )}
+
     </div>
   );
 }
+
+

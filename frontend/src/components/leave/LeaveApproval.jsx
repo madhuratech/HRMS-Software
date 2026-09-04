@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, Check, X, Eye, ChevronLeft, ChevronRight, AlertCircle, CheckCircle, XCircle, Clock } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
@@ -121,15 +122,7 @@ export default function LeaveApproval() {
           
           <div style={{ padding: '24px', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: '16px' }}>
-              <select 
-                value={deptFilter}
-                onChange={(e) => setDeptFilter(e.target.value)}
-                style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '160px' }}
-              >
-                <option>All Departments</option>
-                <option>Design</option>
-                <option>Engineering</option>
-              </select>
+              <AppDropdown value={deptFilter} options={[{value:'All Departments',label:'All Departments'},{value:'Design',label:'Design'},{value:'Engineering',label:'Engineering'}]} size="sm" />
               <div style={{ position: 'relative', width: '240px' }}>
                 <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }} />
                 <input 

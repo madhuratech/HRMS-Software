@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Plus, Edit2, Link2, ChevronLeft, ChevronRight, X, Trash2, CheckCircle2 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { useToast } from '../ui/Toast';
@@ -206,17 +207,18 @@ export default function Milestones() {
       </div>
 
       <div style={{ display:'flex', gap:10, marginBottom:16 }}>
-        <select style={{ ...inputStyle, width:220, height:36, fontSize:13 }} value={projectFilter} onChange={e => setProjectFilter(e.target.value)}>
-          <option value="">All Projects</option>
-          {projects.map(p => <option key={p.id} value={p.id}>{p.project_name || p.name}</option>)}
-        </select>
-        <select style={{ ...inputStyle, width:180, height:36, fontSize:13 }} value={statusFilter} onChange={e => setStatusFilter(e.target.value)}>
-          <option value="">All Statuses</option>
-          <option>Upcoming</option>
-          <option>In Progress</option>
-          <option>Completed</option>
-          <option>Delayed</option>
-        </select>
+        <AppDropdown
+                value={projectFilter}
+                onChange={v => setProjectFilter(v)}
+                options={[{value:'',label:'All Projects'}]}
+                size="sm"
+              />
+        <AppDropdown
+                value={statusFilter}
+                onChange={v => setStatusFilter(v)}
+                options={[{value:'',label:'All Statuses'}]}
+                size="sm"
+              />
       </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'1fr 280px', gap:20 }}>
@@ -334,10 +336,12 @@ export default function Milestones() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Project <span className="text-red-500">*</span></label>
-                  <select required value={formData.project_id} onChange={e => setFormData({ ...formData, project_id: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Project</option>
-                    {projects.map(p => <option key={p.id} value={p.id}>{p.project_name || p.name}</option>)}
-                  </select>
+                  <AppDropdown
+                value={formData.project_id}
+                onChange={v => setFormData({ ...formData, project_id: v })}
+                options={[{value:'',label:'Select Project'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Due Date <span className="text-red-500">*</span></label>
@@ -345,12 +349,12 @@ export default function Milestones() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Upcoming">Upcoming</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Delayed">Delayed</option>
-                  </select>
+                  <AppDropdown
+                value={formData.status}
+                onChange={v => setFormData({ ...formData, status: v })}
+                options={[{value:'Upcoming',label:'Upcoming'},{value:'In Progress',label:'In Progress'},{value:'Completed',label:'Completed'},{value:'Delayed',label:'Delayed'}]}
+                size="sm"
+              />
                 </div>
                 {editingId && formData.status !== 'Completed' && (
                   <div>

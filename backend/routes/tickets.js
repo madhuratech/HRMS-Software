@@ -1,10 +1,10 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../config/database");
-const { authenticateJWT } = require("../middlewares/auth");
+const { authenticateJWT, checkPermission } = require("../middlewares/auth");
 
 // Support Tickets Endpoints
-router.get("/", authenticateJWT, (req, res) => {
+router.get("/", authenticateJWT, checkPermission('helpdesk', 'support_tickets', 'view'), (req, res) => {
   const sql = `
     SELECT 
       id,
@@ -50,7 +50,7 @@ router.get("/", authenticateJWT, (req, res) => {
   });
 });
 
-router.post("/", authenticateJWT, (req, res) => {
+router.post("/", authenticateJWT, checkPermission('helpdesk', 'support_tickets', 'create'), (req, res) => {
   const { subject, cat, priority, requester } = req.body;
   const sql = `
     INSERT INTO helpdesk_tickets (ticket_code, subject, category, priority, requester, status)
@@ -63,7 +63,7 @@ router.post("/", authenticateJWT, (req, res) => {
   });
 });
 
-router.put("/:id/status", authenticateJWT, (req, res) => {
+router.put("/:id/status", authenticateJWT, checkPermission('helpdesk', 'support_tickets', 'edit'), (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
   db.query("UPDATE helpdesk_tickets SET status = ? WHERE ticket_code = ? OR id = ?", [status, id, id], (err, result) => {
@@ -73,7 +73,7 @@ router.put("/:id/status", authenticateJWT, (req, res) => {
 });
 
 // Knowledge Base Articles
-router.get("/kb/articles", authenticateJWT, (req, res) => {
+router.get("/kb/articles", authenticateJWT, checkPermission('helpdesk', 'knowledge_base', 'view'), (req, res) => {
   const sql = "SELECT * FROM helpdesk_articles ORDER BY id DESC";
   db.query(sql, (err, rows) => {
     if (err) {
@@ -101,7 +101,7 @@ router.get("/kb/articles", authenticateJWT, (req, res) => {
 });
 
 // Helpdesk Categories
-router.get("/categories", authenticateJWT, (req, res) => {
+router.get("/categories", authenticateJWT, checkPermission('helpdesk', 'helpdesk_categories', 'view'), (req, res) => {
   const sql = "SELECT * FROM helpdesk_categories ORDER BY id ASC";
   db.query(sql, (err, rows) => {
     if (err) {

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Plus, Eye, Download, FileText, CheckCircle, Clock, FolderPlus, X } from 'lucide-react';
 import { apiFetch, formatDate } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { hasPermission } from '../../lib/permissions';
 
 export function Templates() {
   const { addToast } = useToast();
@@ -158,12 +160,14 @@ export function Templates() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button onClick={openCreateModal} style={{
-            display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
-            background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
-          }}>
-            <Plus size={16} /> Create Template
-          </button>
+          {hasPermission('documents', 'doc_templates', 'create') && (
+            <button onClick={openCreateModal} style={{
+              display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
+              background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
+            }}>
+              <Plus size={16} /> Create Template
+            </button>
+          )}
         </div>
       </div>
 
@@ -240,12 +244,16 @@ export function Templates() {
                         <button onClick={() => handleView(r)} style={{ background: 'none', border: 'none', color: '#2563EB', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
                           View
                         </button>
-                        <button onClick={() => handleEdit(r)} style={{ background: 'none', border: 'none', color: '#059669', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
-                          Edit
-                        </button>
-                        <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
-                          Delete
-                        </button>
+                        {hasPermission('documents', 'doc_templates', 'edit') && (
+                          <button onClick={() => handleEdit(r)} style={{ background: 'none', border: 'none', color: '#059669', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
+                            Edit
+                          </button>
+                        )}
+                        {hasPermission('documents', 'doc_templates', 'delete') && (
+                          <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -258,7 +266,7 @@ export function Templates() {
       </div>
 
       {/* Create / Edit Template Modal */}
-      {showAddModal && (
+      {showAddModal && (editTemplateId ? hasPermission('documents', 'doc_templates', 'edit') : hasPermission('documents', 'doc_templates', 'create')) && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
           <div className="modal-centered-content" style={{ width: '650px', maxWidth: '90vw', maxHeight: '90vh' }}>
@@ -279,12 +287,12 @@ export function Templates() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Category <span className="text-red-500">*</span></label>
-                  <select required value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-white">
-                    <option value="Offer Letters">Offer Letters</option>
-                    <option value="HR Letters">HR Letters</option>
-                    <option value="Contracts">Contracts</option>
-                    <option value="Certificates">Certificates</option>
-                  </select>
+                  <AppDropdown
+                value={formData.category}
+                onChange={v => setFormData({ ...formData, category: v })}
+                options={[{value:'Offer Letters',label:'Offer Letters'},{value:'HR Letters',label:'HR Letters'},{value:'Contracts',label:'Contracts'},{value:'Certificates',label:'Certificates'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Template Body Content</label>
@@ -292,10 +300,12 @@ export function Templates() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-white">
-                    <option value="Active">Active</option>
-                    <option value="Draft">Draft</option>
-                  </select>
+                  <AppDropdown
+                value={formData.status}
+                onChange={v => setFormData({ ...formData, status: v })}
+                options={[{value:'Active',label:'Active'},{value:'Draft',label:'Draft'}]}
+                size="sm"
+              />
                 </div>
               </div>
               <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">

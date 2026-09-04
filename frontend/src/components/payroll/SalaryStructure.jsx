@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
 import { 
   Plus, Edit2, Trash2, Eye, Building2, CheckCircle2, Wallet, Users, 
   ChevronLeft, ChevronRight, Loader2, X, UserCheck, AlertCircle, ArrowRight 
 } from 'lucide-react';
+import { hasPermission } from '../../lib/permissions';
 
 export default function SalaryStructure() {
   const { addToast } = useToast();
@@ -307,23 +309,27 @@ export default function SalaryStructure() {
           <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>Create organizational compensation plans and assign structures to employees</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button
-            onClick={() => {
-              setAssignEmpId('');
-              setAssignStructId(structures[0]?.id || '');
-              setCustomGross('');
-              setShowAssignModal(true);
-            }}
-            style={{ padding: '10px 18px', borderRadius: '10px', border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
-          >
-            <UserCheck size={16} /> Assign to Employee
-          </button>
-          <button
-            onClick={openCreateModal}
-            style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}
-          >
-            <Plus size={16} /> Add Structure
-          </button>
+          {hasPermission('payroll', 'salary_structure', 'create') && (
+            <>
+              <button
+                onClick={() => {
+                  setAssignEmpId('');
+                  setAssignStructId(structures[0]?.id || '');
+                  setCustomGross('');
+                  setShowAssignModal(true);
+                }}
+                style={{ padding: '10px 18px', borderRadius: '10px', border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600' }}
+              >
+                <UserCheck size={16} /> Assign to Employee
+              </button>
+              <button
+                onClick={openCreateModal}
+                style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}
+              >
+                <Plus size={16} /> Add Structure
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -506,15 +512,12 @@ export default function SalaryStructure() {
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                     Pay Frequency
                   </label>
-                  <select
-                    value={frequency}
-                    onChange={e => setFrequency(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                  >
-                    <option value="Monthly">Monthly</option>
-                    <option value="Bi-Weekly">Bi-Weekly</option>
-                    <option value="Annual">Annual</option>
-                  </select>
+                  <AppDropdown
+                value={frequency}
+                onChange={v => setFrequency(v)}
+                options={[{value:'Monthly',label:'Monthly'},{value:'Bi-Weekly',label:'Bi-Weekly'},{value:'Annual',label:'Annual'}]}
+                size="sm"
+              />
                 </div>
               </div>
 
@@ -622,44 +625,30 @@ export default function SalaryStructure() {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                   Select Employee <span style={{ color: '#EF4444' }}>*</span>
                 </label>
-                <select
-                  required
-                  value={assignEmpId}
-                  onChange={e => {
-                    setAssignEmpId(e.target.value);
-                    const selected = activeEmployees.find(emp => String(emp.id) === e.target.value);
+                <AppDropdown
+                value={assignEmpId}
+                onChange={v => {
+                    setAssignEmpId(v);
+                    const selected = activeEmployees.find(emp => String(emp.id) === v);
                     if (selected && selected.salary) {
                       setCustomGross(selected.salary);
                     }
                   }}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                >
-                  <option value="">-- Choose Active Employee --</option>
-                  {activeEmployees.map(e => (
-                    <option key={e.id} value={e.id}>
-                      {e.name} ({e.employee_id || `EMP${e.id}`}) • {e.department || 'General'}
-                    </option>
-                  ))}
-                </select>
+                options={[{value:'',label:'-- Choose Active Employee --'}]}
+                size="sm"
+              />
               </div>
 
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                   Select Salary Structure <span style={{ color: '#EF4444' }}>*</span>
                 </label>
-                <select
-                  required
-                  value={assignStructId}
-                  onChange={e => setAssignStructId(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                >
-                  <option value="">-- Choose Salary Structure --</option>
-                  {structures.map(s => (
-                    <option key={s.id} value={s.id}>
-                      {s.name} (Base CTC: ₹{Number(s.total_ctc || 0).toLocaleString('en-IN')})
-                    </option>
-                  ))}
-                </select>
+                <AppDropdown
+                value={assignStructId}
+                onChange={v => setAssignStructId(v)}
+                options={[{value:'',label:'-- Choose Salary Structure --'}]}
+                size="sm"
+              />
               </div>
 
               <div>
@@ -775,29 +764,24 @@ export default function SalaryStructure() {
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                     Pay Frequency
                   </label>
-                  <select
-                    value={editFrequency}
-                    onChange={e => setEditFrequency(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                  >
-                    <option value="Monthly">Monthly</option>
-                    <option value="Bi-Weekly">Bi-Weekly</option>
-                    <option value="Annual">Annual</option>
-                  </select>
+                  <AppDropdown
+                value={editFrequency}
+                onChange={v => setEditFrequency(v)}
+                options={[{value:'Monthly',label:'Monthly'},{value:'Bi-Weekly',label:'Bi-Weekly'},{value:'Annual',label:'Annual'}]}
+                size="sm"
+              />
                 </div>
 
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                     Status
                   </label>
-                  <select
-                    value={editStatus}
-                    onChange={e => setEditStatus(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
+                  <AppDropdown
+                value={editStatus}
+                onChange={v => setEditStatus(v)}
+                options={[{value:'Active',label:'Active'},{value:'Inactive',label:'Inactive'}]}
+                size="sm"
+              />
                 </div>
               </div>
 

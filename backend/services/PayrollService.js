@@ -777,9 +777,9 @@ class PayrollService {
   }
 
   /**
-   * List payroll records with filters
+   * List payroll records with filters and optional employee scoping
    */
-  static async listPayroll({ month, year, department_id, status, search, page = 1, limit = 50 }) {
+  static async listPayroll({ month, year, department_id, status, search, page = 1, limit = 50, allowedEmployeeIds = null }) {
     let sql = `
       SELECT 
         p.*,
@@ -796,6 +796,11 @@ class PayrollService {
       WHERE 1=1
     `;
     const params = [];
+
+    if (allowedEmployeeIds && Array.isArray(allowedEmployeeIds) && allowedEmployeeIds.length > 0) {
+      sql += ` AND p.employee_id IN (${allowedEmployeeIds.map(() => '?').join(',')})`;
+      params.push(...allowedEmployeeIds);
+    }
 
     if (month && month !== 'All Months') {
       sql += " AND p.month = ?";

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { MoreVertical, ChevronLeft, ChevronRight, Plus, ArrowRight, Check } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { getAvatarUrl } from '../../lib/utils';
@@ -118,49 +119,43 @@ export default function TransfersContent() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div className="hrms-input-group">
               <label className="hrms-label">Select Employee *</label>
-              <select 
-                className="hrms-select"
+              <AppDropdown
                 value={employeeId}
-                onChange={(e) => setEmployeeId(e.target.value)}
-              >
-                <option value="">Choose Employee</option>
-                {employees.map(e => <option key={e.id} value={e.id}>{e.name} (EMP00{e.id})</option>)}
-              </select>
+                onChange={v => setEmployeeId(v)}
+                options={[{value:'',label:'Choose Employee'}]}
+                size="sm"
+              />
             </div>
             <div className="hrms-input-group">
               <label className="hrms-label">Transfer Type *</label>
-              <select 
-                className="hrms-select"
+              <AppDropdown
                 value={transferType}
-                onChange={(e) => {
-                  setTransferType(e.target.value);
-                  if (e.target.value === 'Branch') setNewValueName('Westside');
-                  else if (e.target.value === 'Department') setNewValueName('Marketing');
+                onChange={v => {
+                  setTransferType(v);
+                  if (v === 'Branch') setNewValueName('Westside');
+                  else if (v === 'Department') setNewValueName('Marketing');
                   else setNewValueName('Super Admin');
                 }}
-              >
-                <option value="Department">Department Transfer</option>
-                <option value="Branch">Branch Transfer</option>
-                <option value="Manager">Manager Transfer</option>
-              </select>
+                options={[{value:'Department',label:'Department Transfer'},{value:'Branch',label:'Branch Transfer'},{value:'Manager',label:'Manager Transfer'}]}
+                size="sm"
+              />
             </div>
             <div className="hrms-input-group">
               <label className="hrms-label">To (New Department/Branch/Manager Name) *</label>
               {transferType === 'Branch' ? (
-                <select className="hrms-select" value={newValueName} onChange={(e) => setNewValueName(e.target.value)}>
-                  <option value="Westside">Westside</option>
-                  <option value="Downtown">Downtown</option>
-                  <option value="North Hills">North Hills</option>
-                  <option value="East End">East End</option>
-                </select>
+                <AppDropdown
+                value={newValueName}
+                onChange={v => setNewValueName(v)}
+                options={[{value:'Westside',label:'Westside'},{value:'Downtown',label:'Downtown'},{value:'North Hills',label:'North Hills'},{value:'East End',label:'East End'}]}
+                size="sm"
+              />
               ) : transferType === 'Department' ? (
-                <select className="hrms-select" value={newValueName} onChange={(e) => setNewValueName(e.target.value)}>
-                  <option value="Marketing">Marketing</option>
-                  <option value="Sales">Sales</option>
-                  <option value="Engineering">Engineering</option>
-                  <option value="Customer Support">Customer Support</option>
-                  <option value="Human Resources">Human Resources</option>
-                </select>
+                <AppDropdown
+                value={newValueName}
+                onChange={v => setNewValueName(v)}
+                options={[{value:'Marketing',label:'Marketing'},{value:'Sales',label:'Sales'},{value:'Engineering',label:'Engineering'},{value:'Customer Support',label:'Customer Support'},{value:'Human Resources',label:'Human Resources'}]}
+                size="sm"
+              />
               ) : (
                 <input type="text" className="hrms-input" value={newValueName} onChange={(e) => setNewValueName(e.target.value)} placeholder="Manager Name" />
               )}

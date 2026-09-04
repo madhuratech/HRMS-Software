@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, Filter, CheckCircle2, XCircle, Clock, AlertCircle, MoreVertical, Calendar as CalendarIcon, ChevronDown, Eye, Edit2, Trash2, X } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { useNavigate } from 'react-router-dom';
@@ -391,18 +392,12 @@ export default function DailyAttendance() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Status</label>
-                  <select
-                    value={editForm.status}
-                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', border: '1px solid #e2e8f0', borderRadius: '8px', color: '#0f172a', fontSize: '14px', fontWeight: '500', background: '#fff', boxSizing: 'border-box' }}
-                  >
-                    <option value="Present">Present</option>
-                    <option value="Late">Late</option>
-                    <option value="Early Exit">Early Exit</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Absent">Absent</option>
-                    <option value="On Leave">On Leave</option>
-                  </select>
+                  <AppDropdown
+                value={editForm.status}
+                onChange={v => setEditForm({ ...editForm, status: v })}
+                options={[{value:'Present',label:'Present'},{value:'Late',label:'Late'},{value:'Early Exit',label:'Early Exit'},{value:'Completed',label:'Completed'},{value:'Absent',label:'Absent'},{value:'On Leave',label:'On Leave'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>Working Hours</label>

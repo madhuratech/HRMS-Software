@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, Download, Plus, MoreVertical, Star, ChevronLeft, ChevronRight, X, Eye, Edit3, Trash2, Calendar, FileText, CheckCircle2, UserCheck, Briefcase, Mail, Phone, MapPin, DollarSign, Clock, Send, ShieldCheck, ArrowRightLeft } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { canCreate, canEdit, canDelete, checkActionPermission } from '../../lib/permissions';
@@ -63,6 +64,61 @@ export default function Candidates() {
     return 'mock_jwt_token';
   };
 
+  const totalPages = Math.ceil(total / limit) || 1;
+
+  const fetchMeta = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/app/departments', {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setDepartments(data.data);
+      }
+    } catch (e) {
+      console.error('Error loading departments', e);
+    }
+  };
+
+  const fetchCandidates = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        search: search || '',
+        job: filterJob !== 'All Job Openings' ? filterJob : '',
+        stage: filterStage !== 'All Stages' ? filterStage : '',
+        location: filterLocation !== 'All Locations' ? filterLocation : ''
+      });
+
+      const res = await fetch(`http://localhost:5000/app/candidates?${params.toString()}`, {
+        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
+      });
+      const json = await res.json();
+      if (json.success && json.data) {
+        setCandidatesData(json.data);
+        setTotal(json.pagination?.total || json.data.length || 0);
+      } else {
+        setCandidatesData([]);
+        setTotal(0);
+      }
+    } catch (e) {
+      console.error('Error fetching candidates:', e);
+      addToast('Failed to load candidates', 'error');
+    } finally {
+      setLoading(false);
+    }
+  }, [page, search, filterJob, filterStage, filterLocation]);
+
+  useEffect(() => {
+    fetchMeta();
+  }, []);
+
+  useEffect(() => {
+    fetchCandidates();
+  }, [fetchCandidates]);
+
   // Close dropdown on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -70,186 +126,86 @@ export default function Candidates() {
         setActiveMenuId(null);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
   }, [activeMenuId]);
 
-  // Fetch departments metadata
-  const fetchMeta = async () => {
-    try {
-      const res = await fetch('/app/requirements/meta/all', {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const data = await res.json();
-      if (data && data.departments) {
-        setDepartments(data.departments);
-      }
-    } catch (err) {
-      console.error('Failed to fetch metadata:', err);
-    }
-  };
-
-  // Fetch candidates list from backend
-  const fetchCandidates = useCallback(async () => {
-    setLoading(true);
-    try {
-      let url = `/app/candidates?page=${page}&limit=${limit}`;
-      if (search) url += `&search=${encodeURIComponent(search)}`;
-      if (filterStage && filterStage !== 'All Stages') url += `&status=${encodeURIComponent(filterStage)}`;
-      if (filterJob && filterJob !== 'All Job Openings') url += `&search=${encodeURIComponent(filterJob)}`;
-      
-      const res = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const resData = await res.json();
-      if (resData.success && resData.data) {
-        setCandidatesData(resData.data.candidates || []);
-        setTotal(resData.data.total || 0);
-      } else {
-        addToast(resData.message || 'Failed to load candidates', 'error');
-      }
-    } catch (err) {
-      addToast('Error connecting to backend server', 'error');
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search, filterStage, filterJob, addToast]);
-
-  useEffect(() => { fetchMeta(); }, []);
-  useEffect(() => { fetchPageOneAndReload(); }, [search, filterJob, filterStage, filterLocation]);
-  useEffect(() => { fetchCandidates(); }, [page, fetchCandidates]);
-
-  const fetchPageOneAndReload = () => {
-    if (page === 1) fetchCandidates();
-    else setPage(1);
-  };
-
-  const getStageColor = (stage) => {
-    switch (stage) {
-      case 'Applied': return { bg: '#EFF6FF', text: '#2952E3' };
-      case 'Shortlisted': return { bg: '#F0F9FF', text: '#0284C7' };
-      case 'Interview Scheduled': return { bg: '#FFFBEB', text: '#D97706' };
-      case 'Interview Completed': return { bg: '#FEF3C7', text: '#B45309' };
-      case 'Selected': return { bg: '#ECFDF5', text: '#059669' };
-      case 'Rejected': return { bg: '#FEF2F2', text: '#DC2626' };
-      case 'On Hold': return { bg: '#F1F5F9', text: '#475569' };
-      case 'Hired': return { bg: '#ECFDF5', text: '#10B981' };
-      default: return { bg: '#F1F5F9', text: '#64748B' };
-    }
-  };
-
-  const renderStars = (rating) => (
-    <div style={{ display: 'flex', gap: '2px', alignItems: 'center', justifyContent: 'center' }}>
-      {[...Array(5)].map((_, i) => (
-        <Star key={i} size={14} color={i < rating ? '#F59E0B' : '#E2E8F0'} fill={i < rating ? '#F59E0B' : 'none'} />
-      ))}
-    </div>
-  );
-
-  // Status Action Handler
   const handleUpdateStatus = async (candidateId, newStatus) => {
-    setActiveMenuId(null);
+    if (!checkActionPermission('candidates', 'EDIT')) return;
     try {
-      if (newStatus === 'Shortlisted' || newStatus === 'Rejected') {
-        const res = await fetch(`/app/candidates/${candidateId}/evaluate`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${getAuthToken()}`
-          },
-          body: JSON.stringify({ action: newStatus === 'Shortlisted' ? 'SHORTLIST' : 'REJECT' })
-        });
-        const resData = await res.json();
-        if (resData.success) {
-          addToast(`Candidate stage moved to "${newStatus}"`, 'success');
-          fetchCandidates();
-        } else {
-          addToast(resData.message || `Failed to move candidate to ${newStatus}`, 'error');
-        }
-        return;
-      }
-
-      const res = await fetch(`/app/candidates/${candidateId}`, {
+      const res = await fetch(`http://localhost:5000/app/candidates/${candidateId}/status`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${getAuthToken()}`
         },
-        body: JSON.stringify({ status: newStatus, is_update: true })
+        body: JSON.stringify({ status: newStatus })
       });
-      const resData = await res.json();
-      if (resData.success) {
-        addToast(`Candidate stage moved to "${newStatus}"`, 'success');
+      const data = await res.json();
+      if (data.success) {
+        addToast(`Candidate status updated to ${newStatus}`, 'success');
         fetchCandidates();
       } else {
-        addToast(resData.message || 'Failed to update candidate stage', 'error');
+        addToast(data.message || 'Failed to update status', 'error');
       }
-    } catch (err) {
-      addToast('Error updating candidate stage', 'error');
+    } catch (e) {
+      addToast('Error updating status', 'error');
     }
   };
 
-  // Convert Candidate to Onboarding / Hire Handler
   const handleHireCandidate = async (candidate) => {
-    setActiveMenuId(null);
+    if (!checkActionPermission('candidates', 'EDIT')) return;
     try {
-      // 1. Update candidate stage to Hired
-      await fetch(`/app/candidates/${candidate.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },
-        body: JSON.stringify({ status: 'Hired', is_update: true })
-      });
-
-      // 2. Add to New Joiners / Onboarding
-      await fetch('/app/joiners', {
+      const res = await fetch(`http://localhost:5000/app/candidates/${candidate.id}/convert-to-employee`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` },
-        body: JSON.stringify({
-          employee_name: candidate.candidate_name,
-          department_id: candidate.department_id || 3,
-          designation: candidate.job_position || 'Developer',
-          joining_date: new Date().toISOString().split('T')[0],
-          reporting_manager: 'HR Manager',
-          checklist: 'HR & Admin Checklist',
-          status: 'In Progress'
-        })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify({})
       });
-
-      addToast(`Candidate ${candidate.candidate_name} hired and moved to Onboarding!`, 'success');
-      fetchCandidates();
-    } catch (err) {
-      addToast('Error adding candidate to Onboarding', 'error');
+      const data = await res.json();
+      if (data.success) {
+        const expCount = data.data?.copied_experiences_count || 0;
+        addToast(
+          `Candidate successfully hired! Created Employee #${data.data?.employee_id || ''} with ${expCount} previous experience record(s) copied.`,
+          'success'
+        );
+        fetchCandidates();
+      } else {
+        addToast(data.message || 'Failed to convert candidate', 'error');
+      }
+    } catch (e) {
+      addToast('Error during candidate conversion', 'error');
     }
   };
 
-  // Delete Candidate Handler
-  const handleDeleteCandidate = async (candidateId, candidateName) => {
-    setActiveMenuId(null);
-    if (!window.confirm(`Are you sure you want to delete candidate "${candidateName}"?`)) return;
-
+  const handleDeleteCandidate = async (id, name) => {
+    if (!checkActionPermission('candidates', 'DELETE')) return;
+    if (!window.confirm(`Are you sure you want to delete candidate ${name}?`)) return;
     try {
-      const res = await fetch(`/app/candidates/${candidateId}`, {
+      const res = await fetch(`http://localhost:5000/app/candidates/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${getAuthToken()}` }
       });
-      const resData = await res.json();
-      if (resData.success) {
-        addToast(`Candidate "${candidateName}" deleted successfully`, 'success');
+      const data = await res.json();
+      if (data.success) {
+        addToast('Candidate deleted successfully', 'success');
         fetchCandidates();
       } else {
-        addToast(resData.message || 'Failed to delete candidate', 'error');
+        addToast(data.message || 'Failed to delete candidate', 'error');
       }
-    } catch (err) {
+    } catch (e) {
       addToast('Error deleting candidate', 'error');
     }
   };
 
-  // Submit Candidate Edit Form
   const handleEditSubmit = async (e) => {
     e.preventDefault();
+    if (!checkActionPermission('candidates', 'EDIT')) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`/app/candidates/${editFormData.id}`, {
+      const res = await fetch(`http://localhost:5000/app/candidates/${selectedCandidate.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -257,43 +213,107 @@ export default function Candidates() {
         },
         body: JSON.stringify(editFormData)
       });
-      const resData = await res.json();
-      if (resData.success) {
-        addToast('Candidate details updated successfully!', 'success');
+      const data = await res.json();
+      if (data.success) {
+        addToast('Candidate updated successfully', 'success');
         setShowEditModal(false);
         fetchCandidates();
       } else {
-        addToast(resData.message || 'Failed to update candidate', 'error');
+        addToast(data.message || 'Failed to update candidate', 'error');
       }
-    } catch (err) {
+    } catch (e) {
       addToast('Error updating candidate', 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Submit Schedule Interview Form
   const handleScheduleSubmit = async (e) => {
     e.preventDefault();
-    if (!selectedCandidate || !interviewData.interview_date) {
-      addToast('Please select a valid interview date', 'error');
-      return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`http://localhost:5000/app/interviews`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify({
+          candidate_id: selectedCandidate.id,
+          ...interviewData
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        addToast('Interview scheduled successfully', 'success');
+        setShowScheduleModal(false);
+        fetchCandidates();
+      } else {
+        addToast(data.message || 'Failed to schedule interview', 'error');
+      }
+    } catch (e) {
+      addToast('Error scheduling interview', 'error');
+    } finally {
+      setSubmitting(false);
     }
+  };
 
+  const handleOfferSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+    try {
+      const res = await fetch(`http://localhost:5000/app/offers`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getAuthToken()}`
+        },
+        body: JSON.stringify({
+          candidate_id: selectedCandidate.id,
+          ...offerData
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        addToast('Offer letter issued successfully', 'success');
+        setShowOfferModal(false);
+        fetchCandidates();
+      } else {
+        addToast(data.message || 'Failed to issue offer', 'error');
+      }
+    } catch (e) {
+      addToast('Error issuing offer', 'error');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleCreateSubmit = async (e) => {
+    e.preventDefault();
+    if (!checkActionPermission('candidates', 'CREATE')) return;
+    setSubmitting(true);
     try {
       const payload = {
-        candidate_id: selectedCandidate.id,
-        interviewer_id: 1,
-        interview_round: interviewData.round_type || 'Technical Round',
-        interview_mode: interviewData.interview_mode || 'Online',
-        interview_date: interviewData.interview_date,
-        interview_time: interviewData.interview_time ? (interviewData.interview_time.length === 5 ? `${interviewData.interview_time}:00` : interviewData.interview_time) : '11:20:00',
-        location: interviewData.location || 'Online / Google Meet',
-        meeting_link: interviewData.meeting_link || 'https://meet.google.com/interview',
-        status: 'Scheduled'
+        candidate_name: formData.name,
+        email: formData.email,
+        mobile: formData.mobile,
+        gender: formData.gender,
+        dob: formData.dob,
+        department: formData.department,
+        department_id: departments.find(d => d.department_name === formData.department)?.id || null,
+        job_position: formData.job,
+        experience: formData.experience,
+        current_company: formData.currentCompany,
+        current_salary: formData.currentSalary,
+        expected_salary: formData.expectedSalary,
+        notice_period: formData.noticePeriod,
+        skills: formData.skills,
+        address: formData.address,
+        status: formData.status || 'Applied',
+        resume_url: formData.resume || (resumeFile ? resumeFile.name : null)
       };
 
-      const res = await fetch('/app/interviews', {
+      const res = await fetch('http://localhost:5000/app/candidates', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -301,70 +321,9 @@ export default function Candidates() {
         },
         body: JSON.stringify(payload)
       });
-      const resData = await res.json();
-      if (resData.success) {
-        addToast(`Interview scheduled for ${selectedCandidate?.candidate_name} on ${interviewData.interview_date} and added to Interview Schedule!`, 'success');
-        setShowScheduleModal(false);
-        await handleUpdateStatus(selectedCandidate?.id, 'Interview Scheduled');
-      } else {
-        addToast(resData.message || 'Failed to schedule interview', 'error');
-      }
-    } catch (err) {
-      addToast('Error saving interview schedule', 'error');
-    }
-  };
-
-  // Submit Send Offer Letter Form
-  const handleOfferSubmit = async (e) => {
-    e.preventDefault();
-    if (!checkActionPermission('candidates', 'UPDATE')) return;
-    addToast(`Offer letter issued for ${selectedCandidate?.candidate_name}!`, 'success');
-    setShowOfferModal(false);
-    handleUpdateStatus(selectedCandidate?.id, 'Selected');
-  };
-
-  const handleCreateSubmit = async (e) => {
-    e.preventDefault();
-    if (!checkActionPermission('candidates', 'CREATE')) return;
-    if (!formData.name || !formData.email || !formData.mobile) {
-      addToast('Name, email, and mobile are required.', 'error');
-      return;
-    }
-
-    if (!resumeFile) {
-      addToast('Resume upload is required.', 'error');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      const data = new FormData();
-      data.append('candidate_name', formData.name.trim());
-      data.append('email', formData.email.trim());
-      data.append('mobile_number', formData.mobile.trim());
-      data.append('gender', formData.gender);
-      data.append('department_id', formData.department);
-      data.append('job_position', formData.job.trim());
-      data.append('resume', resumeFile);
-      if (formData.dob) data.append('date_of_birth', formData.dob);
-      if (formData.experience) data.append('experience', formData.experience.trim());
-      if (formData.currentCompany) data.append('current_company', formData.currentCompany.trim());
-      if (formData.currentSalary) data.append('current_salary', formData.currentSalary.trim());
-      if (formData.expectedSalary) data.append('expected_salary', formData.expectedSalary.trim());
-      if (formData.noticePeriod) data.append('notice_period', formData.noticePeriod.trim());
-      if (formData.skills) data.append('skills', formData.skills.trim());
-      if (formData.address) data.append('address', formData.address.trim());
-      data.append('status', formData.status);
-
-      const res = await fetch('/app/candidates', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` },
-        body: data
-      });
-
-      const resData = await res.json();
-      if (resData.success) {
-        addToast('Candidate profile registered successfully!', 'success');
+      const data = await res.json();
+      if (data.success) {
+        addToast('Candidate added successfully', 'success');
         setShowAddModal(false);
         setFormData({
           name: '', email: '', mobile: '', gender: 'Male', dob: '', department: '', job: '',
@@ -374,20 +333,41 @@ export default function Candidates() {
         setResumeFile(null);
         fetchCandidates();
       } else {
-        addToast(resData.message || 'Failed to save candidate profile', 'error');
+        addToast(data.message || 'Failed to add candidate', 'error');
       }
-    } catch (err) {
-      addToast('Error connecting to backend server', 'error');
+    } catch (e) {
+      addToast('Error adding candidate', 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const totalPages = Math.ceil(total / limit) || 1;
+  const getStageColor = (stg) => {
+    switch (stg) {
+      case 'Applied': return { bg: '#EFF6FF', text: '#2563EB' };
+      case 'Shortlisted': return { bg: '#F5F3FF', text: '#7C3AED' };
+      case 'Interview Scheduled': return { bg: '#FEF3C7', text: '#D97706' };
+      case 'Interview Completed': return { bg: '#E0F2FE', text: '#0284C7' };
+      case 'Selected': return { bg: '#ECFDF5', text: '#059669' };
+      case 'Hired': return { bg: '#D1FAE5', text: '#047857' };
+      case 'Rejected': return { bg: '#FEE2E2', text: '#DC2626' };
+      case 'On Hold': return { bg: '#F1F5F9', text: '#475569' };
+      default: return { bg: '#F1F5F9', text: '#475569' };
+    }
+  };
+
+  const renderStars = (count = 5) => {
+    return (
+      <div style={{ display: 'flex', gap: '2px' }}>
+        {[...Array(count)].map((_, i) => (
+          <Star key={i} size={14} fill="#F59E0B" color="#F59E0B" />
+        ))}
+      </div>
+    );
+  };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: '"Inter", sans-serif' }}>
-      
+    <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
       {/* Header Area */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
@@ -433,42 +413,24 @@ export default function Candidates() {
                 style={{ width: '100%', padding: '10px 10px 10px 40px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px' }}
               />
             </div>
-            <select 
-              value={filterJob}
-              onChange={e => setFilterJob(e.target.value)}
-              style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '14px', color: '#334155', outline: 'none', cursor: 'pointer' }}
-            >
-              <option value="All Job Openings">All Job Openings</option>
-              <option value="Senior React Developer">Senior React Developer</option>
-              <option value="HR Executive">HR Executive</option>
-              <option value="Backend Developer">Backend Developer</option>
-              <option value="Full Stack Developer">Full Stack Developer</option>
-            </select>
-            <select 
-              value={filterStage}
-              onChange={e => setFilterStage(e.target.value)}
-              style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '14px', color: '#334155', outline: 'none', cursor: 'pointer' }}
-            >
-              <option value="All Stages">All Stages</option>
-              <option value="Applied">Applied</option>
-              <option value="Shortlisted">Shortlisted</option>
-              <option value="Interview Scheduled">Interview Scheduled</option>
-              <option value="Interview Completed">Interview Completed</option>
-              <option value="Selected">Selected</option>
-              <option value="Rejected">Rejected</option>
-              <option value="On Hold">On Hold</option>
-              <option value="Hired">Hired</option>
-            </select>
-            <select 
-              value={filterLocation}
-              onChange={e => setFilterLocation(e.target.value)}
-              style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '14px', color: '#334155', outline: 'none', cursor: 'pointer' }}
-            >
-              <option value="All Locations">All Locations</option>
-              <option value="Bangalore">Bangalore</option>
-              <option value="Mumbai">Mumbai</option>
-              <option value="Coimbatore">Coimbatore</option>
-            </select>
+            <AppDropdown
+                value={filterJob}
+                onChange={v => setFilterJob(v)}
+                options={[{value:'All Job Openings',label:'All Job Openings'},{value:'Senior React Developer',label:'Senior React Developer'},{value:'HR Executive',label:'HR Executive'},{value:'Backend Developer',label:'Backend Developer'},{value:'Full Stack Developer',label:'Full Stack Developer'}]}
+                size="sm"
+              />
+            <AppDropdown
+                value={filterStage}
+                onChange={v => setFilterStage(v)}
+                options={[{value:'All Stages',label:'All Stages'},{value:'Applied',label:'Applied'},{value:'Shortlisted',label:'Shortlisted'},{value:'Interview Scheduled',label:'Interview Scheduled'},{value:'Interview Completed',label:'Interview Completed'},{value:'Selected',label:'Selected'},{value:'Rejected',label:'Rejected'},{value:'On Hold',label:'On Hold'},{value:'Hired',label:'Hired'}]}
+                size="sm"
+              />
+            <AppDropdown
+                value={filterLocation}
+                onChange={v => setFilterLocation(v)}
+                options={[{value:'All Locations',label:'All Locations'},{value:'Bangalore',label:'Bangalore'},{value:'Mumbai',label:'Mumbai'},{value:'Coimbatore',label:'Coimbatore'}]}
+                size="sm"
+              />
           </div>
           <div>
             <button style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
@@ -987,22 +949,23 @@ export default function Candidates() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Round Type *</label>
-                  <select value={interviewData.round_type || 'Technical Round'} onChange={e => setInterviewData({ ...interviewData, round_type: e.target.value })} className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white">
-                    <option value="Technical Round">Technical Round</option>
-                    <option value="HR Round">HR Round</option>
-                    <option value="Manager Round">Manager Round</option>
-                    <option value="Final Round">Final Round</option>
-                  </select>
+                  <AppDropdown
+                value={interviewData.round_type || 'Technical Round'}
+                onChange={v => setInterviewData({ ...interviewData, round_type: v })}
+                options={[{value:'Technical Round',label:'Technical Round'},{value:'HR Round',label:'HR Round'},{value:'Manager Round',label:'Manager Round'},{value:'Final Round',label:'Final Round'}]}
+                size="sm"
+              />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Interview Mode *</label>
-                  <select value={interviewData.interview_mode || 'Online'} onChange={e => setInterviewData({ ...interviewData, interview_mode: e.target.value })} className="w-full h-10 px-3 border border-slate-200 rounded-lg text-sm bg-white">
-                    <option value="Online">Online</option>
-                    <option value="Offline">Offline</option>
-                    <option value="Telephonic">Telephonic</option>
-                  </select>
+                  <AppDropdown
+                value={interviewData.interview_mode || 'Online'}
+                onChange={v => setInterviewData({ ...interviewData, interview_mode: v })}
+                options={[{value:'Online',label:'Online'},{value:'Offline',label:'Offline'},{value:'Telephonic',label:'Telephonic'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">Location / Meeting Link</label>
@@ -1084,11 +1047,12 @@ export default function Candidates() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Gender</label>
-                  <select value={formData.gender} onChange={e => setFormData({ ...formData, gender: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Other">Other</option>
-                  </select>
+                  <AppDropdown
+                value={formData.gender}
+                onChange={v => setFormData({ ...formData, gender: v })}
+                options={[{value:'Male',label:'Male'},{value:'Female',label:'Female'},{value:'Other',label:'Other'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Date of Birth</label>
@@ -1096,12 +1060,12 @@ export default function Candidates() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Department Applied For <span className="text-red-500">*</span></label>
-                  <select required value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Department</option>
-                    {departments.map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
+                  <AppDropdown
+                value={formData.department}
+                onChange={v => setFormData({ ...formData, department: v })}
+                options={[{value:'',label:'Select Department'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Job Position <span className="text-red-500">*</span></label>
@@ -1142,16 +1106,12 @@ export default function Candidates() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Applied">Applied</option>
-                    <option value="Shortlisted">Shortlisted</option>
-                    <option value="Interview Scheduled">Interview Scheduled</option>
-                    <option value="Interview Completed">Interview Completed</option>
-                    <option value="Selected">Selected</option>
-                    <option value="Rejected">Rejected</option>
-                    <option value="On Hold">On Hold</option>
-                    <option value="Hired">Hired</option>
-                  </select>
+                  <AppDropdown
+                value={formData.status}
+                onChange={v => setFormData({ ...formData, status: v })}
+                options={[{value:'Applied',label:'Applied'},{value:'Shortlisted',label:'Shortlisted'},{value:'Interview Scheduled',label:'Interview Scheduled'},{value:'Interview Completed',label:'Interview Completed'},{value:'Selected',label:'Selected'},{value:'Rejected',label:'Rejected'},{value:'On Hold',label:'On Hold'},{value:'Hired',label:'Hired'}]}
+                size="sm"
+              />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Skills</label>

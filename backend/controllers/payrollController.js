@@ -12,13 +12,52 @@ function dbQuery(sql, params = []) {
 }
 
 // ====================================================================
+// Helper to resolve current authenticated employee's DB ID
+async function resolveCurrentEmployeeId(req) {
+  let empId = req.headers['x-employee-id'] || (req.user && (req.user.employee_id || req.user.id));
+  const userEmail = (req.user && req.user.email) || null;
+  
+  if (empId || userEmail) {
+    const empRows = await dbQuery(
+      "SELECT e.id FROM employees e LEFT JOIN users u ON (u.employee_id = e.id OR u.email = e.email) WHERE e.id = ? OR u.id = ? OR u.employee_id = ? OR e.email = ? ORDER BY (e.id = ?) DESC LIMIT 1",
+      [empId || 0, empId || 0, empId || 0, userEmail || '', empId || 0]
+    );
+    if (empRows && empRows.length > 0) {
+      return empRows[0].id;
+    }
+  }
+  return empId || null;
+}
+
+// ====================================================================
 // 1. PAYROLL RUNS & GENERATION
 // ====================================================================
 
 exports.list = async (req, res) => {
   try {
     const { month, year, department_id, status, search, page, limit } = req.query;
-    const records = await PayrollService.listPayroll({ month, year, department_id, status, search, page, limit });
+
+    const userRole = (req.headers && req.headers['x-user-role']) || (req.user && req.user.role) || 'EMPLOYEE';
+    const normRole = String(userRole).toUpperCase().replace(/[\s_-]+/g, '');
+
+    let allowedEmployeeIds = null;
+
+    // Strict privacy rule: EMPLOYEE and TEAM_LEADER can ONLY see their own payslips
+    if (['EMPLOYEE', 'STAFF', 'SERVICE_STAFF', 'TEAMLEADER', 'TEAMLEAD', 'LEAD'].includes(normRole)) {
+      const currentEmpId = await resolveCurrentEmployeeId(req);
+      allowedEmployeeIds = currentEmpId ? [currentEmpId] : [-1];
+    }
+
+    const records = await PayrollService.listPayroll({ 
+      month, 
+      year, 
+      department_id, 
+      status, 
+      search, 
+      page, 
+      limit,
+      allowedEmployeeIds 
+    });
     return res.status(200).json({ success: true, count: records.length, data: records });
   } catch (err) {
     console.error("Error in payrollController.list:", err);
@@ -42,6 +81,17 @@ exports.getById = async (req, res) => {
   try {
     const { id } = req.params;
     const payslip = await PayrollService.getPayslipById(id);
+
+    const userRole = (req.headers && req.headers['x-user-role']) || (req.user && req.user.role) || 'EMPLOYEE';
+    const normRole = String(userRole).toUpperCase().replace(/[\s_-]+/g, '');
+
+    if (['EMPLOYEE', 'STAFF', 'SERVICE_STAFF', 'TEAMLEADER', 'TEAMLEAD', 'LEAD'].includes(normRole)) {
+      const currentEmpId = await resolveCurrentEmployeeId(req);
+      if (Number(payslip.employee_id) !== Number(currentEmpId)) {
+        return res.status(403).json({ success: false, message: "Access Denied: You are not authorized to view this payslip." });
+      }
+    }
+
     return res.status(200).json({ success: true, data: payslip });
   } catch (err) {
     return res.status(err.statusCode || 500).json({ success: false, message: err.message });
@@ -123,6 +173,17 @@ exports.getPayslip = async (req, res) => {
   try {
     const { id } = req.params;
     const payslip = await PayrollService.getPayslipById(id);
+
+    const userRole = (req.headers && req.headers['x-user-role']) || (req.user && req.user.role) || 'EMPLOYEE';
+    const normRole = String(userRole).toUpperCase().replace(/[\s_-]+/g, '');
+
+    if (['EMPLOYEE', 'STAFF', 'SERVICE_STAFF', 'TEAMLEADER', 'TEAMLEAD', 'LEAD'].includes(normRole)) {
+      const currentEmpId = await resolveCurrentEmployeeId(req);
+      if (Number(payslip.employee_id) !== Number(currentEmpId)) {
+        return res.status(403).json({ success: false, message: "Access Denied: You are not authorized to view this payslip." });
+      }
+    }
+
     return res.status(200).json({ success: true, data: payslip });
   } catch (err) {
     return res.status(err.statusCode || 500).json({ success: false, message: err.message });
@@ -133,6 +194,16 @@ exports.downloadPayslipPdf = async (req, res) => {
   try {
     const { id } = req.params;
     const payslip = await PayrollService.getPayslipById(id);
+
+    const userRole = (req.headers && req.headers['x-user-role']) || (req.user && req.user.role) || 'EMPLOYEE';
+    const normRole = String(userRole).toUpperCase().replace(/[\s_-]+/g, '');
+
+    if (['EMPLOYEE', 'STAFF', 'SERVICE_STAFF', 'TEAMLEADER', 'TEAMLEAD', 'LEAD'].includes(normRole)) {
+      const currentEmpId = await resolveCurrentEmployeeId(req);
+      if (Number(payslip.employee_id) !== Number(currentEmpId)) {
+        return res.status(403).json({ success: false, message: "Access Denied: You are not authorized to view this payslip." });
+      }
+    }
 
     const empCode = payslip.emp_code || (payslip.employee_id ? `EMP${payslip.employee_id}` : 'EMP');
     const safeMonth = (payslip.month || 'Month').replace(/[^a-zA-Z0-9]/g, '');
@@ -151,12 +222,11 @@ exports.downloadPayslipPdf = async (req, res) => {
 
 exports.getMyPayroll = async (req, res) => {
   try {
-    let employeeId = req.headers['x-employee-id'] || (req.user && (req.user.employee_id || req.user.id));
-    if (!employeeId) {
-      const first = await dbQuery("SELECT id FROM employees WHERE status = 'Active' LIMIT 1");
-      employeeId = first[0]?.id || 1;
+    const currentEmpId = await resolveCurrentEmployeeId(req);
+    if (!currentEmpId) {
+      return res.status(200).json({ success: true, count: 0, data: [] });
     }
-    const result = await PayrollService.getMyPayroll(employeeId);
+    const result = await PayrollService.getMyPayroll(currentEmpId);
     return res.status(200).json({ success: true, count: result.length, data: result });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message, data: [] });

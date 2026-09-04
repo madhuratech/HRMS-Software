@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { useNavigate } from 'react-router-dom';
 import {
   Users,
@@ -663,42 +664,23 @@ export function TeamLeaderDashboard() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Project *</label>
-                  <select
-                    value={newTask.project_id}
-                    onChange={(e) => setNewTask({ ...newTask, project_id: e.target.value })}
-                    className="w-full h-10 px-3 border border-slate-200 rounded-lg outline-none text-xs bg-white font-semibold"
-                  >
-                    {metaProjects.map(p => (
-                      <option key={p.id} value={p.id}>{p.project_name}</option>
-                    ))}
-                  </select>
+                  <AppDropdown value={newTask.project_id} options={[, ...(metaProjects || [])]} size="sm" />
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Assign Employee *</label>
-                  <select
-                    value={newTask.assignee_id}
-                    onChange={(e) => setNewTask({ ...newTask, assignee_id: e.target.value })}
-                    className="w-full h-10 px-3 border border-slate-200 rounded-lg outline-none text-xs bg-white font-semibold"
-                  >
-                    {teamMembers.map(m => (
-                      <option key={m.id} value={m.id}>{m.name} (EMP{String(m.id).padStart(4, '0')})</option>
-                    ))}
-                  </select>
+                  <AppDropdown value={newTask.assignee_id} options={[, ...(teamMembers || [])]} size="sm" />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Priority</label>
-                  <select
-                    value={newTask.priority}
-                    onChange={(e) => setNewTask({ ...newTask, priority: e.target.value })}
-                    className="w-full h-10 px-3 border border-slate-200 rounded-lg outline-none text-xs bg-white"
-                  >
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                  </select>
+                  <AppDropdown
+                value={newTask.priority}
+                onChange={v => setNewTask({ ...newTask, priority: v })}
+                options={[{value:'High',label:'High'},{value:'Medium',label:'Medium'},{value:'Low',label:'Low'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Due Date</label>

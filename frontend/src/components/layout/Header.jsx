@@ -254,11 +254,15 @@ export function Header({ title, userRole, currentView }) {
           className="flex items-center gap-3 hover:opacity-85 transition-opacity"
         >
           <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-xs font-bold text-white shadow-sm">
-            {((authData.name || localStorage.getItem('userName')) || 'Dhilipan P').split(' ').map(n => n[0]).join('')}
+            {((authData.name || localStorage.getItem('userName')) || 'User').split(' ').map(n => n[0]).join('')}
           </div>
           <div>
-            <p className="text-sm font-semibold text-slate-800">{(authData.name || localStorage.getItem('userName')) || 'Dhilipan P'}</p>
-            <p className="text-xs font-medium text-slate-500">{userRole === 'EMPLOYEE' ? 'EMP0015' : userRole === 'TEAM_LEADER' ? 'EMP0010 • Team Leader' : (localStorage.getItem('userRole') || 'Super Admin')}</p>
+            <p className="text-sm font-semibold text-slate-800">{(authData.name || localStorage.getItem('userName')) || 'User'}</p>
+            <p className="text-xs font-medium text-slate-500">
+              {authData.user?.emp_id || authData.user?.employeeCode || (authData.user?.employee_id ? `EMP${String(authData.user.employee_id).padStart(4, '0')}` : '')}
+              {(authData.user?.emp_id || authData.user?.employeeCode || authData.user?.employee_id) ? ' • ' : ''}
+              {userRole ? userRole.replace(/_/g, ' ') : (authData.role ? authData.role.replace(/_/g, ' ') : 'User')}
+            </p>
           </div>
         </div>
       </div>

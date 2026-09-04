@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const DocumentVerificationController = require('../controllers/DocumentVerificationController');
-const { authenticateJWT } = require('../middlewares/auth');
+const { authenticateJWT, checkPermission } = require('../middlewares/auth');
 const validationMiddleware = require('../middlewares/validation');
 const { validateDocumentVerification } = require('../validators/documentVerificationValidator');
 const upload = require('../utils/fileUpload');
@@ -19,13 +19,13 @@ const uploadFields = upload.fields([
   { name: 'driving_license', maxCount: 1 }
 ]);
 
-router.get('/', authenticateJWT, DocumentVerificationController.list);
-router.get('/stats', authenticateJWT, DocumentVerificationController.getStats);
-router.get('/:id', authenticateJWT, DocumentVerificationController.getById);
+router.get('/', authenticateJWT, checkPermission('onboarding', 'document_verification', 'view'), DocumentVerificationController.list);
+router.get('/stats', authenticateJWT, checkPermission('onboarding', 'document_verification', 'view'), DocumentVerificationController.getStats);
+router.get('/:id', authenticateJWT, checkPermission('onboarding', 'document_verification', 'view'), DocumentVerificationController.getById);
 
-router.post('/', authenticateJWT, uploadFields, validationMiddleware(validateDocumentVerification), DocumentVerificationController.create);
-router.put('/:id', authenticateJWT, uploadFields, validationMiddleware(validateDocumentVerification), DocumentVerificationController.update);
-router.put('/:id/complete', authenticateJWT, DocumentVerificationController.complete);
-router.delete('/:id', authenticateJWT, DocumentVerificationController.delete);
+router.post('/', authenticateJWT, checkPermission('onboarding', 'document_verification', 'create'), uploadFields, validationMiddleware(validateDocumentVerification), DocumentVerificationController.create);
+router.put('/:id', authenticateJWT, checkPermission('onboarding', 'document_verification', 'edit'), uploadFields, validationMiddleware(validateDocumentVerification), DocumentVerificationController.update);
+router.put('/:id/complete', authenticateJWT, checkPermission('onboarding', 'document_verification', 'edit'), DocumentVerificationController.complete);
+router.delete('/:id', authenticateJWT, checkPermission('onboarding', 'document_verification', 'delete'), DocumentVerificationController.delete);
 
 module.exports = router;

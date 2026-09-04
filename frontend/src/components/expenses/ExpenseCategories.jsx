@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Download, Calendar, ChevronDown, Plus, Eye, ArrowUpRight, ArrowDownRight, Layers, FileText, CheckCircle, XCircle, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis } from 'recharts';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { hasPermission } from '../../lib/permissions';
 
 export function ExpenseCategories() {
   const { addToast } = useToast();
@@ -16,7 +18,7 @@ export function ExpenseCategories() {
     monthlyTrend: [],
     deptStats: []
   });
-  
+
   const [formData, setFormData] = useState({
     categoryName: '',
     description: '',
@@ -127,7 +129,7 @@ export function ExpenseCategories() {
 
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box', background: '#F8FAFC', minHeight: '100vh', padding: 0 }}>
-      
+
       {/* Header & Toolbar */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <div>
@@ -136,12 +138,14 @@ export function ExpenseCategories() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button onClick={() => setShowAddModal(true)} style={{
-            display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
-            background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
-          }}>
-            <Plus size={16} /> Add Category
-          </button>
+          {hasPermission('expenses', 'expense_categories', 'create') && (
+            <button onClick={() => setShowAddModal(true)} style={{
+              display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
+              background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
+            }}>
+              <Plus size={16} /> Add Category
+            </button>
+          )}
         </div>
       </div>
 
@@ -155,7 +159,7 @@ export function ExpenseCategories() {
 
       {/* Analytics Charts Row */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 20 }}>
-        
+
         {/* Left: Expenses by Category Donut */}
         <div style={{ background: '#FFF', borderRadius: 14, border: '1px solid #E5E7EB', padding: 20, boxShadow: '0 2px 8px rgba(15,23,42,.04)' }}>
           <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 600, color: '#111827' }}>Expenses by Category</h3>
@@ -243,9 +247,11 @@ export function ExpenseCategories() {
                     </span>
                   </td>
                   <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
-                    <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
-                      Delete
-                    </button>
+                    {hasPermission('expenses', 'expense_categories', 'delete') && (
+                      <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
+                        Delete
+                      </button>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -255,7 +261,7 @@ export function ExpenseCategories() {
       </div>
 
       {/* Add Expense Category Modal */}
-      {showAddModal && (
+      {showAddModal && hasPermission('expenses', 'expense_categories', 'create') && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
           <div className="modal-centered-content" style={{ width: '600px', maxWidth: '90vw', maxHeight: '90vh' }}>
@@ -276,10 +282,12 @@ export function ExpenseCategories() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
+                  <AppDropdown
+                    value={formData.status}
+                    onChange={v => setFormData({ ...formData, status: v })}
+                    options={[{ value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' }]}
+                    size="sm"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Description <span className="text-red-500">*</span></label>

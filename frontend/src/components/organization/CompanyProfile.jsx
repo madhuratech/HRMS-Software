@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
 import {
@@ -829,15 +830,12 @@ export function CompanyProfile() {
                   </div>
                   <div className="form-group-field">
                     <label className="form-field-label">Payroll Frequency</label>
-                    <select
-                      className="form-field-input"
-                      value={tempProfile.payroll.payrollFrequency}
-                      onChange={(e) => handleInputChange('payroll', 'payrollFrequency', e.target.value)}
-                    >
-                      <option value="Monthly">Monthly</option>
-                      <option value="Bi-weekly">Bi-weekly</option>
-                      <option value="Weekly">Weekly</option>
-                    </select>
+                    <AppDropdown
+                value={tempProfile.payroll.payrollFrequency}
+                onChange={v => handleInputChange('payroll', 'payrollFrequency', v)}
+                options={[{value:'Monthly',label:'Monthly'},{value:'Bi-weekly',label:'Bi-weekly'},{value:'Weekly',label:'Weekly'}]}
+                size="sm"
+              />
                   </div>
                 </div>
               )}
@@ -932,15 +930,12 @@ export function CompanyProfile() {
                 <div className="form-grid-2col">
                   <div className="form-group-field">
                     <label className="form-field-label">Language</label>
-                    <select
-                      className="form-field-input"
-                      value={tempProfile.systemSettings.language}
-                      onChange={(e) => handleInputChange('systemSettings', 'language', e.target.value)}
-                    >
-                      <option value="English (US)">English (US)</option>
-                      <option value="English (UK)">English (UK)</option>
-                      <option value="Hindi">Hindi</option>
-                    </select>
+                    <AppDropdown
+                value={tempProfile.systemSettings.language}
+                onChange={v => handleInputChange('systemSettings', 'language', v)}
+                options={[{value:'English (US)',label:'English (US)'},{value:'English (UK)',label:'English (UK)'},{value:'Hindi',label:'Hindi'}]}
+                size="sm"
+              />
                   </div>
                   <div className="form-group-field">
                     <label className="form-field-label">Time Zone</label>
@@ -962,15 +957,12 @@ export function CompanyProfile() {
                   </div>
                   <div className="form-group-field">
                     <label className="form-field-label">Date Format</label>
-                    <select
-                      className="form-field-input"
-                      value={tempProfile.systemSettings.dateFormat}
-                      onChange={(e) => handleInputChange('systemSettings', 'dateFormat', e.target.value)}
-                    >
-                      <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                      <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                      <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                    </select>
+                    <AppDropdown
+                value={tempProfile.systemSettings.dateFormat}
+                onChange={v => handleInputChange('systemSettings', 'dateFormat', v)}
+                options={[{value:'DD/MM/YYYY',label:'DD/MM/YYYY'},{value:'MM/DD/YYYY',label:'MM/DD/YYYY'},{value:'YYYY-MM-DD',label:'YYYY-MM-DD'}]}
+                size="sm"
+              />
                   </div>
                 </div>
               )}

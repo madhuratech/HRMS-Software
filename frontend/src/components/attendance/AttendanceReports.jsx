@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Calendar as CalendarIcon, Filter, Download, FileText, Activity, ChevronDown, Check, X, MapPin } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { apiFetch, getAuthToken } from '../../lib/api';
@@ -270,16 +271,12 @@ export default function AttendanceReports() {
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 4, width: 180 }}>
               <label style={{ fontSize: 11, fontWeight: 700, color: '#475569' }}>Employee</label>
-              <select
+              <AppDropdown
                 value={selectedEmployee}
-                onChange={e => setSelectedEmployee(e.target.value)}
-                style={{ height: 38, padding: '0 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#334155', background: '#FFF' }}
-              >
-                <option value="">All Employees</option>
-                {employees.map(emp => (
-                  <option key={emp.id} value={emp.id}>{emp.name}</option>
-                ))}
-              </select>
+                onChange={v => setSelectedEmployee(v)}
+                options={[{value:'',label:'All Employees'}]}
+                size="sm"
+              />
             </div>
 
             <button

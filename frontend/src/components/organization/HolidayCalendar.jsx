@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import {
   CalendarDays,
@@ -181,7 +182,16 @@ export const HolidayCalendar = () => {
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Holiday Date <span className="text-red-500">*</span></label>
                 <input type="text" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} placeholder="e.g. 15 Aug 2026" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
               </div>
-              <CustomSelect label="Holiday Type" required value={formData.type} onChange={v => setFormData({ ...formData, type: v })} options={HOLIDAY_TYPES} placeholder="Select type" />
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Holiday Type <span className="text-red-500">*</span></label>
+                <AppDropdown
+                  value={formData.type}
+                  onChange={v => setFormData({ ...formData, type: v })}
+                  options={HOLIDAY_TYPES}
+                  placeholder="Select Holiday Type"
+                  size="sm"
+                />
+              </div>
               <div className="pt-0">
                 <label className="block text-sm font-semibold text-slate-700 mb-3">Status <span className="text-red-500">*</span></label>
                 <div className="flex items-center gap-3 pt-1">
@@ -253,14 +263,12 @@ export const HolidayCalendar = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <select
-              value={typeFilter}
-              onChange={(e) => { setTypeFilter(e.target.value); setCurrentPage(1); }}
-              className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="All">Type: All</option>
-              {HOLIDAY_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-            </select>
+            <AppDropdown
+                value={typeFilter}
+                onChange={v => { setTypeFilter(v); setCurrentPage(1); }}
+                options={[{value:'All',label:'Type: All'}]}
+                size="sm"
+              />
           </div>
         </div>
 

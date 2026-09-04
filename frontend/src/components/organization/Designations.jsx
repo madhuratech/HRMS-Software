@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { apiFetch } from '../../lib/api';
+import AppDropdown from '../ui/AppDropdown';
 import {
   Award,
   Users,
@@ -51,27 +52,7 @@ const getDesigStyles = (name) => {
   return map[name] || { IconComp: Award, bg: '#F1F5F9', color: '#475569' };
 };
 
-const CustomSelect = ({ label, required, value, onChange, options, placeholder }) => {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="relative">
-      <label className="block text-sm font-semibold text-slate-700 mb-2">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
-      <button type="button" onClick={() => setOpen(!open)} className="w-full h-12 flex items-center justify-between px-4 border border-slate-200 rounded-xl text-sm bg-white hover:border-slate-300 transition-colors">
-        <span className={value ? 'text-slate-900' : 'text-slate-400'}>{value || placeholder}</span>
-        <ChevronRight size={16} className={`text-slate-400 transition-transform ${open ? 'rotate-90' : ''}`} />
-      </button>
-      {open && (
-        <div className="absolute z-50 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-          {options.map((opt) => (
-            <button key={opt} type="button" onClick={() => { onChange(opt); setOpen(false); }} className={`w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 ${value === opt ? 'bg-blue-50 text-blue-600 font-medium' : 'text-slate-700'}`}>
-              {opt}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+
 
 export const Designations = () => {
   const [designations, setDesignations] = useState([]);
@@ -191,10 +172,46 @@ export const Designations = () => {
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Designation Code <span className="text-red-500">*</span></label>
                 <input type="text" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} placeholder="Enter designation code" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
               </div>
-              <CustomSelect label="Department" required value={formData.department} onChange={v => setFormData({ ...formData, department: v })} options={DEPARTMENTS} placeholder="Select department" />
-              <CustomSelect label="Reports To" value={formData.reportsTo} onChange={v => setFormData({ ...formData, reportsTo: v })} options={designations.map(d => d.name)} placeholder="Select reporting manager" />
-              <CustomSelect label="Grade" value={formData.grade} onChange={v => setFormData({ ...formData, grade: v })} options={GRADES} placeholder="Select grade" />
-              <CustomSelect label="Level" value={formData.level} onChange={v => setFormData({ ...formData, level: v })} options={['Executive', 'Manager', 'Senior', 'Junior', 'Trainee']} placeholder="Select level" />
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Department <span className="text-red-500">*</span></label>
+                <AppDropdown
+                  value={formData.department}
+                  onChange={v => setFormData({ ...formData, department: v })}
+                  options={DEPARTMENTS}
+                  placeholder="Select Department"
+                  size="sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Reports To</label>
+                <AppDropdown
+                  value={formData.reportsTo}
+                  onChange={v => setFormData({ ...formData, reportsTo: v })}
+                  options={['CEO', 'CTO', 'HR Manager', 'Finance Manager', 'Direct Manager', 'None']}
+                  placeholder="Select Manager / Lead"
+                  size="sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Grade</label>
+                <AppDropdown
+                  value={formData.grade}
+                  onChange={v => setFormData({ ...formData, grade: v })}
+                  options={GRADES}
+                  placeholder="Select Grade"
+                  size="sm"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Level</label>
+                <AppDropdown
+                  value={formData.level}
+                  onChange={v => setFormData({ ...formData, level: v })}
+                  options={['Entry Level', 'Mid Level', 'Senior Level', 'Lead', 'Executive', 'Director']}
+                  placeholder="Select Level"
+                  size="sm"
+                />
+              </div>
               <div className="col-span-1 sm:col-span-2 pt-3">
                 <label className="block text-sm font-semibold text-slate-700 mb-3">Status <span className="text-red-500">*</span></label>
                 <div className="flex items-center gap-3 pt-1">
@@ -292,24 +309,24 @@ export const Designations = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <select
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-              className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="All">Status: All</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-
-            <select
-              value={deptFilter}
-              onChange={(e) => { setDeptFilter(e.target.value); setCurrentPage(1); }}
-              className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="All">Department: All</option>
-              {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
+            <div style={{ minWidth: 150 }}>
+              <AppDropdown
+                value={statusFilter}
+                onChange={v => { setStatusFilter(v || 'All'); setCurrentPage(1); }}
+                options={['All', 'Active', 'Inactive']}
+                placeholder="Status: All"
+                size="sm"
+              />
+            </div>
+            <div style={{ minWidth: 180 }}>
+              <AppDropdown
+                value={deptFilter}
+                onChange={v => { setDeptFilter(v || 'All'); setCurrentPage(1); }}
+                options={['All', ...DEPARTMENTS]}
+                placeholder="Department: All"
+                size="sm"
+              />
+            </div>
           </div>
         </div>
 

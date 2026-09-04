@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { Search, Plus, Eye, Edit2, Trash2, ChevronDown, X } from 'lucide-react';
 
@@ -85,16 +86,7 @@ export function KnowledgeBase() {
 
           {/* Category Dropdown */}
           <div style={{ position: 'relative' }}>
-            <select style={{
-              appearance: 'none', WebkitAppearance: 'none', height: 38,
-              paddingLeft: 14, paddingRight: 32, background: '#FFF',
-              border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#374151', cursor: 'pointer', outline: 'none',
-            }}>
-              <option>All Categories</option>
-              <option>IT Support</option>
-              <option>HR Support</option>
-              <option>Payroll</option>
-            </select>
+            <AppDropdown options={[{value:'All Categories',label:'All Categories'},{value:'IT Support',label:'IT Support'},{value:'HR Support',label:'HR Support'},{value:'Payroll',label:'Payroll'}]} size="sm" />
             <ChevronDown size={13} color="#6B7280" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
 
@@ -224,14 +216,12 @@ export function KnowledgeBase() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Category <span className="text-red-500">*</span></label>
-                  <select required value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Article Category</option>
-                    <option value="IT Support">IT Support</option>
-                    <option value="HR Support">HR Support</option>
-                    <option value="Payroll">Payroll</option>
-                    <option value="Leave & Attendance">Leave & Attendance</option>
-                    <option value="Training">Training</option>
-                  </select>
+                  <AppDropdown
+                value={formData.category}
+                onChange={v => setFormData({ ...formData, category: v })}
+                options={[{value:'',label:'Select Article Category'},{value:'IT Support',label:'IT Support'},{value:'HR Support',label:'HR Support'},{value:'Payroll',label:'Payroll'},{value:'Leave & Attendance',label:'Leave & Attendance'},{value:'Training',label:'Training'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Keywords / Tags <span className="text-red-500">*</span></label>
@@ -239,11 +229,12 @@ export function KnowledgeBase() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Published">Published</option>
-                    <option value="Draft">Draft</option>
-                    <option value="Archived">Archived</option>
-                  </select>
+                  <AppDropdown
+                value={formData.status}
+                onChange={v => setFormData({ ...formData, status: v })}
+                options={[{value:'Published',label:'Published'},{value:'Draft',label:'Draft'},{value:'Archived',label:'Archived'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Attachment</label>

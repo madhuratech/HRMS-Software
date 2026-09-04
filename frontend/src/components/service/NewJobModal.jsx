@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { useForm } from 'react-hook-form';
 import { X, Wrench, User, Calendar, FileText, Car } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
@@ -10,7 +11,7 @@ import { apiFetch } from '../../lib/api';
 
 
 export function NewJobModal({ isOpen, onClose, onSubmit }) {
-  const { register, handleSubmit, formState: { errors }, reset } = useForm();
+  const { register, watch, setValue, handleSubmit, formState: { errors }, reset } = useForm();
   const [employees, setEmployees] = useState([]);
 
   useEffect(() => {
@@ -68,16 +69,7 @@ export function NewJobModal({ isOpen, onClose, onSubmit }) {
               <label className="text-sm font-medium text-slate-700">Vehicle Model</label>
               <div className="relative">
                 <Car className="absolute left-3 top-2.5 text-slate-400" size={16} />
-                <select
-                  {...register('vehicleModel', { required: 'Vehicle Model is required' })}
-                  className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none">
-                  
-                  <option value="">Select Vehicle...</option>
-                  <option value="Sport Bike X1">Sport Bike X1</option>
-                  <option value="Cruiser 500">Cruiser 500</option>
-                  <option value="Scooter Z">Scooter Z</option>
-                  <option value="Other">Other</option>
-                </select>
+                <AppDropdown value={watch('vehicleModel') || ''} onChange={val => setValue('vehicleModel', val, { shouldValidate: true })} options={[{value:'',label:'Select Vehicle...'},{value:'Sport Bike X1',label:'Sport Bike X1'},{value:'Cruiser 500',label:'Cruiser 500'},{value:'Scooter Z',label:'Scooter Z'},{value:'Other',label:'Other'}]} size="sm" />
               </div>
             </div>
 
@@ -98,16 +90,7 @@ export function NewJobModal({ isOpen, onClose, onSubmit }) {
                 <label className="text-sm font-medium text-slate-700">Assigned To</label>
                 <div className="relative">
                   <Wrench className="absolute left-3 top-2.5 text-slate-400" size={16} />
-                  <select
-                    {...register('assignedTo', { required: 'Technician is required' })}
-                    className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none">
-                    
-                    <option value="">Select Tech...</option>
-                    {serviceStaff.map((staff) =>
-                    <option key={staff.id} value={staff.id}>{staff.name}</option>
-                    )}
-                    <option value="unassigned">Unassigned</option>
-                  </select>
+                  <AppDropdown value={watch('assignedTo') || ''} onChange={val => setValue('assignedTo', val, { shouldValidate: true })} options={[{value:'',label:'Select Tech...'},{value:'unassigned',label:'Unassigned'}, ...(serviceStaff || [])]} size="sm" />
                 </div>
               </div>
 

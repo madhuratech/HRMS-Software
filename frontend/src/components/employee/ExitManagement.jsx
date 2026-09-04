@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Clock, Briefcase, CheckCircle2, RefreshCw, DollarSign, FileText, Plus, Check } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { getAvatarUrl } from '../../lib/utils';
@@ -119,26 +120,21 @@ export default function ExitManagement() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div className="hrms-input-group">
               <label className="hrms-label">Select Employee *</label>
-              <select 
-                className="hrms-select"
+              <AppDropdown
                 value={employeeId}
-                onChange={(e) => setEmployeeId(e.target.value)}
-              >
-                <option value="">Choose Employee</option>
-                {employees.map(e => <option key={e.id} value={e.id}>{e.name} (EMP00{e.id})</option>)}
-              </select>
+                onChange={v => setEmployeeId(v)}
+                options={[{value:'',label:'Choose Employee'}]}
+                size="sm"
+              />
             </div>
             <div className="hrms-input-group">
               <label className="hrms-label">Exit Type *</label>
-              <select 
-                className="hrms-select"
+              <AppDropdown
                 value={exitType}
-                onChange={(e) => setExitType(e.target.value)}
-              >
-                <option value="Resignation">Resignation</option>
-                <option value="Termination">Termination</option>
-                <option value="Retirement">Retirement</option>
-              </select>
+                onChange={v => setExitType(v)}
+                options={[{value:'Resignation',label:'Resignation'},{value:'Termination',label:'Termination'},{value:'Retirement',label:'Retirement'}]}
+                size="sm"
+              />
             </div>
             <div className="hrms-input-group">
               <label className="hrms-label">Notice Date *</label>

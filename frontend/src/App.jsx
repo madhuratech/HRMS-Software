@@ -170,35 +170,69 @@ function App() {
   const [userRole, setUserRole] = useState('SUPER_ADMIN');
   const [userName, setUserName] = useState('');
 
-  // On mount: restore auth state from localStorage
+  // On mount: restore auth state from localStorage and validate with backend /auth/me
   React.useEffect(() => {
-    try {
-      const storedAuth = localStorage.getItem('hrms_auth');
-      if (storedAuth) {
-        const { role, name, loggedIn } = JSON.parse(storedAuth);
-        if (loggedIn && role) {
-          setUserRole(role);
-          setUserName(name || '');
-          setIsLoggedIn(true);
-          localStorage.setItem('userRole', role);
-          localStorage.setItem('userName', name || '');
+    const initAuth = async () => {
+      try {
+        const storedAuth = localStorage.getItem('hrms_auth');
+        if (storedAuth) {
+          const authData = JSON.parse(storedAuth);
+          if (authData && authData.loggedIn && authData.token) {
+            try {
+              const res = await apiFetch('/auth/me');
+              if (res && res.success && res.user) {
+                const refreshedUser = res.user;
+                const refreshedRole = res.role || refreshedUser.role;
+                const refreshedName = refreshedUser.name;
+                setUserRole(refreshedRole);
+                setUserName(refreshedName);
+                setIsLoggedIn(true);
+                localStorage.setItem('userRole', refreshedRole);
+                localStorage.setItem('userName', refreshedName);
+                localStorage.setItem('hrms_auth', JSON.stringify({
+                  role: refreshedRole,
+                  name: refreshedName,
+                  loggedIn: true,
+                  token: authData.token,
+                  user: refreshedUser
+                }));
+                if (res.permissions) {
+                  localStorage.setItem('hrms_permissions', JSON.stringify(res.permissions));
+                  window.dispatchEvent(new CustomEvent('permissionsUpdated', { detail: { roleKey: refreshedRole, permissions: res.permissions } }));
+                }
+                setIsInitializing(false);
+                return;
+              }
+            } catch (apiErr) {
+              console.warn('Could not validate session via /auth/me:', apiErr);
+            }
+
+            const role = authData.role || authData.user?.role || 'EMPLOYEE';
+            const name = authData.name || authData.user?.name || '';
+            setUserRole(role);
+            setUserName(name);
+            setIsLoggedIn(true);
+            localStorage.setItem('userRole', role);
+            localStorage.setItem('userName', name);
+          }
         }
+      } catch (err) {
+        localStorage.removeItem('hrms_auth');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('userName');
+      } finally {
+        setIsInitializing(false);
       }
-    } catch (err) {
-      // Corrupted storage — clear it and stay on login
-      localStorage.removeItem('hrms_auth');
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('userName');
-    } finally {
-      setIsInitializing(false);
-    }
+    };
+    initAuth();
   }, []);
 
   const handleLogin = (role, name, userObj) => {
-    // Use data returned from backend auth — never hardcode employee IDs
     const finalRole = role || (userObj && userObj.role) || 'EMPLOYEE';
     const finalName = name || (userObj && userObj.name) || '';
-    const finalId = (userObj && userObj.id) || 1;
+    const finalId = (userObj && (userObj.userId || userObj.id)) || 1;
+    const finalEmpId = (userObj && (userObj.employeeId || userObj.employee_id)) || finalId;
+    const finalEmpCode = (userObj && (userObj.employeeCode || userObj.employee_code || userObj.emp_id)) || `EMP${String(finalEmpId).padStart(4, '0')}`;
     const finalEmail = (userObj && userObj.email) || '';
     const finalToken = (userObj && userObj.token) || 'mock_jwt_token';
 
@@ -215,15 +249,25 @@ function App() {
       token: finalToken,
       user: {
         id: finalId,
-        emp_id: `EMP${String(finalId).padStart(4, '0')}`,
+        userId: finalId,
+        employee_id: finalEmpId,
+        employeeId: finalEmpId,
+        emp_id: finalEmpCode,
+        employeeCode: finalEmpCode,
         name: finalName,
         email: finalEmail,
         role: finalRole
       }
     };
     localStorage.setItem('hrms_auth', JSON.stringify(authObj));
-    localStorage.removeItem('hrms_permissions');
-    window.dispatchEvent(new CustomEvent('permissionsUpdated', { detail: { roleKey: finalRole } }));
+
+    const incomingPerms = (userObj && (userObj.permissions || userObj.userPermissions)) || null;
+    if (incomingPerms) {
+      localStorage.setItem('hrms_permissions', JSON.stringify(incomingPerms));
+    } else {
+      localStorage.removeItem('hrms_permissions');
+    }
+    window.dispatchEvent(new CustomEvent('permissionsUpdated', { detail: { roleKey: finalRole, permissions: incomingPerms } }));
   };
 
   const handleLogout = () => {

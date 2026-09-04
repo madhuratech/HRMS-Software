@@ -55,84 +55,156 @@ exports.getBalances = (req, res) => {
   });
 };
 
-exports.getAllBalances = (req, res) => {
-  const sql = `
-    SELECT 
-      e.id as employee_id,
-      e.name as employee_name,
-      e.profile_photo,
-      COALESCE(d.dept_name, 'General') as dept,
-      COALESCE(SUM(CASE WHEN lt.code = 'CL' THEN lb.days_remaining ELSE 0 END), 0) as cl,
-      COALESCE(SUM(CASE WHEN lt.code = 'SL' THEN lb.days_remaining ELSE 0 END), 0) as sl,
-      COALESCE(SUM(CASE WHEN lt.code IN ('EL', 'PL') THEN lb.days_remaining ELSE 0 END), 0) as el,
-      COALESCE(SUM(CASE WHEN lt.code = 'COMP' THEN lb.days_remaining ELSE 0 END), 0) as comp
-    FROM employees e
-    LEFT JOIN departments d ON e.department_id = d.id
-    LEFT JOIN leave_balances lb ON lb.employee_id = e.id
-    LEFT JOIN leave_types lt ON lb.leave_type_id = lt.id
-    WHERE e.status = 'Active'
-    GROUP BY e.id, e.name, e.profile_photo, d.dept_name
-  `;
+exports.getAllBalances = async (req, res) => {
+  try {
+    const IdentityService = require("../services/IdentityService");
+    const authIdentifier = (req.user && (req.user.email || req.user.userId || req.user.id || req.user.employeeId || req.user.employee_id)) || (req.headers && req.headers['x-employee-id']) || 1;
+    const identity = await IdentityService.resolveUser(authIdentifier);
 
-  db.query(sql, (err, rows) => {
-    if (err) return res.status(500).json(err);
+    const userRole = (identity?.role || req.user?.role || req.headers['x-user-role'] || 'EMPLOYEE').toUpperCase().replace(/[\s_-]+/g, '');
+    const currentEmpId = identity?.employeeId || req.user?.employeeId || req.user?.employee_id;
+    const currentTeamId = identity?.teamId;
 
-    let totalCL = 0, totalSL = 0, totalEL = 0, totalComp = 0;
-    const formatted = rows.map(r => {
-      const cl = parseFloat(r.cl) || 0;
-      const sl = parseFloat(r.sl) || 0;
-      const el = parseFloat(r.el) || 0;
-      const comp = parseFloat(r.comp) || 0;
+    let whereClause = "WHERE e.status = 'Active'";
+    const params = [];
 
-      totalCL += cl;
-      totalSL += sl;
-      totalEL += el;
-      totalComp += comp;
+    // Role-based scoping:
+    // 1. SUPER_ADMIN / ADMIN / HR_MANAGER: View all employees
+    // 2. TEAM_LEADER: View only members of their team (e.team_id = currentTeamId OR e.id = currentEmpId OR e.team_id IN (SELECT id FROM teams WHERE team_lead_id = ?))
+    // 3. EMPLOYEE: View only their own balance
+    if (['SUPERADMIN', 'ADMIN', 'HR', 'HRMANAGER', 'HRADMIN', 'BRANCHMANAGER'].includes(userRole)) {
+      // Full view - no extra filtering
+    } else if (['TEAMLEADER', 'TEAMLEAD', 'LEAD'].includes(userRole)) {
+      whereClause += ` AND (
+        (e.team_id IS NOT NULL AND e.team_id = ?) 
+        OR e.id = ? 
+        OR e.team_id IN (SELECT id FROM teams WHERE team_lead_id = ?)
+      )`;
+      params.push(currentTeamId || 0, currentEmpId || 0, currentEmpId || 0);
+    } else {
+      // Standard employee
+      whereClause += ` AND e.id = ?`;
+      params.push(currentEmpId || 0);
+    }
 
-      return {
-        id: r.employee_id,
-        name: r.employee_name,
-        profile_photo: r.profile_photo,
-        dept: r.dept,
-        cl,
-        sl,
-        el,
-        comp,
-        total: cl + sl + el + comp
-      };
+    const sql = `
+      SELECT 
+        e.id as employee_id,
+        e.name as employee_name,
+        e.profile_photo,
+        COALESCE(d.dept_name, 'General') as dept,
+        COALESCE(SUM(CASE WHEN lt.code = 'CL' THEN lb.days_remaining ELSE 0 END), 0) as cl,
+        COALESCE(SUM(CASE WHEN lt.code = 'SL' THEN lb.days_remaining ELSE 0 END), 0) as sl,
+        COALESCE(SUM(CASE WHEN lt.code IN ('EL', 'PL') THEN lb.days_remaining ELSE 0 END), 0) as el,
+        COALESCE(SUM(CASE WHEN lt.code = 'COMP' THEN lb.days_remaining ELSE 0 END), 0) as comp
+      FROM employees e
+      LEFT JOIN departments d ON e.department_id = d.id
+      LEFT JOIN leave_balances lb ON lb.employee_id = e.id
+      LEFT JOIN leave_types lt ON lb.leave_type_id = lt.id
+      ${whereClause}
+      GROUP BY e.id, e.name, e.profile_photo, d.dept_name
+      ORDER BY (e.id = ?) DESC, e.name ASC
+    `;
+    params.push(currentEmpId || 0);
+
+    db.query(sql, params, (err, rows) => {
+      if (err) {
+        console.error("Error fetching leave balances:", err);
+        return res.status(500).json({ success: false, message: "Error fetching leave balances", error: err.message });
+      }
+
+      let totalCL = 0, totalSL = 0, totalEL = 0, totalComp = 0;
+      const formatted = (rows || []).map(r => {
+        const cl = parseFloat(r.cl) || 0;
+        const sl = parseFloat(r.sl) || 0;
+        const el = parseFloat(r.el) || 0;
+        const comp = parseFloat(r.comp) || 0;
+
+        totalCL += cl;
+        totalSL += sl;
+        totalEL += el;
+        totalComp += comp;
+
+        return {
+          id: r.employee_id,
+          name: r.employee_name,
+          profile_photo: r.profile_photo,
+          dept: r.dept,
+          cl,
+          sl,
+          el,
+          comp,
+          total: cl + sl + el + comp
+        };
+      });
+
+      return res.json({
+        success: true,
+        summary: {
+          cl: `${totalCL} Days`,
+          sl: `${totalSL} Days`,
+          el: `${totalEL} Days`,
+          comp: `${totalComp} Hours`
+        },
+        records: formatted
+      });
     });
-
-    res.json({
-      summary: {
-        cl: `${totalCL} Days`,
-        sl: `${totalSL} Days`,
-        el: `${totalEL} Days`,
-        comp: `${totalComp} Hours`
-      },
-      records: formatted
-    });
-  });
+  } catch (e) {
+    console.error("Exception in getAllBalances:", e);
+    return res.status(500).json({ success: false, message: e.message });
+  }
 };
 
-exports.getApplications = (req, res) => {
-  const { employee_id } = req.query;
-  let sql = `
-    SELECT la.*, e.name as employee_name, lt.name as leave_name, lt.code as leave_code
-    FROM leave_applications la
-    JOIN employees e ON la.employee_id = e.id
-    JOIN leave_types lt ON la.leave_type_id = lt.id
-  `;
-  const params = [];
-  if (employee_id) {
-    sql += " WHERE la.employee_id = ?";
-    params.push(employee_id);
-  }
-  sql += " ORDER BY la.applied_on DESC";
+exports.getApplications = async (req, res) => {
+  try {
+    const IdentityService = require("../services/IdentityService");
+    const authIdentifier = (req.user && (req.user.email || req.user.userId || req.user.id || req.user.employeeId || req.user.employee_id)) || (req.headers && req.headers['x-employee-id']) || 1;
+    const identity = await IdentityService.resolveUser(authIdentifier);
 
-  db.query(sql, params, (err, rows) => {
-    if (err) return res.status(500).json(err);
-    res.json(rows);
-  });
+    const userRole = (identity?.role || req.user?.role || req.headers['x-user-role'] || 'EMPLOYEE').toUpperCase().replace(/[\s_-]+/g, '');
+    const currentEmpId = identity?.employeeId || req.user?.employeeId || req.user?.employee_id;
+    const currentTeamId = identity?.teamId;
+
+    const { employee_id } = req.query;
+    let sql = `
+      SELECT la.*, e.name as employee_name, lt.name as leave_name, lt.code as leave_code
+      FROM leave_applications la
+      JOIN employees e ON la.employee_id = e.id
+      JOIN leave_types lt ON la.leave_type_id = lt.id
+    `;
+    const whereParts = [];
+    const params = [];
+
+    if (employee_id) {
+      whereParts.push("la.employee_id = ?");
+      params.push(employee_id);
+    } else if (['SUPERADMIN', 'ADMIN', 'HR', 'HRMANAGER', 'HRADMIN', 'BRANCHMANAGER'].includes(userRole)) {
+      // Full view
+    } else if (['TEAMLEADER', 'TEAMLEAD', 'LEAD'].includes(userRole)) {
+      whereParts.push(`(
+        (e.team_id IS NOT NULL AND e.team_id = ?) 
+        OR e.id = ? 
+        OR e.team_id IN (SELECT id FROM teams WHERE team_lead_id = ?)
+      )`);
+      params.push(currentTeamId || 0, currentEmpId || 0, currentEmpId || 0);
+    } else {
+      whereParts.push("la.employee_id = ?");
+      params.push(currentEmpId || 0);
+    }
+
+    if (whereParts.length > 0) {
+      sql += " WHERE " + whereParts.join(" AND ");
+    }
+    sql += " ORDER BY la.applied_on DESC";
+
+    db.query(sql, params, (err, rows) => {
+      if (err) return res.status(500).json(err);
+      res.json(rows);
+    });
+  } catch (err) {
+    console.error("Error in getApplications:", err);
+    return res.status(500).json({ success: false, message: err.message });
+  }
 };
 
 exports.submitApplication = (req, res) => {

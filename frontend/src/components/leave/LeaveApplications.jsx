@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, Filter, Plus, Eye, Edit, XCircle, Download, ChevronLeft, ChevronRight, X, Upload, Calendar } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
@@ -251,46 +252,30 @@ export default function LeaveApplications() {
                 style={{ width: '100%', padding: '9px 12px 9px 36px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none' }}
               />
             </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '130px' }}
-            >
-              <option>All Status</option>
-              <option>Pending</option>
-              <option>Approved</option>
-              <option>Rejected</option>
-            </select>
-            <select
-              value={deptFilter}
-              onChange={(e) => setDeptFilter(e.target.value)}
-              style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '150px' }}
-            >
-              <option>All Departments</option>
-              <option>Design</option>
-              <option>Engineering</option>
-              <option>HR</option>
-            </select>
+            <AppDropdown value={statusFilter} options={[{value:'All Status',label:'All Status'},{value:'Pending',label:'Pending'},{value:'Approved',label:'Approved'},{value:'Rejected',label:'Rejected'}]} size="sm" />
+            <AppDropdown value={deptFilter} options={[{value:'All Departments',label:'All Departments'},{value:'Design',label:'Design'},{value:'Engineering',label:'Engineering'},{value:'HR',label:'HR'}]} size="sm" />
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', color: '#475569', cursor: 'pointer' }}>
               <Filter size={14} /> More Filters
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              if (!guardCreateAction(userPermissions, userRole, 'leave', 'my_leave', addToast)) return;
-              setShowModal(true);
-            }}
-            style={{
-              background: '#2563EB', color: '#fff', border: 'none',
-              padding: '10px 18px', borderRadius: '8px', fontSize: '13px',
-              fontWeight: '600', display: 'flex', alignItems: 'center',
-              gap: '8px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
-              whiteSpace: 'nowrap'
-            }}
-          >
-            <Plus size={16} /> Apply Leave
-          </button>
+          {canCreate('leave', 'my_leave') && (
+            <button
+              onClick={() => {
+                if (!guardCreateAction(userPermissions, userRole, 'leave', 'my_leave', addToast)) return;
+                setShowModal(true);
+              }}
+              style={{
+                background: '#2563EB', color: '#fff', border: 'none',
+                padding: '10px 18px', borderRadius: '8px', fontSize: '13px',
+                fontWeight: '600', display: 'flex', alignItems: 'center',
+                gap: '8px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
+                whiteSpace: 'nowrap'
+              }}
+            >
+              <Plus size={16} /> Apply Leave
+            </button>
+          )}
         </div>
 
         {/* Table */}
@@ -355,7 +340,7 @@ export default function LeaveApplications() {
       </div>
 
       {/* Add Modal */}
-      {showModal && (
+      {showModal && canCreate('leave', 'my_leave') && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.4)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999 }}>
           <div style={{ background: '#fff', borderRadius: '20px', width: '100%', maxWidth: '640px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
 

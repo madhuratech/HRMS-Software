@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Clock, TrendingUp, CheckCircle, Users, Plus, X } from 'lucide-react';
 import { useToast } from '../ui/Toast';
+import { hasPermission } from '../../lib/permissions';
 
 export default function HiringPipeline() {
   const { addToast } = useToast();
@@ -109,12 +111,14 @@ export default function HiringPipeline() {
           <h1 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '700', color: '#1E293B' }}>Hiring Pipeline</h1>
           <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Track hiring pipeline and conversion rates</p>
         </div>
-        <button
-          onClick={() => setShowSourceModal(true)}
-          style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}
-        >
-          <Plus size={16} /> Add Recruitment Source
-        </button>
+        {hasPermission('recruitment', 'hiring_pipeline', 'create') && (
+          <button
+            onClick={() => setShowSourceModal(true)}
+            style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}
+          >
+            <Plus size={16} /> Add Recruitment Source
+          </button>
+        )}
       </div>
 
       {/* Horizontal Pipeline */}
@@ -244,7 +248,7 @@ export default function HiringPipeline() {
       </div>
 
       {/* Add Recruitment Source Modal (1100px Standard) */}
-      {showSourceModal && (
+      {showSourceModal && hasPermission('recruitment', 'hiring_pipeline', 'create') && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowSourceModal(false)} />
           <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
@@ -265,10 +269,12 @@ export default function HiringPipeline() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={sourceForm.status} onChange={e => setSourceForm({ ...sourceForm, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
+                  <AppDropdown
+                value={sourceForm.status}
+                onChange={v => setSourceForm({ ...sourceForm, status: v })}
+                options={[{value:'Active',label:'Active'},{value:'Inactive',label:'Inactive'}]}
+                size="sm"
+              />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Description</label>

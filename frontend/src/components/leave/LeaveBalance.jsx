@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, Download, Briefcase, HeartPulse, Award, Clock } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { getAvatarUrl } from '../../lib/utils';
@@ -36,42 +37,9 @@ export default function LeaveBalance() {
   const loadBalances = async () => {
     setLoading(true);
     try {
-      if (isEmployee && auth.id) {
-        const res = await apiFetch(`/leaves/balances/${auth.id}`);
-        if (Array.isArray(res)) {
-          let cl = 0, sl = 0, el = 0, comp = 0;
-          res.forEach(r => {
-            const code = String(r.leave_code).toUpperCase();
-            if (code === 'CL') cl = parseFloat(r.days_remaining) || 0;
-            else if (code === 'SL') sl = parseFloat(r.days_remaining) || 0;
-            else if (code === 'EL' || code === 'PL') el = parseFloat(r.days_remaining) || 0;
-            else if (code === 'COMP') comp = parseFloat(r.days_remaining) || 0;
-          });
-
-          setData({
-            summary: {
-              cl: `${cl} Days`,
-              sl: `${sl} Days`,
-              el: `${el} Days`,
-              comp: `${comp} Hours`
-            },
-            records: [{
-              id: auth.id,
-              name: auth.name,
-              dept: 'General',
-              cl,
-              sl,
-              el,
-              comp,
-              total: cl + sl + el + comp
-            }]
-          });
-        }
-      } else {
-        const res = await apiFetch('/leaves/all-balances');
-        if (res && res.records) {
-          setData(res);
-        }
+      const res = await apiFetch('/leaves/all-balances');
+      if (res && res.records) {
+        setData(res);
       }
     } catch (err) {
       console.error("Failed to load leave balances:", err);
@@ -127,27 +95,9 @@ export default function LeaveBalance() {
         {!isEmployee && (
           <div style={{ padding: '24px', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-              <select 
-                value={monthFilter}
-                onChange={(e) => setMonthFilter(e.target.value)}
-                style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '140px' }}
-              >
-                <option>August 2026</option>
-                <option>July 2026</option>
-                <option>June 2026</option>
-              </select>
+              <AppDropdown value={monthFilter} options={[{value:'August 2026',label:'August 2026'},{value:'July 2026',label:'July 2026'},{value:'June 2026',label:'June 2026'}]} size="sm" />
 
-              <select 
-                value={deptFilter}
-                onChange={(e) => setDeptFilter(e.target.value)}
-                style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '160px' }}
-              >
-                <option>All Departments</option>
-                <option>Human Resources</option>
-                <option>Engineering</option>
-                <option>Sales</option>
-                <option>Marketing</option>
-              </select>
+              <AppDropdown value={deptFilter} options={[{value:'All Departments',label:'All Departments'},{value:'Human Resources',label:'Human Resources'},{value:'Engineering',label:'Engineering'},{value:'Sales',label:'Sales'},{value:'Marketing',label:'Marketing'}]} size="sm" />
 
               <div style={{ position: 'relative', width: '240px' }}>
                 <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }} />

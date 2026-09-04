@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import {
   Search, Plus, Edit2, Trash2, Eye, MapPin, Check, X, ShieldAlert,
   ArrowLeft, ChevronLeft, ChevronRight, CheckCircle2, XCircle
@@ -249,15 +250,7 @@ export default function PunchLocations() {
         </div>
 
         <div style={{ width: 160 }}>
-          <select
-            value={statusFilter}
-            onChange={handleStatusFilterChange}
-            style={{ width: '100%', height: 38, padding: '0 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, background: '#FFF', cursor: 'pointer' }}
-          >
-            <option value="">All Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-          </select>
+          <AppDropdown value={statusFilter} onChange={handleStatusFilterChange} options={[{value:'',label:'All Status'},{value:'Active',label:'Active'},{value:'Inactive',label:'Inactive'}]} size="sm" />
         </div>
       </div>
 

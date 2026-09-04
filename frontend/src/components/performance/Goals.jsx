@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { ChevronDown, Plus, Target, CheckCircle, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Label } from 'recharts';
 import { useToast } from '../ui/Toast';
@@ -226,17 +227,12 @@ export default function Goals() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Goal Owner <span className="text-red-500">*</span></label>
-                  <select
-                    required
-                    value={formData.owner}
-                    onChange={e => setFormData({ ...formData, owner: e.target.value })}
-                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
-                  >
-                    <option value="">Select Employee</option>
-                    {employees.map(e => (
-                      <option key={e.id} value={e.id}>{e.name} (EMP{String(e.id).padStart(3, '0')})</option>
-                    ))}
-                  </select>
+                  <AppDropdown
+                value={formData.owner}
+                onChange={v => setFormData({ ...formData, owner: v })}
+                options={[{value:'',label:'Select Employee'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Target Completion Date <span className="text-red-500">*</span></label>
@@ -248,12 +244,12 @@ export default function Goals() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Not Started">Not Started</option>
-                    <option value="On Track">On Track</option>
-                    <option value="At Risk">At Risk</option>
-                    <option value="Completed">Completed</option>
-                  </select>
+                  <AppDropdown
+                value={formData.status}
+                onChange={v => setFormData({ ...formData, status: v })}
+                options={[{value:'Not Started',label:'Not Started'},{value:'On Track',label:'On Track'},{value:'At Risk',label:'At Risk'},{value:'Completed',label:'Completed'}]}
+                size="sm"
+              />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Goal Description</label>
@@ -278,16 +274,12 @@ export default function Goals() {
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Set, track and achieve organizational and individual goals</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <select
-            value={filterDept}
-            onChange={e => setFilterDept(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '13px', color: '#334155', cursor: 'pointer' }}
-          >
-            <option value="All Departments">All Departments</option>
-            {departments.map(d => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
+          <AppDropdown
+                value={filterDept}
+                onChange={v => setFilterDept(v)}
+                options={[{value:'All Departments',label:'All Departments'}]}
+                size="sm"
+              />
           <button 
             disabled={!canCreate('goals')}
             onClick={() => {

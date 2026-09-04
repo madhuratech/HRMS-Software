@@ -14,6 +14,8 @@ router.get("/all-balances", checkPermission("leave", "leave_balance", "view"), l
 router.get("/balances/:employee_id", checkPermission("leave", "leave_balance", "view"), leavesController.getBalances);
 router.get("/applications", checkPermission("leave", "my_leave", "view"), leavesController.getApplications);
 router.post("/applications", checkPermission("leave", "my_leave", "create"), leavesController.submitApplication);
+router.put("/applications/:id", checkPermission("leave", "leave_approval", "edit"), leavesController.updateStatus);
+router.put("/applications/:id/status", checkPermission("leave", "leave_approval", "edit"), leavesController.updateStatus);
 router.get("/comp-off", checkPermission("leave", "comp_off", "view"), leavesController.getCompOffRequests);
 router.post("/comp-off", checkPermission("leave", "comp_off", "create"), leavesController.submitCompOffRequest);
 router.put("/comp-off/:id/status", checkPermission("leave", "leave_approval", "edit"), leavesController.updateCompOffStatus);

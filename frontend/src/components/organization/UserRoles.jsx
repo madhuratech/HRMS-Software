@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Shield, Plus, Save, Trash2, Lock, Users, RefreshCw, Layers, ShieldCheck, UserCheck, Users2, User, ChevronDown, ChevronRight } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 
@@ -894,17 +895,12 @@ export function UserRoles() {
                 <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 6 }}>
                   Copy Initial Permissions From
                 </label>
-                <select
+                <AppDropdown
                   value={newRoleData.template_role}
-                  onChange={(e) => setNewRoleData(prev => ({ ...prev, template_role: e.target.value }))}
-                  style={{
-                    width: '100%', padding: '10px 14px', borderRadius: 8, border: '1px solid #CBD5E1', fontSize: 14, outline: 'none', background: '#FFFFFF'
-                  }}
-                >
-                  <option value="EMPLOYEE">Employee (Self-Service)</option>
-                  <option value="HR_MANAGER">HR (Human Resources Management)</option>
-                  <option value="TEAM_LEADER">Team Leader (Team Management)</option>
-                </select>
+                  onChange={v => setNewRoleData(prev => ({ ...prev, template_role: v }))}
+                  options={[{ value: 'EMPLOYEE', label: 'Employee (Self-Service)' }, { value: 'HR_MANAGER', label: 'HR (Human Resources Management)' }, { value: 'TEAM_LEADER', label: 'Team Leader (Team Management)' }]}
+                  size="sm"
+                />
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>

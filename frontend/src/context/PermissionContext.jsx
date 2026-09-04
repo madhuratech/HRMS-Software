@@ -11,7 +11,9 @@ const PermissionContext = createContext({
   canView: () => false,
   canCreate: () => false,
   canEdit: () => false,
+  canUpdate: () => false,
   canDelete: () => false,
+  canSeeModule: () => false,
 });
 
 export function PermissionProvider({ children }) {
@@ -93,14 +95,37 @@ export function PermissionProvider({ children }) {
     };
   }, [refreshPermissions]);
 
-  const hasPerm = useCallback((moduleKey, submoduleKey = null, action = 'view') => {
-    return checkHasPermission(permissions, userRole, moduleKey, submoduleKey, action);
+  const hasPerm = useCallback((...args) => {
+    return checkHasPermission(permissions, userRole, ...args);
   }, [permissions, userRole]);
 
-  const viewPerm = useCallback((moduleKey, submoduleKey = null) => hasPerm(moduleKey, submoduleKey, 'view'), [hasPerm]);
-  const createPerm = useCallback((moduleKey, submoduleKey = null) => hasPerm(moduleKey, submoduleKey, 'create'), [hasPerm]);
-  const editPerm = useCallback((moduleKey, submoduleKey = null) => hasPerm(moduleKey, submoduleKey, 'edit'), [hasPerm]);
-  const deletePerm = useCallback((moduleKey, submoduleKey = null) => hasPerm(moduleKey, submoduleKey, 'delete'), [hasPerm]);
+  const viewPerm = useCallback((...args) => {
+    if (args.length === 1) return hasPerm(args[0], 'view');
+    return hasPerm(args[0], args[1], 'view');
+  }, [hasPerm]);
+
+  const createPerm = useCallback((...args) => {
+    if (args.length === 1) return hasPerm(args[0], 'create');
+    return hasPerm(args[0], args[1], 'create');
+  }, [hasPerm]);
+
+  const editPerm = useCallback((...args) => {
+    if (args.length === 1) return hasPerm(args[0], 'edit');
+    return hasPerm(args[0], args[1], 'edit');
+  }, [hasPerm]);
+
+  const deletePerm = useCallback((...args) => {
+    if (args.length === 1) return hasPerm(args[0], 'delete');
+    return hasPerm(args[0], args[1], 'delete');
+  }, [hasPerm]);
+
+  const updatePerm = useCallback((...args) => {
+    return editPerm(...args);
+  }, [editPerm]);
+
+  const seeModulePerm = useCallback((...args) => {
+    return viewPerm(...args) || createPerm(...args) || editPerm(...args) || deletePerm(...args);
+  }, [viewPerm, createPerm, editPerm, deletePerm]);
 
   return (
     <PermissionContext.Provider
@@ -113,7 +138,9 @@ export function PermissionProvider({ children }) {
         canView: viewPerm,
         canCreate: createPerm,
         canEdit: editPerm,
+        canUpdate: updatePerm,
         canDelete: deletePerm,
+        canSeeModule: seeModulePerm,
       }}
     >
       {children}

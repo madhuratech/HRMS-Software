@@ -3905,3 +3905,40 @@ html, body, #root {
   overflow-y: auto;
   box-sizing: border-box;
 }
+
+/* ====================================================================
+   GLOBAL FORM CONTROL BORDER & FOCUS RESET
+   Remove browser default dark outline. Use a subtle grey border with
+   a light blue focus ring instead of the thick navy/dark focus border.
+   ==================================================================== */
+input,
+select,
+textarea {
+  outline: none !important;
+  border: 1px solid #E2E8F0 !important;
+  border-radius: 8px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none !important;
+  border-color: #93C5FD !important;
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.25) !important;
+}
+
+/* Ensure no double border on Tailwind-styled inputs */
+input[class],
+select[class],
+textarea[class] {
+  outline: none !important;
+}
+
+input[class]:focus,
+select[class]:focus,
+textarea[class]:focus {
+  outline: none !important;
+  border-color: #93C5FD !important;
+  box-shadow: 0 0 0 3px rgba(147, 197, 253, 0.25) !important;
+}

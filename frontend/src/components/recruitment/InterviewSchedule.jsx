@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { ChevronLeft, ChevronRight, Video, Clock, Plus, MessageSquare, X } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { canCreate, canEdit, checkActionPermission } from '../../lib/permissions';
@@ -398,48 +399,39 @@ export default function InterviewSchedule() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Candidate <span className="text-red-500">*</span></label>
-                  <select 
-                    required 
-                    value={scheduleForm.candidate_id} 
-                    onChange={e => setScheduleForm({ ...scheduleForm, candidate_id: e.target.value })} 
-                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
-                  >
-                    <option value="">Select Candidate</option>
-                    {candidates.map(c => (
-                      <option key={c.id} value={c.id}>{c.name} ({c.job_position})</option>
-                    ))}
-                  </select>
+                  <AppDropdown
+                value={scheduleForm.candidate_id}
+                onChange={v => setScheduleForm({ ...scheduleForm, candidate_id: v })}
+                options={[{value:'',label:'Select Candidate'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Interviewer <span className="text-red-500">*</span></label>
-                  <select 
-                    required 
-                    value={scheduleForm.interviewer_id} 
-                    onChange={e => setScheduleForm({ ...scheduleForm, interviewer_id: e.target.value })} 
-                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
-                  >
-                    <option value="">Select Interviewer</option>
-                    {employees.map(e => (
-                      <option key={e.id} value={e.id}>{e.name}</option>
-                    ))}
-                  </select>
+                  <AppDropdown
+                value={scheduleForm.interviewer_id}
+                onChange={v => setScheduleForm({ ...scheduleForm, interviewer_id: v })}
+                options={[{value:'',label:'Select Interviewer'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Interview Type <span className="text-red-500">*</span></label>
-                  <select value={scheduleForm.interviewType} onChange={e => setScheduleForm({ ...scheduleForm, interviewType: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Online">Online Video Call</option>
-                    <option value="Offline">In-person Office Visit</option>
-                    <option value="Telephonic">Phone Screening</option>
-                  </select>
+                  <AppDropdown
+                value={scheduleForm.interviewType}
+                onChange={v => setScheduleForm({ ...scheduleForm, interviewType: v })}
+                options={[{value:'Online',label:'Online Video Call'},{value:'Offline',label:'In-person Office Visit'},{value:'Telephonic',label:'Phone Screening'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Interview Round <span className="text-red-500">*</span></label>
-                  <select value={scheduleForm.interviewRound} onChange={e => setScheduleForm({ ...scheduleForm, interviewRound: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Technical Round">Technical Round</option>
-                    <option value="HR Round">HR Round</option>
-                    <option value="Manager Round">Manager Round</option>
-                    <option value="Final Round">Final Round</option>
-                  </select>
+                  <AppDropdown
+                value={scheduleForm.interviewRound}
+                onChange={v => setScheduleForm({ ...scheduleForm, interviewRound: v })}
+                options={[{value:'Technical Round',label:'Technical Round'},{value:'HR Round',label:'HR Round'},{value:'Manager Round',label:'Manager Round'},{value:'Final Round',label:'Final Round'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Interview Date <span className="text-red-500">*</span></label>
@@ -455,12 +447,12 @@ export default function InterviewSchedule() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={scheduleForm.status} onChange={e => setScheduleForm({ ...scheduleForm, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Scheduled">Scheduled</option>
-                    <option value="Completed">Completed</option>
-                    <option value="Cancelled">Cancelled</option>
-                    <option value="Rescheduled">Rescheduled</option>
-                  </select>
+                  <AppDropdown
+                value={scheduleForm.status}
+                onChange={v => setScheduleForm({ ...scheduleForm, status: v })}
+                options={[{value:'Scheduled',label:'Scheduled'},{value:'Completed',label:'Completed'},{value:'Cancelled',label:'Cancelled'},{value:'Rescheduled',label:'Rescheduled'}]}
+                size="sm"
+              />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Remarks</label>
@@ -477,6 +469,7 @@ export default function InterviewSchedule() {
           </div>
         </>
       )}
+
 
       {/* Interview Feedback Modal (1100px Standard) */}
       {showFeedbackModal && (
@@ -499,10 +492,10 @@ export default function InterviewSchedule() {
                   {feedbackForm.schedule_id ? (
                     <input type="text" readOnly value={feedbackForm.candidate || ''} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-slate-50 outline-none" />
                   ) : (
-                    <select
+                    <AppDropdown
                       value={feedbackForm.schedule_id || ''}
-                      onChange={e => {
-                        const schedId = e.target.value;
+                      onChange={v => {
+                        const schedId = v;
                         const allInterviews = scheduleList.flatMap(d => d.interviews || []);
                         const selected = allInterviews.find(i => String(i.id) === String(schedId));
                         if (selected) {
@@ -513,17 +506,11 @@ export default function InterviewSchedule() {
                             interviewer: selected.interviewer || 'Super Admin',
                             interviewRound: selected.round || 'Technical Round'
                           });
-                        } else {
-                          setFeedbackForm({ ...feedbackForm, schedule_id: '', candidate: '', interviewer: '', interviewRound: 'Technical Round' });
                         }
                       }}
-                      className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white cursor-pointer"
-                    >
-                      <option value="">Select Candidate Interview</option>
-                      {scheduleList.flatMap(d => d.interviews || []).map(i => (
-                        <option key={i.id} value={i.id}>{i.name} - {i.job} ({i.round})</option>
-                      ))}
-                    </select>
+                      options={[{ value: '', label: 'Select Candidate Interview' }, ...scheduleList.flatMap(d => (d.interviews || []).map(i => ({ value: i.id, label: `${i.name} (${i.round || 'Interview'})` })))]}
+                      size="sm"
+                    />
                   )}
                 </div>
                 <div>
@@ -536,29 +523,30 @@ export default function InterviewSchedule() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Rating <span className="text-red-500">*</span></label>
-                  <select value={feedbackForm.rating} onChange={e => setFeedbackForm({ ...feedbackForm, rating: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="5">5 - Excellent (Strong Hire)</option>
-                    <option value="4">4 - Good (Hire)</option>
-                    <option value="3">3 - Average (Hold)</option>
-                    <option value="2">2 - Below Average</option>
-                    <option value="1">1 - Poor (Reject)</option>
-                  </select>
+                  <AppDropdown
+                value={feedbackForm.rating}
+                onChange={v => setFeedbackForm({ ...feedbackForm, rating: v })}
+                options={[{value:'5',label:'5 - Excellent (Strong Hire)'},{value:'4',label:'4 - Good (Hire)'},{value:'3',label:'3 - Average (Hold)'},{value:'2',label:'2 - Below Average'},{value:'1',label:'1 - Poor (Reject)'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Recommendation</label>
-                  <select value={feedbackForm.recommendation} onChange={e => setFeedbackForm({ ...feedbackForm, recommendation: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Strong Hire">Strong Hire</option>
-                    <option value="Hire">Hire</option>
-                    <option value="Hold">Hold</option>
-                    <option value="Reject">Reject</option>
-                  </select>
+                  <AppDropdown
+                value={feedbackForm.recommendation}
+                onChange={v => setFeedbackForm({ ...feedbackForm, recommendation: v })}
+                options={[{value:'Strong Hire',label:'Strong Hire'},{value:'Hire',label:'Hire'},{value:'Hold',label:'Hold'},{value:'Reject',label:'Reject'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={feedbackForm.status} onChange={e => setFeedbackForm({ ...feedbackForm, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Completed">Completed</option>
-                    <option value="Draft">Draft</option>
-                  </select>
+                  <AppDropdown
+                value={feedbackForm.status}
+                onChange={v => setFeedbackForm({ ...feedbackForm, status: v })}
+                options={[{value:'Completed',label:'Completed'},{value:'Draft',label:'Draft'}]}
+                size="sm"
+              />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Strengths</label>

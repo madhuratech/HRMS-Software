@@ -11,6 +11,10 @@ const Candidate = {
     });
   },
 
+  withTransaction: (workFn) => {
+    return db.withTransaction(workFn);
+  },
+
   beginTransaction: () => {
     return new Promise((resolve, reject) => {
       db.beginTransaction((err) => {

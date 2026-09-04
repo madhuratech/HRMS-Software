@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import {
   LifeBuoy,
@@ -181,17 +182,12 @@ export function SupportTickets() {
             onChange={(e) => setSearchTerm(e.target.value)} />
           
         </div>
-        <select
-          className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm font-medium text-slate-700"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}>
-          
-          <option value="ALL">All Status</option>
-          <option value="OPEN">Open</option>
-          <option value="IN_PROGRESS">In Progress</option>
-          <option value="RESOLVED">Resolved</option>
-          <option value="REJECTED">Rejected</option>
-        </select>
+        <AppDropdown
+                value={statusFilter}
+                onChange={v => setStatusFilter(v)}
+                options={[{value:'ALL',label:'All Status'},{value:'OPEN',label:'Open'},{value:'IN_PROGRESS',label:'In Progress'},{value:'RESOLVED',label:'Resolved'},{value:'REJECTED',label:'Rejected'}]}
+                size="sm"
+              />
       </div>
 
       {/* Ticket List */}
@@ -361,16 +357,12 @@ export function SupportTickets() {
 
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Priority</label>
-                <select
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
+                <AppDropdown
                 value={newTicket.priority}
-                onChange={(e) => setNewTicket({ ...newTicket, priority: e.target.value })}>
-                
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
-                  <option value="CRITICAL">Critical</option>
-                </select>
+                onChange={v => setNewTicket({ ...newTicket, priority: v })}
+                options={[{value:'LOW',label:'Low'},{value:'MEDIUM',label:'Medium'},{value:'HIGH',label:'High'},{value:'CRITICAL',label:'Critical'}]}
+                size="sm"
+              />
               </div>
 
               <div className="flex gap-3 mt-6">

@@ -10,6 +10,18 @@ export function normalizeBoolean(val) {
   return false;
 }
 
+/**
+ * Standardize and normalize permission strings to module.action or submodule
+ * e.g. "employee.create", "employees.create", "employee_create" -> "employees.create"
+ */
+export function normalizePermission(permission) {
+  if (!permission) return '';
+  return String(permission)
+    .trim()
+    .toLowerCase()
+    .replace(/[_\s:]+/g, '.');
+}
+
 export function getLocalRoleAndPermissions() {
   let role = 'EMPLOYEE';
   let permissions = null;
@@ -36,7 +48,8 @@ export function getLocalRoleAndPermissions() {
 }
 
 export function resolveModuleKeys(modKey) {
-  const cleanKey = String(modKey).toLowerCase().trim();
+  if (!modKey) return { moduleKey: null, submoduleKey: null };
+  const cleanKey = String(modKey).toLowerCase().trim().replace(/[-.]/g, '_');
 
   // Performance module submodules
   if (['goals', 'goal'].includes(cleanKey)) return { moduleKey: 'performance', submoduleKey: 'goals' };
@@ -48,28 +61,108 @@ export function resolveModuleKeys(modKey) {
   if (['promotion', 'promotions', 'performance_promotions'].includes(cleanKey)) return { moduleKey: 'performance', submoduleKey: 'performance_promotions' };
 
   // Leave module submodules
-  if (['my_leave', 'my-leave', 'myleave'].includes(cleanKey)) return { moduleKey: 'leave', submoduleKey: 'my_leave' };
-  if (['leave_balance', 'leave-balance'].includes(cleanKey)) return { moduleKey: 'leave', submoduleKey: 'leave_balance' };
-  if (['leave_dashboard', 'leave-dashboard'].includes(cleanKey)) return { moduleKey: 'leave', submoduleKey: 'leave_dashboard' };
-  if (['leave_approval', 'leave-approval'].includes(cleanKey)) return { moduleKey: 'leave', submoduleKey: 'leave_approval' };
-  if (['leave_types', 'leave-types'].includes(cleanKey)) return { moduleKey: 'leave', submoduleKey: 'leave_types' };
-  if (['holiday_list', 'holiday-list'].includes(cleanKey)) return { moduleKey: 'leave', submoduleKey: 'holiday_list' };
+  if (['my_leave', 'myleave', 'leave_applications'].includes(cleanKey)) return { moduleKey: 'leave', submoduleKey: 'my_leave' };
+  if (['leave_balance', 'leavebalance'].includes(cleanKey)) return { moduleKey: 'leave', submoduleKey: 'leave_balance' };
+  if (['leave_dashboard', 'leavedashboard'].includes(cleanKey)) return { moduleKey: 'leave', submoduleKey: 'leave_dashboard' };
+  if (['leave_approval', 'leaveapproval', 'leave_requests'].includes(cleanKey)) return { moduleKey: 'leave', submoduleKey: 'leave_approval' };
+  if (['leave_types', 'leavetypes'].includes(cleanKey)) return { moduleKey: 'leave', submoduleKey: 'leave_types' };
+  if (['holiday_list', 'holidaylist'].includes(cleanKey)) return { moduleKey: 'leave', submoduleKey: 'holiday_list' };
+  if (['comp_off', 'compoff'].includes(cleanKey)) return { moduleKey: 'leave', submoduleKey: 'comp_off' };
 
   // Attendance module submodules
-  if (['daily_attendance', 'daily-attendance'].includes(cleanKey)) return { moduleKey: 'attendance', submoduleKey: 'daily_attendance' };
-  if (['gps_attendance', 'gps-attendance'].includes(cleanKey)) return { moduleKey: 'attendance', submoduleKey: 'gps_attendance' };
+  if (['daily_attendance', 'dailyattendance'].includes(cleanKey)) return { moduleKey: 'attendance', submoduleKey: 'daily_attendance' };
+  if (['gps_attendance', 'gpsattendance'].includes(cleanKey)) return { moduleKey: 'attendance', submoduleKey: 'gps_attendance' };
   if (['regularization'].includes(cleanKey)) return { moduleKey: 'attendance', submoduleKey: 'regularization' };
-  if (['shift_roster', 'shift-roster'].includes(cleanKey)) return { moduleKey: 'attendance', submoduleKey: 'shift_roster' };
+  if (['shift_roster', 'shiftroster'].includes(cleanKey)) return { moduleKey: 'attendance', submoduleKey: 'shift_roster' };
+  if (['overtime'].includes(cleanKey)) return { moduleKey: 'attendance', submoduleKey: 'overtime' };
+  if (['late_arrival', 'latearrival'].includes(cleanKey)) return { moduleKey: 'attendance', submoduleKey: 'late_arrival' };
+  if (['punch_locations', 'punchlocations'].includes(cleanKey)) return { moduleKey: 'attendance', submoduleKey: 'punch_locations' };
+
+  // Employees module submodules
+  if (['employee_directory', 'employeedirectory', 'directory'].includes(cleanKey)) return { moduleKey: 'employees', submoduleKey: 'employee_directory' };
+  if (['employee_list', 'employeelist', 'employees_list'].includes(cleanKey)) return { moduleKey: 'employees', submoduleKey: 'employee_list' };
+  if (['add_employee', 'addemployee'].includes(cleanKey)) return { moduleKey: 'employees', submoduleKey: 'add_employee' };
+  if (['employee_profile', 'employeeprofile', 'my_profile'].includes(cleanKey)) return { moduleKey: 'employees', submoduleKey: 'employee_profile' };
+  if (['employment_history', 'employmenthistory'].includes(cleanKey)) return { moduleKey: 'employees', submoduleKey: 'employment_history' };
+  if (['transfers', 'transfer'].includes(cleanKey)) return { moduleKey: 'employees', submoduleKey: 'transfers' };
+  if (['exit_management', 'exitmanagement', 'exit'].includes(cleanKey)) return { moduleKey: 'employees', submoduleKey: 'exit_management' };
+  if (['employee_documents', 'employeedocuments'].includes(cleanKey)) return { moduleKey: 'employees', submoduleKey: 'employee_documents' };
 
   // Projects submodules
   if (['tasks', 'task'].includes(cleanKey)) return { moduleKey: 'projects', submoduleKey: 'tasks' };
-  if (['sprints', 'sprint', 'sprint_board'].includes(cleanKey)) return { moduleKey: 'projects', submoduleKey: 'sprint_board' };
+  if (['sprints', 'sprint', 'sprint_board', 'sprintboard'].includes(cleanKey)) return { moduleKey: 'projects', submoduleKey: 'sprint_board' };
   if (['timesheets', 'timesheet'].includes(cleanKey)) return { moduleKey: 'projects', submoduleKey: 'timesheets' };
+  if (['milestones', 'milestone'].includes(cleanKey)) return { moduleKey: 'projects', submoduleKey: 'milestones' };
+  if (['team_members', 'teammembers', 'team_member'].includes(cleanKey)) return { moduleKey: 'projects', submoduleKey: 'team_members' };
+  if (['projects_list', 'projectslist'].includes(cleanKey)) return { moduleKey: 'projects', submoduleKey: 'projects_list' };
+  if (['project_dashboard', 'projectdashboard'].includes(cleanKey)) return { moduleKey: 'projects', submoduleKey: 'project_dashboard' };
 
   // Recruitment submodules
-  if (['screening', 'candidate_screening', 'candidate-screening'].includes(cleanKey)) return { moduleKey: 'recruitment', submoduleKey: 'screening' };
+  if (['screening', 'candidate_screening', 'candidatescreening'].includes(cleanKey)) return { moduleKey: 'recruitment', submoduleKey: 'screening' };
+  if (['job_openings', 'jobopenings', 'jobs'].includes(cleanKey)) return { moduleKey: 'recruitment', submoduleKey: 'job_openings' };
+  if (['candidates', 'candidate'].includes(cleanKey)) return { moduleKey: 'recruitment', submoduleKey: 'candidates' };
+  if (['interview_schedule', 'interviewschedule', 'interviews'].includes(cleanKey)) return { moduleKey: 'recruitment', submoduleKey: 'interview_schedule' };
+  if (['offer_letters', 'offerletters', 'offers'].includes(cleanKey)) return { moduleKey: 'recruitment', submoduleKey: 'offer_letters' };
+  if (['hiring_pipeline', 'hiringpipeline', 'pipeline'].includes(cleanKey)) return { moduleKey: 'recruitment', submoduleKey: 'hiring_pipeline' };
+  if (['recruitment_dashboard', 'recruitmentdashboard'].includes(cleanKey)) return { moduleKey: 'recruitment', submoduleKey: 'recruitment_dashboard' };
 
-  // Default: pass key as moduleKey
+  // Onboarding submodules
+  if (['new_joiners', 'newjoiners', 'joiners'].includes(cleanKey)) return { moduleKey: 'onboarding', submoduleKey: 'new_joiners' };
+  if (['document_verification', 'documentverification'].includes(cleanKey)) return { moduleKey: 'onboarding', submoduleKey: 'document_verification' };
+  if (['asset_allocation', 'assetallocation', 'assets'].includes(cleanKey)) return { moduleKey: 'onboarding', submoduleKey: 'asset_allocation' };
+  if (['welcome_kit', 'welcomekit'].includes(cleanKey)) return { moduleKey: 'onboarding', submoduleKey: 'welcome_kit' };
+  if (['orientation', 'orientations'].includes(cleanKey)) return { moduleKey: 'onboarding', submoduleKey: 'orientation' };
+  if (['probation', 'probations'].includes(cleanKey)) return { moduleKey: 'onboarding', submoduleKey: 'probation' };
+
+  // Payroll submodules
+  if (['salary_structure', 'salarystructure'].includes(cleanKey)) return { moduleKey: 'payroll', submoduleKey: 'salary_structure' };
+  if (['salary_components', 'salarycomponents'].includes(cleanKey)) return { moduleKey: 'payroll', submoduleKey: 'salary_components' };
+  if (['payroll_processing', 'payrollprocessing'].includes(cleanKey)) return { moduleKey: 'payroll', submoduleKey: 'payroll_processing' };
+  if (['generate_payslips', 'generatepayslips', 'payslips', 'payslip'].includes(cleanKey)) return { moduleKey: 'payroll', submoduleKey: 'generate_payslips' };
+  if (['bonus_incentives', 'bonusincentives', 'bonus'].includes(cleanKey)) return { moduleKey: 'payroll', submoduleKey: 'bonus_incentives' };
+  if (['reimbursements', 'reimbursement'].includes(cleanKey)) return { moduleKey: 'payroll', submoduleKey: 'reimbursements' };
+  if (['loans_advances', 'loansadvances', 'loans'].includes(cleanKey)) return { moduleKey: 'payroll', submoduleKey: 'loans_advances' };
+  if (['tax_management', 'taxmanagement', 'tax'].includes(cleanKey)) return { moduleKey: 'payroll', submoduleKey: 'tax_management' };
+
+  // Expenses submodules
+  if (['expense_claims', 'expenseclaims', 'claims'].includes(cleanKey)) return { moduleKey: 'expenses', submoduleKey: 'expense_claims' };
+  if (['expense_categories', 'expensecategories'].includes(cleanKey)) return { moduleKey: 'expenses', submoduleKey: 'expense_categories' };
+  if (['expense_approval', 'expenseapproval'].includes(cleanKey)) return { moduleKey: 'expenses', submoduleKey: 'expense_approval' };
+  if (['expense_reports', 'expensereports'].includes(cleanKey)) return { moduleKey: 'expenses', submoduleKey: 'expense_reports' };
+  if (['expense_reimbursements', 'expensereimbursements'].includes(cleanKey)) return { moduleKey: 'expenses', submoduleKey: 'expense_reimbursements' };
+
+  // Documents submodules
+  if (['doc_employee', 'docemployee', 'employee_docs', 'employee_documents'].includes(cleanKey)) return { moduleKey: 'documents', submoduleKey: 'doc_employee' };
+  if (['doc_company', 'doccompany', 'company_docs', 'company_documents'].includes(cleanKey)) return { moduleKey: 'documents', submoduleKey: 'doc_company' };
+  if (['doc_policies', 'docpolicies', 'hr_policies', 'hrpolicies'].includes(cleanKey)) return { moduleKey: 'documents', submoduleKey: 'doc_policies' };
+  if (['doc_templates', 'doctemplates', 'templates', 'template'].includes(cleanKey)) return { moduleKey: 'documents', submoduleKey: 'doc_templates' };
+  if (['doc_signatures', 'docsignatures', 'digital_signatures', 'signatures'].includes(cleanKey)) return { moduleKey: 'documents', submoduleKey: 'doc_signatures' };
+
+  // Helpdesk submodules
+  if (['support_tickets', 'supporttickets', 'tickets', 'ticket'].includes(cleanKey)) return { moduleKey: 'helpdesk', submoduleKey: 'support_tickets' };
+  if (['knowledge_base', 'knowledgebase', 'kb'].includes(cleanKey)) return { moduleKey: 'helpdesk', submoduleKey: 'knowledge_base' };
+  if (['helpdesk_categories', 'helpdeskcategories'].includes(cleanKey)) return { moduleKey: 'helpdesk', submoduleKey: 'helpdesk_categories' };
+
+  // Organization submodules
+  if (['departments', 'department', 'org_departments'].includes(cleanKey)) return { moduleKey: 'organization', submoduleKey: 'departments' };
+  if (['designations', 'designation', 'org_designations'].includes(cleanKey)) return { moduleKey: 'organization', submoduleKey: 'designations' };
+  if (['teams', 'team', 'org_teams'].includes(cleanKey)) return { moduleKey: 'organization', submoduleKey: 'teams' };
+  if (['shift_management', 'shiftmanagement', 'shifts'].includes(cleanKey)) return { moduleKey: 'organization', submoduleKey: 'shift_management' };
+  if (['holiday_calendar', 'holidaycalendar', 'calendar'].includes(cleanKey)) return { moduleKey: 'organization', submoduleKey: 'holiday_calendar' };
+
+  // Settings submodules
+  if (['user_roles', 'userroles', 'roles_matrix', 'rolesmatrix', 'roles'].includes(cleanKey)) return { moduleKey: 'settings', submoduleKey: 'user_roles' };
+  if (['settings_users', 'users_settings', 'users'].includes(cleanKey)) return { moduleKey: 'settings', submoduleKey: 'settings_users' };
+  if (['settings_company', 'company_settings'].includes(cleanKey)) return { moduleKey: 'settings', submoduleKey: 'settings_company' };
+  if (['settings_hr', 'hr_settings'].includes(cleanKey)) return { moduleKey: 'settings', submoduleKey: 'settings_hr' };
+
+  // Plural normalization for core modules
+  if (cleanKey === 'employee') return { moduleKey: 'employees', submoduleKey: null };
+  if (cleanKey === 'project') return { moduleKey: 'projects', submoduleKey: null };
+  if (cleanKey === 'leaves') return { moduleKey: 'leave', submoduleKey: null };
+  if (cleanKey === 'expense') return { moduleKey: 'expenses', submoduleKey: null };
+  if (cleanKey === 'document') return { moduleKey: 'documents', submoduleKey: null };
+
   return { moduleKey: cleanKey, submoduleKey: null };
 }
 
@@ -145,42 +238,89 @@ export function showPermissionDenied(customMsg = null) {
 }
 
 /**
- * Centralized Permission Helper for HRMS
- * Flexible signature support:
- * 1) hasPermission('KRAS', 'CREATE')
- * 2) hasPermission(userPermissions, userRole, 'performance', 'kras', 'create')
+ * Universal Permission Resolution Function
+ * Supports multiple call signatures:
+ * 1) hasPermission('employee.create') / hasPermission('employees_create')
+ * 2) hasPermission('projects', 'tasks', 'create')
+ * 3) hasPermission('leave', 'my_leave')
+ * 4) hasPermission('leave', 'view')
+ * 5) hasPermission(userPermissions, userRole, 'projects', 'tasks', 'create')
+ * 6) hasPermission(null, null, 'projects', 'tasks', 'create')
  */
-export function hasPermission(arg1, arg2, arg3 = null, arg4 = null, arg5 = 'view') {
+export function hasPermission(...args) {
+  const ACTIONS = ['view', 'create', 'edit', 'update', 'delete', 'approve', 'reject'];
+
   let userPermissions = null;
   let userRole = null;
   let moduleKey = null;
   let submoduleKey = null;
   let action = 'view';
 
-  if (typeof arg1 === 'string') {
-    const { role, permissions } = getLocalRoleAndPermissions();
-    userRole = role;
-    userPermissions = permissions;
-    
-    const targetMod = String(arg1).toLowerCase().trim();
-    action = arg2 ? String(arg2).toLowerCase().trim() : 'view';
+  // Check if first two arguments are permissions object and role string (5-arg or 4-arg signature)
+  if (args.length >= 3 && (typeof args[0] === 'object' || args[0] === null) && (typeof args[1] === 'string' || args[1] === null)) {
+    userPermissions = args[0];
+    userRole = args[1];
+    moduleKey = args[2];
+    submoduleKey = args[3] || null;
+    action = args[4] || 'view';
 
-    const resolved = resolveModuleKeys(targetMod);
-    moduleKey = resolved.moduleKey;
-    submoduleKey = resolved.submoduleKey;
-  } else {
-    userPermissions = arg1;
-    userRole = arg2;
-    moduleKey = arg3;
-    submoduleKey = arg4;
-    action = arg5 || 'view';
+    // If submoduleKey is actually an action string (e.g. hasPermission(perms, role, 'projects', 'create'))
+    if (submoduleKey && ACTIONS.includes(String(submoduleKey).toLowerCase())) {
+      action = submoduleKey;
+      submoduleKey = null;
+    }
+  } else if (args.length === 1 && typeof args[0] === 'string') {
+    // Single string format e.g. "employee.create" or "leave.approval.edit" or "tasks"
+    const parts = args[0].split(/[._:]/);
+    if (parts.length >= 3) {
+      moduleKey = parts[0];
+      submoduleKey = parts.slice(1, -1).join('_');
+      action = parts[parts.length - 1];
+    } else if (parts.length === 2) {
+      if (ACTIONS.includes(parts[1].toLowerCase())) {
+        const resolved = resolveModuleKeys(parts[0]);
+        moduleKey = resolved.moduleKey;
+        submoduleKey = resolved.submoduleKey;
+        action = parts[1];
+      } else {
+        moduleKey = parts[0];
+        submoduleKey = parts[1];
+        action = 'view';
+      }
+    } else {
+      const resolved = resolveModuleKeys(parts[0]);
+      moduleKey = resolved.moduleKey;
+      submoduleKey = resolved.submoduleKey;
+      action = 'view';
+    }
+  } else if (args.length === 2 && typeof args[0] === 'string' && typeof args[1] === 'string') {
+    // 2 string arguments: could be (module, action) OR (module, submodule) OR (submodule, action)
+    const arg1 = args[0].toLowerCase().trim();
+    const arg2 = args[1].toLowerCase().trim();
+
+    if (ACTIONS.includes(arg2)) {
+      const resolved = resolveModuleKeys(arg1);
+      moduleKey = resolved.moduleKey;
+      submoduleKey = resolved.submoduleKey;
+      action = arg2;
+    } else {
+      moduleKey = arg1;
+      submoduleKey = arg2;
+      action = 'view';
+    }
+  } else if (args.length >= 3 && typeof args[0] === 'string' && typeof args[1] === 'string') {
+    // 3 string arguments: (moduleKey, submoduleKey, action)
+    moduleKey = args[0];
+    submoduleKey = args[1];
+    action = args[2] || 'view';
   }
 
-  // 1. Dashboard is static and always allowed for all users
+  // Dashboard is universally accessible
   if (moduleKey === 'dashboard' || submoduleKey === 'dashboard' || submoduleKey === 'dashboard_overview') {
     return true;
   }
 
+  // Retrieve role and permissions from storage if not provided
   if (!userRole) {
     const { role } = getLocalRoleAndPermissions();
     userRole = role;
@@ -189,7 +329,7 @@ export function hasPermission(arg1, arg2, arg3 = null, arg4 = null, arg5 = 'view
 
   const normRole = String(userRole).toUpperCase().replace(/_/g, ' ');
 
-  // 2. Super Admin & Admin always have full unrestricted permissions
+  // Admin / Super Admin bypass
   if (normRole === 'SUPER ADMIN' || normRole === 'SUPERADMIN' || normRole === 'ADMIN') {
     return true;
   }
@@ -199,12 +339,14 @@ export function hasPermission(arg1, arg2, arg3 = null, arg4 = null, arg5 = 'view
     userPermissions = permissions;
   }
 
-  // 3. If user permissions missing or not loaded yet -> STRICT DENY (return false)
   if (!userPermissions) {
     return false;
   }
 
-  const actKey = String(action).toLowerCase();
+  // Normalize action key aliases
+  let actKey = String(action || 'view').toLowerCase();
+  if (actKey === 'update' || actKey === 'approve' || actKey === 'reject') actKey = 'edit';
+
   const actKeyAlt = actKey === 'view' ? 'canView' : actKey === 'create' ? 'canCreate' : actKey === 'edit' ? 'canEdit' : 'canDelete';
   const actKeyDb = actKey === 'view' ? 'can_view' : actKey === 'create' ? 'can_create' : actKey === 'edit' ? 'can_edit' : 'can_delete';
 
@@ -213,75 +355,121 @@ export function hasPermission(arg1, arg2, arg3 = null, arg4 = null, arg5 = 'view
     if (obj[actKey] !== undefined) return obj[actKey];
     if (obj[actKeyAlt] !== undefined) return obj[actKeyAlt];
     if (obj[actKeyDb] !== undefined) return obj[actKeyDb];
+    if (actKey === 'edit') {
+      if (obj.can_update !== undefined) return obj.can_update;
+      if (obj.canUpdate !== undefined) return obj.canUpdate;
+      if (obj.update !== undefined) return obj.update;
+    }
     return undefined;
   };
 
-  // Search for direct submodule key permission entry FIRST
+  // 1. Direct submodule check
   if (submoduleKey) {
-    if (userPermissions[submoduleKey] !== undefined && userPermissions[submoduleKey] !== null) {
-      const val = extractVal(userPermissions[submoduleKey]);
+    const subClean = submoduleKey.toLowerCase().replace(/[-.]/g, '_');
+    const modClean = moduleKey ? moduleKey.toLowerCase().replace(/[-.]/g, '_') : null;
+
+    // Check direct submodule key
+    if (userPermissions[subClean] !== undefined && userPermissions[subClean] !== null) {
+      const val = extractVal(userPermissions[subClean]);
       if (val !== undefined) return normalizeBoolean(val);
     }
-    const combinedKey = `${moduleKey}.${submoduleKey}`;
-    if (userPermissions[combinedKey] !== undefined && userPermissions[combinedKey] !== null) {
-      const val = extractVal(userPermissions[combinedKey]);
-      if (val !== undefined) return normalizeBoolean(val);
-    }
-    if (moduleKey && userPermissions[moduleKey] && userPermissions[moduleKey].submodules && userPermissions[moduleKey].submodules[submoduleKey]) {
-      const val = extractVal(userPermissions[moduleKey].submodules[submoduleKey]);
-      if (val !== undefined) return normalizeBoolean(val);
+
+    // Check combined key e.g. "projects:tasks" or "projects.tasks"
+    if (modClean) {
+      const colonKey = `${modClean}:${subClean}`;
+      if (userPermissions[colonKey] !== undefined && userPermissions[colonKey] !== null) {
+        const val = extractVal(userPermissions[colonKey]);
+        if (val !== undefined) return normalizeBoolean(val);
+      }
+      const dotKey = `${modClean}.${subClean}`;
+      if (userPermissions[dotKey] !== undefined && userPermissions[dotKey] !== null) {
+        const val = extractVal(userPermissions[dotKey]);
+        if (val !== undefined) return normalizeBoolean(val);
+      }
+      if (userPermissions[modClean] && userPermissions[modClean].submodules && userPermissions[modClean].submodules[subClean]) {
+        const val = extractVal(userPermissions[modClean].submodules[subClean]);
+        if (val !== undefined) return normalizeBoolean(val);
+      }
     }
     return false;
   }
 
-  // Check parent module permission entry ONLY if submodule key was not provided
-  if (!submoduleKey && moduleKey && userPermissions[moduleKey] !== undefined && userPermissions[moduleKey] !== null) {
-    const val = extractVal(userPermissions[moduleKey]);
-    if (val !== undefined) return normalizeBoolean(val);
+  // 2. Parent module check
+  if (moduleKey) {
+    const modClean = moduleKey.toLowerCase().replace(/[-.]/g, '_');
+    if (userPermissions[modClean] !== undefined && userPermissions[modClean] !== null) {
+      const val = extractVal(userPermissions[modClean]);
+      if (val !== undefined) return normalizeBoolean(val);
+    }
   }
 
   return false;
 }
 
-export function canView(userPermissions, userRole, moduleKey, submoduleKey = null) {
-  if (typeof userPermissions === 'string') {
-    return hasPermission(userPermissions, 'view');
+export function canView(...args) {
+  if (args.length === 1) return hasPermission(args[0], 'view');
+  if (args.length === 2 && typeof args[0] === 'string' && typeof args[1] === 'string') {
+    return hasPermission(args[0], args[1], 'view');
   }
-  return hasPermission(userPermissions, userRole, moduleKey, submoduleKey, 'view');
+  if (args.length >= 3 && typeof args[0] === 'object') {
+    return hasPermission(args[0], args[1], args[2], args[3] || null, 'view');
+  }
+  return hasPermission(...args, 'view');
 }
 
-export function canCreate(userPermissions, userRole, moduleKey, submoduleKey = null) {
-  if (typeof userPermissions === 'string') {
-    return hasPermission(userPermissions, 'create');
+export function canCreate(...args) {
+  if (args.length === 1) return hasPermission(args[0], 'create');
+  if (args.length === 2 && typeof args[0] === 'string' && typeof args[1] === 'string') {
+    return hasPermission(args[0], args[1], 'create');
   }
-  return hasPermission(userPermissions, userRole, moduleKey, submoduleKey, 'create');
+  if (args.length >= 3 && typeof args[0] === 'object') {
+    return hasPermission(args[0], args[1], args[2], args[3] || null, 'create');
+  }
+  return hasPermission(...args, 'create');
 }
 
-export function canEdit(userPermissions, userRole, moduleKey, submoduleKey = null) {
-  if (typeof userPermissions === 'string') {
-    return hasPermission(userPermissions, 'edit');
+export function canEdit(...args) {
+  if (args.length === 1) return hasPermission(args[0], 'edit');
+  if (args.length === 2 && typeof args[0] === 'string' && typeof args[1] === 'string') {
+    return hasPermission(args[0], args[1], 'edit');
   }
-  return hasPermission(userPermissions, userRole, moduleKey, submoduleKey, 'edit');
+  if (args.length >= 3 && typeof args[0] === 'object') {
+    return hasPermission(args[0], args[1], args[2], args[3] || null, 'edit');
+  }
+  return hasPermission(...args, 'edit');
 }
 
-export function canDelete(userPermissions, userRole, moduleKey, submoduleKey = null) {
-  if (typeof userPermissions === 'string') {
-    return hasPermission(userPermissions, 'delete');
-  }
-  return hasPermission(userPermissions, userRole, moduleKey, submoduleKey, 'delete');
+export function canUpdate(...args) {
+  return canEdit(...args);
 }
 
-export function canApprove(userPermissions, userRole, moduleKey, submoduleKey = null) {
-  if (typeof userPermissions === 'string') {
-    return hasPermission(userPermissions, 'edit');
+export function canDelete(...args) {
+  if (args.length === 1) return hasPermission(args[0], 'delete');
+  if (args.length === 2 && typeof args[0] === 'string' && typeof args[1] === 'string') {
+    return hasPermission(args[0], args[1], 'delete');
   }
-  return hasPermission(userPermissions, userRole, moduleKey, submoduleKey, 'edit');
+  if (args.length >= 3 && typeof args[0] === 'object') {
+    return hasPermission(args[0], args[1], args[2], args[3] || null, 'delete');
+  }
+  return hasPermission(...args, 'delete');
+}
+
+export function canApprove(...args) {
+  return canEdit(...args);
+}
+
+/**
+ * canSeeModule checks if the user has ANY permission (view OR create OR edit OR delete)
+ * to decide whether a module/submodule appears in navigation.
+ * NOTE: NEVER used for action buttons (Add/Edit/Delete) or API checks.
+ */
+export function canSeeModule(...args) {
+  return canView(...args) || canCreate(...args) || canEdit(...args) || canDelete(...args);
 }
 
 export function checkActionPermission(moduleName, actionName = 'CREATE', customMsg = null) {
   const allowed = hasPermission(moduleName, actionName);
   if (!allowed) {
-    const act = String(actionName).toLowerCase();
     const msg = customMsg || `You do not have ${actionName.toUpperCase()} permission for this module.`;
     showPermissionDenied(msg);
     return false;
@@ -290,7 +478,12 @@ export function checkActionPermission(moduleName, actionName = 'CREATE', customM
 }
 
 export function requireActionPermission(moduleKey, submoduleKey = null, action = 'create', callback = null, addToastFn = null, customMessage = null, userPermissions = null, userRole = null) {
-  const allowed = hasPermission(userPermissions, userRole, moduleKey, submoduleKey, action);
+  let allowed = false;
+  if (userPermissions && userRole) {
+    allowed = hasPermission(userPermissions, userRole, moduleKey, submoduleKey, action);
+  } else {
+    allowed = hasPermission(moduleKey, submoduleKey, action);
+  }
   if (!allowed) {
     showPermissionDenied(customMessage);
     return false;
@@ -310,4 +503,7 @@ export function guardCreateAction(userPermissions, userRole, moduleKey, submodul
   return true;
 }
 
+export function canAccess(moduleKey, submoduleKey = null, action = 'view') {
+  return hasPermission(moduleKey, submoduleKey, action);
+}
 

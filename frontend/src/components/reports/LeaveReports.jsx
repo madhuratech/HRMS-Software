@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, Calendar, ChevronDown, Clock, UserCheck, UserX, Users } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
@@ -112,25 +113,13 @@ export function LeaveReports() {
             background: '#FFF', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#374151',
           }}>
             <Calendar size={14} color="#6B7280" />
-            <select
+            <AppDropdown
               value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              style={{
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                fontSize: 13,
-                fontWeight: 500,
-                color: '#374151',
-                cursor: 'pointer'
-              }}
-            >
-              {monthOptions.map(opt => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
+              onChange={v => setSelectedMonth(v)}
+              options={monthOptions}
+              size="sm"
+              style={{ minWidth: 160 }}
+            />
           </div>
 
           <button onClick={handleExport} style={{

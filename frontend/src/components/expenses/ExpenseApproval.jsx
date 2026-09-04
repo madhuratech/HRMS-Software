@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Download, ChevronDown, Clock, CheckCircle, XCircle, Layers } from 'lucide-react';
 import { apiFetch, formatDate } from '../../lib/api';
 import { useToast } from '../ui/Toast';
@@ -103,14 +104,12 @@ export function ExpenseApproval() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           {/* Department Filter */}
           <div style={{ position: 'relative' }}>
-            <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)} style={{
-              appearance: 'none', WebkitAppearance: 'none', height: 38,
-              paddingLeft: 14, paddingRight: 32, background: '#FFF',
-              border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#374151', cursor: 'pointer', outline: 'none',
-            }}>
-              <option value="">All Departments</option>
-              {meta.departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
+            <AppDropdown
+                value={deptFilter}
+                onChange={v => setDeptFilter(v)}
+                options={[{value:'',label:'All Departments'}]}
+                size="sm"
+              />
             <ChevronDown size={13} color="#6B7280" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
         </div>

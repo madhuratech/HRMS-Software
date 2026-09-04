@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import {
   ArrowLeft,
 
@@ -191,16 +192,12 @@ export function EmployeeProfile({ employee, onBack }) {
               </span>
             </div>
             <div className="flex gap-2">
-              <select
-                className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              <AppDropdown
                 value={onboardingStatus}
-                onChange={(e) => setOnboardingStatus(e.target.value)}>
-                
-                <option value="NOT_STARTED">Not Started</option>
-                <option value="DOCUMENT_SUBMISSION">Document Submission</option>
-                <option value="VERIFICATION_PENDING">Verification Pending</option>
-                <option value="COMPLETED">Completed</option>
-              </select>
+                onChange={v => setOnboardingStatus(v)}
+                options={[{value:'NOT_STARTED',label:'Not Started'},{value:'DOCUMENT_SUBMISSION',label:'Document Submission'},{value:'VERIFICATION_PENDING',label:'Verification Pending'},{value:'COMPLETED',label:'Completed'}]}
+                size="sm"
+              />
               <button className="px-4 py-2 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 transition-colors">
                 Update
               </button>
@@ -221,17 +218,12 @@ export function EmployeeProfile({ employee, onBack }) {
               </span>
             </div>
             <div className="flex gap-2">
-              <select
-                className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-red-500 outline-none"
+              <AppDropdown
                 value={offboardingStatus}
-                onChange={(e) => setOffboardingStatus(e.target.value)}>
-                
-                <option value="NONE">None</option>
-                <option value="RESIGNATION_SUBMITTED">Resignation Submitted</option>
-                <option value="NOTICE_PERIOD">Notice Period</option>
-                <option value="EXIT_INTERVIEW">Exit Interview</option>
-                <option value="RELIEVED">Relieved</option>
-              </select>
+                onChange={v => setOffboardingStatus(v)}
+                options={[{value:'NONE',label:'None'},{value:'RESIGNATION_SUBMITTED',label:'Resignation Submitted'},{value:'NOTICE_PERIOD',label:'Notice Period'},{value:'EXIT_INTERVIEW',label:'Exit Interview'},{value:'RELIEVED',label:'Relieved'}]}
+                size="sm"
+              />
               <button className="px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-lg hover:bg-red-700 transition-colors">
                 Update
               </button>
@@ -248,10 +240,7 @@ export function EmployeeProfile({ employee, onBack }) {
               <TrendingUp className="text-blue-600" size={20} />
               Performance History
             </h3>
-            <select className="text-sm border-none bg-slate-50 rounded-lg px-3 py-1 text-slate-600 font-medium focus:ring-0">
-              <option>Last 6 Months</option>
-              <option>This Year</option>
-            </select>
+            <AppDropdown options={[{value:'Last 6 Months',label:'Last 6 Months'},{value:'This Year',label:'This Year'}]} size="sm" />
           </div>
           
           <div style={{ width: '100%', height: 300 }}>

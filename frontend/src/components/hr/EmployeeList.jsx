@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Mail, Phone, MapPin, Search, Plus, Clock, Key, Lock, X, ShieldCheck } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { getAvatarUrl } from '../../lib/utils';
@@ -152,27 +153,19 @@ export function EmployeeList() {
           </div>
           
           <div className="flex flex-col sm:flex-row gap-2">
-            <select
-              className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-700 font-medium"
-              value={roleFilter}
-              onChange={(e) => setRoleFilter(e.target.value)}>
-              
-              <option value="ALL">All Roles</option>
-              <option value="BRANCH_MANAGER">Branch Managers</option>
-              <option value="SALES_MANAGER">Sales Managers</option>
-              <option value="SERVICE_STAFF">Service Staff</option>
-            </select>
+            <AppDropdown
+                value={roleFilter}
+                onChange={v => setRoleFilter(v)}
+                options={[{value:'ALL',label:'All Roles'},{value:'BRANCH_MANAGER',label:'Branch Managers'},{value:'SALES_MANAGER',label:'Sales Managers'},{value:'SERVICE_STAFF',label:'Service Staff'}]}
+                size="sm"
+              />
 
-            <select
-              className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm text-slate-700 font-medium"
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}>
-              
-              <option value="ALL">All Branches</option>
-              <option value="New York">New York</option>
-              <option value="Los Angeles">Los Angeles</option>
-              <option value="Chicago">Chicago</option>
-            </select>
+            <AppDropdown
+                value={branchFilter}
+                onChange={v => setBranchFilter(v)}
+                options={[{value:'ALL',label:'All Branches'},{value:'New York',label:'New York'},{value:'Los Angeles',label:'Los Angeles'},{value:'Chicago',label:'Chicago'}]}
+                size="sm"
+              />
 
             <button
               onClick={() => setIsModalOpen(true)}

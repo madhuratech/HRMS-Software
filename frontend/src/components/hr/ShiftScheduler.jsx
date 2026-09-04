@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Clock, Users, ChevronLeft, ChevronRight, CheckCircle, XCircle, ArrowRightLeft } from 'lucide-react';
 import { format, addDays, startOfWeek, endOfWeek } from 'date-fns';
 import { apiFetch } from '../../lib/api';
@@ -217,9 +218,7 @@ export function ShiftScheduler() {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Employee</label>
-                <select className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
-                  {MOCK_EMPLOYEES.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-                </select>
+                <AppDropdown options={[, ...(MOCK_EMPLOYEES || [])]} size="sm" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Date</label>
@@ -227,9 +226,7 @@ export function ShiftScheduler() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Desired Shift</label>
-                <select className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm">
-                  {SHIFTS.map((s) => <option key={s.id} value={s.id}>{s.label} ({s.time})</option>)}
-                </select>
+                <AppDropdown options={[, ...(SHIFTS || [])]} size="sm" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Reason</label>

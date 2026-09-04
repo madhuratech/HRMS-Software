@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { 
   DollarSign, FileText, Eye, Download, ShieldCheck, 
   Loader2, AlertCircle, Calendar, CheckCircle2, Printer, X 
@@ -207,13 +208,7 @@ export function MyPayroll() {
             <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#64748B' }}>View and download your monthly salary statements</p>
           </div>
           <div>
-            <select
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '12px', fontWeight: '600', color: '#334155', background: '#FFF', outline: 'none', cursor: 'pointer' }}
-            >
-              {monthsList.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
+            <AppDropdown value={selectedMonth} options={[{value:'m',label:'m'}, ...(monthsList || [])]} size="sm" />
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import {
   Users,
@@ -745,24 +746,19 @@ export const Teams = () => {
           </div>
 
           <div className="flex items-center gap-3">
-            <select
-              value={statusFilter}
-              onChange={(e) => { setStatusFilter(e.target.value); setCurrentPage(1); }}
-              className="h-10 px-4 border border-slate-200 rounded-xl text-sm bg-white text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors shadow-sm font-medium cursor-pointer"
-            >
-              <option value="All">Status: All</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
+            <AppDropdown
+                value={statusFilter}
+                onChange={v => { setStatusFilter(v); setCurrentPage(1); }}
+                options={[{value:'All',label:'Status: All'},{value:'Active',label:'Active'},{value:'Inactive',label:'Inactive'}]}
+                size="sm"
+              />
 
-            <select
-              value={deptFilter}
-              onChange={(e) => { setDeptFilter(e.target.value); setCurrentPage(1); }}
-              className="h-10 px-4 border border-slate-200 rounded-xl text-sm bg-white text-slate-700 hover:border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors shadow-sm font-medium cursor-pointer"
-            >
-              <option value="All">Department: All</option>
-              {departmentOptions.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
+            <AppDropdown
+                value={deptFilter}
+                onChange={v => { setDeptFilter(v); setCurrentPage(1); }}
+                options={[{value:'All',label:'Department: All'}]}
+                size="sm"
+              />
           </div>
         </div>
 

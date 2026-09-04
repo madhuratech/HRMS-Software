@@ -490,7 +490,7 @@ class PublicJobsController {
                     if (appErr) console.warn('[applyForJob] Application Log Error:', appErr.message);
 
                     const targetAppId = appInsertRes?.insertId;
-                    const queryAppSql = targetAppId 
+                    const queryAppSql = targetAppId
                       ? 'SELECT id, resume, original_resume, original_resume_name, generated_resume FROM candidate_applications WHERE id = ?'
                       : 'SELECT id, resume, original_resume, original_resume_name, generated_resume FROM candidate_applications WHERE candidate_id = ? AND requirement_id = ? ORDER BY id DESC LIMIT 1';
                     const queryAppParams = targetAppId ? [targetAppId] : [candidateId, targetJob.id];

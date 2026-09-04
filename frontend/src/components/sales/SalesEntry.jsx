@@ -1,11 +1,12 @@
 import React from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { useForm } from 'react-hook-form';
 import { Bike, DollarSign, Calendar, User, Save } from 'lucide-react';
 
 import { useToast } from '../ui/Toast';
 
 export function SalesEntry() {
-  const { register, handleSubmit, reset } = useForm();
+  const { register, watch, setValue, handleSubmit, reset } = useForm();
   const { addToast } = useToast();
 
   const onSubmit = (data) => {
@@ -48,15 +49,7 @@ export function SalesEntry() {
                 <label className="text-sm font-medium text-slate-700">Bike Model</label>
                 <div className="relative">
                   <Bike className="absolute left-3 top-3 text-slate-400" size={18} />
-                  <select
-                    {...register('model', { required: true })}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all appearance-none">
-                    
-                    <option value="">Select Model...</option>
-                    <option value="sport-x1">Sport Bike X1</option>
-                    <option value="cruiser-500">Cruiser 500</option>
-                    <option value="scooter-z">Scooter Z</option>
-                  </select>
+                  <AppDropdown value={watch('model') || ''} onChange={val => setValue('model', val, { shouldValidate: true })} options={[{value:'',label:'Select Model...'},{value:'sport-x1',label:'Sport Bike X1'},{value:'cruiser-500',label:'Cruiser 500'},{value:'scooter-z',label:'Scooter Z'}]} size="sm" />
                 </div>
               </div>
 

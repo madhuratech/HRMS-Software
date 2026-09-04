@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, Plus, Edit2, Link2, ChevronLeft, ChevronRight, ChevronDown, X, Trash2 } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { apiFetch, formatDate, getInitials } from '../../lib/api';
@@ -12,7 +13,7 @@ const pill = (label, map) => { const s = map[label] || { bg: '#F3F4F6', color: '
 
 const Sel = ({ children }) => (
   <div style={{ position: 'relative' }}>
-    <select style={{ appearance: 'none', WebkitAppearance: 'none', height: 38, paddingLeft: 12, paddingRight: 30, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#374151', cursor: 'pointer', outline: 'none' }}>{children}</select>
+    <AppDropdown options={[]} size="sm" />
     <ChevronDown size={13} color="#9CA3AF" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
   </div>
 );
@@ -249,17 +250,21 @@ export default function Projects() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <div style={{ position: 'relative' }}>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ appearance: 'none', WebkitAppearance: 'none', height: 38, paddingLeft: 12, paddingRight: 30, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#374151', cursor: 'pointer', outline: 'none' }}>
-              <option value="">All Status</option>
-              {(['Not Started', 'Planning', 'In Progress', 'On Hold', 'Overdue', 'Completed']).map(s => <option key={s} value={s}>{s}</option>)}
-            </select>
+            <AppDropdown
+                value={statusFilter}
+                onChange={v => setStatusFilter(v)}
+                options={[{value:'',label:'All Status'}]}
+                size="sm"
+              />
             <ChevronDown size={13} color="#9CA3AF" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
           <div style={{ position: 'relative' }}>
-            <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)} style={{ appearance: 'none', WebkitAppearance: 'none', height: 38, paddingLeft: 12, paddingRight: 30, background: '#fff', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#374151', cursor: 'pointer', outline: 'none' }}>
-              <option value="">All Departments</option>
-              {meta.departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
+            <AppDropdown
+                value={deptFilter}
+                onChange={v => setDeptFilter(v)}
+                options={[{value:'',label:'All Departments'}]}
+                size="sm"
+              />
             <ChevronDown size={13} color="#9CA3AF" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
           <div style={{ position: 'relative' }}>
@@ -487,19 +492,12 @@ export default function Projects() {
                         Project Manager / Team Leader <span style={{ color: '#EF4444' }}>*</span>
                       </label>
                       <div style={{ position: 'relative' }}>
-                        <select 
-                          required 
-                          value={formData.project_manager_id} 
-                          onChange={e => setFormData({ ...formData, project_manager_id: e.target.value })} 
-                          style={{ width: '100%', height: '44px', padding: '0 40px 0 16px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '14px', color: '#1E293B', outline: 'none', appearance: 'none', WebkitAppearance: 'none', background: '#ffffff', cursor: 'pointer', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
-                          onFocus={e => e.target.style.borderColor = '#3B82F6'}
-                          onBlur={e => e.target.style.borderColor = '#CBD5E1'}
-                        >
-                          <option value="">Select Project Manager</option>
-                          {managerOptions.map(emp => (
-                            <option key={emp.id} value={emp.id}>{emp.name} ({emp.designation_name || 'Team Lead'})</option>
-                          ))}
-                        </select>
+                        <AppDropdown
+                value={formData.project_manager_id}
+                onChange={v => setFormData({ ...formData, project_manager_id: v })}
+                options={[{value:'',label:'Select Project Manager'}]}
+                size="sm"
+              />
                         <ChevronDown size={16} style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748B' }} />
                       </div>
                       
@@ -635,15 +633,12 @@ export default function Projects() {
                         Priority
                       </label>
                       <div style={{ position: 'relative' }}>
-                        <select 
-                          value={formData.priority} 
-                          onChange={e => setFormData({ ...formData, priority: e.target.value })} 
-                          style={{ width: '100%', height: '44px', padding: '0 40px 0 16px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '14px', color: '#1E293B', outline: 'none', appearance: 'none', WebkitAppearance: 'none', background: '#ffffff', cursor: 'pointer', boxSizing: 'border-box' }}
-                        >
-                          <option value="High">🔴 High</option>
-                          <option value="Medium">🟡 Medium</option>
-                          <option value="Low">🟢 Low</option>
-                        </select>
+                        <AppDropdown
+                value={formData.priority}
+                onChange={v => setFormData({ ...formData, priority: v })}
+                options={[{value:'High',label:'🔴 High'},{value:'Medium',label:'🟡 Medium'},{value:'Low',label:'🟢 Low'}]}
+                size="sm"
+              />
                         <ChevronDown size={16} style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748B' }} />
                       </div>
                     </div>
@@ -655,17 +650,12 @@ export default function Projects() {
                         Status
                       </label>
                       <div style={{ position: 'relative' }}>
-                        <select 
-                          value={formData.status} 
-                          onChange={e => setFormData({ ...formData, status: e.target.value })} 
-                          style={{ width: '100%', height: '44px', padding: '0 40px 0 16px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '14px', color: '#1E293B', outline: 'none', appearance: 'none', WebkitAppearance: 'none', background: '#ffffff', cursor: 'pointer', boxSizing: 'border-box' }}
-                        >
-                          <option value="In Progress">In Progress</option>
-                          <option value="On Hold">On Hold</option>
-                          <option value="Planning">Planning</option>
-                          <option value="Not Started">Not Started</option>
-                          <option value="Completed">Completed</option>
-                        </select>
+                        <AppDropdown
+                value={formData.status}
+                onChange={v => setFormData({ ...formData, status: v })}
+                options={[{value:'In Progress',label:'In Progress'},{value:'On Hold',label:'On Hold'},{value:'Planning',label:'Planning'},{value:'Not Started',label:'Not Started'},{value:'Completed',label:'Completed'}]}
+                size="sm"
+              />
                         <ChevronDown size={16} style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748B' }} />
                       </div>
                     </div>

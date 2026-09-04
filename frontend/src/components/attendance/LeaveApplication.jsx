@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { Calendar, Clock, FileText, Send, CheckCircle, RotateCcw } from 'lucide-react';
 
@@ -92,16 +93,12 @@ export function LeaveApplication() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Leave Type</label>
-              <select
+              <AppDropdown
                 value={formData.type}
-                onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                
-                <option value="Sick">Sick Leave</option>
-                <option value="Casual">Casual Leave</option>
-                <option value="Privilege">Privilege Leave</option>
-                <option value="Unpaid">Unpaid Leave</option>
-              </select>
+                onChange={v => setFormData({ ...formData, type: v })}
+                options={[{value:'Sick',label:'Sick Leave'},{value:'Casual',label:'Casual Leave'},{value:'Privilege',label:'Privilege Leave'},{value:'Unpaid',label:'Unpaid Leave'}]}
+                size="sm"
+              />
             </div>
             
             <div className="space-y-2">

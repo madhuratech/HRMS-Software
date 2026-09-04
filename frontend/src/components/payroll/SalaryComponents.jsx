@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { usePermissions } from '../../context/PermissionContext';
 import { 
   Search, Plus, Layers, TrendingUp, TrendingDown, Landmark, 
   Edit2, Trash2, X, CheckCircle2, AlertCircle, Loader2, DollarSign, Percent, ShieldCheck
@@ -8,6 +10,7 @@ import {
 
 export default function SalaryComponents() {
   const { addToast } = useToast();
+  const { canCreate, canEdit, canDelete } = usePermissions();
   const [components, setComponents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -49,6 +52,10 @@ export default function SalaryComponents() {
   }, []);
 
   const openCreateModal = () => {
+    if (!canCreate('payroll', 'salary_components')) {
+      addToast('You do not have permission to add salary components', 'error');
+      return;
+    }
     setModalMode('create');
     setEditingId(null);
     setName('');
@@ -64,6 +71,10 @@ export default function SalaryComponents() {
   };
 
   const openEditModal = (comp) => {
+    if (!canEdit('payroll', 'salary_components')) {
+      addToast('You do not have permission to edit salary components', 'error');
+      return;
+    }
     setModalMode('edit');
     setEditingId(comp.id);
     setName(comp.name || '');
@@ -82,6 +93,15 @@ export default function SalaryComponents() {
     e.preventDefault();
     if (!name.trim()) {
       addToast('Component name is required', 'warning');
+      return;
+    }
+
+    if (modalMode === 'create' && !canCreate('payroll', 'salary_components')) {
+      addToast('Permission Denied: You do not have permission to create salary components.', 'error');
+      return;
+    }
+    if (modalMode === 'edit' && !canEdit('payroll', 'salary_components')) {
+      addToast('Permission Denied: You do not have permission to edit salary components.', 'error');
       return;
     }
 
@@ -132,6 +152,10 @@ export default function SalaryComponents() {
   };
 
   const handleDelete = async (id) => {
+    if (!canDelete('payroll', 'salary_components')) {
+      addToast('Permission Denied: You do not have permission to delete salary components.', 'error');
+      return;
+    }
     if (!window.confirm('Are you sure you want to delete this salary component?')) return;
     try {
       const res = await apiFetch(`/payroll/components/${id}`, { method: 'DELETE' });
@@ -168,12 +192,8 @@ export default function SalaryComponents() {
   const cardStyle = {
     background: '#FFFFFF',
     borderRadius: '16px',
-    padding: '20px 24px',
-    boxShadow: '0 4px 16px rgba(15,23,42,0.06)',
-    border: '1px solid #F1F5F9',
-    width: '100%',
-    maxWidth: '100%',
-    minWidth: 0,
+    border: '1px solid #E2E8F0',
+    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.02), 0 2px 4px -1px rgba(0,0,0,0.02)',
     boxSizing: 'border-box'
   };
 
@@ -186,12 +206,14 @@ export default function SalaryComponents() {
           <h1 style={{ margin: '0 0 4px 0', fontSize: '22px', fontWeight: '700', color: '#1E293B' }}>Salary Components</h1>
           <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>Configure fixed and percentage-based earnings and deduction rules</p>
         </div>
-        <button
-          onClick={openCreateModal}
-          style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}
-        >
-          <Plus size={16} /> Add Component
-        </button>
+        {canCreate('payroll', 'salary_components') && (
+          <button
+            onClick={openCreateModal}
+            style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}
+          >
+            <Plus size={16} /> Add Component
+          </button>
+        )}
       </div>
 
       {/* KPI Cards */}
@@ -226,16 +248,12 @@ export default function SalaryComponents() {
               />
             </div>
 
-            <select
-              value={typeFilter}
-              onChange={e => setTypeFilter(e.target.value)}
-              style={{ padding: '9px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', fontSize: '13px', color: '#334155', fontWeight: '500', outline: 'none', cursor: 'pointer' }}
-            >
-              <option value="All">All Types</option>
-              <option value="Earning">Earnings</option>
-              <option value="Deduction">Deductions</option>
-              <option value="Contribution">Contributions</option>
-            </select>
+            <AppDropdown
+                value={typeFilter}
+                onChange={v => setTypeFilter(v)}
+                options={[{value:'All',label:'All Types'},{value:'Earning',label:'Earnings'},{value:'Deduction',label:'Deductions'},{value:'Contribution',label:'Contributions'}]}
+                size="sm"
+              />
           </div>
         </div>
 
@@ -262,7 +280,9 @@ export default function SalaryComponents() {
                   <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Configured Value</th>
                   <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Taxable</th>
                   <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'center' }}>Status</th>
-                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'right' }}>Actions</th>
+                  {(canEdit('payroll', 'salary_components') || canDelete('payroll', 'salary_components')) && (
+                    <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'right' }}>Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -313,24 +333,30 @@ export default function SalaryComponents() {
                         {row.status || 'Active'}
                       </span>
                     </td>
-                    <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: '8px' }}>
-                        <button
-                          onClick={() => openEditModal(row)}
-                          style={{ padding: '6px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFF', color: '#2563EB', cursor: 'pointer' }}
-                          title="Edit Component"
-                        >
-                          <Edit2 size={13} />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(row.id)}
-                          style={{ padding: '6px', borderRadius: '6px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', cursor: 'pointer' }}
-                          title="Delete Component"
-                        >
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </td>
+                    {(canEdit('payroll', 'salary_components') || canDelete('payroll', 'salary_components')) && (
+                      <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: '8px' }}>
+                          {canEdit('payroll', 'salary_components') && (
+                            <button
+                              onClick={() => openEditModal(row)}
+                              style={{ padding: '6px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFF', color: '#2563EB', cursor: 'pointer' }}
+                              title="Edit Component"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                          )}
+                          {canDelete('payroll', 'salary_components') && (
+                            <button
+                              onClick={() => handleDelete(row.id)}
+                              style={{ padding: '6px', borderRadius: '6px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', cursor: 'pointer' }}
+                              title="Delete Component"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -340,7 +366,7 @@ export default function SalaryComponents() {
       </div>
 
       {/* Modal: Create / Edit Component */}
-      {showModal && (
+      {showModal && (modalMode === 'edit' ? canEdit('payroll', 'salary_components') : canCreate('payroll', 'salary_components')) && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)' }}>
           <div style={{ width: '520px', maxWidth: '95vw', background: '#FFFFFF', borderRadius: '20px', boxShadow: '0 25px 60px -12px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
             
@@ -374,30 +400,24 @@ export default function SalaryComponents() {
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                     Type <span style={{ color: '#EF4444' }}>*</span>
                   </label>
-                  <select
-                    value={type}
-                    onChange={e => setType(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                  >
-                    <option value="Earning">Earning</option>
-                    <option value="Deduction">Deduction</option>
-                    <option value="Contribution">Contribution</option>
-                  </select>
+                  <AppDropdown
+                value={type}
+                onChange={v => setType(v)}
+                options={[{value:'Earning',label:'Earning'},{value:'Deduction',label:'Deduction'},{value:'Contribution',label:'Contribution'}]}
+                size="sm"
+              />
                 </div>
 
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                     Calculation Mode <span style={{ color: '#EF4444' }}>*</span>
                   </label>
-                  <select
-                    value={calcType}
-                    onChange={e => setCalcType(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                  >
-                    <option value="fixed">Fixed Amount (₹)</option>
-                    <option value="percentage">Percentage (%)</option>
-                    <option value="formula">Formula / Balance Remainder</option>
-                  </select>
+                  <AppDropdown
+                value={calcType}
+                onChange={v => setCalcType(v)}
+                options={[{value:'fixed',label:'Fixed Amount (₹)'},{value:'percentage',label:'Percentage (%)'},{value:'formula',label:'Formula / Balance Remainder'}]}
+                size="sm"
+              />
                 </div>
               </div>
 
@@ -421,14 +441,12 @@ export default function SalaryComponents() {
                     <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                       Calculated On
                     </label>
-                    <select
-                      value={percentageBasis}
-                      onChange={e => setPercentageBasis(e.target.value)}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                    >
-                      <option value="basic">Basic Salary</option>
-                      <option value="gross">Gross / Base Salary</option>
-                    </select>
+                    <AppDropdown
+                value={percentageBasis}
+                onChange={v => setPercentageBasis(v)}
+                options={[{value:'basic',label:'Basic Salary'},{value:'gross',label:'Gross / Base Salary'}]}
+                size="sm"
+              />
                   </div>
                 </div>
               )}
@@ -453,15 +471,12 @@ export default function SalaryComponents() {
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                     Taxable Under IT
                   </label>
-                  <select
-                    value={taxable}
-                    onChange={e => setTaxable(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                  >
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
-                    <option value="Partial">Partial</option>
-                  </select>
+                  <AppDropdown
+                value={taxable}
+                onChange={v => setTaxable(v)}
+                options={[{value:'Yes',label:'Yes'},{value:'No',label:'No'},{value:'Partial',label:'Partial'}]}
+                size="sm"
+              />
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', marginTop: '20px', gap: '8px' }}>

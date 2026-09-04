@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Plus, X, Pencil, Trash2 } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { apiFetch, formatDate, getInitials } from '../../lib/api';
@@ -295,10 +296,12 @@ export default function SprintBoard() {
                   </div>
                   <div>
                     <label style={labelStyle}>Project</label>
-                    <select style={inputStyle} value={sprintForm.project_id} onChange={e => setSprintForm(p=>({...p,project_id:e.target.value}))}>
-                      <option value="">Select Project</option>
-                      {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
+                    <AppDropdown
+                      value={sprintForm.project_id}
+                      onChange={v => setSprintForm(p => ({ ...p, project_id: v }))}
+                      options={[{ value: '', label: 'Select Project' }, ...(projects || []).map(p => ({ value: p.id, label: p.project_name || p.name }))]}
+                      size="sm"
+                    />
                   </div>
                   <div>
                     <label style={labelStyle}>Start Date</label>
@@ -310,11 +313,12 @@ export default function SprintBoard() {
                   </div>
                   <div>
                     <label style={labelStyle}>Status</label>
-                    <select style={inputStyle} value={sprintForm.status} onChange={e => setSprintForm(p=>({...p,status:e.target.value}))}>
-                      <option>Planning</option>
-                      <option>Active</option>
-                      <option>Completed</option>
-                    </select>
+                    <AppDropdown
+                      value={sprintForm.status}
+                      onChange={v => setSprintForm(p => ({ ...p, status: v }))}
+                      options={[{ value: 'Planning', label: 'Planning' }, { value: 'Active', label: 'Active' }, { value: 'Completed', label: 'Completed' }]}
+                      size="sm"
+                    />
                   </div>
                 </div>
                 <div>
@@ -344,7 +348,7 @@ export default function SprintBoard() {
               <button onClick={() => setShowTaskModal(false)} style={{ width:36, height:36, borderRadius:8, border:'none', background:'#F1F5F9', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><X size={18} color="#64748B" /></button>
             </div>
             <div style={{ flex:1, overflowY:'auto', padding:'28px 32px' }}>
-              <form id="taskForm" onSubmit={handleAddTask}>
+              <form id="taskForm" onSubmit={handleCreateTask}>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:20 }}>
                   <div style={{ gridColumn:'1 / -1' }}>
                     <label style={labelStyle}>Task Title <span style={{ color:'#EF4444' }}>*</span></label>
@@ -352,31 +356,39 @@ export default function SprintBoard() {
                   </div>
                   <div>
                     <label style={labelStyle}>Project <span style={{ color:'#EF4444' }}>*</span></label>
-                    <select style={inputStyle} value={taskForm.project_id} onChange={e => setTaskForm(p=>({...p,project_id:e.target.value}))} required>
-                      <option value="">Select Project</option>
-                      {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
+                    <AppDropdown
+                      value={taskForm.project_id}
+                      onChange={v => setTaskForm(p => ({ ...p, project_id: v }))}
+                      options={[{ value: '', label: 'Select Project' }, ...(projects || []).map(p => ({ value: p.id, label: p.project_name || p.name }))]}
+                      size="sm"
+                    />
                   </div>
                   <div>
                     <label style={labelStyle}>Assignee</label>
-                    <select style={inputStyle} value={taskForm.assignee_id} onChange={e => setTaskForm(p=>({...p,assignee_id:e.target.value}))}>
-                      <option value="">Unassigned</option>
-                      {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
-                    </select>
+                    <AppDropdown
+                      value={taskForm.assignee_id}
+                      onChange={v => setTaskForm(p => ({ ...p, assignee_id: v }))}
+                      options={[{ value: '', label: 'Unassigned' }, ...(employees || []).map(e => ({ value: e.id, label: e.name }))]}
+                      size="sm"
+                    />
                   </div>
                   <div>
                     <label style={labelStyle}>Priority</label>
-                    <select style={inputStyle} value={taskForm.priority} onChange={e => setTaskForm(p=>({...p,priority:e.target.value}))}>
-                      <option>High</option>
-                      <option>Medium</option>
-                      <option>Low</option>
-                    </select>
+                    <AppDropdown
+                      value={taskForm.priority}
+                      onChange={v => setTaskForm(p => ({ ...p, priority: v }))}
+                      options={[{ value: 'High', label: 'High' }, { value: 'Medium', label: 'Medium' }, { value: 'Low', label: 'Low' }]}
+                      size="sm"
+                    />
                   </div>
                   <div>
                     <label style={labelStyle}>Label</label>
-                    <select style={inputStyle} value={taskForm.label} onChange={e => setTaskForm(p=>({...p,label:e.target.value}))}>
-                      {Object.keys(LABEL_COLOR).map(l => <option key={l}>{l}</option>)}
-                    </select>
+                    <AppDropdown
+                      value={taskForm.label}
+                      onChange={v => setTaskForm(p => ({ ...p, label: v }))}
+                      options={Object.keys(LABEL_COLOR).map(l => ({ value: l, label: l }))}
+                      size="sm"
+                    />
                   </div>
                   <div>
                     <label style={labelStyle}>Due Date</label>
@@ -384,9 +396,12 @@ export default function SprintBoard() {
                   </div>
                   <div>
                     <label style={labelStyle}>Column</label>
-                    <select style={inputStyle} value={taskColumn} onChange={e => setTaskColumn(e.target.value)}>
-                      {board.columns.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
-                    </select>
+                    <AppDropdown
+                      value={taskColumn}
+                      onChange={v => setTaskColumn(v)}
+                      options={(board?.columns || []).map(c => ({ value: c.id, label: c.label }))}
+                      size="sm"
+                    />
                   </div>
                 </div>
               </form>
@@ -421,7 +436,6 @@ export default function SprintBoard() {
           )}
         </div>
       </div>
-
       {loading && <div style={{ padding:20, textAlign:'center', fontSize:13, color:'#6B7280' }}>Loading sprint board...</div>}
 
       <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:16, overflowX:'auto' }}>

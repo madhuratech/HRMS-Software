@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import AppDropdown from '../ui/AppDropdown';
 import {
   Building2,
   Users,
@@ -442,22 +443,24 @@ export function Departments() {
           </div>
 
           <div className="flex items-center gap-3">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="All">Status: All</option>
-              <option value="Active">Active</option>
-              <option value="Inactive">Inactive</option>
-            </select>
-
-            <select
-              value={branchFilter}
-              onChange={(e) => setBranchFilter(e.target.value)}
-              className="px-3 py-2 border border-slate-200 rounded-lg text-sm bg-white text-slate-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-            </select>
+            <div style={{ minWidth: 150 }}>
+              <AppDropdown
+                value={statusFilter}
+                onChange={v => setStatusFilter(v || 'All')}
+                options={['All', 'Active', 'Inactive']}
+                placeholder="Status: All"
+                size="sm"
+              />
+            </div>
+            <div style={{ minWidth: 160 }}>
+              <AppDropdown
+                value={branchFilter}
+                onChange={v => setBranchFilter(v || 'All')}
+                options={['All']}
+                placeholder="Branch: All"
+                size="sm"
+              />
+            </div>
           </div>
         </div>
 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Plus, Edit2, ChevronLeft, ChevronRight, ChevronDown, Calendar, X, Trash2 } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { apiFetch, formatDate, getInitials } from '../../lib/api';
@@ -7,7 +8,7 @@ import { requireActionPermission, hasPermission } from '../../lib/permissions';
 const STATUS_S = { Approved:{ bg:'#DCFCE7', color:'#15803D' }, Pending:{ bg:'#FEF3C7', color:'#D97706' }, Rejected:{ bg:'#FEE2E2', color:'#DC2626' } };
 const AVATAR   = [{ bg:'#DBEAFE', c:'#1D4ED8' },{ bg:'#FCE7F3', c:'#9D174D' },{ bg:'#D1FAE5', c:'#065F46' },{ bg:'#FEF3C7', c:'#92400E' },{ bg:'#EDE9FE', c:'#5B21B6' }];
 
-const Sel = ({ children, value, onChange }) => <div style={{ position:'relative' }}><select value={value} onChange={onChange} style={{ appearance:'none', WebkitAppearance:'none', height:38, paddingLeft:12, paddingRight:28, background:'#fff', border:'1px solid #E5E7EB', borderRadius:8, fontSize:13, color:'#374151', cursor:'pointer', outline:'none' }}>{children}</select><ChevronDown size={13} color="#9CA3AF" style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} /></div>;
+const Sel = ({ children, value, onChange }) => <div style={{ position:'relative' }}><AppDropdown value={value} onChange={onChange} options={[]} size="sm" /><ChevronDown size={13} color="#9CA3AF" style={{ position:'absolute', right:8, top:'50%', transform:'translateY(-50%)', pointerEvents:'none' }} /></div>;
 
 const KpiCard = ({ label, value, unit, iconBg, iconColor, icon, up }) => (
   <div style={{ background:'#fff', borderRadius:14, border:'1px solid #E5E7EB', boxShadow:'0 2px 8px rgba(15,23,42,.05)', padding:'16px 20px', flex:'1 1 0', minWidth:120 }}>
@@ -202,7 +203,7 @@ export default function Timesheets() {
     <div style={{ fontFamily:"'Inter',-apple-system,sans-serif", width:'100%', boxSizing:'border-box' }}>
 
       {/* ── LOG TIME MODAL ── */}
-      {showModal && (
+      {showModal && (editingId ? hasPermission(null, null, 'projects', 'timesheets', 'edit') : hasPermission(null, null, 'projects', 'timesheets', 'create')) && (
         <>
           <div style={{ position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.45)', zIndex:1000 }} onClick={() => setShowModal(false)} />
           <div style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:600, maxWidth:'92vw', maxHeight:'90vh', background:'#fff', borderRadius:16, zIndex:1001, display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 24px 64px rgba(0,0,0,0.18)' }}>
@@ -218,17 +219,21 @@ export default function Timesheets() {
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:20 }}>
                   <div>
                     <label style={labelStyle}>Employee <span style={{ color:'#EF4444' }}>*</span></label>
-                    <select style={inputStyle} value={formData.employee_id} onChange={e => setFormData(p=>({...p,employee_id:e.target.value}))} required>
-                      <option value="">Select Employee</option>
-                      {employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
-                    </select>
+                    <AppDropdown
+                      value={formData.employee_id}
+                      onChange={v => setFormData(p => ({ ...p, employee_id: v }))}
+                      options={[{ value: '', label: 'Select Employee' }, ...(employees || []).map(e => ({ value: e.id, label: e.name }))]}
+                      size="sm"
+                    />
                   </div>
                   <div>
                     <label style={labelStyle}>Project <span style={{ color:'#EF4444' }}>*</span></label>
-                    <select style={inputStyle} value={formData.project_id} onChange={e => setFormData(p=>({...p,project_id:e.target.value}))} required>
-                      <option value="">Select Project</option>
-                      {projects.map(p => <option key={p.id} value={p.id}>{p.project_name || p.name}</option>)}
-                    </select>
+                    <AppDropdown
+                      value={formData.project_id}
+                      onChange={v => setFormData(p => ({ ...p, project_id: v }))}
+                      options={[{ value: '', label: 'Select Project' }, ...(projects || []).map(p => ({ value: p.id, label: p.project_name || p.name }))]}
+                      size="sm"
+                    />
                   </div>
                   <div>
                     <label style={labelStyle}>Date</label>
@@ -240,18 +245,21 @@ export default function Timesheets() {
                   </div>
                   <div>
                     <label style={labelStyle}>Billable Type</label>
-                    <select style={inputStyle} value={formData.billable} onChange={e => setFormData(p=>({...p,billable:e.target.value}))}>
-                      <option>Billable</option>
-                      <option>Non-Billable</option>
-                    </select>
+                    <AppDropdown
+                      value={formData.billable}
+                      onChange={v => setFormData(p => ({ ...p, billable: v }))}
+                      options={[{ value: 'Billable', label: 'Billable' }, { value: 'Non-Billable', label: 'Non-Billable' }]}
+                      size="sm"
+                    />
                   </div>
                   <div>
                     <label style={labelStyle}>Approval Status</label>
-                    <select style={inputStyle} value={formData.status} onChange={e => setFormData(p=>({...p,status:e.target.value}))}>
-                      <option>Pending</option>
-                      <option>Approved</option>
-                      <option>Rejected</option>
-                    </select>
+                    <AppDropdown
+                      value={formData.status}
+                      onChange={v => setFormData(p => ({ ...p, status: v }))}
+                      options={[{ value: 'Pending', label: 'Pending' }, { value: 'Approved', label: 'Approved' }, { value: 'Rejected', label: 'Rejected' }]}
+                      size="sm"
+                    />
                   </div>
                   <div style={{ gridColumn:'1 / -1' }}>
                     <label style={labelStyle}>Task Description</label>
@@ -349,8 +357,12 @@ export default function Timesheets() {
                     </td>
                     <td style={{ padding:'0 16px' }}>
                       <div style={{ display:'flex', gap:4 }}>
-                        <button onClick={() => openEdit(r)} style={{ width:26,height:26,borderRadius:5,border:'none',background:'transparent',color:'#2563EB',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }} onMouseEnter={e=>e.currentTarget.style.background='#EFF6FF'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><Edit2 size={12}/></button>
-                        <button onClick={() => handleDelete(r)} style={{ width:26,height:26,borderRadius:5,border:'none',background:'transparent',color:'#DC2626',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }} onMouseEnter={e=>e.currentTarget.style.background='#FEE2E2'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><Trash2 size={12}/></button>
+                        {hasPermission(null, null, 'projects', 'timesheets', 'edit') && (
+                          <button onClick={() => openEdit(r)} style={{ width:26,height:26,borderRadius:5,border:'none',background:'transparent',color:'#2563EB',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }} onMouseEnter={e=>e.currentTarget.style.background='#EFF6FF'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><Edit2 size={12}/></button>
+                        )}
+                        {hasPermission(null, null, 'projects', 'timesheets', 'delete') && (
+                          <button onClick={() => handleDelete(r)} style={{ width:26,height:26,borderRadius:5,border:'none',background:'transparent',color:'#DC2626',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }} onMouseEnter={e=>e.currentTarget.style.background='#FEE2E2'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><Trash2 size={12}/></button>
+                        )}
                       </div>
                     </td>
                   </tr>

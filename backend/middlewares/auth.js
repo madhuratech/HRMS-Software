@@ -4,45 +4,59 @@ const response = require('../utils/response');
 const JWT_SECRET = process.env.JWT_SECRET || "madhura_super_secret_key_2026";
 
 const authenticateJWT = (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  const reqEmpId = req.headers['x-employee-id'] || req.headers['x-user-id'] || req.query.employee_id;
-  const headerRole = req.headers['x-user-role'] || req.headers['x-role'] || req.query.role;
+  const authHeader = req.headers && req.headers.authorization;
+  const reqEmpId = (req.headers && (req.headers['x-employee-id'] || req.headers['x-user-id'])) || (req.query && req.query.employee_id);
+  const headerRole = (req.headers && (req.headers['x-user-role'] || req.headers['x-role'])) || (req.query && req.query.role);
 
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.split(' ')[1];
 
-    jwt.verify(token, JWT_SECRET, (err, user) => {
+    jwt.verify(token, JWT_SECRET, (err, decoded) => {
       if (err) {
         const parsedHeaderId = parseInt(reqEmpId);
+        const resolvedId = (reqEmpId && !isNaN(parsedHeaderId)) ? parsedHeaderId : 1;
         req.user = {
-          id: (reqEmpId && !isNaN(parsedHeaderId)) ? parsedHeaderId : 1,
+          id: resolvedId,
+          userId: resolvedId,
+          employeeId: resolvedId,
+          employee_id: resolvedId,
+          employeeCode: `EMP${String(resolvedId).padStart(4, '0')}`,
           role: headerRole || 'EMPLOYEE',
           company_id: 1,
           branch_id: 1
         };
         return next();
       }
-      req.user = user || {};
-      if (headerRole) {
-        req.user.role = headerRole;
-      }
-      if (reqEmpId) {
-        const parsedHeaderId = parseInt(reqEmpId);
-        if (!isNaN(parsedHeaderId)) {
-          req.user.employee_id = parsedHeaderId;
-          if (!req.user.id || isNaN(parseInt(req.user.id))) {
-            req.user.id = parsedHeaderId;
-          }
-        }
-      }
-      const finalId = parseInt(req.user.id);
-      req.user.id = (!isNaN(finalId) && finalId > 0) ? finalId : 1;
+
+      const userId = decoded.userId || decoded.id || 1;
+      const empId = decoded.employeeId || decoded.employee_id || userId;
+      const empCode = decoded.employeeCode || decoded.employee_code || `EMP${String(empId).padStart(4, '0')}`;
+      const role = decoded.role || headerRole || 'EMPLOYEE';
+
+      req.user = {
+        id: userId,
+        userId: userId,
+        employeeId: empId,
+        employee_id: empId,
+        employeeCode: empCode,
+        name: decoded.name || 'User',
+        email: decoded.email || '',
+        role: role,
+        company_id: 1,
+        branch_id: 1
+      };
+
       next();
     });
   } else {
     const parsedHeaderId = parseInt(reqEmpId);
+    const resolvedId = (reqEmpId && !isNaN(parsedHeaderId)) ? parsedHeaderId : 1;
     req.user = {
-      id: (reqEmpId && !isNaN(parsedHeaderId)) ? parsedHeaderId : 1,
+      id: resolvedId,
+      userId: resolvedId,
+      employeeId: resolvedId,
+      employee_id: resolvedId,
+      employeeCode: `EMP${String(resolvedId).padStart(4, '0')}`,
       role: headerRole || 'EMPLOYEE',
       company_id: 1,
       branch_id: 1
@@ -57,12 +71,27 @@ const checkRole = (allowedRoles) => {
       return response(res, false, 401, 'Unauthorized');
     }
 
-    const rawRole = String(req.user.role || 'SUPER_ADMIN');
-    const normUserRole = rawRole.toUpperCase().replace(/_/g, ' ');
-    const normAllowed = (allowedRoles || []).map(r => String(r).toUpperCase().replace(/_/g, ' '));
+    const rawRole = String(req.user.role || req.headers['x-user-role'] || req.headers['x-role'] || 'SUPER_ADMIN');
+    let normUserRole = rawRole.toUpperCase().replace(/[\s_-]+/g, '');
+    if (['HR', 'HRMANAGER', 'HRADMIN', 'BRANCHMANAGER'].includes(normUserRole)) {
+      normUserRole = 'HR';
+    } else if (['TEAMLEADER', 'TEAMLEAD', 'LEAD'].includes(normUserRole)) {
+      normUserRole = 'TEAMLEADER';
+    } else if (['EMPLOYEE', 'STAFF', 'SERVICE_STAFF', 'SALES_MANAGER'].includes(normUserRole)) {
+      normUserRole = 'EMPLOYEE';
+    }
 
-    const isSuperAdmin = normUserRole === 'SUPER ADMIN' || normUserRole === 'SUPERADMIN' || normUserRole === 'ADMIN';
-    const isAllowed = isSuperAdmin || normAllowed.includes(normUserRole);
+    const normAllowed = (allowedRoles || []).map(r => {
+      let n = String(r).toUpperCase().replace(/[\s_-]+/g, '');
+      if (['HR', 'HRMANAGER', 'HRADMIN', 'BRANCHMANAGER'].includes(n)) return 'HR';
+      if (['ADMIN', 'SUPERADMIN'].includes(n)) return 'ADMIN';
+      if (['TEAMLEADER', 'TEAMLEAD', 'LEAD'].includes(n)) return 'TEAMLEADER';
+      if (['EMPLOYEE', 'STAFF', 'SERVICE_STAFF', 'SALES_MANAGER'].includes(n)) return 'EMPLOYEE';
+      return n;
+    });
+
+    const isSuperAdmin = normUserRole === 'SUPERADMIN' || normUserRole === 'ADMIN';
+    const isAllowed = isSuperAdmin || normAllowed.includes('ALL') || normAllowed.includes(normUserRole);
 
     if (isAllowed) {
       next();
@@ -73,7 +102,7 @@ const checkRole = (allowedRoles) => {
 };
 
 const checkPermission = (moduleKey, submoduleKey = null, action = 'view') => {
-  if (typeof submoduleKey === 'string' && ['view', 'create', 'edit', 'delete'].includes(submoduleKey.toLowerCase())) {
+  if (typeof submoduleKey === 'string' && ['view', 'create', 'edit', 'update', 'delete', 'approve', 'reject'].includes(submoduleKey.toLowerCase())) {
     action = submoduleKey;
     submoduleKey = null;
   }
@@ -83,18 +112,21 @@ const checkPermission = (moduleKey, submoduleKey = null, action = 'view') => {
       return response(res, false, 401, 'Unauthorized');
     }
 
-    const userRole = req.headers['x-user-role'] || req.headers['x-role'] || req.user.role || 'EMPLOYEE';
-    const normRole = String(userRole).toUpperCase().replace(/_/g, ' ');
+    const userRole = req.user.role || req.headers['x-user-role'] || req.headers['x-role'] || 'EMPLOYEE';
+    const normRole = String(userRole).toUpperCase().replace(/[\s_-]+/g, '');
 
-    if (normRole === 'SUPER ADMIN' || normRole === 'SUPERADMIN' || normRole === 'ADMIN') {
+    if (normRole === 'SUPERADMIN' || normRole === 'ADMIN') {
+      console.log(`[BACKEND PERMISSION CHECK] role: ${userRole} | module: ${moduleKey} | submodule: ${submoduleKey || moduleKey} | action: ${action} | allowed: true (SUPER_ADMIN)`);
       return next();
     }
 
     try {
       const RbacService = require('../services/RbacService');
       const perms = await RbacService.getUserPermissions(userRole);
-      const act = String(action).toLowerCase();
+      let act = String(action).toLowerCase();
+      if (act === 'update' || act === 'approve' || act === 'reject') act = 'edit';
       const actAlt = act === 'view' ? 'canView' : act === 'create' ? 'canCreate' : act === 'edit' ? 'canEdit' : 'canDelete';
+      const actDb = act === 'view' ? 'can_view' : act === 'create' ? 'can_create' : act === 'edit' ? 'can_edit' : 'can_delete';
 
       let isAllowed = false;
       const targetKey = submoduleKey || moduleKey;
@@ -103,16 +135,37 @@ const checkPermission = (moduleKey, submoduleKey = null, action = 'view') => {
         if (!obj) return undefined;
         if (obj[act] !== undefined) return obj[act];
         if (obj[actAlt] !== undefined) return obj[actAlt];
-        if (obj[`can_${act}`] !== undefined) return obj[`can_${act}`];
+        if (obj[actDb] !== undefined) return obj[actDb];
+        if (act === 'edit') {
+          if (obj.update !== undefined) return obj.update;
+          if (obj.canUpdate !== undefined) return obj.canUpdate;
+          if (obj.can_update !== undefined) return obj.can_update;
+        }
         return undefined;
       };
 
-      if (submoduleKey && perms[submoduleKey]) {
-        const val = extractVal(perms[submoduleKey]);
-        if (val !== undefined) isAllowed = (val === true || val === 1 || val === '1' || val === 'true');
-      } else if (moduleKey && perms[moduleKey]) {
-        const val = extractVal(perms[moduleKey]);
-        if (val !== undefined) isAllowed = (val === true || val === 1 || val === '1' || val === 'true');
+      if (submoduleKey) {
+        const subClean = submoduleKey.toLowerCase().replace(/[-.]/g, '_');
+        const modClean = moduleKey ? moduleKey.toLowerCase().replace(/[-.]/g, '_') : null;
+
+        if (perms[subClean]) {
+          const val = extractVal(perms[subClean]);
+          if (val !== undefined) isAllowed = (val === true || val === 1 || val === '1' || val === 'true');
+        }
+        if (!isAllowed && modClean && perms[`${modClean}:${subClean}`]) {
+          const val = extractVal(perms[`${modClean}:${subClean}`]);
+          if (val !== undefined) isAllowed = (val === true || val === 1 || val === '1' || val === 'true');
+        }
+        if (!isAllowed && modClean && perms[modClean] && perms[modClean].submodules && perms[modClean].submodules[subClean]) {
+          const val = extractVal(perms[modClean].submodules[subClean]);
+          if (val !== undefined) isAllowed = (val === true || val === 1 || val === '1' || val === 'true');
+        }
+      } else if (moduleKey) {
+        const modClean = moduleKey.toLowerCase().replace(/[-.]/g, '_');
+        if (perms[modClean]) {
+          const val = extractVal(perms[modClean]);
+          if (val !== undefined) isAllowed = (val === true || val === 1 || val === '1' || val === 'true');
+        }
       }
 
       console.log(`[BACKEND PERMISSION CHECK] role: ${userRole} | module: ${moduleKey} | submodule: ${targetKey} | action: ${act} | allowed: ${isAllowed}`);

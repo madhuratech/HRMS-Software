@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Download, Calendar, ChevronDown, Users, UserCheck, Clock, UserX } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, CartesianGrid, XAxis, YAxis, Tooltip, Legend, BarChart, Bar } from 'recharts';
@@ -122,16 +123,7 @@ export function AttendanceReports() {
           </button>
 
           <div style={{ position: 'relative' }}>
-            <select style={{
-              appearance: 'none', WebkitAppearance: 'none', height: 38,
-              paddingLeft: 14, paddingRight: 32, background: '#FFF',
-              border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#374151', cursor: 'pointer', outline: 'none',
-            }}>
-              <option>All Departments</option>
-              {data.summary.map((s, idx) => (
-                <option key={idx} value={s.dept}>{s.dept}</option>
-              ))}
-            </select>
+            <AppDropdown options={[{value:'All Departments',label:'All Departments'}, ...(data.summary || [])]} size="sm" />
             <ChevronDown size={14} color="#6B7280" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
 

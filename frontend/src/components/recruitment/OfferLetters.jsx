@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, Download, Plus, MoreHorizontal, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { canCreate, canEdit, checkActionPermission } from '../../lib/permissions';
@@ -209,26 +210,18 @@ export default function OfferLetters() {
         {/* Toolbar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
           <div style={{ display: 'flex', gap: '16px', flex: 1 }}>
-            <select 
-              value={filterDept}
-              onChange={e => setFilterDept(e.target.value)}
-              style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '14px', color: '#334155', outline: 'none', cursor: 'pointer' }}
-            >
-              <option value="All Departments">All Departments</option>
-              {departments.map(d => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
-            <select 
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
-              style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '14px', color: '#334155', outline: 'none', cursor: 'pointer' }}
-            >
-              <option value="All Status">All Status</option>
-              <option value="Accepted">Accepted</option>
-              <option value="Pending">Pending</option>
-              <option value="Rejected">Rejected</option>
-            </select>
+            <AppDropdown
+                value={filterDept}
+                onChange={v => setFilterDept(v)}
+                options={[{value:'All Departments',label:'All Departments'}]}
+                size="sm"
+              />
+            <AppDropdown
+                value={filterStatus}
+                onChange={v => setFilterStatus(v)}
+                options={[{value:'All Status',label:'All Status'},{value:'Accepted',label:'Accepted'},{value:'Pending',label:'Pending'},{value:'Rejected',label:'Rejected'}]}
+                size="sm"
+              />
             <div style={{ position: 'relative', width: '280px' }}>
               <Search size={18} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input 
@@ -368,12 +361,12 @@ export default function OfferLetters() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Department <span className="text-red-500">*</span></label>
-                  <select required value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Department</option>
-                    {departments.map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
+                  <AppDropdown
+                value={formData.department}
+                onChange={v => setFormData({ ...formData, department: v })}
+                options={[{value:'',label:'Select Department'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Salary Offered <span className="text-red-500">*</span></label>
@@ -389,11 +382,12 @@ export default function OfferLetters() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Employment Type <span className="text-red-500">*</span></label>
-                  <select value={formData.employmentType} onChange={e => setFormData({ ...formData, employmentType: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Full-time">Full-time</option>
-                    <option value="Part-time">Part-time</option>
-                    <option value="Contract">Contract</option>
-                  </select>
+                  <AppDropdown
+                value={formData.employmentType}
+                onChange={v => setFormData({ ...formData, employmentType: v })}
+                options={[{value:'Full-time',label:'Full-time'},{value:'Part-time',label:'Part-time'},{value:'Contract',label:'Contract'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Offer Expiry Date <span className="text-red-500">*</span></label>
@@ -401,11 +395,12 @@ export default function OfferLetters() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Pending">Pending</option>
-                    <option value="Accepted">Accepted</option>
-                    <option value="Rejected">Rejected</option>
-                  </select>
+                  <AppDropdown
+                value={formData.status}
+                onChange={v => setFormData({ ...formData, status: v })}
+                options={[{value:'Pending',label:'Pending'},{value:'Accepted',label:'Accepted'},{value:'Rejected',label:'Rejected'}]}
+                size="sm"
+              />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Notes</label>

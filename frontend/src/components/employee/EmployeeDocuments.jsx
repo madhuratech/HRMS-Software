@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, Upload, Download, Trash2, FileText, Plus, Eye, User } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import './employee-module.css';
@@ -134,25 +135,7 @@ export default function EmployeeDocuments() {
           }}>
             <User size={16} color="#475569" />
             <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>Select Employee:</span>
-            <select
-              value={currentEmpId}
-              onChange={(e) => handleEmployeeSelect(e.target.value)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                fontSize: '13px',
-                fontWeight: 700,
-                color: '#0F172A',
-                outline: 'none',
-                cursor: 'pointer'
-              }}
-            >
-              {allEmployees.map(emp => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.name} ({emp.employeeCode || `EMP00${emp.id}`}) {emp.status === 'Terminated' ? '• Terminated' : ''}
-                </option>
-              ))}
-            </select>
+            <AppDropdown value={currentEmpId} options={[, ...(allEmployees || [])]} size="sm" />
           </div>
 
           <button 
@@ -171,16 +154,12 @@ export default function EmployeeDocuments() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div className="hrms-input-group">
               <label className="hrms-label">Document Type *</label>
-              <select className="hrms-select" value={docType} onChange={(e) => setDocType(e.target.value)}>
-                <option value="PAN">PAN Card</option>
-                <option value="Aadhaar">Aadhaar Card</option>
-                <option value="Passport">Passport</option>
-                <option value="Driving License">Driving License</option>
-                <option value="Offer Letter">Offer Letter</option>
-                <option value="Appointment Letter">Appointment Letter</option>
-                <option value="Payslip">Salary Slip</option>
-                <option value="Contract">Contract</option>
-              </select>
+              <AppDropdown
+                value={docType}
+                onChange={v => setDocType(v)}
+                options={[{value:'PAN',label:'PAN Card'},{value:'Aadhaar',label:'Aadhaar Card'},{value:'Passport',label:'Passport'},{value:'Driving License',label:'Driving License'},{value:'Offer Letter',label:'Offer Letter'},{value:'Appointment Letter',label:'Appointment Letter'},{value:'Payslip',label:'Salary Slip'},{value:'Contract',label:'Contract'}]}
+                size="sm"
+              />
             </div>
             <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
               <label className="hrms-label">Select File *</label>

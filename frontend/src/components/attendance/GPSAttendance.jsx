@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import {
   Filter, Navigation, MapPin, ChevronDown, RefreshCw, CalendarIcon,
   CheckCircle2, XCircle, Clock, Eye
@@ -226,12 +227,7 @@ export default function GPSAttendance() {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '6px 12px' }}>
             <MapPin size={16} color="#64748B" />
-            <select style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '13px', fontWeight: 600, color: '#1E293B' }}>
-              <option value="ALL">All Geofences</option>
-              {geofences.map(g => (
-                <option key={g.id} value={g.id}>{g.name}</option>
-              ))}
-            </select>
+            <AppDropdown options={[{value:'ALL',label:'All Geofences'}, ...(geofences || [])]} size="sm" />
           </div>
         </div>
 

@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit3, Trash2, User, Activity, ShieldCheck, Briefcase, Baby, BookOpen, Users, X, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Plus, Edit3, Trash2, User, Activity, ShieldCheck, Briefcase, Baby, BookOpen, Users, X, Loader2, ShieldAlert } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import { usePermissions } from '../../context/PermissionContext';
 
 const defaultLeaveTypes = [
   {
@@ -24,29 +25,19 @@ const defaultLeaveTypes = [
     iconBg: '#eff6ff'
   },
   {
-    name: 'Privilege Leave',
-    code: 'PL',
-    desc: 'Leave for vacation and personal reasons',
-    max: 10,
-    forward: 'Yes',
-    status: 'Active',
-    icon: <ShieldCheck size={18} color="#10b981" />,
-    iconBg: '#ecfdf5'
-  },
-  {
     name: 'Earned Leave',
     code: 'EL',
-    desc: 'Leave earned for the service period',
-    max: 30,
+    desc: 'Privilege leaves earned for active service days',
+    max: 18,
     forward: 'Yes',
     status: 'Active',
-    icon: <Briefcase size={18} color="#ef4444" />,
-    iconBg: '#fef2f2'
+    icon: <Briefcase size={18} color="#3b82f6" />,
+    iconBg: '#eff6ff'
   },
   {
     name: 'Maternity Leave',
     code: 'ML',
-    desc: 'Leave for maternity and child care',
+    desc: 'Paid leave provided to female employees for childbirth',
     max: 180,
     forward: 'No',
     status: 'Active',
@@ -55,41 +46,48 @@ const defaultLeaveTypes = [
   },
   {
     name: 'Paternity Leave',
-    code: 'PTL',
-    desc: 'Leave for paternity and child care',
+    code: 'PL',
+    desc: 'Paid leave provided to male employees after childbirth',
     max: 15,
     forward: 'No',
     status: 'Active',
-    iconBg: '#ecfeff',
-    icon: <Briefcase size={18} color="#06b6d4" />
-  },
-  {
-    name: 'Compensatory Off',
-    code: 'COMP',
-    desc: 'Leave for working on holidays/weekends',
-    max: 10,
-    forward: 'No',
-    status: 'Active',
-    iconBg: '#fffbeb',
-    icon: <BookOpen size={18} color="#f59e0b" />
+    icon: <Users size={18} color="#3b82f6" />,
+    iconBg: '#eff6ff'
   },
   {
     name: 'Bereavement Leave',
     code: 'BL',
-    desc: 'Leave for family bereavement',
-    max: 7,
+    desc: 'Compassionate leave for death of an immediate family member',
+    max: 5,
     forward: 'No',
     status: 'Active',
-    iconBg: '#fffbeb',
-    icon: <Users size={18} color="#f59e0b" />
+    icon: <ShieldCheck size={18} color="#3b82f6" />,
+    iconBg: '#eff6ff'
+  },
+  {
+    name: 'Compensatory Off',
+    code: 'COMP',
+    desc: 'Leave given against work done on weekends or holidays',
+    max: 10,
+    forward: 'No',
+    status: 'Active',
+    icon: <BookOpen size={18} color="#3b82f6" />,
+    iconBg: '#eff6ff'
   }
 ];
 
 export default function LeaveTypes() {
+  const { canView, canCreate, canUpdate, canDelete, loadingPermissions } = usePermissions();
+
+  const isAllowedView = canView('leave', 'leave_types');
+  const isAllowedCreate = canCreate('leave', 'leave_types');
+  const isAllowedUpdate = canUpdate('leave', 'leave_types');
+  const isAllowedDelete = canDelete('leave', 'leave_types');
+
   const [leaveTypes, setLeaveTypes] = useState(defaultLeaveTypes);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
-  const [isEmployeeView, setIsEmployeeView] = useState(false);
+  const [editingId, setEditingId] = useState(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -102,68 +100,9 @@ export default function LeaveTypes() {
     status: 'Active'
   });
 
-  useEffect(() => {
-    // Check if user is accessing under /employee route or has EMPLOYEE role
-    const isEmpRoute = window.location.pathname.startsWith('/employee');
-    let isEmpRole = false;
-    const auth = localStorage.getItem('hrms_auth');
-    if (auth) {
-      try {
-        const parsed = JSON.parse(auth);
-        if (parsed.role === 'EMPLOYEE' || parsed.user?.role === 'EMPLOYEE') {
-          isEmpRole = true;
-        }
-      } catch (e) {}
-    }
-    setIsEmployeeView(isEmpRoute || isEmpRole);
-
-    const fetchLeaveTypes = async () => {
-      setLoading(true);
-      try {
-        const res = await apiFetch('/leaves/types');
-        if (Array.isArray(res) && res.length > 0) {
-          const formatted = res.map((lt, i) => ({
-            id: lt.id,
-            name: lt.name || 'Leave Type',
-            code: lt.code || 'LV',
-            desc: lt.description || 'Company official leave category',
-            max: lt.max_days || 12,
-            forward: lt.carry_forward ? 'Yes' : 'No',
-            status: lt.status || 'Active',
-            icon: defaultLeaveTypes[i % defaultLeaveTypes.length].icon,
-            iconBg: defaultLeaveTypes[i % defaultLeaveTypes.length].iconBg
-          }));
-          setLeaveTypes(formatted);
-        }
-      } catch (err) {
-        console.error("Failed to load leave types from API:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLeaveTypes();
-  }, []);
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const fetchLeaveTypes = useCallback(async () => {
+    setLoading(true);
     try {
-      await apiFetch('/leaves/types', {
-        method: 'POST',
-        body: JSON.stringify(formData)
-      });
-      setShowModal(false);
-      setFormData({
-        name: '',
-        code: '',
-        desc: '',
-        maxDays: '',
-        carryForward: false,
-        requiresApproval: true,
-        paidLeave: true,
-        status: 'Active'
-      });
-      // Refresh list
       const res = await apiFetch('/leaves/types');
       if (Array.isArray(res) && res.length > 0) {
         const formatted = res.map((lt, i) => ({
@@ -180,11 +119,109 @@ export default function LeaveTypes() {
         setLeaveTypes(formatted);
       }
     } catch (err) {
-      console.error("Failed to save leave type:", err);
+      console.error("Failed to load leave types from API:", err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isAllowedView) {
+      fetchLeaveTypes();
+    } else {
+      setLoading(false);
+    }
+  }, [isAllowedView, fetchLeaveTypes]);
+
+  const handleOpenCreate = () => {
+    if (!isAllowedCreate) {
+      alert("Permission Denied: You do not have permission to add leave types.");
+      return;
+    }
+    setEditingId(null);
+    setFormData({
+      name: '',
+      code: '',
+      desc: '',
+      maxDays: '',
+      carryForward: false,
+      requiresApproval: true,
+      paidLeave: true,
+      status: 'Active'
+    });
+    setShowModal(true);
+  };
+
+  const handleOpenEdit = (type) => {
+    if (!isAllowedUpdate) {
+      alert("Permission Denied: You do not have permission to edit leave types.");
+      return;
+    }
+    setEditingId(type.id);
+    setFormData({
+      name: type.name || '',
+      code: type.code || '',
+      desc: type.desc || '',
+      maxDays: type.max !== undefined ? String(type.max) : '',
+      carryForward: type.forward === 'Yes',
+      requiresApproval: true,
+      paidLeave: true,
+      status: type.status || 'Active'
+    });
+    setShowModal(true);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (editingId) {
+      if (!isAllowedUpdate) {
+        alert("Permission Denied: You do not have permission to edit leave types.");
+        return;
+      }
+      try {
+        await apiFetch(`/leaves/types/${editingId}`, {
+          method: 'PUT',
+          body: JSON.stringify(formData)
+        });
+        setShowModal(false);
+        setEditingId(null);
+        fetchLeaveTypes();
+      } catch (err) {
+        console.error("Failed to update leave type:", err);
+      }
+    } else {
+      if (!isAllowedCreate) {
+        alert("Permission Denied: You do not have permission to create leave types.");
+        return;
+      }
+      try {
+        await apiFetch('/leaves/types', {
+          method: 'POST',
+          body: JSON.stringify(formData)
+        });
+        setShowModal(false);
+        setFormData({
+          name: '',
+          code: '',
+          desc: '',
+          maxDays: '',
+          carryForward: false,
+          requiresApproval: true,
+          paidLeave: true,
+          status: 'Active'
+        });
+        fetchLeaveTypes();
+      } catch (err) {
+        console.error("Failed to save leave type:", err);
+      }
     }
   };
 
   const handleDelete = async (id) => {
+    if (!isAllowedDelete) {
+      alert("Permission Denied: You do not have permission to delete leave types.");
+      return;
+    }
     if (window.confirm("Are you sure you want to delete this leave type?")) {
       try {
         await apiFetch(`/leaves/types/${id}`, { method: 'DELETE' });
@@ -195,6 +232,25 @@ export default function LeaveTypes() {
     }
   };
 
+  if (loadingPermissions) {
+    return (
+      <div style={{ minHeight: '50vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', color: '#64748b' }}>
+        <Loader2 className="animate-spin text-blue-600 mr-2" size={24} />
+        <span>Verifying access permissions...</span>
+      </div>
+    );
+  }
+
+  if (!isAllowedView) {
+    return (
+      <div style={{ minHeight: '50vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px', textAlign: 'center' }}>
+        <ShieldAlert size={48} color="#ef4444" style={{ marginBottom: '12px' }} />
+        <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#1e293b', margin: '0 0 8px 0' }}>Access Denied</h2>
+        <p style={{ color: '#64748b', margin: 0, fontSize: '14px' }}>You do not have permission to view Leave Types. Please contact your administrator.</p>
+      </div>
+    );
+  }
+
   const cardStyle = {
     background: '#FFFFFF',
     borderRadius: '12px',
@@ -204,11 +260,10 @@ export default function LeaveTypes() {
 
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px', padding: '24px', width: '100%' }}>
-      {/* Header & Toolbar (Only show Add Leave Type button if NOT employee view) */}
-      {!isEmployeeView && (
+      {isAllowedCreate && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
           <button
-            onClick={() => setShowModal(true)}
+            onClick={handleOpenCreate}
             style={{
               background: '#2952E3',
               color: '#fff',
@@ -229,7 +284,6 @@ export default function LeaveTypes() {
       )}
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
-        {/* Main Table */}
         <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
@@ -241,7 +295,7 @@ export default function LeaveTypes() {
                   <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '700', color: '#334155', borderBottom: '1px solid #f1f5f9', textAlign: 'center', whiteSpace: 'nowrap' }}>Max Days</th>
                   <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '700', color: '#334155', borderBottom: '1px solid #f1f5f9', textAlign: 'center', whiteSpace: 'nowrap' }}>Carry Forward</th>
                   <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '700', color: '#334155', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>Status</th>
-                  {!isEmployeeView && (
+                  {(isAllowedUpdate || isAllowedDelete) && (
                     <th style={{ padding: '20px 24px', fontSize: '13px', fontWeight: '700', color: '#334155', borderBottom: '1px solid #f1f5f9', textAlign: 'center' }}>Actions</th>
                   )}
                 </tr>
@@ -249,7 +303,7 @@ export default function LeaveTypes() {
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={isEmployeeView ? 6 : 7} style={{ padding: '40px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
+                    <td colSpan={(isAllowedUpdate || isAllowedDelete) ? 7 : 6} style={{ padding: '40px', textAlign: 'center', color: '#64748b', fontSize: '14px' }}>
                       <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-blue-600" />
                       Loading Leave Types…
                     </td>
@@ -282,45 +336,51 @@ export default function LeaveTypes() {
                           {type.status}
                         </span>
                       </td>
-                      {!isEmployeeView && (
+                      {(isAllowedUpdate || isAllowedDelete) && (
                         <td style={{ padding: '16px 24px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                            <button
-                              onClick={() => setShowModal(true)}
-                              style={{
-                                background: '#eff6ff',
-                                border: '1px solid #dbeafe',
-                                borderRadius: '6px',
-                                width: '32px',
-                                height: '32px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                color: '#3b82f6',
-                                transition: 'all 0.2s'
-                              }}
-                            >
-                              <Edit3 size={16} />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(type.id)}
-                              style={{
-                                background: '#fef2f2',
-                                border: '1px solid #fee2e2',
-                                borderRadius: '6px',
-                                width: '32px',
-                                height: '32px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                color: '#ef4444',
-                                transition: 'all 0.2s'
-                              }}
-                            >
-                              <Trash2 size={16} />
-                            </button>
+                            {isAllowedUpdate && (
+                              <button
+                                onClick={() => handleOpenEdit(type)}
+                                title="Edit Leave Type"
+                                style={{
+                                  background: '#eff6ff',
+                                  border: '1px solid #dbeafe',
+                                  borderRadius: '6px',
+                                  width: '32px',
+                                  height: '32px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  color: '#3b82f6',
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                <Edit3 size={16} />
+                              </button>
+                            )}
+                            {isAllowedDelete && (
+                              <button
+                                onClick={() => handleDelete(type.id)}
+                                title="Delete Leave Type"
+                                style={{
+                                  background: '#fef2f2',
+                                  border: '1px solid #fee2e2',
+                                  borderRadius: '6px',
+                                  width: '32px',
+                                  height: '32px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  cursor: 'pointer',
+                                  color: '#ef4444',
+                                  transition: 'all 0.2s'
+                                }}
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            )}
                           </div>
                         </td>
                       )}
@@ -333,15 +393,14 @@ export default function LeaveTypes() {
         </div>
       </div>
 
-      {/* Add Leave Type Modal (Admin view only) */}
-      {!isEmployeeView && showModal && (
+      {showModal && (editingId ? isAllowedUpdate : isAllowedCreate) && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowModal(false)} />
           <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw' }}>
             <div className="p-8 border-b border-slate-200 flex items-center justify-between shrink-0">
               <div>
-                <h2 className="text-xl font-bold text-[#0A1629]">Add Leave Type</h2>
-                <p className="text-sm text-slate-500 mt-1">Configure a new leave category and policy parameters.</p>
+                <h2 className="text-xl font-bold text-[#0A1629]">{editingId ? 'Edit Leave Type' : 'Add Leave Type'}</h2>
+                <p className="text-sm text-slate-500 mt-1">{editingId ? 'Update existing leave category policy parameters.' : 'Configure a new leave category and policy parameters.'}</p>
               </div>
               <button onClick={() => setShowModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
                 <X size={20} className="text-slate-400" />
@@ -420,7 +479,7 @@ export default function LeaveTypes() {
               </div>
               <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
                 <button type="button" onClick={() => setShowModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-                <button type="submit" className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">Save Leave Type</button>
+                <button type="submit" className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">{editingId ? 'Update Leave Type' : 'Save Leave Type'}</button>
               </div>
             </form>
           </div>

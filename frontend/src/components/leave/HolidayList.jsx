@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { CalendarDays, MapPin } from 'lucide-react';
 
@@ -106,27 +107,19 @@ export default function HolidayList() {
       {/* Header Toolbar (Single Source of Truth Info) */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-          <select 
-            value={selectedYear}
-            onChange={e => setSelectedYear(e.target.value)}
-            style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '120px', background: '#fff' }}
-          >
-            <option value="All">All Years</option>
-            <option value="2026">2026</option>
-            <option value="2025">2025</option>
-            <option value="2024">2024</option>
-          </select>
+          <AppDropdown
+                value={selectedYear}
+                onChange={v => setSelectedYear(v)}
+                options={[{value:'All',label:'All Years'},{value:'2026',label:'2026'},{value:'2025',label:'2025'},{value:'2024',label:'2024'}]}
+                size="sm"
+              />
 
-          <select 
-            value={selectedLocation}
-            onChange={e => setSelectedLocation(e.target.value)}
-            style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569', minWidth: '140px', background: '#fff' }}
-          >
-            <option value="All Locations">All Locations</option>
-            <option value="Mumbai">Mumbai</option>
-            <option value="Bangalore">Bangalore</option>
-            <option value="Chennai">Chennai</option>
-          </select>
+          <AppDropdown
+                value={selectedLocation}
+                onChange={v => setSelectedLocation(v)}
+                options={[{value:'All Locations',label:'All Locations'},{value:'Mumbai',label:'Mumbai'},{value:'Bangalore',label:'Bangalore'},{value:'Chennai',label:'Chennai'}]}
+                size="sm"
+              />
         </div>
 
         {/* Source of Truth Info Badge */}

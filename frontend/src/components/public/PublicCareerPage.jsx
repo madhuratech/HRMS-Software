@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, MapPin, Briefcase, Clock, ChevronRight, ArrowRight, Building, CheckCircle2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -92,25 +93,12 @@ export default function PublicCareerPage() {
               />
             </div>
 
-            <select 
-              value={department}
-              onChange={e => setDepartment(e.target.value)}
-              style={{ padding: '12px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', color: '#475569', background: '#F8FAFC' }}
-            >
-              <option value="">All Departments</option>
-              {dynamicDepartments.map((dept, idx) => (
-                <option key={idx} value={dept}>{dept}</option>
-              ))}
-              {dynamicDepartments.length === 0 && (
-                <>
-                  <option value="Software Development">Software Development</option>
-                  <option value="Human Resources">Human Resources</option>
-                  <option value="Engineering">Engineering</option>
-                  <option value="Design">Design</option>
-                  <option value="Sales">Sales</option>
-                </>
-              )}
-            </select>
+            <AppDropdown
+                value={department}
+                onChange={v => setDepartment(v)}
+                options={[{value:'',label:'All Departments'},{value:'Software Development',label:'Software Development'},{value:'Human Resources',label:'Human Resources'},{value:'Engineering',label:'Engineering'},{value:'Design',label:'Design'},{value:'Sales',label:'Sales'}]}
+                size="sm"
+              />
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { ChevronDown, Plus, ChevronLeft, ChevronRight, X, CheckCircle } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts';
 import { useToast } from '../ui/Toast';
@@ -211,12 +212,12 @@ export default function KRAs() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Department <span className="text-red-500">*</span></label>
-                  <select required value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Department</option>
-                    {departments.map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
+                  <AppDropdown
+                value={formData.department}
+                onChange={v => setFormData({ ...formData, department: v })}
+                options={[{value:'',label:'Select Department'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">KRA Role / Designation <span className="text-red-500">*</span></label>
@@ -228,10 +229,12 @@ export default function KRAs() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
+                  <AppDropdown
+                value={formData.status}
+                onChange={v => setFormData({ ...formData, status: v })}
+                options={[{value:'Active',label:'Active'},{value:'Inactive',label:'Inactive'}]}
+                size="sm"
+              />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Description</label>
@@ -256,16 +259,12 @@ export default function KRAs() {
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Configure department job roles performance areas</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <select
-            value={filterDept}
-            onChange={e => setFilterDept(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '13px', color: '#334155', cursor: 'pointer' }}
-          >
-            <option value="All Departments">All Departments</option>
-            {departments.map(d => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
+          <AppDropdown
+                value={filterDept}
+                onChange={v => setFilterDept(v)}
+                options={[{value:'All Departments',label:'All Departments'}]}
+                size="sm"
+              />
           <button 
             disabled={!canCreate('kras')}
             onClick={() => {

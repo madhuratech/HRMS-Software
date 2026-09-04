@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { usePermissions } from '../../context/PermissionContext';
 import { 
   Search, Plus, ShieldCheck, Scale, FileCheck, Landmark, 
   Loader2, AlertCircle, CheckCircle2, X, Check 
@@ -8,6 +10,7 @@ import {
 
 export default function TaxManagement() {
   const { addToast } = useToast();
+  const { canCreate, canEdit } = usePermissions();
   const [taxes, setTaxes] = useState([]);
   const [activeEmployees, setActiveEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -142,15 +145,17 @@ export default function TaxManagement() {
           <h1 style={{ margin: '0 0 4px 0', fontSize: '22px', fontWeight: '700', color: '#1E293B' }}>Tax Management & IT Declarations</h1>
           <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>Income tax regime selections, Chapter VI-A deductions, and TDS calculation rules</p>
         </div>
-        <button
-          onClick={() => {
-            setEmployeeId(activeEmployees[0]?.id || '');
-            setShowModal(true);
-          }}
-          style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}
-        >
-          <Plus size={16} /> New Tax Declaration
-        </button>
+        {canCreate('payroll', 'tax_management') && (
+          <button
+            onClick={() => {
+              setEmployeeId(activeEmployees[0]?.id || '');
+              setShowModal(true);
+            }}
+            style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}
+          >
+            <Plus size={16} /> New Tax Declaration
+          </button>
+        )}
       </div>
 
       {/* KPI Cards */}
@@ -209,7 +214,9 @@ export default function TaxManagement() {
                   <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>80D Health</th>
                   <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>HRA Exemption</th>
                   <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'center' }}>Verification Status</th>
-                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'right' }}>Actions</th>
+                  {canEdit('payroll', 'tax_management') && (
+                    <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'right' }}>Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -243,16 +250,18 @@ export default function TaxManagement() {
                         {row.status || 'Declared'}
                       </span>
                     </td>
-                    <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                      {row.status !== 'Verified' && (
-                        <button
-                          onClick={() => handleVerifyTax(row.id)}
-                          style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #A7F3D0', background: '#ECFDF5', color: '#059669', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                        >
-                          <Check size={12} /> Verify
-                        </button>
-                      )}
-                    </td>
+                    {canEdit('payroll', 'tax_management') && (
+                      <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                        {row.status !== 'Verified' && (
+                          <button
+                            onClick={() => handleVerifyTax(row.id)}
+                            style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #A7F3D0', background: '#ECFDF5', color: '#059669', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                          >
+                            <Check size={12} /> Verify
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -262,7 +271,7 @@ export default function TaxManagement() {
       </div>
 
       {/* Modal: Add Tax Declaration */}
-      {showModal && (
+      {showModal && canCreate('payroll', 'tax_management') && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)' }}>
           <div style={{ width: '520px', maxWidth: '95vw', background: '#FFFFFF', borderRadius: '20px', boxShadow: '0 25px 60px -12px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
             
@@ -282,19 +291,12 @@ export default function TaxManagement() {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                   Select Employee <span style={{ color: '#EF4444' }}>*</span>
                 </label>
-                <select
-                  required
-                  value={employeeId}
-                  onChange={e => setEmployeeId(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                >
-                  <option value="">-- Choose Employee --</option>
-                  {activeEmployees.map(e => (
-                    <option key={e.id} value={e.id}>
-                      {e.name} ({e.employee_id || `EMP${e.id}`}) • {e.department || 'General'}
-                    </option>
-                  ))}
-                </select>
+                <AppDropdown
+                value={employeeId}
+                onChange={v => setEmployeeId(v)}
+                options={[{value:'',label:'-- Choose Employee --'}]}
+                size="sm"
+              />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -302,28 +304,24 @@ export default function TaxManagement() {
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                     Tax Regime <span style={{ color: '#EF4444' }}>*</span>
                   </label>
-                  <select
-                    value={taxRegime}
-                    onChange={e => setTaxRegime(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                  >
-                    <option value="New Regime">New Tax Regime</option>
-                    <option value="Old Regime">Old Tax Regime</option>
-                  </select>
+                  <AppDropdown
+                value={taxRegime}
+                onChange={v => setTaxRegime(v)}
+                options={[{value:'New Regime',label:'New Tax Regime'},{value:'Old Regime',label:'Old Tax Regime'}]}
+                size="sm"
+              />
                 </div>
 
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                     Financial Year
                   </label>
-                  <select
-                    value={financialYear}
-                    onChange={e => setFinancialYear(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                  >
-                    <option value="2026-27">2026-27</option>
-                    <option value="2025-26">2025-26</option>
-                  </select>
+                  <AppDropdown
+                value={financialYear}
+                onChange={v => setFinancialYear(v)}
+                options={[{value:'2026-27',label:'2026-27'},{value:'2025-26',label:'2025-26'}]}
+                size="sm"
+              />
                 </div>
               </div>
 

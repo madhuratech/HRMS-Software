@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
 import { useNavigate } from 'react-router-dom';
@@ -200,66 +201,50 @@ export default function PayrollProcessing() {
             
             <div>
               <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', color: '#BFDBFE', marginBottom: '4px' }}>Month</label>
-              <select
-                value={month}
-                onChange={e => setMonth(e.target.value)}
-                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #93C5FD', background: '#FFFFFF', color: '#1E293B', fontSize: '13px', fontWeight: '600', outline: 'none' }}
-              >
-                {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
+              <AppDropdown value={month} options={[{value:'m',label:'m'}, ...(MONTHS || [])]} size="sm" />
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', color: '#BFDBFE', marginBottom: '4px' }}>Year</label>
-              <select
+              <AppDropdown
                 value={year}
-                onChange={e => setYear(e.target.value)}
-                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #93C5FD', background: '#FFFFFF', color: '#1E293B', fontSize: '13px', fontWeight: '600', outline: 'none' }}
-              >
-                <option value="2025">2025</option>
-                <option value="2026">2026</option>
-                <option value="2027">2027</option>
-              </select>
+                onChange={v => setYear(v)}
+                options={[{value:'2025',label:'2025'},{value:'2026',label:'2026'},{value:'2027',label:'2027'}]}
+                size="sm"
+              />
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', color: '#BFDBFE', marginBottom: '4px' }}>Scope</label>
-              <select
+              <AppDropdown
                 value={scope}
-                onChange={e => setScope(e.target.value)}
-                style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #93C5FD', background: '#FFFFFF', color: '#1E293B', fontSize: '13px', fontWeight: '600', outline: 'none' }}
-              >
-                <option value="all">All Active Staff</option>
-                <option value="department">By Department</option>
-                <option value="employee">Individual Staff</option>
-              </select>
+                onChange={v => setScope(v)}
+                options={[{value:'all',label:'All Active Staff'},{value:'department',label:'By Department'},{value:'employee',label:'Individual Staff'}]}
+                size="sm"
+              />
             </div>
 
             {scope === 'department' && (
               <div>
                 <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', color: '#BFDBFE', marginBottom: '4px' }}>Department</label>
-                <select
-                  value={departmentId}
-                  onChange={e => setDepartmentId(e.target.value)}
-                  style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #93C5FD', background: '#FFFFFF', color: '#1E293B', fontSize: '13px', fontWeight: '600', outline: 'none' }}
-                >
-                  <option value="">-- Choose Dept --</option>
-                  {departments.map(d => <option key={d.id} value={d.id}>{d.dept_name}</option>)}
-                </select>
+                <AppDropdown
+                value={departmentId}
+                onChange={v => setDepartmentId(v)}
+                options={[{value:'',label:'-- Choose Dept --'}]}
+                size="sm"
+              />
               </div>
             )}
 
             {scope === 'employee' && (
               <div>
                 <label style={{ display: 'block', fontSize: '10px', fontWeight: '700', textTransform: 'uppercase', color: '#BFDBFE', marginBottom: '4px' }}>Employee</label>
-                <select
-                  value={employeeId}
-                  onChange={e => setEmployeeId(e.target.value)}
-                  style={{ padding: '8px 12px', borderRadius: '8px', border: '1px solid #93C5FD', background: '#FFFFFF', color: '#1E293B', fontSize: '13px', fontWeight: '600', outline: 'none' }}
-                >
-                  <option value="">-- Choose Employee --</option>
-                  {activeEmployees.map(e => <option key={e.id} value={e.id}>{e.name} ({e.employee_id || `EMP${e.id}`})</option>)}
-                </select>
+                <AppDropdown
+                value={employeeId}
+                onChange={v => setEmployeeId(v)}
+                options={[{value:'',label:'-- Choose Employee --'}]}
+                size="sm"
+              />
               </div>
             )}
 

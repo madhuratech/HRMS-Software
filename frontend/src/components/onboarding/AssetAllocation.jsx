@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, Plus, Laptop, CheckCircle, Clock, HardDrive, X, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Label } from 'recharts';
 import { useToast } from '../ui/Toast';
+import { hasPermission } from '../../lib/permissions';
 
 export default function AssetAllocation() {
   const { addToast } = useToast();
@@ -237,17 +239,12 @@ export default function AssetAllocation() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Employee <span className="text-red-500">*</span></label>
-                  <select 
-                    required 
-                    value={formData.employee_id} 
-                    onChange={e => setFormData({ ...formData, employee_id: e.target.value })} 
-                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
-                  >
-                    <option value="">Select Employee</option>
-                    {employees.map(e => (
-                      <option key={e.id} value={e.id}>{e.name} (EMP{String(e.id).padStart(3, '0')})</option>
-                    ))}
-                  </select>
+                  <AppDropdown
+                value={formData.employee_id}
+                onChange={v => setFormData({ ...formData, employee_id: v })}
+                options={[{value:'',label:'Select Employee'}]}
+                size="sm"
+              />
                 </div>
 
                 {selectedEmployee && (
@@ -259,17 +256,12 @@ export default function AssetAllocation() {
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Asset <span className="text-red-500">*</span></label>
-                  <select 
-                    required 
-                    value={formData.asset_id} 
-                    onChange={e => setFormData({ ...formData, asset_id: e.target.value })} 
-                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
-                  >
-                    <option value="">Select Available Asset</option>
-                    {availableAssets.map(a => (
-                      <option key={a.id} value={a.id}>{a.asset_name} ({a.serial_number})</option>
-                    ))}
-                  </select>
+                  <AppDropdown
+                value={formData.asset_id}
+                onChange={v => setFormData({ ...formData, asset_id: v })}
+                options={[{value:'',label:'Select Available Asset'}]}
+                size="sm"
+              />
                 </div>
 
                 {selectedAsset && (
@@ -289,10 +281,12 @@ export default function AssetAllocation() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Allocated">Allocated</option>
-                    <option value="Pending">Pending</option>
-                  </select>
+                  <AppDropdown
+                value={formData.status}
+                onChange={v => setFormData({ ...formData, status: v })}
+                options={[{value:'Allocated',label:'Allocated'},{value:'Pending',label:'Pending'}]}
+                size="sm"
+              />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Description / Notes</label>
@@ -358,9 +352,11 @@ export default function AssetAllocation() {
               </div>
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
-               <button onClick={() => setShowAddModal(true)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
-                <Plus size={16} /> Allocate Asset
-              </button>
+              {hasPermission('onboarding', 'asset_allocation', 'create') && (
+                <button onClick={() => setShowAddModal(true)} style={{ padding: '8px 16px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '500' }}>
+                  <Plus size={16} /> Allocate Asset
+                </button>
+              )}
             </div>
           </div>
 
@@ -419,7 +415,7 @@ export default function AssetAllocation() {
                             </span>
                           </td>
                           <td style={{ padding: '16px 24px', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                            {row.status !== 'Returned' && (
+                            {row.status !== 'Returned' && hasPermission('onboarding', 'asset_allocation', 'edit') && (
                               <button 
                                 onClick={() => handleReturn(row.id)}
                                 style={{ background: '#EFF6FF', border: '1px solid #2952E3', color: '#2952E3', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}

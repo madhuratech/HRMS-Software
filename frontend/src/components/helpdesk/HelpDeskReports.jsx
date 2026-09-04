@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Calendar, ChevronDown, Download, FileText, CheckCircle, Clock, Star } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, Tooltip, PieChart, Pie, Cell, CartesianGrid, XAxis, YAxis } from 'recharts';
 
@@ -114,10 +115,7 @@ export function HelpDeskReports() {
         <div style={{ background: '#FFF', borderRadius: 14, border: '1px solid #E5E7EB', padding: 20, boxShadow: '0 2px 8px rgba(15,23,42,.04)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
             <h3 style={{ margin: 0, fontSize: 14, fontWeight: 600, color: '#111827' }}>Tickets Over Time</h3>
-            <select style={{ fontSize: 11, color: '#6B7280', border: '1px solid #E5E7EB', borderRadius: 6, padding: '2px 6px', background: '#FFF', cursor: 'pointer' }}>
-              <option>Daily</option>
-              <option>Weekly</option>
-            </select>
+            <AppDropdown options={[{value:'Daily',label:'Daily'},{value:'Weekly',label:'Weekly'}]} size="sm" />
           </div>
           <div style={{ width: '100%', height: 160 }}>
             <ResponsiveContainer width="100%" height="100%">

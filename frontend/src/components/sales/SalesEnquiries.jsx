@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, Phone, Calendar, MessageCircle, ChevronRight, UserPlus } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 
@@ -110,12 +111,7 @@ export function SalesEnquiries() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Source</label>
-                <select className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                  <option>Walk-in</option>
-                  <option>Website</option>
-                  <option>Referral</option>
-                  <option>Phone Enquiry</option>
-                </select>
+                <AppDropdown options={[{value:'Walk-in',label:'Walk-in'},{value:'Website',label:'Website'},{value:'Referral',label:'Referral'},{value:'Phone Enquiry',label:'Phone Enquiry'}]} size="sm" />
               </div>
               <div className="pt-2 flex gap-3">
                 <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 px-4 py-2 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200">Cancel</button>
@@ -159,18 +155,12 @@ export function SalesEnquiries() {
             onChange={(e) => setSearchTerm(e.target.value)} />
           
         </div>
-        <select
-          className="px-4 py-2.5 bg-white border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 shadow-sm text-sm font-medium text-slate-700"
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}>
-          
-          <option value="ALL">All Status</option>
-          <option value="NEW">New</option>
-          <option value="CONTACTED">Contacted</option>
-          <option value="TEST_DRIVE">Test Drive</option>
-          <option value="QUOTATION">Quotation</option>
-          <option value="BOOKED">Booked</option>
-        </select>
+        <AppDropdown
+                value={statusFilter}
+                onChange={v => setStatusFilter(v)}
+                options={[{value:'ALL',label:'All Status'},{value:'NEW',label:'New'},{value:'CONTACTED',label:'Contacted'},{value:'TEST_DRIVE',label:'Test Drive'},{value:'QUOTATION',label:'Quotation'},{value:'BOOKED',label:'Booked'}]}
+                size="sm"
+              />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

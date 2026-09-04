@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { ChevronDown, Plus, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts';
 import { useToast } from '../ui/Toast';
@@ -245,17 +246,12 @@ export default function Appraisals() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Employee <span className="text-red-500">*</span></label>
-                  <select
-                    required
-                    value={formData.employee}
-                    onChange={e => setFormData({ ...formData, employee: e.target.value })}
-                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
-                  >
-                    <option value="">Select Employee</option>
-                    {employees.map(e => (
-                      <option key={e.id} value={e.id}>{e.name} (EMP{String(e.id).padStart(3, '0')})</option>
-                    ))}
-                  </select>
+                  <AppDropdown
+                value={formData.employee}
+                onChange={v => setFormData({ ...formData, employee: v })}
+                options={[{value:'',label:'Select Employee'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Current Salary <span className="text-red-500">*</span></label>
@@ -296,16 +292,12 @@ export default function Appraisals() {
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Track and manage appraisals</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <select
-            value={filterDept}
-            onChange={e => setFilterDept(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '13px', color: '#334155', cursor: 'pointer' }}
-          >
-            <option value="All Departments">All Departments</option>
-            {departments.map(d => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
+          <AppDropdown
+                value={filterDept}
+                onChange={v => setFilterDept(v)}
+                options={[{value:'All Departments',label:'All Departments'}]}
+                size="sm"
+              />
           <button 
             disabled={!canCreate('appraisals')}
             onClick={() => {

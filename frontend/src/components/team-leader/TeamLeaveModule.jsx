@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 
@@ -133,29 +134,12 @@ export function TeamLeaveModule() {
             </div>
 
             {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={{
-                height: '40px',
-                padding: '0 12px',
-                borderRadius: '10px',
-                border: '1.5px solid #E2E8F0',
-                fontSize: '13px',
-                fontWeight: '600',
-                color: '#334155',
-                background: '#F8FAFC',
-                outline: 'none',
-                cursor: 'pointer',
-                fontFamily: "'Inter', sans-serif",
-                minWidth: '140px',
-              }}
-            >
-              <option value="All">All Statuses</option>
-              <option value="Pending">Pending</option>
-              <option value="Approved">Approved</option>
-              <option value="Rejected">Rejected</option>
-            </select>
+            <AppDropdown
+                value={statusFilter}
+                onChange={v => setStatusFilter(v)}
+                options={[{value:'All',label:'All Statuses'},{value:'Pending',label:'Pending'},{value:'Approved',label:'Approved'},{value:'Rejected',label:'Rejected'}]}
+                size="sm"
+              />
           </div>
         </div>
 

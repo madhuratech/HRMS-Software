@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { usePermissions } from '../../context/PermissionContext';
 import { 
   Search, Plus, Receipt, CheckCircle2, XCircle, DollarSign, 
   Loader2, AlertCircle, Check, X, ShieldCheck 
@@ -8,6 +10,7 @@ import {
 
 export default function Reimbursements() {
   const { addToast } = useToast();
+  const { canCreate, canEdit } = usePermissions();
   const [claims, setClaims] = useState([]);
   const [activeEmployees, setActiveEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -147,15 +150,17 @@ export default function Reimbursements() {
           <h1 style={{ margin: '0 0 4px 0', fontSize: '22px', fontWeight: '700', color: '#1E293B' }}>Expense Reimbursements</h1>
           <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>Employee business expense claims and automated reimbursement via monthly payroll</p>
         </div>
-        <button
-          onClick={() => {
-            setEmployeeId(activeEmployees[0]?.id || '');
-            setShowModal(true);
-          }}
-          style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}
-        >
-          <Plus size={16} /> Add Expense Claim
-        </button>
+        {canCreate('payroll', 'reimbursements') && (
+          <button
+            onClick={() => {
+              setEmployeeId(activeEmployees[0]?.id || '');
+              setShowModal(true);
+            }}
+            style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}
+          >
+            <Plus size={16} /> Add Expense Claim
+          </button>
+        )}
       </div>
 
       {/* KPI Cards */}
@@ -213,7 +218,9 @@ export default function Reimbursements() {
                   <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Amount</th>
                   <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Claim Date</th>
                   <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'center' }}>Payroll Status</th>
-                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'right' }}>Actions</th>
+                  {canEdit('payroll', 'reimbursements') && (
+                    <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'right' }}>Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -244,28 +251,30 @@ export default function Reimbursements() {
                         {row.status === 'Processed' ? '✓ Processed in Payroll' : row.status || 'Pending'}
                       </span>
                     </td>
-                    <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                      {row.status !== 'Processed' && (
-                        <div style={{ display: 'inline-flex', gap: '6px' }}>
-                          {row.status !== 'Approved' && (
-                            <button
-                              onClick={() => handleUpdateStatus(row.id, 'Approved')}
-                              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #A7F3D0', background: '#ECFDF5', color: '#059669', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
-                            >
-                              <Check size={12} /> Approve
-                            </button>
-                          )}
-                          {row.status !== 'Rejected' && (
-                            <button
-                              onClick={() => handleUpdateStatus(row.id, 'Rejected')}
-                              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
-                            >
-                              <X size={12} /> Reject
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </td>
+                    {canEdit('payroll', 'reimbursements') && (
+                      <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                        {row.status !== 'Processed' && (
+                          <div style={{ display: 'inline-flex', gap: '6px' }}>
+                            {row.status !== 'Approved' && (
+                              <button
+                                onClick={() => handleUpdateStatus(row.id, 'Approved')}
+                                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #A7F3D0', background: '#ECFDF5', color: '#059669', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+                              >
+                                <Check size={12} /> Approve
+                              </button>
+                            )}
+                            {row.status !== 'Rejected' && (
+                              <button
+                                onClick={() => handleUpdateStatus(row.id, 'Rejected')}
+                                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+                              >
+                                <X size={12} /> Reject
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -275,7 +284,7 @@ export default function Reimbursements() {
       </div>
 
       {/* Modal: Add Reimbursement Claim */}
-      {showModal && (
+      {showModal && canCreate('payroll', 'reimbursements') && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)' }}>
           <div style={{ width: '520px', maxWidth: '95vw', background: '#FFFFFF', borderRadius: '20px', boxShadow: '0 25px 60px -12px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
             
@@ -295,19 +304,12 @@ export default function Reimbursements() {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                   Select Employee <span style={{ color: '#EF4444' }}>*</span>
                 </label>
-                <select
-                  required
-                  value={employeeId}
-                  onChange={e => setEmployeeId(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                >
-                  <option value="">-- Choose Employee --</option>
-                  {activeEmployees.map(e => (
-                    <option key={e.id} value={e.id}>
-                      {e.name} ({e.employee_id || `EMP${e.id}`}) • {e.department || 'General'}
-                    </option>
-                  ))}
-                </select>
+                <AppDropdown
+                value={employeeId}
+                onChange={v => setEmployeeId(v)}
+                options={[{value:'',label:'-- Choose Employee --'}]}
+                size="sm"
+              />
               </div>
 
               <div>

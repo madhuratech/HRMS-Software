@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { Search, ChevronDown, Plus, Eye, FileText, Clock, CheckCircle, AlertCircle, ArrowUpRight, ArrowDownRight, X } from 'lucide-react';
 
@@ -120,32 +121,13 @@ export default function HelpDeskTickets() {
 
           {/* Department Dropdown */}
           <div style={{ position: 'relative' }}>
-            <select style={{
-              appearance: 'none', WebkitAppearance: 'none', height: 38,
-              paddingLeft: 14, paddingRight: 32, background: '#FFF',
-              border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#374151', cursor: 'pointer', outline: 'none',
-            }}>
-              <option>All Departments</option>
-              <option>IT Support</option>
-              <option>HR Support</option>
-              <option>Payroll</option>
-            </select>
+            <AppDropdown options={[{value:'All Departments',label:'All Departments'},{value:'IT Support',label:'IT Support'},{value:'HR Support',label:'HR Support'},{value:'Payroll',label:'Payroll'}]} size="sm" />
             <ChevronDown size={13} color="#6B7280" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
 
           {/* Status Dropdown */}
           <div style={{ position: 'relative' }}>
-            <select style={{
-              appearance: 'none', WebkitAppearance: 'none', height: 38,
-              paddingLeft: 14, paddingRight: 32, background: '#FFF',
-              border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#374151', cursor: 'pointer', outline: 'none',
-            }}>
-              <option>All Status</option>
-              <option>Open</option>
-              <option>In Progress</option>
-              <option>Pending</option>
-              <option>Resolved</option>
-            </select>
+            <AppDropdown options={[{value:'All Status',label:'All Status'},{value:'Open',label:'Open'},{value:'In Progress',label:'In Progress'},{value:'Pending',label:'Pending'},{value:'Resolved',label:'Resolved'}]} size="sm" />
             <ChevronDown size={13} color="#6B7280" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
 
@@ -261,32 +243,30 @@ export default function HelpDeskTickets() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Department <span className="text-red-500">*</span></label>
-                  <select required value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Department</option>
-                    <option value="IT Support">IT Support</option>
-                    <option value="HR Support">HR Support</option>
-                    <option value="Payroll">Payroll</option>
-                    <option value="Facilities">Facilities</option>
-                  </select>
+                  <AppDropdown
+                value={formData.department}
+                onChange={v => setFormData({ ...formData, department: v })}
+                options={[{value:'',label:'Select Department'},{value:'IT Support',label:'IT Support'},{value:'HR Support',label:'HR Support'},{value:'Payroll',label:'Payroll'},{value:'Facilities',label:'Facilities'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Category <span className="text-red-500">*</span></label>
-                  <select required value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Help Desk Category</option>
-                    <option value="IT Support">IT Hardware & Software</option>
-                    <option value="Payroll">Payroll & Tax Queries</option>
-                    <option value="Leave & Attendance">Leave & Attendance</option>
-                    <option value="HR Support">HR General Requests</option>
-                  </select>
+                  <AppDropdown
+                value={formData.category}
+                onChange={v => setFormData({ ...formData, category: v })}
+                options={[{value:'',label:'Select Help Desk Category'},{value:'IT Support',label:'IT Hardware & Software'},{value:'Payroll',label:'Payroll & Tax Queries'},{value:'Leave & Attendance',label:'Leave & Attendance'},{value:'HR Support',label:'HR General Requests'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Priority</label>
-                  <select value={formData.priority} onChange={e => setFormData({ ...formData, priority: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                    <option value="Critical">Critical</option>
-                  </select>
+                  <AppDropdown
+                value={formData.priority}
+                onChange={v => setFormData({ ...formData, priority: v })}
+                options={[{value:'High',label:'High'},{value:'Medium',label:'Medium'},{value:'Low',label:'Low'},{value:'Critical',label:'Critical'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Assigned To <span className="text-red-500">*</span></label>
@@ -298,13 +278,12 @@ export default function HelpDeskTickets() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Open">Open</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Resolved">Resolved</option>
-                    <option value="Closed">Closed</option>
-                  </select>
+                  <AppDropdown
+                value={formData.status}
+                onChange={v => setFormData({ ...formData, status: v })}
+                options={[{value:'Open',label:'Open'},{value:'In Progress',label:'In Progress'},{value:'Pending',label:'Pending'},{value:'Resolved',label:'Resolved'},{value:'Closed',label:'Closed'}]}
+                size="sm"
+              />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Description <span className="text-red-500">*</span></label>

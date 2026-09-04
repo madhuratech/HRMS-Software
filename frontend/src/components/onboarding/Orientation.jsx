@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Calendar, CheckCircle, Users, Percent, Plus, Info, Shield, CheckSquare, Presentation, X, Clock, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useToast } from '../ui/Toast';
+import { hasPermission } from '../../lib/permissions';
 
 export default function Orientation() {
   const { addToast } = useToast();
@@ -262,15 +264,19 @@ export default function Orientation() {
           <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Schedule sessions, configure templates and onboarding tasks</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button onClick={() => setShowTaskModal(true)} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
-            <CheckSquare size={16} /> Add Task
-          </button>
-          <button onClick={() => setShowTemplateModal(true)} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
-            <Plus size={16} /> Add Template
-          </button>
-          <button onClick={() => setShowScheduleModal(true)} style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
-            <Calendar size={16} /> Schedule Orientation
-          </button>
+          {hasPermission('onboarding', 'orientation', 'create') && (
+            <>
+              <button onClick={() => setShowTaskModal(true)} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+                <CheckSquare size={16} /> Add Task
+              </button>
+              <button onClick={() => setShowTemplateModal(true)} style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+                <Plus size={16} /> Add Template
+              </button>
+              <button onClick={() => setShowScheduleModal(true)} style={{ padding: '10px 16px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+                <Calendar size={16} /> Schedule Orientation
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -457,17 +463,12 @@ export default function Orientation() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">New Joiner <span className="text-red-500">*</span></label>
-                  <select 
-                    required 
-                    value={formData.new_joiner_id} 
-                    onChange={e => setFormData({ ...formData, new_joiner_id: e.target.value })} 
-                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
-                  >
-                    <option value="">Select Onboarding Joiner</option>
-                    {eligibleJoiners.map(j => (
-                      <option key={j.id} value={j.id}>{j.employee_name} ({j.designation})</option>
-                    ))}
-                  </select>
+                  <AppDropdown
+                value={formData.new_joiner_id}
+                onChange={v => setFormData({ ...formData, new_joiner_id: v })}
+                options={[{value:'',label:'Select Onboarding Joiner'}]}
+                size="sm"
+              />
                 </div>
 
                 {selectedJoiner && (
@@ -499,11 +500,12 @@ export default function Orientation() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Session Type <span className="text-red-500">*</span></label>
-                  <select value={formData.session_type} onChange={e => setFormData({ ...formData, session_type: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Offline">Offline (Office Conference)</option>
-                    <option value="Online">Online (Zoom / Meet)</option>
-                    <option value="Hybrid">Hybrid</option>
-                  </select>
+                  <AppDropdown
+                value={formData.session_type}
+                onChange={v => setFormData({ ...formData, session_type: v })}
+                options={[{value:'Offline',label:'Offline (Office Conference)'},{value:'Online',label:'Online (Zoom / Meet)'},{value:'Hybrid',label:'Hybrid'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Venue / Location</label>
@@ -559,10 +561,12 @@ export default function Orientation() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={templateForm.status} onChange={e => setTemplateForm({ ...templateForm, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
+                  <AppDropdown
+                value={templateForm.status}
+                onChange={v => setTemplateForm({ ...templateForm, status: v })}
+                options={[{value:'Active',label:'Active'},{value:'Inactive',label:'Inactive'}]}
+                size="sm"
+              />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Description <span className="text-red-500">*</span></label>
@@ -612,11 +616,12 @@ export default function Orientation() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Priority</label>
-                  <select value={taskForm.priority} onChange={e => setTaskForm({ ...taskForm, priority: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                  </select>
+                  <AppDropdown
+                value={taskForm.priority}
+                onChange={v => setTaskForm({ ...taskForm, priority: v })}
+                options={[{value:'High',label:'High'},{value:'Medium',label:'Medium'},{value:'Low',label:'Low'}]}
+                size="sm"
+              />
                 </div>
               </div>
               <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">

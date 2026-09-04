@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { getAvatarUrl } from '../../lib/utils';
 import { Search, Filter, Download, Calendar as CalendarIcon, Edit2, Eye, ChevronDown, Check, X, Plus } from 'lucide-react';
@@ -262,15 +263,7 @@ export default function Regularization() {
             <form onSubmit={handleCreateRequest} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
               <div>
                 <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Employee</label>
-                <select
-                  value={formData.employee_id}
-                  onChange={(e) => setFormData({ ...formData, employee_id: e.target.value })}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #CBD5E1', borderRadius: 8, fontSize: 14, color: '#0F172A', outline: 'none' }}
-                >
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.dept || 'Employee'})</option>
-                  ))}
-                </select>
+                <AppDropdown value={formData.employee_id} options={[, ...(employees || [])]} size="sm" />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
@@ -285,17 +278,12 @@ export default function Regularization() {
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Type</label>
-                  <select
-                    value={formData.type}
-                    onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #CBD5E1', borderRadius: 8, fontSize: 14, color: '#0F172A', outline: 'none' }}
-                  >
-                    <option value="Late Arrival">Late Arrival</option>
-                    <option value="Early Exit">Early Exit</option>
-                    <option value="Missed Punch">Missed Punch</option>
-                    <option value="On-Duty">On-Duty</option>
-                    <option value="Absent">Absent</option>
-                  </select>
+                  <AppDropdown
+                value={formData.type}
+                onChange={v => setFormData({ ...formData, type: v })}
+                options={[{value:'Late Arrival',label:'Late Arrival'},{value:'Early Exit',label:'Early Exit'},{value:'Missed Punch',label:'Missed Punch'},{value:'On-Duty',label:'On-Duty'},{value:'Absent',label:'Absent'}]}
+                size="sm"
+              />
                 </div>
               </div>
 

@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { UserCheck, Clock, AlertTriangle, Award, Plus, Search, ChevronLeft, ChevronRight, X, MoreHorizontal } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Label } from 'recharts';
 import { useToast } from '../ui/Toast';
+import { hasPermission } from '../../lib/permissions';
 
 export default function Probation() {
   const { addToast } = useToast();
@@ -260,17 +262,12 @@ export default function Probation() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Employee <span className="text-red-500">*</span></label>
-                  <select 
-                    required 
-                    value={formData.employee_id} 
-                    onChange={e => setFormData({ ...formData, employee_id: e.target.value })} 
-                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
-                  >
-                    <option value="">Select Employee</option>
-                    {employees.map(e => (
-                      <option key={e.id} value={e.id}>{e.name} (EMP{String(e.id).padStart(3, '0')})</option>
-                    ))}
-                  </select>
+                  <AppDropdown
+                value={formData.employee_id}
+                onChange={v => setFormData({ ...formData, employee_id: v })}
+                options={[{value:'',label:'Select Employee'}]}
+                size="sm"
+              />
                 </div>
 
                 {selectedEmployee && (
@@ -294,21 +291,21 @@ export default function Probation() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Probation Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Due for Review">Due for Review</option>
-                    <option value="Confirmed">Confirmed</option>
-                    <option value="Extended">Extended</option>
-                  </select>
+                  <AppDropdown
+                value={formData.status}
+                onChange={v => setFormData({ ...formData, status: v })}
+                options={[{value:'Due for Review',label:'Due for Review'},{value:'Confirmed',label:'Confirmed'},{value:'Extended',label:'Extended'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Rating</label>
-                  <select value={formData.rating} onChange={e => setFormData({ ...formData, rating: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="5 - Outstanding">5 - Outstanding</option>
-                    <option value="4 - Exceeds Expectations">4 - Exceeds Expectations</option>
-                    <option value="3 - Satisfactory">3 - Satisfactory</option>
-                    <option value="2 - Needs Improvement">2 - Needs Improvement</option>
-                    <option value="1 - Unsatisfactory">1 - Unsatisfactory</option>
-                  </select>
+                  <AppDropdown
+                value={formData.rating}
+                onChange={v => setFormData({ ...formData, rating: v })}
+                options={[{value:'5 - Outstanding',label:'5 - Outstanding'},{value:'4 - Exceeds Expectations',label:'4 - Exceeds Expectations'},{value:'3 - Satisfactory',label:'3 - Satisfactory'},{value:'2 - Needs Improvement',label:'2 - Needs Improvement'},{value:'1 - Unsatisfactory',label:'1 - Unsatisfactory'}]}
+                size="sm"
+              />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Performance Assessment & Remarks</label>
@@ -333,9 +330,11 @@ export default function Probation() {
           <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Track probation period and confirmations</p>
         </div>
         <div>
-          <button onClick={() => setShowAddModal(true)} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
-            <Plus size={18} /> Add Probation
-          </button>
+          {hasPermission('onboarding', 'probation', 'create') && (
+            <button onClick={() => setShowAddModal(true)} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+              <Plus size={18} /> Add Probation
+            </button>
+          )}
         </div>
       </div>
 

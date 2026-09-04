@@ -22,12 +22,31 @@ pool.on('error', (err) => {
 
 // Export a wrapper that mimics the single connection interface but uses the pool
 const db = {
+  pool,
   query: (sql, params, callback) => {
     if (typeof params === 'function') {
       callback = params;
       params = [];
     }
     return pool.query(sql, params, callback);
+  },
+  getConnection: (callback) => {
+    return pool.getConnection(callback);
+  },
+  withTransaction: async (workFn) => {
+    const promisePool = pool.promise();
+    const conn = await promisePool.getConnection();
+    await conn.beginTransaction();
+    try {
+      const result = await workFn(conn);
+      await conn.commit();
+      return result;
+    } catch (err) {
+      await conn.rollback();
+      throw err;
+    } finally {
+      conn.release();
+    }
   },
   beginTransaction: (callback) => {
     if (typeof callback === 'function') callback(null);

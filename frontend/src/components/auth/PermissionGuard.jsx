@@ -6,7 +6,7 @@ import { hasPermission as globalHasPermission } from '../../lib/permissions';
 
 export function PermissionGuard({ moduleKey, module, submoduleKey = null, action = 'view', inline = false, fallback = null, children }) {
   const navigate = useNavigate();
-  const { userRole, loadingPermissions } = usePermissions();
+  const { userRole, permissions, loadingPermissions, hasPermission } = usePermissions();
 
   const modName = module || moduleKey;
 
@@ -23,7 +23,10 @@ export function PermissionGuard({ moduleKey, module, submoduleKey = null, action
     );
   }
 
-  const allowed = isAdmin || globalHasPermission(modName, action);
+  const allowed = isAdmin || 
+    (hasPermission && hasPermission(modName, submoduleKey, action)) ||
+    globalHasPermission(permissions, userRole, modName, submoduleKey, action) ||
+    globalHasPermission(modName, submoduleKey, action);
 
   if (!allowed) {
     if (inline || fallback !== null) {
@@ -37,7 +40,7 @@ export function PermissionGuard({ moduleKey, module, submoduleKey = null, action
           </div>
           <h2 className="text-2xl font-bold text-slate-800 mb-2">Access Denied</h2>
           <p className="text-slate-600 mb-6">
-            You do not have permission to perform this action ({action.toUpperCase()}). Please contact your administrator.
+            You do not have permission to access {submoduleKey || modName} ({action.toUpperCase()}). Please contact your administrator.
           </p>
           <button
             onClick={() => navigate(-1)}

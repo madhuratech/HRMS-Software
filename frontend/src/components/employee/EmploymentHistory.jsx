@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { User } from 'lucide-react';
 import './employee-module.css';
 
@@ -65,25 +66,7 @@ export default function EmploymentHistory() {
         }}>
           <User size={16} color="#475569" />
           <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>Select Employee:</span>
-          <select
-            value={currentEmpId}
-            onChange={(e) => handleEmployeeSelect(e.target.value)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              fontSize: '13px',
-              fontWeight: 700,
-              color: '#0F172A',
-              outline: 'none',
-              cursor: 'pointer'
-            }}
-          >
-            {allEmployees.map(emp => (
-              <option key={emp.id} value={emp.id}>
-                {emp.name} ({emp.employeeCode || `EMP00${emp.id}`}) {emp.status === 'Terminated' ? '• Terminated' : ''}
-              </option>
-            ))}
-          </select>
+          <AppDropdown value={currentEmpId} options={[, ...(allEmployees || [])]} size="sm" />
         </div>
       </div>
 

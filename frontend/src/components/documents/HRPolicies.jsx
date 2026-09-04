@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Plus, Eye, Download, FileText, CheckCircle, Clock, AlertCircle, Archive, X } from 'lucide-react';
 import { apiFetch, formatDate } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { hasPermission } from '../../lib/permissions';
 
 export function HRPolicies() {
   const { addToast } = useToast();
@@ -134,12 +136,14 @@ export function HRPolicies() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button onClick={() => setShowAddModal(true)} style={{
-            display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
-            background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
-          }}>
-            <Plus size={16} /> Add Policy
-          </button>
+          {hasPermission('documents', 'doc_policies', 'create') && (
+            <button onClick={() => setShowAddModal(true)} style={{
+              display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
+              background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
+            }}>
+              <Plus size={16} /> Add Policy
+            </button>
+          )}
         </div>
       </div>
 
@@ -215,9 +219,11 @@ export function HRPolicies() {
                       </span>
                     </td>
                     <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
-                      <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
-                        Delete
-                      </button>
+                      {hasPermission('documents', 'doc_policies', 'delete') && (
+                        <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
+                          Delete
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -229,7 +235,7 @@ export function HRPolicies() {
       </div>
 
       {/* Add Policy Modal */}
-      {showAddModal && (
+      {showAddModal && hasPermission('documents', 'doc_policies', 'create') && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
           <div className="modal-centered-content" style={{ width: '600px', maxWidth: '90vw', maxHeight: '90vh' }}>
@@ -250,13 +256,12 @@ export function HRPolicies() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Category <span className="text-red-500">*</span></label>
-                  <select required value={formData.category} onChange={e => setFormData({ ...formData, category: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-white">
-                    <option value="HR Policies">HR Policies</option>
-                    <option value="Leave Policies">Leave Policies</option>
-                    <option value="Work Policies">Work Policies</option>
-                    <option value="Code of Conduct">Code of Conduct</option>
-                    <option value="Compensation">Compensation</option>
-                  </select>
+                  <AppDropdown
+                value={formData.category}
+                onChange={v => setFormData({ ...formData, category: v })}
+                options={[{value:'HR Policies',label:'HR Policies'},{value:'Leave Policies',label:'Leave Policies'},{value:'Work Policies',label:'Work Policies'},{value:'Code of Conduct',label:'Code of Conduct'},{value:'Compensation',label:'Compensation'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Version</label>
@@ -268,12 +273,12 @@ export function HRPolicies() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-white">
-                    <option value="Draft">Draft</option>
-                    <option value="Under Review">Under Review</option>
-                    <option value="Published">Published</option>
-                    <option value="Archived">Archived</option>
-                  </select>
+                  <AppDropdown
+                value={formData.status}
+                onChange={v => setFormData({ ...formData, status: v })}
+                options={[{value:'Draft',label:'Draft'},{value:'Under Review',label:'Under Review'},{value:'Published',label:'Published'},{value:'Archived',label:'Archived'}]}
+                size="sm"
+              />
                 </div>
               </div>
               <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">

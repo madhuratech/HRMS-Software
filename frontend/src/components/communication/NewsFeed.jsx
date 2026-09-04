@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import {
   Search,
@@ -213,17 +214,12 @@ export function NewsFeed() {
 
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">Category</label>
-                <select
-                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                <AppDropdown
                 value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}>
-                
-                  <option value="GENERAL">General</option>
-                  <option value="URGENT">Urgent</option>
-                  <option value="HR">HR</option>
-                  <option value="SALES">Sales</option>
-                  <option value="SERVICE">Service</option>
-                </select>
+                onChange={v => setNewCategory(v)}
+                options={[{value:'GENERAL',label:'General'},{value:'URGENT',label:'Urgent'},{value:'HR',label:'HR'},{value:'SALES',label:'Sales'},{value:'SERVICE',label:'Service'}]}
+                size="sm"
+              />
               </div>
 
               <div>

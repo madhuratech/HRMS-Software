@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { useNavigate } from 'react-router-dom';
 import {
   Search, Download, Plus, Mail, Phone,
@@ -78,32 +79,24 @@ export default function EmployeeDirectory() {
               />
             </div>
           </div>
-          <select 
-            className="hrms-select"
-            value={departmentFilter}
-            onChange={(e) => setDepartmentFilter(e.target.value)}
-          >
-            <option value="">Department</option>
-            {uniqueDepts.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <select 
-            className="hrms-select"
-            value={designationFilter}
-            onChange={(e) => setDesignationFilter(e.target.value)}
-          >
-            <option value="">Designation</option>
-            {uniqueDesgs.map(d => <option key={d} value={d}>{d}</option>)}
-          </select>
-          <select 
-            className="hrms-select"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">Status</option>
-            <option value="Active">Active</option>
-            <option value="Inactive">Inactive</option>
-            <option value="Terminated">Terminated</option>
-          </select>
+          <AppDropdown
+                value={departmentFilter}
+                onChange={v => setDepartmentFilter(v)}
+                options={[{value:'',label:'Department'}]}
+                size="sm"
+              />
+          <AppDropdown
+                value={designationFilter}
+                onChange={v => setDesignationFilter(v)}
+                options={[{value:'',label:'Designation'}]}
+                size="sm"
+              />
+          <AppDropdown
+                value={statusFilter}
+                onChange={v => setStatusFilter(v)}
+                options={[{value:'',label:'Status'},{value:'Active',label:'Active'},{value:'Inactive',label:'Inactive'},{value:'Terminated',label:'Terminated'}]}
+                size="sm"
+              />
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
           <button className="hrms-secondary-btn" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Download size={16} /> Export</button>

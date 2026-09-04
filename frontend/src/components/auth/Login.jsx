@@ -15,7 +15,7 @@ export function Login({ onLogin, onRegisterClick }) {
   const handleRoleClick = (type, emailPreset) => {
     setLoginType(type);
     setEmail(emailPreset);
-    setPassword('password123');
+    setPassword('Admin@123');
     setErrorMsg('');
   };
 
@@ -33,7 +33,12 @@ export function Login({ onLogin, onRegisterClick }) {
 
       if (data && data.success && data.user) {
         // Backend resolved the actual role and employee ID
-        onLogin(data.user.role, data.user.name, data.user);
+        const userPayload = {
+          ...data.user,
+          token: data.token,
+          permissions: data.permissions
+        };
+        onLogin(data.user.role, data.user.name, userPayload);
         return;
       } else if (data && data.message && !data.message.toLowerCase().includes('fetch') && !data.message.toLowerCase().includes('network')) {
         setErrorMsg(data.message);
@@ -57,7 +62,7 @@ export function Login({ onLogin, onRegisterClick }) {
             finalName = 'Dhilipan P';
             finalId = 11;
           } else if (e2.includes('hr') || e2.includes('branch') || e2.includes('manager')) {
-            finalRole = 'BRANCH_MANAGER';
+            finalRole = 'HR_MANAGER';
             finalName = 'HR Manager';
             finalId = 2;
           } else {

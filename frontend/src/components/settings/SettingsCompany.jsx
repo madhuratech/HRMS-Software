@@ -1,4 +1,5 @@
 import React from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Save, RotateCcw, Building2, MapPin, Users, CheckCircle2 } from 'lucide-react';
 
 const KpiCard = ({ label, value, iconBg, iconColor, icon: Icon }) => (
@@ -112,25 +113,17 @@ export function SettingsCompany() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginTop: 16 }}>
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Currency</label>
-              <select style={{ width: '100%', height: 38, padding: '0 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#111827', boxSizing: 'border-box' }}>
-                <option>INR (₹)</option>
-                <option>USD ($)</option>
-              </select>
+              <AppDropdown options={[{value:'INR (₹)',label:'INR (₹)'},{value:'USD ($)',label:'USD ($)'}]} size="sm" />
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Time Zone</label>
-              <select style={{ width: '100%', height: 38, padding: '0 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#111827', boxSizing: 'border-box' }}>
-                <option>(UTC+05:30) IST - Kolkata</option>
-              </select>
+              <AppDropdown options={[{value:'(UTC+05:30) IST - Kolkata',label:'(UTC+05:30) IST - Kolkata'}]} size="sm" />
             </div>
 
             <div>
               <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Financial Year Start</label>
-              <select style={{ width: '100%', height: 38, padding: '0 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#111827', boxSizing: 'border-box' }}>
-                <option>April 1st</option>
-                <option>January 1st</option>
-              </select>
+              <AppDropdown options={[{value:'April 1st',label:'April 1st'},{value:'January 1st',label:'January 1st'}]} size="sm" />
             </div>
           </div>
         </div>

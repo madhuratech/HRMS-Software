@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, Eye, Download, FileText, CheckCircle, Clock, AlertCircle, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Label } from 'recharts';
 import { useToast } from '../ui/Toast';
+import { hasPermission } from '../../lib/permissions';
 
 export default function DocumentVerification() {
   const { addToast } = useToast();
@@ -281,9 +283,11 @@ export default function DocumentVerification() {
           <h1 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '700', color: '#1E293B' }}>Document Verification</h1>
           <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Verify and track employee documents</p>
         </div>
-        <button onClick={handleOpenAdd} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
-          <Plus size={18} /> Initiate Verification
-        </button>
+        {hasPermission('onboarding', 'document_verification', 'create') && (
+          <button onClick={handleOpenAdd} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+            <Plus size={18} /> Initiate Verification
+          </button>
+        )}
       </div>
 
       {/* Tabs */}
@@ -314,16 +318,12 @@ export default function DocumentVerification() {
           
           {/* Toolbar */}
           <div style={{ display: 'flex', gap: '16px' }}>
-            <select 
-              value={filterDept} 
-              onChange={e => setFilterDept(e.target.value)} 
-              style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '13px', color: '#334155', outline: 'none', cursor: 'pointer', minWidth: '160px' }}
-            >
-              <option value="All Departments">All Departments</option>
-              {departments.map(d => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
+            <AppDropdown
+                value={filterDept}
+                onChange={v => setFilterDept(v)}
+                options={[{value:'All Departments',label:'All Departments'}]}
+                size="sm"
+              />
             <div style={{ position: 'relative', flex: 1 }}>
               <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input 
@@ -489,7 +489,7 @@ export default function DocumentVerification() {
       </div>
 
       {/* Verification Review Modal (1100px Standard) */}
-      {showModal && (
+      {showModal && (selectedVerification ? hasPermission('onboarding', 'document_verification', 'edit') : hasPermission('onboarding', 'document_verification', 'create')) && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowModal(false)} />
           <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
@@ -512,17 +512,12 @@ export default function DocumentVerification() {
                   {selectedVerification ? (
                     <input type="text" readOnly value={selectedVerification.employee_name} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-slate-50 outline-none" />
                   ) : (
-                    <select 
-                      required 
-                      value={formJoinerId} 
-                      onChange={e => setFormJoinerId(e.target.value)} 
-                      className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
-                    >
-                      <option value="">Select Onboarding Joiner</option>
-                      {newJoiners.map(j => (
-                        <option key={j.id} value={j.id}>{j.employee_name} ({j.designation})</option>
-                      ))}
-                    </select>
+                    <AppDropdown
+                value={formJoinerId}
+                onChange={v => setFormJoinerId(v)}
+                options={[{value:'',label:'Select Onboarding Joiner'}]}
+                size="sm"
+              />
                   )}
                 </div>
 
@@ -570,11 +565,12 @@ export default function DocumentVerification() {
 
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Overall Verification Status</label>
-                  <select value={formStatus} onChange={e => setFormStatus(e.target.value)} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Pending">Pending</option>
-                    <option value="Verified">Verified</option>
-                    <option value="Rejected">Rejected</option>
-                  </select>
+                  <AppDropdown
+                value={formStatus}
+                onChange={v => setFormStatus(v)}
+                options={[{value:'Pending',label:'Pending'},{value:'Verified',label:'Verified'},{value:'Rejected',label:'Rejected'}]}
+                size="sm"
+              />
                 </div>
               </div>
 

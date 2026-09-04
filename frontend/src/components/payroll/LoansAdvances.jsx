@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { usePermissions } from '../../context/PermissionContext';
 import { 
   Search, Plus, CreditCard, PiggyBank, CalendarClock, HandCoins, 
   Loader2, AlertCircle, CheckCircle2, X, Check, Clock 
@@ -8,6 +10,7 @@ import {
 
 export default function LoansAdvances() {
   const { addToast } = useToast();
+  const { canCreate, canEdit } = usePermissions();
   const [loans, setLoans] = useState([]);
   const [activeEmployees, setActiveEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -158,18 +161,20 @@ export default function LoansAdvances() {
           <h1 style={{ margin: '0 0 4px 0', fontSize: '22px', fontWeight: '700', color: '#1E293B' }}>Loans & Salary Advances</h1>
           <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>Employee loan disbursements, remaining balance tracking, and automated payroll EMI deductions</p>
         </div>
-        <button
-          onClick={() => {
-            setEmployeeId(activeEmployees[0]?.id || '');
-            setAmount('');
-            setTenure('12');
-            setEmi('');
-            setShowModal(true);
-          }}
-          style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}
-        >
-          <Plus size={16} /> New Loan / Advance
-        </button>
+        {canCreate('payroll', 'loans_advances') && (
+          <button
+            onClick={() => {
+              setEmployeeId(activeEmployees[0]?.id || '');
+              setAmount('');
+              setTenure('12');
+              setEmi('');
+              setShowModal(true);
+            }}
+            style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}
+          >
+            <Plus size={16} /> New Loan / Advance
+          </button>
+        )}
       </div>
 
       {/* KPI Cards */}
@@ -228,7 +233,9 @@ export default function LoansAdvances() {
                   <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Monthly EMI</th>
                   <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Remaining Balance</th>
                   <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'center' }}>Status</th>
-                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'right' }}>Actions</th>
+                  {canEdit('payroll', 'loans_advances') && (
+                    <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'right' }}>Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -264,18 +271,20 @@ export default function LoansAdvances() {
                           {row.status}
                         </span>
                       </td>
-                      <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                        <div style={{ display: 'inline-flex', gap: '6px' }}>
-                          {row.status !== 'Closed' && (
-                            <button
-                              onClick={() => handleUpdateStatus(row.id, row.status === 'Active' ? 'Paused' : 'Active')}
-                              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFF', color: '#475569', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}
-                            >
-                              {row.status === 'Active' ? 'Pause' : 'Activate'}
-                            </button>
-                          )}
-                        </div>
-                      </td>
+                      {canEdit('payroll', 'loans_advances') && (
+                        <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                          <div style={{ display: 'inline-flex', gap: '6px' }}>
+                            {row.status !== 'Closed' && (
+                              <button
+                                onClick={() => handleUpdateStatus(row.id, row.status === 'Active' ? 'Paused' : 'Active')}
+                                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#FFF', color: '#475569', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}
+                              >
+                                {row.status === 'Active' ? 'Pause' : 'Activate'}
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -286,7 +295,7 @@ export default function LoansAdvances() {
       </div>
 
       {/* Modal: New Loan / Advance */}
-      {showModal && (
+      {showModal && canCreate('payroll', 'loans_advances') && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)' }}>
           <div style={{ width: '520px', maxWidth: '95vw', background: '#FFFFFF', borderRadius: '20px', boxShadow: '0 25px 60px -12px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
             
@@ -306,19 +315,12 @@ export default function LoansAdvances() {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                   Select Employee <span style={{ color: '#EF4444' }}>*</span>
                 </label>
-                <select
-                  required
-                  value={employeeId}
-                  onChange={e => setEmployeeId(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                >
-                  <option value="">-- Choose Employee --</option>
-                  {activeEmployees.map(e => (
-                    <option key={e.id} value={e.id}>
-                      {e.name} ({e.employee_id || `EMP${e.id}`}) • {e.department || 'General'}
-                    </option>
-                  ))}
-                </select>
+                <AppDropdown
+                value={employeeId}
+                onChange={v => setEmployeeId(v)}
+                options={[{value:'',label:'-- Choose Employee --'}]}
+                size="sm"
+              />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -326,16 +328,12 @@ export default function LoansAdvances() {
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                     Loan / Advance Type <span style={{ color: '#EF4444' }}>*</span>
                   </label>
-                  <select
-                    value={type}
-                    onChange={e => setType(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                  >
-                    <option value="Personal Loan">Personal Loan</option>
-                    <option value="Salary Advance">Salary Advance</option>
-                    <option value="Home Loan">Home Loan</option>
-                    <option value="Emergency Medical Advance">Emergency Medical Advance</option>
-                  </select>
+                  <AppDropdown
+                value={type}
+                onChange={v => setType(v)}
+                options={[{value:'Personal Loan',label:'Personal Loan'},{value:'Salary Advance',label:'Salary Advance'},{value:'Home Loan',label:'Home Loan'},{value:'Emergency Medical Advance',label:'Emergency Medical Advance'}]}
+                size="sm"
+              />
                 </div>
 
                 <div>

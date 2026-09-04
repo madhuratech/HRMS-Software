@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { X, User, Phone, Car, Wrench, CheckCircle, PlayCircle } from 'lucide-react';
 
 
@@ -212,15 +213,12 @@ export function TaskDetailsModal({ task, onClose, onUpdate }) {
         <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-between items-center sticky bottom-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold text-slate-700">Status:</span>
-            <select
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              className="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none font-medium">
-              
-              <option value="PENDING">Pending</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="COMPLETED">Completed</option>
-            </select>
+            <AppDropdown
+                value={status}
+                onChange={v => setStatus(v)}
+                options={[{value:'PENDING',label:'Pending'},{value:'IN_PROGRESS',label:'In Progress'},{value:'COMPLETED',label:'Completed'}]}
+                size="sm"
+              />
           </div>
           
           <div className="flex gap-2">

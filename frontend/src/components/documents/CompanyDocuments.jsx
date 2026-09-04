@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, Download, Upload, Eye, FileText, CheckCircle, Folder, HardDrive, Clock, X } from 'lucide-react';
 import { apiFetch, formatDate, getAuthToken } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { hasPermission } from '../../lib/permissions';
 
 export function CompanyDocuments() {
   const { addToast } = useToast();
@@ -150,12 +152,14 @@ export function CompanyDocuments() {
             <input placeholder="Search documents..." value={search} onChange={e => setSearch(e.target.value)} style={{ height: 38, paddingLeft: 12, paddingRight: 12, border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, outline: 'none', background: '#fff' }} />
           </div>
 
-          <button onClick={() => setShowUploadModal(true)} style={{
-            display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
-            background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
-          }}>
-            <Upload size={16} /> Upload Document
-          </button>
+          {hasPermission('documents', 'doc_company', 'create') && (
+            <button onClick={() => setShowUploadModal(true)} style={{
+              display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
+              background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
+            }}>
+              <Upload size={16} /> Upload Document
+            </button>
+          )}
         </div>
       </div>
 
@@ -235,9 +239,11 @@ export function CompanyDocuments() {
                           </>
                         );
                       })()}
-                      <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
-                        Delete
-                      </button>
+                      {hasPermission('documents', 'doc_company', 'delete') && (
+                        <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
+                          Delete
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -248,7 +254,7 @@ export function CompanyDocuments() {
       </div>
 
       {/* Upload Modal */}
-      {showUploadModal && (
+      {showUploadModal && hasPermission('documents', 'doc_company', 'create') && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowUploadModal(false)} />
           <div className="modal-centered-content" style={{ width: '600px', maxWidth: '90vw', maxHeight: '90vh' }}>
@@ -265,10 +271,12 @@ export function CompanyDocuments() {
               <div className="grid grid-cols-1 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Company <span className="text-red-500">*</span></label>
-                  <select required value={formData.company_id} onChange={e => setFormData({ ...formData, company_id: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-white">
-                    <option value="">Select Company</option>
-                    {meta.companies.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <AppDropdown
+                value={formData.company_id}
+                onChange={v => setFormData({ ...formData, company_id: v })}
+                options={[{value:'',label:'Select Company'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Document Name <span className="text-red-500">*</span></label>
@@ -276,13 +284,12 @@ export function CompanyDocuments() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Category <span className="text-red-500">*</span></label>
-                  <select required value={formData.document_category} onChange={e => setFormData({ ...formData, document_category: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-white">
-                    <option value="Legal">Legal</option>
-                    <option value="Finance">Finance</option>
-                    <option value="Operations">Operations</option>
-                    <option value="Compliance">Compliance</option>
-                    <option value="Reports">Reports</option>
-                  </select>
+                  <AppDropdown
+                value={formData.document_category}
+                onChange={v => setFormData({ ...formData, document_category: v })}
+                options={[{value:'Legal',label:'Legal'},{value:'Finance',label:'Finance'},{value:'Operations',label:'Operations'},{value:'Compliance',label:'Compliance'},{value:'Reports',label:'Reports'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Upload File <span className="text-red-500">*</span></label>
@@ -290,10 +297,12 @@ export function CompanyDocuments() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-white">
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
+                  <AppDropdown
+                value={formData.status}
+                onChange={v => setFormData({ ...formData, status: v })}
+                options={[{value:'Active',label:'Active'},{value:'Inactive',label:'Inactive'}]}
+                size="sm"
+              />
                 </div>
               </div>
               <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">

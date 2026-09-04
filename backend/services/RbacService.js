@@ -311,7 +311,12 @@ class RbacService {
   }
 
   static async getRolePermissions(roleKey) {
-    const keyUpper = (roleKey || 'EMPLOYEE').toUpperCase();
+    let keyUpper = (roleKey || 'EMPLOYEE').trim().toUpperCase().replace(/[\s-]+/g, '_');
+    if (['ADMIN', 'SUPER_ADMIN', 'SUPERADMIN'].includes(keyUpper)) keyUpper = 'SUPER_ADMIN';
+    else if (['HR', 'HR_MANAGER', 'HR_ADMIN', 'BRANCH_MANAGER'].includes(keyUpper)) keyUpper = 'HR_MANAGER';
+    else if (['TEAM_LEADER', 'TEAM_LEAD', 'LEAD'].includes(keyUpper)) keyUpper = 'TEAM_LEADER';
+    else if (['EMPLOYEE', 'STAFF', 'SERVICE_STAFF', 'SALES_MANAGER'].includes(keyUpper)) keyUpper = 'EMPLOYEE';
+
     const permissions = await new Promise((resolve, reject) => {
       const sql = `SELECT * FROM role_permissions WHERE UPPER(role_key) = ?`;
       db.query(sql, [keyUpper], (err, rows) => {
@@ -339,16 +344,16 @@ class RbacService {
     const getDefaultSubmoduleView = (mKey, sKey) => {
       if (keyUpper === 'SUPER_ADMIN' || keyUpper === 'ADMIN') return true;
       if (keyUpper === 'HR_MANAGER' || keyUpper === 'HR') {
-        return ['dashboard', 'organization', 'employees', 'attendance', 'leave', 'recruitment', 'onboarding', 'performance', 'reports', 'documents', 'helpdesk'].includes(mKey);
+        return ['dashboard', 'organization', 'employees', 'attendance', 'leave', 'payroll', 'recruitment', 'onboarding', 'performance', 'reports', 'expenses', 'documents', 'helpdesk', 'settings'].includes(mKey);
       }
       if (keyUpper === 'TEAM_LEADER') {
-        if (sKey === 'leave_approval') return true;
+        if (sKey === 'leave_approval' || sKey === 'comp_off' || sKey === 'employee_directory' || sKey === 'employee_profile' || sKey === 'tasks' || sKey === 'projects_list' || sKey === 'timesheets') return true;
         if (sKey === 'leave_types' || sKey === 'leave_requests') return false;
         return ['dashboard', 'employees', 'attendance', 'leave', 'projects', 'performance', 'reports', 'documents', 'helpdesk'].includes(mKey);
       }
       if (keyUpper === 'EMPLOYEE') {
-        if (sKey === 'leave_balance' || sKey === 'my_leave' || sKey === 'holiday_list') return true;
-        if (sKey === 'leave_approval' || sKey === 'leave_requests' || sKey === 'leave_types') return false;
+        if (sKey === 'leave_balance' || sKey === 'my_leave' || sKey === 'holiday_list' || sKey === 'daily_attendance' || sKey === 'gps_attendance' || sKey === 'shift_roster' || sKey === 'employee_profile' || sKey === 'tasks' || sKey === 'timesheets' || sKey === 'generate_payslips') return true;
+        if (sKey === 'leave_approval' || sKey === 'leave_requests' || sKey === 'leave_types' || sKey === 'add_employee') return false;
         return ['dashboard', 'employees', 'attendance', 'leave', 'payroll', 'projects', 'performance', 'documents', 'helpdesk'].includes(mKey);
       }
       return true;
@@ -550,15 +555,15 @@ class RbacService {
 
   static async getUserPermissions(roleNameOrKey) {
     if (!roleNameOrKey) return {};
-    const inputUpper = roleNameOrKey.trim().toUpperCase();
+    const inputUpper = String(roleNameOrKey).trim().toUpperCase().replace(/[\s-]+/g, '_');
     let resolvedKey = inputUpper;
-    if (['ADMIN', 'SUPER_ADMIN', 'SUPER ADMIN'].includes(inputUpper)) resolvedKey = 'SUPER_ADMIN';
-    else if (['HR', 'HR_MANAGER', 'HR MANAGER'].includes(inputUpper)) resolvedKey = 'HR_MANAGER';
-    else if (['TEAM_LEADER', 'TEAM LEADER'].includes(inputUpper)) resolvedKey = 'TEAM_LEADER';
-    else if (inputUpper === 'EMPLOYEE') resolvedKey = 'EMPLOYEE';
+    if (['ADMIN', 'SUPER_ADMIN', 'SUPERADMIN'].includes(inputUpper)) resolvedKey = 'SUPER_ADMIN';
+    else if (['HR', 'HR_MANAGER', 'HR_ADMIN', 'BRANCH_MANAGER'].includes(inputUpper)) resolvedKey = 'HR_MANAGER';
+    else if (['TEAM_LEADER', 'TEAM_LEAD', 'LEAD'].includes(inputUpper)) resolvedKey = 'TEAM_LEADER';
+    else if (['EMPLOYEE', 'STAFF', 'SERVICE_STAFF', 'SALES_MANAGER'].includes(inputUpper)) resolvedKey = 'EMPLOYEE';
     else {
       const roles = await new Promise((resolve, reject) => {
-        db.query('SELECT role_key FROM roles WHERE UPPER(role_key) = ? OR LOWER(role_name) = LOWER(?)', [inputUpper, roleNameOrKey.trim()], (err, rows) => {
+        db.query('SELECT role_key FROM roles WHERE UPPER(role_key) = ? OR UPPER(REPLACE(role_name, " ", "_")) = ? OR LOWER(role_name) = LOWER(?)', [inputUpper, inputUpper, String(roleNameOrKey).trim()], (err, rows) => {
           if (err) return reject(err);
           resolve(rows);
         });

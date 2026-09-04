@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { User, Lock, Mail, CheckCircle, Loader2, TrendingUp, Briefcase, KeyRound } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 
@@ -314,15 +315,12 @@ export function Register({ onRegister, onLoginClick }) {
               <label className="text-sm font-medium text-slate-700">Role</label>
               <div className="relative">
                 <Briefcase className="absolute left-3 top-3 text-slate-400" size={18} />
-                <select
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  disabled={isVerifiedForCurrentEmail}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none appearance-none transition-all disabled:opacity-70"
-                >
-                  <option value="Employee">Employee</option>
-                  <option value="Admin">Admin</option>
-                </select>
+                <AppDropdown
+                value={role}
+                onChange={v => setRole(v)}
+                options={[{value:'Employee',label:'Employee'},{value:'Admin',label:'Admin'}]}
+                size="sm"
+              />
               </div>
             </div>
 

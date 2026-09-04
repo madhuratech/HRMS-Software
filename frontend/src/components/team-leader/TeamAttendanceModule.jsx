@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 
@@ -142,30 +143,12 @@ export function TeamAttendanceModule() {
             </div>
 
             {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              style={{
-                height: '40px',
-                padding: '0 12px',
-                borderRadius: '10px',
-                border: '1.5px solid #E2E8F0',
-                fontSize: '13px',
-                fontWeight: '600',
-                color: '#334155',
-                background: '#F8FAFC',
-                outline: 'none',
-                cursor: 'pointer',
-                fontFamily: "'Inter', sans-serif",
-                minWidth: '140px',
-              }}
-            >
-              <option value="All">All Statuses</option>
-              <option value="Present">Present</option>
-              <option value="Completed">Completed</option>
-              <option value="Late">Late</option>
-              <option value="Absent">Absent</option>
-            </select>
+            <AppDropdown
+                value={statusFilter}
+                onChange={v => setStatusFilter(v)}
+                options={[{value:'All',label:'All Statuses'},{value:'Present',label:'Present'},{value:'Completed',label:'Completed'},{value:'Late',label:'Late'},{value:'Absent',label:'Absent'}]}
+                size="sm"
+              />
           </div>
 
           {/* Right: Date Picker */}

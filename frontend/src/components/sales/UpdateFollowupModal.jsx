@@ -1,4 +1,5 @@
 import React from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { useForm } from 'react-hook-form';
 import { X, MessageSquare, Calendar, Phone, Clock } from 'lucide-react';
 
@@ -11,7 +12,7 @@ import { X, MessageSquare, Calendar, Phone, Clock } from 'lucide-react';
 
 
 export function UpdateFollowupModal({ isOpen, onClose, onSubmit, enquiry }) {
-  const { register, handleSubmit, formState: { errors }, reset } = useForm();
+  const { register, watch, setValue, handleSubmit, formState: { errors }, reset } = useForm();
 
   if (!isOpen) return null;
 
@@ -65,18 +66,7 @@ export function UpdateFollowupModal({ isOpen, onClose, onSubmit, enquiry }) {
           <div className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">New Status</label>
-              <select
-                {...register('status', { required: 'Status is required' })}
-                defaultValue={enquiry.status}
-                className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                
-                <option value="NEW">New Enquiry</option>
-                <option value="CONTACTED">Contacted</option>
-                <option value="TEST_DRIVE">Test Drive</option>
-                <option value="QUOTATION">Quotation Sent</option>
-                <option value="BOOKED">Booked / Won</option>
-                <option value="LOST">Lost / Cancelled</option>
-              </select>
+              <AppDropdown value={watch('status') || ''} onChange={val => setValue('status', val, { shouldValidate: true })} options={[{value:'NEW',label:'New Enquiry'},{value:'CONTACTED',label:'Contacted'},{value:'TEST_DRIVE',label:'Test Drive'},{value:'QUOTATION',label:'Quotation Sent'},{value:'BOOKED',label:'Booked / Won'},{value:'LOST',label:'Lost / Cancelled'}]} size="sm" />
             </div>
 
             <div className="space-y-2">

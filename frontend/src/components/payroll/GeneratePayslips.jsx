@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { 
   Search, Eye, Download, ChevronDown, ChevronLeft, ChevronRight, 
   Plus, CheckCircle2, DollarSign, Calendar, Filter, X, 
@@ -6,6 +7,7 @@ import {
 } from 'lucide-react';
 import { apiFetch, getAuthToken } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { usePermissions } from '../../context/PermissionContext';
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -16,6 +18,9 @@ const YEARS = [2024, 2025, 2026, 2027];
 
 export default function GeneratePayslips() {
   const { addToast } = useToast();
+  const { userRole } = usePermissions();
+  const normRole = String(userRole || '').toUpperCase().replace(/[\s_-]+/g, '');
+  const isManagement = ['SUPERADMIN', 'ADMIN', 'HRMANAGER', 'HR', 'BRANCHMANAGER'].includes(normRole);
 
   // Filter States
   const [selectedMonth, setSelectedMonth] = useState('All Months');
@@ -337,20 +342,29 @@ export default function GeneratePayslips() {
       {/* Top Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px', width: '100%', maxWidth: '100%', minWidth: 0, boxSizing: 'border-box' }}>
         <div>
-          <h1 style={{ margin: '0 0 4px 0', fontSize: '22px', fontWeight: '700', color: '#1E293B' }}>Payroll Management & Payslips</h1>
-          <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>Generate, approve, and disburse employee monthly salaries with automated statutory calculations.</p>
+          <h1 style={{ margin: '0 0 4px 0', fontSize: '22px', fontWeight: '700', color: '#1E293B' }}>
+            {isManagement ? 'Payroll Management & Payslips' : 'My Payslip Records'}
+          </h1>
+          <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>
+            {isManagement 
+              ? 'Generate, approve, and disburse employee monthly salaries with automated statutory calculations.'
+              : 'View and download your monthly salary slips, deductions, and payment details.'
+            }
+          </p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button 
-            onClick={() => {
-              setGenerateError('');
-              setShowGenerateModal(true);
-            }}
-            style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#FFF', cursor: 'pointer', fontSize: '13px', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}
-          >
-            <Plus size={16} /> Generate Payroll
-          </button>
-        </div>
+        {isManagement && (
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button 
+              onClick={() => {
+                setGenerateError('');
+                setShowGenerateModal(true);
+              }}
+              style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#FFF', cursor: 'pointer', fontSize: '13px', fontWeight: '600', display: 'inline-flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}
+            >
+              <Plus size={16} /> Generate Payroll
+            </button>
+          </div>
+        )}
       </div>
 
       {/* KPI Stats Summary Cards */}
@@ -360,7 +374,9 @@ export default function GeneratePayslips() {
             <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <Users size={18} color="#2563EB" />
             </div>
-            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Employees on Payroll</div>
+            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              {isManagement ? 'Employees on Payroll' : 'Total Payslips'}
+            </div>
           </div>
           <div style={{ fontSize: '24px', color: '#1E293B', fontWeight: '800' }}>{totalEmployees}</div>
         </div>
@@ -370,7 +386,9 @@ export default function GeneratePayslips() {
             <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#F0FDF4', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <DollarSign size={18} color="#16A34A" />
             </div>
-            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Total Gross Payroll</div>
+            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              {isManagement ? 'Total Gross Payroll' : 'Total Gross Salary'}
+            </div>
           </div>
           <div style={{ fontSize: '24px', color: '#1E293B', fontWeight: '800' }}>{fmt(totalGross)}</div>
         </div>
@@ -380,22 +398,26 @@ export default function GeneratePayslips() {
             <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#FAF5FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <DollarSign size={18} color="#9333EA" />
             </div>
-            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Total Net Payable</div>
+            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+              {isManagement ? 'Total Net Payable' : 'Total Net Received'}
+            </div>
           </div>
           <div style={{ fontSize: '24px', color: '#1E293B', fontWeight: '800' }}>{fmt(totalNet)}</div>
         </div>
 
-        <div style={cardStyle}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
-            <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <CheckCircle2 size={18} color="#059669" />
+        {isManagement && (
+          <div style={cardStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+              <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CheckCircle2 size={18} color="#059669" />
+              </div>
+              <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Disbursement Progress</div>
             </div>
-            <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Disbursement Progress</div>
+            <div style={{ fontSize: '18px', color: '#1E293B', fontWeight: '800' }}>
+              <span style={{ color: '#059669' }}>{paidCount} Paid</span> • <span style={{ color: '#2563EB' }}>{approvedCount} Approved</span>
+            </div>
           </div>
-          <div style={{ fontSize: '18px', color: '#1E293B', fontWeight: '800' }}>
-            <span style={{ color: '#059669' }}>{paidCount} Paid</span> • <span style={{ color: '#2563EB' }}>{approvedCount} Approved</span>
-          </div>
-        </div>
+        )}
       </div>
 
       {/* Main Table Container */}
@@ -406,79 +428,58 @@ export default function GeneratePayslips() {
           
           <div style={{ display: 'flex', gap: '12px', flex: 1, flexWrap: 'wrap' }}>
             {/* Month Filter */}
-            <select
-              value={selectedMonth}
-              onChange={e => setSelectedMonth(e.target.value)}
-              style={{ padding: '9px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', fontSize: '13px', color: '#334155', fontWeight: '500', outline: 'none', cursor: 'pointer' }}
-            >
-              <option>All Months</option>
-              {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
-            </select>
+            <AppDropdown value={selectedMonth} options={[{value:'All Months',label:'All Months'},{value:'m',label:'m'}, ...(MONTHS || [])]} size="sm" />
 
             {/* Year Filter */}
-            <select
-              value={selectedYear}
-              onChange={e => setSelectedYear(e.target.value)}
-              style={{ padding: '9px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', fontSize: '13px', color: '#334155', fontWeight: '500', outline: 'none', cursor: 'pointer' }}
-            >
-              {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-            </select>
+            <AppDropdown value={selectedYear} options={[{value:'y',label:'y'}, ...(YEARS || [])]} size="sm" />
 
-            {/* Department Filter */}
-            <select
-              value={deptFilter}
-              onChange={e => setDeptFilter(e.target.value)}
-              style={{ padding: '9px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', fontSize: '13px', color: '#334155', fontWeight: '500', outline: 'none', cursor: 'pointer' }}
-            >
-              <option>All Departments</option>
-              {departments.map(d => (
-                <option key={d.id || d.dept_name} value={d.dept_name || d.id}>{d.dept_name || d.name}</option>
-              ))}
-            </select>
+            {/* Department Filter (Management only) */}
+            {isManagement && (
+              <AppDropdown value={deptFilter} options={[{value:'All Departments',label:'All Departments'}, ...(departments || [])]} size="sm" />
+            )}
 
             {/* Status Filter */}
-            <select
-              value={statusFilter}
-              onChange={e => setStatusFilter(e.target.value)}
-              style={{ padding: '9px 14px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', fontSize: '13px', color: '#334155', fontWeight: '500', outline: 'none', cursor: 'pointer' }}
-            >
-              <option value="All">All Statuses</option>
-              <option value="Generated">Generated</option>
-              <option value="Approved">Approved</option>
-              <option value="Paid">Paid</option>
-              <option value="Draft">Draft</option>
-            </select>
-
-            {/* Search */}
-            <div style={{ position: 'relative', width: '240px' }}>
-              <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
-              <input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search employee or ID..."
-                style={{ width: '100%', padding: '9px 12px 9px 36px', borderRadius: '8px', border: '1px solid #CBD5E1', outline: 'none', fontSize: '13px', color: '#334155' }}
+            <AppDropdown
+                value={statusFilter}
+                onChange={v => setStatusFilter(v)}
+                options={[{value:'All',label:'All Statuses'},{value:'Generated',label:'Generated'},{value:'Approved',label:'Approved'},{value:'Paid',label:'Paid'},{value:'Draft',label:'Draft'}]}
+                size="sm"
               />
-            </div>
+
+            {/* Search (Management only) */}
+            {isManagement && (
+              <div style={{ position: 'relative', width: '240px' }}>
+                <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search employee or ID..."
+                  style={{ width: '100%', padding: '9px 12px 9px 36px', borderRadius: '8px', border: '1px solid #CBD5E1', outline: 'none', fontSize: '13px', color: '#334155' }}
+                />
+              </div>
+            )}
           </div>
 
-          {/* Bulk Action Buttons */}
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={handleBulkApprove}
-              title="Bulk approve all generated payroll for selected month"
-              style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#2563EB', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
-            >
-              Approve All
-            </button>
-            <button
-              onClick={handleBulkMarkPaid}
-              title="Bulk mark all approved payroll as paid for selected month"
-              style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #A7F3D0', background: '#ECFDF5', color: '#059669', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
-            >
-              Mark All Paid
-            </button>
-          </div>
+          {/* Bulk Action Buttons (Management only) */}
+          {isManagement && (
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button
+                onClick={handleBulkApprove}
+                title="Bulk approve all generated payroll for selected month"
+                style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #BFDBFE', background: '#EFF6FF', color: '#2563EB', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
+              >
+                Approve All
+              </button>
+              <button
+                onClick={handleBulkMarkPaid}
+                title="Bulk mark all approved payroll as paid for selected month"
+                style={{ padding: '8px 14px', borderRadius: '8px', border: '1px solid #A7F3D0', background: '#ECFDF5', color: '#059669', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
+              >
+                Mark All Paid
+              </button>
+            </div>
+          )}
 
         </div>
 
@@ -495,16 +496,18 @@ export default function GeneratePayslips() {
               <div style={{ fontSize: '15px', fontWeight: '700', color: '#334155' }}>No payroll records found</div>
               <p style={{ fontSize: '13px', color: '#94A3B8', marginTop: '4px' }}>
                 {selectedMonth !== 'All Months' 
-                  ? `No payroll has been generated for ${selectedMonth} ${selectedYear} yet. Click "Generate Payroll" to calculate and save payslips.`
-                  : 'Click "Generate Payroll" above to generate and process salaries for active employees.'
+                  ? `No payslip records found for ${selectedMonth} ${selectedYear}.`
+                  : 'No payslip records available yet.'
                 }
               </p>
-              <button
-                onClick={() => setShowGenerateModal(true)}
-                style={{ marginTop: '12px', padding: '8px 18px', borderRadius: '8px', border: 'none', background: '#2563EB', color: '#FFF', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
-              >
-                + Generate Now
-              </button>
+              {isManagement && (
+                <button
+                  onClick={() => setShowGenerateModal(true)}
+                  style={{ marginTop: '12px', padding: '8px 18px', borderRadius: '8px', border: 'none', background: '#2563EB', color: '#FFF', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  + Generate Now
+                </button>
+              )}
             </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
@@ -606,8 +609,8 @@ export default function GeneratePayslips() {
                             <Eye size={13} /> View
                           </button>
 
-                          {/* Status Progression Action */}
-                          {(row.status === 'Generated' || row.status === 'Draft') && (
+                          {/* Status Progression Action (Management only) */}
+                          {isManagement && (row.status === 'Generated' || row.status === 'Draft') && (
                             <button
                               disabled={isActionBusy}
                               onClick={() => handleApprove(row)}
@@ -618,7 +621,7 @@ export default function GeneratePayslips() {
                             </button>
                           )}
 
-                          {row.status === 'Approved' && (
+                          {isManagement && row.status === 'Approved' && (
                             <button
                               disabled={isActionBusy}
                               onClick={() => handleMarkPaid(row)}
@@ -724,26 +727,14 @@ export default function GeneratePayslips() {
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '6px' }}>
                     Pay Month <span style={{ color: '#EF4444' }}>*</span>
                   </label>
-                  <select
-                    value={genMonth}
-                    onChange={e => setGenMonth(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', color: '#1E293B', outline: 'none', background: '#FFF' }}
-                  >
-                    {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
+                  <AppDropdown value={genMonth} options={[{value:'m',label:'m'}, ...(MONTHS || [])]} size="sm" />
                 </div>
 
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '6px' }}>
                     Pay Year <span style={{ color: '#EF4444' }}>*</span>
                   </label>
-                  <select
-                    value={genYear}
-                    onChange={e => setGenYear(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', color: '#1E293B', outline: 'none', background: '#FFF' }}
-                  >
-                    {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
-                  </select>
+                  <AppDropdown value={genYear} options={[{value:'y',label:'y'}, ...(YEARS || [])]} size="sm" />
                 </div>
               </div>
 
@@ -785,17 +776,12 @@ export default function GeneratePayslips() {
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '6px' }}>
                     Select Department <span style={{ color: '#EF4444' }}>*</span>
                   </label>
-                  <select
-                    required
-                    value={genDept}
-                    onChange={e => setGenDept(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', color: '#1E293B', outline: 'none', background: '#FFF' }}
-                  >
-                    <option value="">-- Choose Department --</option>
-                    {departments.map(d => (
-                      <option key={d.id} value={d.id}>{d.dept_name || d.name}</option>
-                    ))}
-                  </select>
+                  <AppDropdown
+                value={genDept}
+                onChange={v => setGenDept(v)}
+                options={[{value:'',label:'-- Choose Department --'}]}
+                size="sm"
+              />
                 </div>
               )}
 
@@ -805,17 +791,12 @@ export default function GeneratePayslips() {
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.4px', marginBottom: '6px' }}>
                     Select Employee <span style={{ color: '#EF4444' }}>*</span>
                   </label>
-                  <select
-                    required
-                    value={genEmpId}
-                    onChange={e => setGenEmpId(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', color: '#1E293B', outline: 'none', background: '#FFF' }}
-                  >
-                    <option value="">-- Choose Active Employee --</option>
-                    {activeEmployees.map(e => (
-                      <option key={e.id} value={e.id}>{e.name} ({e.employee_id || `EMP${e.id}`})</option>
-                    ))}
-                  </select>
+                  <AppDropdown
+                value={genEmpId}
+                onChange={v => setGenEmpId(v)}
+                options={[{value:'',label:'-- Choose Active Employee --'}]}
+                size="sm"
+              />
                 </div>
               )}
 

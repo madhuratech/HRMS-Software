@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Download, Calendar, Filter, ChevronLeft, ChevronRight, ChevronDown, UserCheck, Users, UserX, Clock, DollarSign, Briefcase, Award, FolderKanban } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LineChart, Line, Legend } from 'recharts';
 
@@ -658,48 +659,11 @@ export function AnalyticsReports({ reportType = 'employee' }) {
             boxShadow: '0 1px 2px rgba(0,0,0,.05)',
           }}>
             <Calendar size={14} color="#64748B" />
-            <select
-              defaultValue={`${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`}
-              style={{
-                border: 'none',
-                outline: 'none',
-                background: 'transparent',
-                fontSize: 13,
-                fontWeight: 500,
-                color: '#334155',
-                cursor: 'pointer'
-              }}
-            >
-              {Array.from({ length: 18 }).map((_, i) => {
-                const d = new Date(new Date().getFullYear(), new Date().getMonth() - i, 1);
-                const year = d.getFullYear();
-                const monthIndex = d.getMonth();
-                const shortMonth = d.toLocaleString('en-US', { month: 'short' });
-                const lastDay = new Date(year, monthIndex + 1, 0).getDate();
-                const val = `${year}-${String(monthIndex + 1).padStart(2, '0')}`;
-                return (
-                  <option key={val} value={val}>
-                    {`${shortMonth} 1 – ${shortMonth} ${lastDay}, ${year}`}
-                  </option>
-                );
-              })}
-            </select>
+            <AppDropdown value={`${new Date().getFullYear()} options={[{value:'val',label:'1 – $ $, $`}'}]} size="sm" />
           </div>
 
           <div style={{ position: 'relative' }}>
-            <select style={{
-              appearance: 'none', WebkitAppearance: 'none', height: 38,
-              paddingLeft: 12, paddingRight: 32, background: '#FFF',
-              border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13,
-              color: '#334155', cursor: 'pointer', outline: 'none',
-              boxShadow: '0 1px 2px rgba(0,0,0,.05)',
-            }}>
-              <option>All Departments</option>
-              <option>Engineering</option>
-              <option>Human Resources</option>
-              <option>Sales & Marketing</option>
-              <option>Finance</option>
-            </select>
+            <AppDropdown options={[{value:'All Departments',label:'All Departments'},{value:'Engineering',label:'Engineering'},{value:'Human Resources',label:'Human Resources'},{value:'Sales & Marketing',label:'Sales & Marketing'},{value:'Finance',label:'Finance'}]} size="sm" />
             <ChevronDown size={14} color="#64748B" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
 

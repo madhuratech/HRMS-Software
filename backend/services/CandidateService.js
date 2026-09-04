@@ -644,6 +644,298 @@ class CandidateService {
       }
     };
   }
+
+  /**
+   * Get candidate previous experience records
+   */
+  static async getCandidateExperiences(candidateId) {
+    return Candidate.query(
+      'SELECT * FROM candidate_experiences WHERE candidate_id = ? ORDER BY start_date DESC, id DESC',
+      [candidateId]
+    );
+  }
+
+  /**
+   * Add a candidate experience record
+   */
+  static async addCandidateExperience(candidateId, data) {
+    const sql = `
+      INSERT INTO candidate_experiences (
+        candidate_id, company_name, designation, department,
+        employment_type, start_date, end_date, is_currently_working, duration_months,
+        company_location, reason_for_leaving, job_description, last_drawn_ctc,
+        reporting_manager, reference_name, reference_designation, reference_contact, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    `;
+    const params = [
+      candidateId,
+      data.company_name,
+      data.designation,
+      data.department || null,
+      data.employment_type || 'Full Time',
+      data.start_date,
+      data.is_currently_working ? null : (data.end_date || null),
+      data.is_currently_working ? 1 : 0,
+      data.duration_months || 0,
+      data.company_location || null,
+      data.reason_for_leaving || null,
+      data.job_description || null,
+      data.last_drawn_ctc || null,
+      data.reporting_manager || null,
+      data.reference_name || null,
+      data.reference_designation || null,
+      data.reference_contact || null
+    ];
+    const res = await Candidate.query(sql, params);
+    return res.insertId;
+  }
+
+  /**
+   * CANDIDATE TO EMPLOYEE CONVERSION
+   * Preserves candidate's original experiences, recruitment history, and resume,
+   * while copying previous employment history into employee profile as reference history.
+   * Atomic, idempotent, and wrapped in a database transaction.
+   */
+  static async convertToEmployee(candidateId, options = {}, userId = 1) {
+    const candidate = await this.getById(candidateId);
+    if (!candidate) {
+      const err = new Error('Candidate not found');
+      err.statusCode = 404;
+      throw err;
+    }
+
+    const EmployeeExperienceService = require('./EmployeeExperienceService');
+
+    return Candidate.withTransaction(async (conn) => {
+      const exec = (sql, params = []) => conn.query(sql, params).then(([rows]) => rows);
+
+      // 1. Check if employee already linked to this candidate
+      let employeeId = null;
+      let isExistingEmployee = false;
+      const linkedEmp = await exec(
+        'SELECT id, name, email, employee_id FROM employees WHERE candidate_id = ?',
+        [candidateId]
+      );
+
+      if (linkedEmp.length > 0) {
+        employeeId = linkedEmp[0].id;
+        isExistingEmployee = true;
+      } else {
+        // Also check by email to prevent duplicate employee records
+        const emailToMatch = (candidate.email || '').trim().toLowerCase();
+        const empByEmail = await exec(
+          'SELECT id, name, email, employee_id, candidate_id FROM employees WHERE LOWER(email) = ?',
+          [emailToMatch]
+        );
+
+        if (empByEmail.length > 0) {
+          employeeId = empByEmail[0].id;
+          isExistingEmployee = true;
+          // Link candidate_id if missing
+          if (!empByEmail[0].candidate_id) {
+            await exec('UPDATE employees SET candidate_id = ? WHERE id = ?', [candidateId, employeeId]);
+          }
+        }
+      }
+
+      // 2. Parse Experience Summary
+      const expSummary = EmployeeExperienceService.parseExperienceString(candidate.experience);
+      const experienceType = options.experience_type || expSummary.type;
+      const totalYears = options.total_experience_years != null ? parseInt(options.total_experience_years, 10) : expSummary.totalYears;
+      const totalMonths = options.total_experience_months != null ? parseInt(options.total_experience_months, 10) : expSummary.totalMonths;
+      const relevantYears = options.relevant_experience_years != null ? parseInt(options.relevant_experience_years, 10) : expSummary.relevantYears;
+      const relevantMonths = options.relevant_experience_months != null ? parseInt(options.relevant_experience_months, 10) : expSummary.relevantMonths;
+      const expText = totalMonths > 0 ? `${totalYears} Yrs ${totalMonths} Mos` : `${totalYears} Yrs`;
+
+      // 3. Create employee if doesn't exist
+      if (!isExistingEmployee) {
+        let designationId = null;
+        if (candidate.job_position) {
+          const desgRows = await exec(
+            'SELECT id FROM designations WHERE LOWER(role_name) = LOWER(?) OR LOWER(role_code) = LOWER(?) LIMIT 1',
+            [candidate.job_position, candidate.job_position]
+          );
+          if (desgRows.length > 0) {
+            designationId = desgRows[0].id;
+          }
+        }
+
+        const empSalary = candidate.expected_salary || candidate.current_salary || 0;
+        const joinDate = options.joining_date || new Date().toISOString().split('T')[0];
+
+        const insertEmpSql = `
+          INSERT INTO employees (
+            name, email, phone, gender, dob, department_id, designation_id,
+            join_date, status, candidate_id, salary, experience, shift_type,
+            experience_type, total_experience_years, total_experience_months,
+            relevant_experience_years, relevant_experience_months, created_at
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Active', ?, ?, ?, 'General Shift', ?, ?, ?, ?, ?, NOW())
+        `;
+
+        const empParams = [
+          candidate.candidate_name,
+          candidate.email,
+          candidate.mobile_number || null,
+          candidate.gender || 'Male',
+          candidate.date_of_birth || null,
+          candidate.department_id || null,
+          designationId,
+          joinDate,
+          candidate.id,
+          empSalary,
+          expText,
+          experienceType,
+          totalYears,
+          totalMonths,
+          relevantYears,
+          relevantMonths
+        ];
+
+        const empResult = await exec(insertEmpSql, empParams);
+        employeeId = empResult.insertId;
+
+        // Assign employee_id string like EMP0015
+        const empCode = `EMP${String(employeeId).padStart(4, '0')}`;
+        await exec('UPDATE employees SET employee_id = ? WHERE id = ?', [empCode, employeeId]);
+      } else {
+        // Update experience summary on existing employee if not already set
+        await exec(`
+          UPDATE employees SET
+            experience_type = COALESCE(experience_type, ?),
+            total_experience_years = COALESCE(total_experience_years, ?),
+            total_experience_months = COALESCE(total_experience_months, ?),
+            relevant_experience_years = COALESCE(relevant_experience_years, ?),
+            relevant_experience_months = COALESCE(relevant_experience_months, ?),
+            experience = COALESCE(experience, ?)
+          WHERE id = ?
+        `, [experienceType, totalYears, totalMonths, relevantYears, relevantMonths, expText, employeeId]);
+      }
+
+      // 4. Retrieve candidate's previous experience records from candidate_experiences
+      let candExperiences = await exec(
+        'SELECT * FROM candidate_experiences WHERE candidate_id = ?',
+        [candidateId]
+      );
+
+      // If no itemized experiences exist in candidate_experiences but candidate has current_company,
+      // create the initial candidate_experiences record so candidate record has persistent traceability.
+      if (candExperiences.length === 0 && candidate.current_company) {
+        const defaultStartDate = new Date(new Date().setFullYear(new Date().getFullYear() - (totalYears || 1))).toISOString().split('T')[0];
+        const defaultEndDate = new Date().toISOString().split('T')[0];
+        await exec(`
+          INSERT INTO candidate_experiences (
+            candidate_id, company_name, designation, employment_type,
+            start_date, end_date, is_currently_working, duration_months,
+            last_drawn_ctc, created_at
+          ) VALUES (?, ?, ?, 'Full Time', ?, ?, 0, ?, ?, NOW())
+        `, [
+          candidateId,
+          candidate.current_company,
+          candidate.job_position || 'Previous Role',
+          defaultStartDate,
+          defaultEndDate,
+          (totalYears * 12 + totalMonths) || 12,
+          candidate.current_salary || null
+        ]);
+
+        candExperiences = await exec(
+          'SELECT * FROM candidate_experiences WHERE candidate_id = ?',
+          [candidateId]
+        );
+      }
+
+      // 5. Copy Candidate Experiences into employee_previous_experiences (IDEMPOTENT)
+      let copiedCount = 0;
+      for (const exp of candExperiences) {
+        // Check if this experience was already copied to this employee
+        const existingCopy = await exec(
+          'SELECT id FROM employee_previous_experiences WHERE employee_id = ? AND (candidate_experience_id = ? OR (company_name = ? AND start_date = ?))',
+          [employeeId, exp.id, exp.company_name, exp.start_date]
+        );
+
+        if (existingCopy.length === 0) {
+          await exec(`
+            INSERT INTO employee_previous_experiences (
+              employee_id, candidate_experience_id, company_name, designation, department,
+              employment_type, start_date, end_date, is_currently_working, duration_months,
+              company_location, reason_for_leaving, job_description, last_drawn_ctc,
+              reporting_manager, reference_name, reference_designation, reference_contact,
+              verification_status, verification_notes, created_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Pending', NULL, NOW())
+          `, [
+            employeeId,
+            exp.id,
+            exp.company_name,
+            exp.designation,
+            exp.department || null,
+            exp.employment_type || 'Full Time',
+            exp.start_date,
+            exp.end_date || null,
+            exp.is_currently_working || 0,
+            exp.duration_months || 0,
+            exp.company_location || null,
+            exp.reason_for_leaving || null,
+            exp.job_description || null,
+            exp.last_drawn_ctc || null,
+            exp.reporting_manager || null,
+            exp.reference_name || null,
+            exp.reference_designation || null,
+            exp.reference_contact || null
+          ]);
+          copiedCount++;
+        }
+      }
+
+      // 6. Copy candidate resume to employee_documents (reference copy without modifying original resume)
+      const candResume = candidate.original_resume || candidate.resume;
+      if (candResume) {
+        const existingDoc = await exec(
+          'SELECT id FROM employee_documents WHERE employee_id = ? AND (document_type = "Resume" OR file = ?)',
+          [employeeId, candResume]
+        );
+        if (existingDoc.length === 0) {
+          await exec(`
+            INSERT INTO employee_documents (
+              employee_id, document_type, document_name, file, status, created_by, updated_by, created_at
+            ) VALUES (?, 'Resume', ?, ?, 'Active', ?, ?, NOW())
+          `, [
+            employeeId,
+            candidate.original_resume_name || `${(candidate.candidate_name || 'Candidate').replace(/\s+/g, '_')}_Resume.pdf`,
+            candResume,
+            userId,
+            userId
+          ]);
+        }
+      }
+
+      // 7. Update candidate status to Hired
+      await exec(
+        'UPDATE candidates SET status = "Hired", updated_by = ?, updated_at = NOW() WHERE id = ?',
+        [userId, candidateId]
+      );
+
+      // Also update candidate_applications if present
+      await exec(
+        'UPDATE candidate_applications SET status = "Hired", updated_at = NOW() WHERE candidate_id = ?',
+        [candidateId]
+      );
+
+      return {
+        success: true,
+        candidate_id: candidateId,
+        employee_id: employeeId,
+        is_new_employee: !isExistingEmployee,
+        copied_experiences_count: copiedCount,
+        experience_summary: {
+          experience_type: experienceType,
+          total_experience_years: totalYears,
+          total_experience_months: totalMonths,
+          relevant_experience_years: relevantYears,
+          relevant_experience_months: relevantMonths
+        }
+      };
+    });
+  }
 }
 
 module.exports = CandidateService;

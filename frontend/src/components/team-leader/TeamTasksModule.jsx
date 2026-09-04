@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, Plus, Edit2, Trash2, X, ShieldCheck, Loader2, AlertCircle } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import { usePermissions } from '../../context/PermissionContext';
 
 export function TeamTasksModule() {
+  const { canCreate, canEdit, canDelete } = usePermissions();
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [loading, setLoading] = useState(true);
@@ -180,12 +183,14 @@ export function TeamTasksModule() {
             Task Assignment for Software Development Team
           </p>
         </div>
-        <button
-          onClick={handleOpenAdd}
-          className="h-10 px-4 bg-white text-blue-700 hover:bg-blue-50 font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all"
-        >
-          <Plus size={16} /> Create Task
-        </button>
+        {canCreate('projects', 'tasks') && (
+          <button
+            onClick={handleOpenAdd}
+            className="h-10 px-4 bg-white text-blue-700 hover:bg-blue-50 font-bold rounded-xl text-xs flex items-center gap-2 shadow-sm transition-all"
+          >
+            <Plus size={16} /> Create Task
+          </button>
+        )}
       </div>
 
       {/* Table & Controls Card */}
@@ -202,16 +207,12 @@ export function TeamTasksModule() {
             />
           </div>
           <div className="w-44">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full h-10 px-3 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-white outline-none"
-            >
-              <option value="All">All Statuses</option>
-              <option value="Pending">Pending</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-            </select>
+            <AppDropdown
+                value={statusFilter}
+                onChange={v => setStatusFilter(v)}
+                options={[{value:'All',label:'All Statuses'},{value:'Pending',label:'Pending'},{value:'In Progress',label:'In Progress'},{value:'Completed',label:'Completed'}]}
+                size="sm"
+              />
           </div>
         </div>
 
@@ -232,7 +233,9 @@ export function TeamTasksModule() {
                   <th className="py-3 px-4">Priority</th>
                   <th className="py-3 px-4">Due Date</th>
                   <th className="py-3 px-4">Status</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
+                  {(canEdit('projects', 'tasks') || canDelete('projects', 'tasks')) && (
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-xs">
@@ -260,14 +263,20 @@ export function TeamTasksModule() {
                         {t.status}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-right space-x-2">
-                      <button onClick={() => handleOpenEdit(t)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                        <Edit2 size={15} />
-                      </button>
-                      <button onClick={() => handleDelete(t.id)} className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
-                        <Trash2 size={15} />
-                      </button>
-                    </td>
+                    {(canEdit('projects', 'tasks') || canDelete('projects', 'tasks')) && (
+                      <td className="py-3 px-4 text-right space-x-2">
+                        {canEdit('projects', 'tasks') && (
+                          <button onClick={() => handleOpenEdit(t)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                            <Edit2 size={15} />
+                          </button>
+                        )}
+                        {canDelete('projects', 'tasks') && (
+                          <button onClick={() => handleDelete(t.id)} className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors">
+                            <Trash2 size={15} />
+                          </button>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -277,7 +286,7 @@ export function TeamTasksModule() {
       </div>
 
       {/* Modal */}
-      {showModal && (
+      {showModal && (editingTask ? canEdit('projects', 'tasks') : canCreate('projects', 'tasks')) && (
         <div style={{
           position: 'fixed', inset: 0, zIndex: 1000,
           background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
@@ -322,42 +331,23 @@ export function TeamTasksModule() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Project *</label>
-                  <select
-                    value={form.project_id}
-                    onChange={(e) => setForm({ ...form, project_id: e.target.value })}
-                    className="w-full h-10 px-3 border border-slate-200 rounded-lg outline-none text-xs bg-white font-semibold"
-                  >
-                    {metaProjects.map(p => (
-                      <option key={p.id} value={p.id}>{p.project_name}</option>
-                    ))}
-                  </select>
+                  <AppDropdown value={form.project_id} options={[, ...(metaProjects || [])]} size="sm" />
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Assign Employee *</label>
-                  <select
-                    value={form.assignee_id}
-                    onChange={(e) => setForm({ ...form, assignee_id: e.target.value })}
-                    className="w-full h-10 px-3 border border-slate-200 rounded-lg outline-none text-xs bg-white font-semibold"
-                  >
-                    {teamMembers.map(m => (
-                      <option key={m.id} value={m.id}>{m.name} ({m.employee_id || `EMP${m.id}`})</option>
-                    ))}
-                  </select>
+                  <AppDropdown value={form.assignee_id} options={[, ...(teamMembers || [])]} size="sm" />
                 </div>
               </div>
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Priority</label>
-                  <select
-                    value={form.priority}
-                    onChange={(e) => setForm({ ...form, priority: e.target.value })}
-                    className="w-full h-10 px-3 border border-slate-200 rounded-lg outline-none text-xs bg-white"
-                  >
-                    <option value="High">High</option>
-                    <option value="Medium">Medium</option>
-                    <option value="Low">Low</option>
-                  </select>
+                  <AppDropdown
+                value={form.priority}
+                onChange={v => setForm({ ...form, priority: v })}
+                options={[{value:'High',label:'High'},{value:'Medium',label:'Medium'},{value:'Low',label:'Low'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Due Date</label>
@@ -370,15 +360,12 @@ export function TeamTasksModule() {
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Status</label>
-                  <select
-                    value={form.status}
-                    onChange={(e) => setForm({ ...form, status: e.target.value })}
-                    className="w-full h-10 px-3 border border-slate-200 rounded-lg outline-none text-xs bg-white font-semibold"
-                  >
-                    <option value="Pending">Pending</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Completed">Completed</option>
-                  </select>
+                  <AppDropdown
+                value={form.status}
+                onChange={v => setForm({ ...form, status: v })}
+                options={[{value:'Pending',label:'Pending'},{value:'In Progress',label:'In Progress'},{value:'Completed',label:'Completed'}]}
+                size="sm"
+              />
                 </div>
               </div>
 

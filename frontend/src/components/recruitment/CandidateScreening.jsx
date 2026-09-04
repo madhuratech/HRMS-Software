@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, Download, Eye, CheckCircle2, XCircle, Calendar, FileText, UserCheck, Briefcase, Mail, Phone, MapPin, AlertCircle, X, ChevronLeft, ChevronRight, Star, Send, ShieldAlert, Award, Check } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { useNavigate } from 'react-router-dom';
@@ -404,52 +405,35 @@ export default function CandidateScreening() {
               />
             </div>
 
-            <select
-              value={filterJob}
-              onChange={e => setFilterJob(e.target.value)}
-              style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '13px', color: '#334155', outline: 'none' }}
-            >
-              <option value="">All Job Openings</option>
-              {jobs.map(j => (
-                <option key={j.id} value={j.job_title}>{j.job_title}</option>
-              ))}
-            </select>
+            <AppDropdown
+                value={filterJob}
+                onChange={v => setFilterJob(v)}
+                options={[{value:'',label:'All Job Openings'}]}
+                size="sm"
+              />
 
-            <select
-              value={filterDept}
-              onChange={e => setFilterDept(e.target.value)}
-              style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '13px', color: '#334155', outline: 'none' }}
-            >
-              <option value="">All Departments</option>
-              {departments.map(d => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
+            <AppDropdown
+                value={filterDept}
+                onChange={v => setFilterDept(v)}
+                options={[{value:'',label:'All Departments'}]}
+                size="sm"
+              />
 
-            <select
-              value={filterStatus}
-              onChange={e => setFilterStatus(e.target.value)}
-              style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '13px', color: '#334155', outline: 'none' }}
-            >
-              <option value="">All Statuses</option>
-              <option value="Applied">Applied</option>
-              <option value="Screening Completed">Screening Completed</option>
-              <option value="Under Review">Under Review</option>
-              <option value="Shortlisted">Shortlisted</option>
-              <option value="Rejected">Rejected</option>
-              <option value="Interview Scheduled">Interview Scheduled</option>
-            </select>
+            <AppDropdown
+                value={filterStatus}
+                onChange={v => setFilterStatus(v)}
+                options={[{value:'',label:'All Statuses'},{value:'Applied',label:'Applied'},{value:'Screening Completed',label:'Screening Completed'},{value:'Under Review',label:'Under Review'},{value:'Shortlisted',label:'Shortlisted'},{value:'Rejected',label:'Rejected'},{value:'Interview Scheduled',label:'Interview Scheduled'}]}
+                size="sm"
+              />
           </div>
 
           <div>
-            <select
-              value={sortBy}
-              onChange={e => setSortBy(e.target.value)}
-              style={{ padding: '9px 12px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '13px', color: '#334155', outline: 'none' }}
-            >
-              <option value="newest">Sort by: Application Date (Newest)</option>
-              <option value="oldest">Sort by: Application Date (Oldest)</option>
-            </select>
+            <AppDropdown
+                value={sortBy}
+                onChange={v => setSortBy(v)}
+                options={[{value:'newest',label:'Sort by: Application Date (Newest)'},{value:'oldest',label:'Sort by: Application Date (Oldest)'}]}
+                size="sm"
+              />
           </div>
         </div>
 

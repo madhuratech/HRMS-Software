@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { Package, Truck, Clock, Box, Plus, Settings, X } from 'lucide-react';
+import { hasPermission } from '../../lib/permissions';
 
 const kpiData = [
   { title: 'Total Kits', value: '45', icon: <Package size={20} color="#2952E3" />, bgColor: '#EFF6FF' },
@@ -93,22 +95,21 @@ export default function WelcomeKit() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Department <span className="text-red-500">*</span></label>
-                  <select required value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Department</option>
-                    <option value="Engineering">Engineering</option>
-                    <option value="Human Resources">Human Resources</option>
-                    <option value="Design">Design</option>
-                    <option value="Finance">Finance</option>
-                    <option value="Marketing">Marketing</option>
-                  </select>
+                  <AppDropdown
+                value={formData.department}
+                onChange={v => setFormData({ ...formData, department: v })}
+                options={[{value:'',label:'Select Department'},{value:'Engineering',label:'Engineering'},{value:'Human Resources',label:'Human Resources'},{value:'Design',label:'Design'},{value:'Finance',label:'Finance'},{value:'Marketing',label:'Marketing'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Welcome Kit Bundle <span className="text-red-500">*</span></label>
-                  <select value={formData.kitName} onChange={e => setFormData({ ...formData, kitName: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Standard Executive Welcome Kit">Standard Executive Welcome Kit</option>
-                    <option value="Engineering Swag & Tech Kit">Engineering Swag & Tech Kit</option>
-                    <option value="Leadership Onboarding Kit">Leadership Onboarding Kit</option>
-                  </select>
+                  <AppDropdown
+                value={formData.kitName}
+                onChange={v => setFormData({ ...formData, kitName: v })}
+                options={[{value:'Standard Executive Welcome Kit',label:'Standard Executive Welcome Kit'},{value:'Engineering Swag & Tech Kit',label:'Engineering Swag & Tech Kit'},{value:'Leadership Onboarding Kit',label:'Leadership Onboarding Kit'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Dispatch Date <span className="text-red-500">*</span></label>
@@ -116,11 +117,12 @@ export default function WelcomeKit() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Dispatched">Dispatched</option>
-                    <option value="Delivered">Delivered</option>
-                    <option value="Pending">Pending</option>
-                  </select>
+                  <AppDropdown
+                value={formData.status}
+                onChange={v => setFormData({ ...formData, status: v })}
+                options={[{value:'Dispatched',label:'Dispatched'},{value:'Delivered',label:'Delivered'},{value:'Pending',label:'Pending'}]}
+                size="sm"
+              />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Notes / Tracking Number</label>
@@ -143,9 +145,11 @@ export default function WelcomeKit() {
           <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Manage welcome kits for new employees</p>
         </div>
         <div>
-          <button onClick={() => setShowAddModal(true)} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
-            <Plus size={18} /> Manage Kit
-          </button>
+          {hasPermission('onboarding', 'welcome_kit', 'create') && (
+            <button onClick={() => setShowAddModal(true)} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+              <Plus size={18} /> Manage Kit
+            </button>
+          )}
         </div>
       </div>
 

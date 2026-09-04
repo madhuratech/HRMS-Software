@@ -1,15 +1,16 @@
 const express = require('express');
 const router = express.Router();
 const { ReviewController } = require('../controllers/PerformanceController');
-const { authenticateJWT } = require('../middlewares/auth');
+const { authenticateJWT, checkPermission } = require('../middlewares/auth');
 const validationMiddleware = require('../middlewares/validation');
 const { validateReview } = require('../validators/performanceValidators');
 
-router.get('/', authenticateJWT, ReviewController.list);
-router.get('/dashboard', authenticateJWT, ReviewController.getDashboard);
-router.get('/:id', authenticateJWT, ReviewController.getById);
-router.post('/', authenticateJWT, validationMiddleware(validateReview), ReviewController.create);
-router.put('/:id', authenticateJWT, validationMiddleware(validateReview), ReviewController.update);
-router.delete('/:id', authenticateJWT, ReviewController.delete);
+router.get('/', authenticateJWT, checkPermission('performance', 'reviews', 'view'), ReviewController.list);
+router.get('/dashboard', authenticateJWT, checkPermission('performance', 'reviews', 'view'), ReviewController.getDashboard);
+router.get('/:id', authenticateJWT, checkPermission('performance', 'reviews', 'view'), ReviewController.getById);
+
+router.post('/', authenticateJWT, checkPermission('performance', 'reviews', 'create'), validationMiddleware(validateReview), ReviewController.create);
+router.put('/:id', authenticateJWT, checkPermission('performance', 'reviews', 'edit'), validationMiddleware(validateReview), ReviewController.update);
+router.delete('/:id', authenticateJWT, checkPermission('performance', 'reviews', 'delete'), ReviewController.delete);
 
 module.exports = router;

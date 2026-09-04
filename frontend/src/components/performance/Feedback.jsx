@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { ChevronDown, Plus, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts';
 import { useToast } from '../ui/Toast';
@@ -217,44 +218,39 @@ export default function Feedback() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Recipient Employee <span className="text-red-500">*</span></label>
-                  <select
-                    required
-                    value={formData.recipient}
-                    onChange={e => setFormData({ ...formData, recipient: e.target.value })}
-                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
-                  >
-                    <option value="">Select Employee</option>
-                    {employees.map(e => (
-                      <option key={e.id} value={e.id}>{e.name} (EMP{String(e.id).padStart(3, '0')})</option>
-                    ))}
-                  </select>
+                  <AppDropdown
+                value={formData.recipient}
+                onChange={v => setFormData({ ...formData, recipient: v })}
+                options={[{value:'',label:'Select Employee'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Department <span className="text-red-500">*</span></label>
-                  <select required value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Department</option>
-                    {departments.map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
+                  <AppDropdown
+                value={formData.department}
+                onChange={v => setFormData({ ...formData, department: v })}
+                options={[{value:'',label:'Select Department'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Feedback Type</label>
-                  <select value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="Recognition">Recognition & Praise</option>
-                    <option value="Constructive">Constructive Guidance</option>
-                    <option value="General">General Feedback</option>
-                  </select>
+                  <AppDropdown
+                value={formData.type}
+                onChange={v => setFormData({ ...formData, type: v })}
+                options={[{value:'Recognition',label:'Recognition & Praise'},{value:'Constructive',label:'Constructive Guidance'},{value:'General',label:'General Feedback'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Rating (1 to 5 Stars)</label>
-                  <select value={formData.rating} onChange={e => setFormData({ ...formData, rating: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="5">5 - Excellent</option>
-                    <option value="4">4 - Good</option>
-                    <option value="3">3 - Satisfactory</option>
-                    <option value="2">2 - Needs Improvement</option>
-                    <option value="1">1 - Unsatisfactory</option>
-                  </select>
+                  <AppDropdown
+                value={formData.rating}
+                onChange={v => setFormData({ ...formData, rating: v })}
+                options={[{value:'5',label:'5 - Excellent'},{value:'4',label:'4 - Good'},{value:'3',label:'3 - Satisfactory'},{value:'2',label:'2 - Needs Improvement'},{value:'1',label:'1 - Unsatisfactory'}]}
+                size="sm"
+              />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Subject</label>
@@ -283,16 +279,12 @@ export default function Feedback() {
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Track and manage feedback logs</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <select
-            value={filterDept}
-            onChange={e => setFilterDept(e.target.value)}
-            style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '13px', color: '#334155', cursor: 'pointer' }}
-          >
-            <option value="All Departments">All Departments</option>
-            {departments.map(d => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
+          <AppDropdown
+                value={filterDept}
+                onChange={v => setFilterDept(v)}
+                options={[{value:'All Departments',label:'All Departments'}]}
+                size="sm"
+              />
           <button 
             disabled={!canCreate('feedback')}
             onClick={() => {

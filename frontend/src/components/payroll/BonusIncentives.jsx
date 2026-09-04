@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { usePermissions } from '../../context/PermissionContext';
 import { 
   Search, Plus, Gift, Clock, Award, Star, Loader2, AlertCircle, 
   CheckCircle2, XCircle, X, Check, ShieldCheck 
@@ -13,6 +15,7 @@ const MONTHS = [
 
 export default function BonusIncentives() {
   const { addToast } = useToast();
+  const { canCreate, canEdit } = usePermissions();
   const [bonuses, setBonuses] = useState([]);
   const [activeEmployees, setActiveEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -152,15 +155,17 @@ export default function BonusIncentives() {
           <h1 style={{ margin: '0 0 4px 0', fontSize: '22px', fontWeight: '700', color: '#1E293B' }}>Bonuses & Incentives</h1>
           <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>Manage performance incentives, festival rewards, and auto-link to payroll generation</p>
         </div>
-        <button
-          onClick={() => {
-            setEmployeeId(activeEmployees[0]?.id || '');
-            setShowModal(true);
-          }}
-          style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}
-        >
-          <Plus size={16} /> Add Bonus / Incentive
-        </button>
+        {canCreate('payroll', 'bonus_incentives') && (
+          <button
+            onClick={() => {
+              setEmployeeId(activeEmployees[0]?.id || '');
+              setShowModal(true);
+            }}
+            style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '600', boxShadow: '0 4px 12px rgba(37,99,235,0.25)' }}
+          >
+            <Plus size={16} /> Add Bonus / Incentive
+          </button>
+        )}
       </div>
 
       {/* KPI Cards */}
@@ -218,7 +223,9 @@ export default function BonusIncentives() {
                   <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Amount</th>
                   <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B' }}>Applicable Period</th>
                   <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'center' }}>Payroll Status</th>
-                  <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'right' }}>Actions</th>
+                  {canEdit('payroll', 'bonus_incentives') && (
+                    <th style={{ padding: '16px 20px', fontSize: '12px', fontWeight: '700', color: '#64748B', textAlign: 'right' }}>Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -249,28 +256,30 @@ export default function BonusIncentives() {
                         {row.status === 'Processed' ? '✓ Processed in Payroll' : row.status}
                       </span>
                     </td>
-                    <td style={{ padding: '16px 20px', textAlign: 'right' }}>
-                      {row.status !== 'Processed' && (
-                        <div style={{ display: 'inline-flex', gap: '6px' }}>
-                          {row.status !== 'Approved' && (
-                            <button
-                              onClick={() => handleUpdateStatus(row.id, 'Approved')}
-                              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #A7F3D0', background: '#ECFDF5', color: '#059669', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
-                            >
-                              <Check size={12} /> Approve
-                            </button>
-                          )}
-                          {row.status !== 'Rejected' && (
-                            <button
-                              onClick={() => handleUpdateStatus(row.id, 'Rejected')}
-                              style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
-                            >
-                              <X size={12} /> Reject
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </td>
+                    {canEdit('payroll', 'bonus_incentives') && (
+                      <td style={{ padding: '16px 20px', textAlign: 'right' }}>
+                        {row.status !== 'Processed' && (
+                          <div style={{ display: 'inline-flex', gap: '6px' }}>
+                            {row.status !== 'Approved' && (
+                              <button
+                                onClick={() => handleUpdateStatus(row.id, 'Approved')}
+                                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #A7F3D0', background: '#ECFDF5', color: '#059669', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+                              >
+                                <Check size={12} /> Approve
+                              </button>
+                            )}
+                            {row.status !== 'Rejected' && (
+                              <button
+                                onClick={() => handleUpdateStatus(row.id, 'Rejected')}
+                                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', fontSize: '11px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '3px' }}
+                              >
+                                <X size={12} /> Reject
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -280,7 +289,7 @@ export default function BonusIncentives() {
       </div>
 
       {/* Modal: Add Bonus */}
-      {showModal && (
+      {showModal && canCreate('payroll', 'bonus_incentives') && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)' }}>
           <div style={{ width: '520px', maxWidth: '95vw', background: '#FFFFFF', borderRadius: '20px', boxShadow: '0 25px 60px -12px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
             
@@ -300,19 +309,12 @@ export default function BonusIncentives() {
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                   Select Employee <span style={{ color: '#EF4444' }}>*</span>
                 </label>
-                <select
-                  required
-                  value={employeeId}
-                  onChange={e => setEmployeeId(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                >
-                  <option value="">-- Choose Employee --</option>
-                  {activeEmployees.map(e => (
-                    <option key={e.id} value={e.id}>
-                      {e.name} ({e.employee_id || `EMP${e.id}`}) • {e.department || 'General'}
-                    </option>
-                  ))}
-                </select>
+                <AppDropdown
+                value={employeeId}
+                onChange={v => setEmployeeId(v)}
+                options={[{value:'',label:'-- Choose Employee --'}]}
+                size="sm"
+              />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -320,17 +322,12 @@ export default function BonusIncentives() {
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                     Reward Type <span style={{ color: '#EF4444' }}>*</span>
                   </label>
-                  <select
-                    value={bonusType}
-                    onChange={e => setBonusType(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                  >
-                    <option value="Performance Bonus">Performance Bonus</option>
-                    <option value="Festival Bonus">Festival Bonus</option>
-                    <option value="Sales Incentive">Sales Incentive</option>
-                    <option value="Retention Reward">Retention Reward</option>
-                    <option value="Spot Award">Spot Award</option>
-                  </select>
+                  <AppDropdown
+                value={bonusType}
+                onChange={v => setBonusType(v)}
+                options={[{value:'Performance Bonus',label:'Performance Bonus'},{value:'Festival Bonus',label:'Festival Bonus'},{value:'Sales Incentive',label:'Sales Incentive'},{value:'Retention Reward',label:'Retention Reward'},{value:'Spot Award',label:'Spot Award'}]}
+                size="sm"
+              />
                 </div>
 
                 <div>
@@ -353,28 +350,19 @@ export default function BonusIncentives() {
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                     Applicable Payroll Month
                   </label>
-                  <select
-                    value={applicableMonth}
-                    onChange={e => setApplicableMonth(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                  >
-                    {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
+                  <AppDropdown value={applicableMonth} options={[{value:'m',label:'m'}, ...(MONTHS || [])]} size="sm" />
                 </div>
 
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                     Year
                   </label>
-                  <select
-                    value={applicableYear}
-                    onChange={e => setApplicableYear(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #CBD5E1', fontSize: '13px', background: '#FFF' }}
-                  >
-                    <option value="2025">2025</option>
-                    <option value="2026">2026</option>
-                    <option value="2027">2027</option>
-                  </select>
+                  <AppDropdown
+                value={applicableYear}
+                onChange={v => setApplicableYear(v)}
+                options={[{value:'2025',label:'2025'},{value:'2026',label:'2026'},{value:'2027',label:'2027'}]}
+                size="sm"
+              />
                 </div>
               </div>
 

@@ -185,6 +185,55 @@ class CandidateController {
       return response(res, false, 500, 'Failed to fetch candidate dropdown', null, err.message);
     }
   }
+
+  /**
+   * Convert Candidate to Employee endpoint
+   * POST /app/candidates/:id/convert-to-employee
+   */
+  static async convertToEmployee(req, res) {
+    try {
+      const userId = req.user?.id || 1;
+      const candidateId = req.params.id;
+      const options = req.body || {};
+
+      const result = await CandidateService.convertToEmployee(candidateId, options, userId);
+      return response(res, true, 200, 'Candidate successfully converted to Employee with previous experience preserved', result);
+    } catch (err) {
+      console.error('Candidate conversion error:', err);
+      const status = err.statusCode || 500;
+      return response(res, false, status, err.message || 'Failed to convert candidate to employee', null, err.message);
+    }
+  }
+
+  /**
+   * Get Candidate Experiences
+   * GET /app/candidates/:id/experiences
+   */
+  static async getCandidateExperiences(req, res) {
+    try {
+      const candidateId = req.params.id;
+      const experiences = await CandidateService.getCandidateExperiences(candidateId);
+      return response(res, true, 200, 'Candidate experiences retrieved successfully', experiences);
+    } catch (err) {
+      console.error(err);
+      return response(res, false, 500, 'Failed to retrieve candidate experiences', null, err.message);
+    }
+  }
+
+  /**
+   * Add Candidate Experience
+   * POST /app/candidates/:id/experiences
+   */
+  static async addCandidateExperience(req, res) {
+    try {
+      const candidateId = req.params.id;
+      const expId = await CandidateService.addCandidateExperience(candidateId, req.body);
+      return response(res, true, 201, 'Candidate experience added successfully', { id: expId });
+    } catch (err) {
+      console.error(err);
+      return response(res, false, 500, 'Failed to add candidate experience', null, err.message);
+    }
+  }
 }
 
 module.exports = CandidateController;

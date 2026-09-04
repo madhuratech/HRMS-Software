@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Download, Calendar, ChevronDown, Plus, Eye, ArrowUpRight, ArrowDownRight, Layers, FileText, CheckCircle, Clock, XCircle, Users, X } from 'lucide-react';
 import { LineChart, Line, ResponsiveContainer, Tooltip, PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { apiFetch, formatDate } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { hasPermission } from '../../lib/permissions';
 
 export function ExpenseClaims() {
   const { addToast } = useToast();
@@ -99,7 +101,7 @@ export function ExpenseClaims() {
     try {
       const auth = JSON.parse(localStorage.getItem('hrms_auth') || '{}');
       if (auth.user && auth.user.role) return auth.user.role;
-    } catch (e) {}
+    } catch (e) { }
     return localStorage.getItem('userRole') || 'SUPER_ADMIN';
   };
 
@@ -141,7 +143,7 @@ export function ExpenseClaims() {
   const handleExport = () => {
     const headers = ['Claim ID', 'Employee', 'Department', 'Category', 'Purpose', 'Date', 'Amount', 'Status'];
     const rows = claimsList.map(r => [r.id, r.employee_name, r.department_name, r.category_name, r.title, formatDate(r.date), r.amount, r.status]);
-    const csvContent = "data:text/csv;charset=utf-8," 
+    const csvContent = "data:text/csv;charset=utf-8,"
       + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
@@ -189,7 +191,7 @@ export function ExpenseClaims() {
 
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box', background: '#F8FAFC', minHeight: '100vh', padding: 0 }}>
-      
+
       {/* Header & Toolbar */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
         <div>
@@ -203,25 +205,29 @@ export function ExpenseClaims() {
           </div>
 
           <div style={{ position: 'relative' }}>
-            <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)} style={{ appearance: 'none', WebkitAppearance: 'none', height: 38, paddingLeft: 12, paddingRight: 32, background: '#FFF', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#374151', cursor: 'pointer', outline: 'none' }}>
-              <option value="">All Statuses</option>
-              <option value="Pending">Pending</option>
-              <option value="Approved">Approved</option>
-              <option value="Rejected">Rejected</option>
-            </select>
+            <AppDropdown
+              value={statusFilter}
+              onChange={v => setStatusFilter(v)}
+              options={[{ value: '', label: 'All Statuses' }, { value: 'Pending', label: 'Pending' }, { value: 'Approved', label: 'Approved' }, { value: 'Rejected', label: 'Rejected' }]}
+              size="sm"
+            />
           </div>
 
           <div style={{ position: 'relative' }}>
-            <select value={deptFilter} onChange={e => setDeptFilter(e.target.value)} style={{ appearance: 'none', WebkitAppearance: 'none', height: 38, paddingLeft: 12, paddingRight: 32, background: '#FFF', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, color: '#374151', cursor: 'pointer', outline: 'none' }}>
-              <option value="">All Departments</option>
-              {meta.departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-            </select>
+            <AppDropdown
+              value={deptFilter}
+              onChange={v => setDeptFilter(v)}
+              options={[{ value: '', label: 'All Departments' }]}
+              size="sm"
+            />
             <ChevronDown size={13} color="#6B7280" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
           </div>
 
           <button onClick={handleExport} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px', background: '#FFF', border: '1px solid #2563EB', color: '#2563EB', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}><Download size={14} /> Export</button>
 
-          <button onClick={() => setShowAddModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px', background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)' }}><Plus size={16} /> New Claim</button>
+          {hasPermission('expenses', 'expense_claims', 'create') && (
+            <button onClick={() => setShowAddModal(true)} style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px', background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)' }}><Plus size={16} /> New Claim</button>
+          )}
         </div>
       </div>
 
@@ -236,7 +242,7 @@ export function ExpenseClaims() {
 
       {/* 3 Widgets Row */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px 1.2fr', gap: 20, marginBottom: 20, alignItems: 'stretch' }}>
-        
+
         {/* Left: Monthly Trend */}
         <div style={{ background: '#FFF', borderRadius: 14, border: '1px solid #E5E7EB', padding: 20, boxShadow: '0 2px 8px rgba(15,23,42,.04)', display: 'flex', flexDirection: 'column' }}>
           <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 600, color: '#111827' }}>Expenses Trend</h3>
@@ -325,73 +331,75 @@ export function ExpenseClaims() {
                 </tr>
               ) : (
                 claimsList.map((r, i) => (
-                <tr key={i} style={{ borderBottom: '1px solid #F3F4F6', height: 48 }}>
-                  <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>CLM-{r.id}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#111827', whiteSpace: 'nowrap' }}>{r.employee_name}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.department_name || 'Unassigned'}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.category_name}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.title}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
-                  <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>₹ {parseFloat(r.amount).toLocaleString('en-IN')}</td>
-                  <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
-                    <span style={{
-                      display: 'inline-block', padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600,
-                      background: r.status === 'Approved' ? '#ECFDF5' : r.status === 'Pending' ? '#FEF3C7' : '#FEF2F2',
-                      color: r.status === 'Approved' ? '#059669' : r.status === 'Pending' ? '#D97706' : '#EF4444',
-                    }}>
-                      {r.status}
-                    </span>
-                  </td>
-                  <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      {isSuperAdminOrHR && r.status !== 'Approved' && (
-                        <button
-                          onClick={() => handleApprove(r.id, 'Approved')}
-                          style={{
-                            background: '#10B981',
-                            color: '#FFF',
-                            border: 'none',
-                            borderRadius: 6,
-                            padding: '4px 10px',
-                            fontSize: 12,
-                            fontWeight: 600,
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Approve
-                        </button>
-                      )}
-                      {isSuperAdminOrHR && r.status === 'Pending' && (
-                        <button
-                          onClick={() => handleApprove(r.id, 'Rejected')}
-                          style={{
-                            background: 'none',
-                            border: 'none',
-                            color: '#F59E0B',
-                            cursor: 'pointer',
-                            padding: '4px 6px',
-                            fontSize: 12,
-                            fontWeight: 600
-                          }}
-                        >
-                          Reject
-                        </button>
-                      )}
-                      <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
+                  <tr key={i} style={{ borderBottom: '1px solid #F3F4F6', height: 48 }}>
+                    <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>CLM-{r.id}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#111827', whiteSpace: 'nowrap' }}>{r.employee_name}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.department_name || 'Unassigned'}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.category_name}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.title}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
+                    <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>₹ {parseFloat(r.amount).toLocaleString('en-IN')}</td>
+                    <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
+                      <span style={{
+                        display: 'inline-block', padding: '3px 10px', borderRadius: 12, fontSize: 11, fontWeight: 600,
+                        background: r.status === 'Approved' ? '#ECFDF5' : r.status === 'Pending' ? '#FEF3C7' : '#FEF2F2',
+                        color: r.status === 'Approved' ? '#059669' : r.status === 'Pending' ? '#D97706' : '#EF4444',
+                      }}>
+                        {r.status}
+                      </span>
+                    </td>
+                    <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        {isSuperAdminOrHR && r.status !== 'Approved' && (
+                          <button
+                            onClick={() => handleApprove(r.id, 'Approved')}
+                            style={{
+                              background: '#10B981',
+                              color: '#FFF',
+                              border: 'none',
+                              borderRadius: 6,
+                              padding: '4px 10px',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Approve
+                          </button>
+                        )}
+                        {isSuperAdminOrHR && r.status === 'Pending' && (
+                          <button
+                            onClick={() => handleApprove(r.id, 'Rejected')}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#F59E0B',
+                              cursor: 'pointer',
+                              padding: '4px 6px',
+                              fontSize: 12,
+                              fontWeight: 600
+                            }}
+                          >
+                            Reject
+                          </button>
+                        )}
+                        {hasPermission('expenses', 'expense_claims', 'delete') && (
+                          <button onClick={() => handleDelete(r.id)} style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4, fontSize: 12, fontWeight: 600 }}>
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
       {/* Add Claims Modal */}
-      {showAddModal && (
+      {showAddModal && hasPermission('expenses', 'expense_claims', 'create') && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
           <div className="modal-centered-content" style={{ width: '600px', maxWidth: '90vw', maxHeight: '90vh' }}>
@@ -412,17 +420,21 @@ export function ExpenseClaims() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Employee <span className="text-red-500">*</span></label>
-                  <select required value={formData.employee_id} onChange={e => setFormData({ ...formData, employee_id: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-white">
-                    <option value="">Select Employee</option>
-                    {meta.employees.map(emp => <option key={emp.id} value={emp.id}>{emp.name}</option>)}
-                  </select>
+                  <AppDropdown
+                    value={formData.employee_id}
+                    onChange={v => setFormData({ ...formData, employee_id: v })}
+                    options={[{ value: '', label: 'Select Employee' }]}
+                    size="sm"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Expense Category <span className="text-red-500">*</span></label>
-                  <select required value={formData.category_id} onChange={e => setFormData({ ...formData, category_id: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-white">
-                    <option value="">Select Category</option>
-                    {meta.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  </select>
+                  <AppDropdown
+                    value={formData.category_id}
+                    onChange={v => setFormData({ ...formData, category_id: v })}
+                    options={[{ value: '', label: 'Select Category' }]}
+                    size="sm"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Amount (₹) <span className="text-red-500">*</span></label>

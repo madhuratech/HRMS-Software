@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, Plus, Users, UserPlus, Clock, CheckCircle, Percent, MoreHorizontal, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Label } from 'recharts';
 import { useToast } from '../ui/Toast';
+import { hasPermission } from '../../lib/permissions';
 
 export default function NewJoiners() {
   const { addToast } = useToast();
@@ -258,9 +260,11 @@ export default function NewJoiners() {
           <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Manage and track newly joined employees</p>
         </div>
         <div>
-          <button onClick={() => setShowAddModal(true)} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
-            <Plus size={18} /> Add New Joiner
-          </button>
+          {hasPermission('onboarding', 'new_joiners', 'create') && (
+            <button onClick={() => setShowAddModal(true)} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+              <Plus size={18} /> Add New Joiner
+            </button>
+          )}
         </div>
       </div>
 
@@ -295,26 +299,18 @@ export default function NewJoiners() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
             <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B', whiteSpace: 'nowrap' }}>Recently Joined Employees</h3>
             <div style={{ display: 'flex', gap: '12px' }}>
-              <select 
+              <AppDropdown
                 value={filterDept}
-                onChange={e => setFilterDept(e.target.value)}
-                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '13px', color: '#334155', outline: 'none', cursor: 'pointer' }}
-              >
-                <option value="All Departments">All Departments</option>
-                {departments.map(d => (
-                  <option key={d.id} value={d.id}>{d.name}</option>
-                ))}
-              </select>
-              <select 
+                onChange={v => setFilterDept(v)}
+                options={[{value:'All Departments',label:'All Departments'}]}
+                size="sm"
+              />
+              <AppDropdown
                 value={filterStatus}
-                onChange={e => setFilterStatus(e.target.value)}
-                style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', fontSize: '13px', color: '#334155', outline: 'none', cursor: 'pointer' }}
-              >
-                <option value="All Status">All Status</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Pending">Pending</option>
-                <option value="Completed">Completed</option>
-              </select>
+                onChange={v => setFilterStatus(v)}
+                options={[{value:'All Status',label:'All Status'},{value:'In Progress',label:'In Progress'},{value:'Pending',label:'Pending'},{value:'Completed',label:'Completed'}]}
+                size="sm"
+              />
               <div style={{ position: 'relative' }}>
                 <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
                 <input
@@ -486,7 +482,7 @@ export default function NewJoiners() {
       </div>
 
       {/* Add New Employee Onboarding Modal (1100px Standard) */}
-      {showAddModal && (
+      {showAddModal && hasPermission('onboarding', 'new_joiners', 'create') && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
           <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
@@ -504,16 +500,12 @@ export default function NewJoiners() {
               {/* Auto Populate section */}
               <div style={{ background: '#EFF6FF', border: '1px dashed #2952E3', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
                 <label className="block text-sm font-semibold text-blue-700 mb-2">Import from Accepted Offer Letters (Optional)</label>
-                <select 
-                  value={formData.selectedOfferId}
-                  onChange={e => handleOfferChange(e.target.value)}
-                  className="w-full h-12 px-4 border border-blue-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
-                >
-                  <option value="">Select Accepted Offer to Auto-Populate</option>
-                  {acceptedOffers.map(o => (
-                    <option key={o.id} value={o.id}>{o.candidate_name} ({o.job_position})</option>
-                  ))}
-                </select>
+                <AppDropdown
+                value={formData.selectedOfferId}
+                onChange={v => handleOfferChange(v)}
+                options={[{value:'',label:'Select Accepted Offer to Auto-Populate'}]}
+                size="sm"
+              />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -523,12 +515,12 @@ export default function NewJoiners() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Department <span className="text-red-500">*</span></label>
-                  <select required value={formData.department} onChange={e => setFormData({ ...formData, department: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Department</option>
-                    {departments.map(d => (
-                      <option key={d.id} value={d.id}>{d.name}</option>
-                    ))}
-                  </select>
+                  <AppDropdown
+                value={formData.department}
+                onChange={v => setFormData({ ...formData, department: v })}
+                options={[{value:'',label:'Select Department'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Designation <span className="text-red-500">*</span></label>
@@ -544,12 +536,12 @@ export default function NewJoiners() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Assigned Checklist <span className="text-red-500">*</span></label>
-                  <select required value={formData.checklist} onChange={e => setFormData({ ...formData, checklist: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="">Select Onboarding Checklist</option>
-                    <option value="Standard Engineering Checklist">Standard Engineering Checklist</option>
-                    <option value="HR & Admin Checklist">HR & Admin Checklist</option>
-                    <option value="Executive Management Checklist">Executive Management Checklist</option>
-                  </select>
+                  <AppDropdown
+                value={formData.checklist}
+                onChange={v => setFormData({ ...formData, checklist: v })}
+                options={[{value:'',label:'Select Onboarding Checklist'},{value:'Standard Engineering Checklist',label:'Standard Engineering Checklist'},{value:'HR & Admin Checklist',label:'HR & Admin Checklist'},{value:'Executive Management Checklist',label:'Executive Management Checklist'}]}
+                size="sm"
+              />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Buddy / Mentor</label>
@@ -557,11 +549,12 @@ export default function NewJoiners() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <select value={formData.status} onChange={e => setFormData({ ...formData, status: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white">
-                    <option value="In Progress">In Progress</option>
-                    <option value="Pending">Pending</option>
-                    <option value="Completed">Completed</option>
-                  </select>
+                  <AppDropdown
+                value={formData.status}
+                onChange={v => setFormData({ ...formData, status: v })}
+                options={[{value:'In Progress',label:'In Progress'},{value:'Pending',label:'Pending'},{value:'Completed',label:'Completed'}]}
+                size="sm"
+              />
                 </div>
               </div>
               <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">

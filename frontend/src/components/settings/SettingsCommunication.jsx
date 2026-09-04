@@ -1,4 +1,5 @@
 import React from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Save, Mail, Bell, Server, CheckCircle2 } from 'lucide-react';
 
 export function SettingsCommunication() {
@@ -52,10 +53,7 @@ export function SettingsCommunication() {
           </div>
           <div>
             <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 6 }}>Encryption</label>
-            <select style={{ width: '100%', height: 38, padding: '0 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13 }}>
-              <option>TLS / STARTTLS</option>
-              <option>SSL</option>
-            </select>
+            <AppDropdown options={[{value:'TLS / STARTTLS',label:'TLS / STARTTLS'},{value:'SSL',label:'SSL'}]} size="sm" />
           </div>
         </div>
       </div>

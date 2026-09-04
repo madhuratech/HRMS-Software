@@ -1,4 +1,5 @@
 import React from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { X, User, Phone, Mail, MapPin, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -129,16 +130,12 @@ export function TicketDetailsModal({ ticket, onClose, onStatusChange }) {
         <div className="p-4 border-t border-slate-200 bg-slate-50 flex justify-between items-center sticky bottom-0">
           <div className="flex items-center gap-2">
             <span className="text-sm font-bold text-slate-700">Update Status:</span>
-            <select
-              value={ticket.status}
-              onChange={(e) => onStatusChange(ticket.id, e.target.value)}
-              className="bg-white border border-slate-300 text-slate-700 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block p-2 outline-none font-medium">
-              
-              <option value="OPEN">Open</option>
-              <option value="IN_PROGRESS">In Progress</option>
-              <option value="RESOLVED">Resolved</option>
-              <option value="REJECTED">Rejected</option>
-            </select>
+            <AppDropdown
+                value={ticket.status}
+                onChange={v => onStatusChange(ticket.id, v)}
+                options={[{value:'OPEN',label:'Open'},{value:'IN_PROGRESS',label:'In Progress'},{value:'RESOLVED',label:'Resolved'},{value:'REJECTED',label:'Rejected'}]}
+                size="sm"
+              />
           </div>
           
           <button

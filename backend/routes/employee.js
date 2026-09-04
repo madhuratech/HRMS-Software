@@ -6,6 +6,7 @@ const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
 const { authenticateJWT } = require("../middlewares/auth");
+const EmployeeExperienceService = require("../services/EmployeeExperienceService");
 
 /**
  * Helper to check if requester is Team Leader and get their assigned team_id
@@ -286,6 +287,8 @@ router.get("/", authenticateJWT, (req, res) => {
         e.status,
         e.gender,
         e.employment_type,
+        e.experience,
+        e.shift_type,
         ${ctx.isTeamLeader ? "NULL as salary" : "e.salary"},
         e.address,
         e.emergency_contact,
@@ -362,6 +365,14 @@ router.post("/", async (req, res) => {
     joinDate,
     gender,
     employmentType,
+    experience,
+    experience_type,
+    total_experience_years,
+    total_experience_months,
+    relevant_experience_years,
+    relevant_experience_months,
+    previous_experiences,
+    shiftType,
     salary,
     address,
     emergencyContact,
@@ -373,6 +384,17 @@ router.post("/", async (req, res) => {
     teamName,
     password
   } = req.body;
+
+  const finalExperience = experience !== undefined ? experience : (req.body.total_experience || null);
+  const finalShiftType = shiftType || req.body.shift_type || 'Regular Shift';
+
+  // Parse structured experience if not explicitly provided
+  const parsedExp = EmployeeExperienceService.parseExperienceString(finalExperience);
+  const finalExpType = experience_type || parsedExp.type || 'Fresher';
+  const finalTotYrs = total_experience_years !== undefined ? parseInt(total_experience_years, 10) : parsedExp.totalYears;
+  const finalTotMos = total_experience_months !== undefined ? parseInt(total_experience_months, 10) : parsedExp.totalMonths;
+  const finalRelYrs = relevant_experience_years !== undefined ? parseInt(relevant_experience_years, 10) : (parsedExp.relevantYears || finalTotYrs);
+  const finalRelMos = relevant_experience_months !== undefined ? parseInt(relevant_experience_months, 10) : (parsedExp.relevantMonths || finalTotMos);
 
   if (!email || !email.trim()) {
     return res.status(400).json({ message: "Login email is required." });
@@ -413,9 +435,9 @@ router.post("/", async (req, res) => {
       // 3. Create employee record first
       const insertEmpSql = `
         INSERT INTO employees
-        (name, email, phone, dob, join_date, gender, employment_type, salary, address, emergency_contact, bank_details, password_hash, branch_id, department_id, designation_id, manager_id, team_id)
+        (name, email, phone, dob, join_date, gender, employment_type, experience, experience_type, total_experience_years, total_experience_months, relevant_experience_years, relevant_experience_months, shift_type, salary, address, emergency_contact, bank_details, password_hash, branch_id, department_id, designation_id, manager_id, team_id)
         VALUES (
-          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+          ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
           (SELECT id FROM branches WHERE branch_name = ? LIMIT 1),
           (SELECT id FROM departments WHERE dept_name = ? LIMIT 1),
           (SELECT id FROM designations WHERE role_name = ? OR role_code = ? LIMIT 1),
@@ -427,10 +449,10 @@ router.post("/", async (req, res) => {
       db.query(
         insertEmpSql,
         [
-          cleanName, cleanEmail, phone, dob, joinDate, gender, employmentType || 'Full-time', salary || 0, address, emergencyContact, bankDetails, password_hash,
+          cleanName, cleanEmail, phone, dob, joinDate, gender, employmentType || 'Full-time', finalExperience, finalExpType, finalTotYrs, finalTotMos, finalRelYrs, finalRelMos, finalShiftType, salary || 0, address, emergencyContact, bankDetails, password_hash,
           branch, department, designation, designation, managerName, teamName
         ],
-        (empErr, result) => {
+        async (empErr, result) => {
           if (empErr) {
             console.error("Employee insert error:", empErr);
             if (empErr.code === 'ER_DUP_ENTRY') {
@@ -441,15 +463,29 @@ router.post("/", async (req, res) => {
 
           const newEmpId = result.insertId;
 
+          // Insert any previous experience records provided during employee creation
+          if (Array.isArray(previous_experiences) && previous_experiences.length > 0) {
+            try {
+              for (const exp of previous_experiences) {
+                if (exp && exp.company_name) {
+                  await EmployeeExperienceService.create(newEmpId, exp, null);
+                }
+              }
+              await EmployeeExperienceService.recalculateAndUpdateSummary(newEmpId);
+            } catch (prevExpErr) {
+              console.error("Error creating initial previous experiences:", prevExpErr);
+            }
+          }
+
           // Determine user role for users table based on designation
           let targetRole = 'EMPLOYEE';
           const desgLower = (designation || '').toLowerCase();
-          if (desgLower.includes('team leader') || desgLower.includes('team lead')) {
-            targetRole = 'TEAM_LEADER';
-          } else if (desgLower.includes('hr') || desgLower.includes('manager')) {
-            targetRole = 'BRANCH_MANAGER';
-          } else if (desgLower.includes('admin')) {
+          if (desgLower.includes('admin')) {
             targetRole = 'SUPER_ADMIN';
+          } else if (desgLower.includes('team leader') || desgLower.includes('team lead')) {
+            targetRole = 'TEAM_LEADER';
+          } else if (desgLower.includes('hr') || desgLower.includes('manager') || desgLower.includes('human resources')) {
+            targetRole = 'HR_MANAGER';
           }
 
           // 4. Create linked user login account in users table
@@ -490,6 +526,7 @@ router.post("/", async (req, res) => {
     }
   });
 });
+
 
 /**
  * UPDATE EMPLOYEE PROFILE
@@ -532,6 +569,8 @@ router.put("/:id", authenticateJWT, (req, res, next) => {
       dob,
       gender,
       employmentType,
+      experience,
+      shiftType,
       salary,
       address,
       emergencyContact,
@@ -543,6 +582,9 @@ router.put("/:id", authenticateJWT, (req, res, next) => {
       teamName
     } = req.body;
 
+    const finalExperience = experience !== undefined ? experience : (req.body.total_experience !== undefined ? req.body.total_experience : null);
+    const finalShiftType = shiftType !== undefined ? shiftType : (req.body.shift_type !== undefined ? req.body.shift_type : 'Regular Shift');
+
     const sql = `
       UPDATE employees
       SET 
@@ -552,6 +594,8 @@ router.put("/:id", authenticateJWT, (req, res, next) => {
         dob = ?, 
         gender = ?, 
         employment_type = ?, 
+        experience = ?,
+        shift_type = ?,
         salary = ?, 
         address = ?, 
         emergency_contact = ?, 
@@ -565,7 +609,7 @@ router.put("/:id", authenticateJWT, (req, res, next) => {
     `;
 
     db.query(sql, [
-      name, email, phone, dob, gender, employmentType, salary, address, emergencyContact, bankDetails,
+      name, email, phone, dob, gender, employmentType, finalExperience, finalShiftType, salary, address, emergencyContact, bankDetails,
       branch, department, designation, managerName, teamName, id
     ], (err, result) => {
       if (err) {
@@ -752,6 +796,14 @@ function renderEmployeeProfileResponse(targetId, isTeamMemberView, res) {
         status: emp.status,
         gender: emp.gender,
         employmentType: emp.employment_type,
+        experience: emp.experience || '',
+        shiftType: emp.shift_type || 'Regular Shift',
+        candidateId: emp.candidate_id || null,
+        experienceType: emp.experience_type || (emp.total_experience_years > 0 || emp.total_experience_months > 0 ? 'Experienced' : 'Fresher'),
+        totalExperienceYears: emp.total_experience_years || 0,
+        totalExperienceMonths: emp.total_experience_months || 0,
+        relevantExperienceYears: emp.relevant_experience_years || 0,
+        relevantExperienceMonths: emp.relevant_experience_months || 0,
         salary: isTeamMemberView ? null : emp.salary,
         bankDetails: isTeamMemberView ? null : emp.bank_details,
         emergencyContact: emp.emergency_contact,
@@ -1206,4 +1258,133 @@ router.delete("/:id/photo", (req, res) => {
   });
 });
 
+/**
+ * ============================================================================
+ * EMPLOYEE PREVIOUS EXPERIENCE HISTORY & SUMMARY ENDPOINTS
+ * ============================================================================
+ */
+
+/**
+ * Helper to check role for experience editing permissions
+ */
+function checkExperienceEditPermission(req, res, next) {
+  const role = (req.user && req.user.role) || req.headers['x-user-role'] || 'SUPER_ADMIN';
+  const normRole = String(role).toUpperCase();
+
+  if (normRole === 'EMPLOYEE') {
+    return res.status(403).json({
+      error: "Access denied. Employees are not permitted to edit previous experience history directly. Please contact HR.",
+      code: "EXPERIENCE_EDIT_FORBIDDEN"
+    });
+  }
+  next();
+}
+
+/**
+ * GET EMPLOYEE PREVIOUS EXPERIENCES
+ * GET /app/employees/:id/previous-experiences
+ */
+router.get("/:id/previous-experiences", authenticateJWT, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const experiences = await EmployeeExperienceService.getByEmployeeId(id);
+    const summary = await EmployeeExperienceService.getSummary(id);
+    res.json({
+      success: true,
+      summary: summary || {
+        experience_type: 'Experienced',
+        total_experience_years: 0,
+        total_experience_months: 0,
+        relevant_experience_years: 0,
+        relevant_experience_months: 0
+      },
+      experiences: experiences || []
+    });
+  } catch (err) {
+    console.error('Error fetching employee previous experiences:', err);
+    res.status(500).json({ error: 'Failed to fetch previous experiences', details: err.message });
+  }
+});
+
+/**
+ * GET EMPLOYEE EXPERIENCE SUMMARY
+ * GET /app/employees/:id/experience-summary
+ */
+router.get("/:id/experience-summary", authenticateJWT, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const summary = await EmployeeExperienceService.getSummary(id);
+    if (!summary) return res.status(404).json({ error: 'Employee not found' });
+    res.json({ success: true, summary });
+  } catch (err) {
+    console.error('Error fetching experience summary:', err);
+    res.status(500).json({ error: 'Failed to fetch experience summary', details: err.message });
+  }
+});
+
+/**
+ * UPDATE EMPLOYEE EXPERIENCE SUMMARY
+ * PUT /app/employees/:id/experience-summary
+ */
+router.put("/:id/experience-summary", authenticateJWT, checkExperienceEditPermission, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id || 1;
+    const updated = await EmployeeExperienceService.updateSummary(id, req.body, userId);
+    res.json({ success: true, message: 'Experience summary updated successfully', summary: updated });
+  } catch (err) {
+    console.error('Error updating experience summary:', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Failed to update experience summary' });
+  }
+});
+
+/**
+ * CREATE EMPLOYEE PREVIOUS EXPERIENCE
+ * POST /app/employees/:id/previous-experiences
+ */
+router.post("/:id/previous-experiences", authenticateJWT, checkExperienceEditPermission, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user?.id || 1;
+    const created = await EmployeeExperienceService.create(id, req.body, userId);
+    res.status(201).json({ success: true, message: 'Previous experience record added successfully', experience: created });
+  } catch (err) {
+    console.error('Error adding previous experience:', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Failed to add previous experience' });
+  }
+});
+
+/**
+ * UPDATE EMPLOYEE PREVIOUS EXPERIENCE
+ * PUT /app/employees/:id/previous-experiences/:expId
+ */
+router.put("/:id/previous-experiences/:expId", authenticateJWT, checkExperienceEditPermission, async (req, res) => {
+  try {
+    const { expId } = req.params;
+    const userId = req.user?.id || 1;
+    const updated = await EmployeeExperienceService.update(expId, req.body, userId);
+    res.json({ success: true, message: 'Previous experience record updated successfully', experience: updated });
+  } catch (err) {
+    console.error('Error updating previous experience:', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Failed to update previous experience' });
+  }
+});
+
+/**
+ * DELETE EMPLOYEE PREVIOUS EXPERIENCE
+ * DELETE /app/employees/:id/previous-experiences/:expId
+ */
+router.delete("/:id/previous-experiences/:expId", authenticateJWT, checkExperienceEditPermission, async (req, res) => {
+  try {
+    const { expId } = req.params;
+    const userId = req.user?.id || 1;
+    await EmployeeExperienceService.delete(expId, userId);
+    res.json({ success: true, message: 'Previous experience record deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting previous experience:', err);
+    res.status(err.statusCode || 500).json({ error: err.message || 'Failed to delete previous experience' });
+  }
+});
+
 module.exports = router;
+

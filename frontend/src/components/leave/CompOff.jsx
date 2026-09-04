@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Search, Clock, CheckCircle, Clock4, ShieldCheck, Check, X, Eye, Plus } from 'lucide-react';
 import { BarChart, Bar, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid, YAxis } from 'recharts';
 import { apiFetch } from '../../lib/api';
@@ -186,25 +187,8 @@ export default function CompOff() {
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1e293b' }}>Recent Requests</h3>
               <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <select 
-                  value={deptFilter}
-                  onChange={(e) => setDeptFilter(e.target.value)}
-                  style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569' }}
-                >
-                  <option>All Departments</option>
-                  <option>Human Resources</option>
-                  <option>Engineering</option>
-                </select>
-                <select 
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  style={{ padding: '9px 12px', border: '1px solid #E5E7EB', borderRadius: '8px', fontSize: '13px', outline: 'none', color: '#475569' }}
-                >
-                  <option>All Status</option>
-                  <option>Pending</option>
-                  <option>Approved</option>
-                  <option>Rejected</option>
-                </select>
+                <AppDropdown value={deptFilter} options={[{value:'All Departments',label:'All Departments'},{value:'Human Resources',label:'Human Resources'},{value:'Engineering',label:'Engineering'}]} size="sm" />
+                <AppDropdown value={statusFilter} options={[{value:'All Status',label:'All Status'},{value:'Pending',label:'Pending'},{value:'Approved',label:'Approved'},{value:'Rejected',label:'Rejected'}]} size="sm" />
                 <div style={{ position: 'relative', width: '200px' }}>
                   <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }} />
                   <input 
@@ -364,16 +348,7 @@ export default function CompOff() {
             <form onSubmit={handleCreateCompOff} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Employee *</label>
-                <select 
-                  required 
-                  value={formData.employee_id} 
-                  onChange={e => setFormData({ ...formData, employee_id: e.target.value })} 
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #CBD5E1', borderRadius: 8, fontSize: 14, color: '#0F172A', outline: 'none' }}
-                >
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name} ({emp.dept || 'Employee'})</option>
-                  ))}
-                </select>
+                <AppDropdown value={formData.employee_id} options={[, ...(employees || [])]} size="sm" />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>

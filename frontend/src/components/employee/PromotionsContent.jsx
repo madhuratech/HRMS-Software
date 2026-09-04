@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { MoreVertical, ChevronLeft, ChevronRight, Plus, Check } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { getAvatarUrl } from '../../lib/utils';
@@ -122,38 +123,21 @@ export default function PromotionsContent() {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <div className="hrms-input-group">
               <label className="hrms-label">Select Employee *</label>
-              <select 
-                className="hrms-select"
+              <AppDropdown
                 value={employeeId}
-                onChange={(e) => setEmployeeId(e.target.value)}
-              >
-                <option value="">Choose Employee</option>
-                {employees.map(e => <option key={e.id} value={e.id}>{e.name} (EMP00{e.id})</option>)}
-              </select>
+                onChange={v => setEmployeeId(v)}
+                options={[{value:'',label:'Choose Employee'}]}
+                size="sm"
+              />
             </div>
             <div className="hrms-input-group">
               <label className="hrms-label">New Designation *</label>
-              <select 
-                className="hrms-select"
+              <AppDropdown
                 value={newDesignationName}
-                onChange={(e) => setNewDesignationName(e.target.value)}
-              >
-                {designations.length > 0 ? (
-                  designations.map(d => (
-                    <option key={d.id} value={d.name}>{d.name}</option>
-                  ))
-                ) : (
-                  <>
-                    <option value="Software Engineer">Software Engineer</option>
-                    <option value="Senior Developer">Senior Developer</option>
-                    <option value="Branch Manager">Branch Manager</option>
-                    <option value="Sales Manager">Sales Manager</option>
-                    <option value="Service Staff">Service Staff</option>
-                    <option value="HR Executive">HR Executive</option>
-                    <option value="UI/UX Designer">UI/UX Designer</option>
-                  </>
-                )}
-              </select>
+                onChange={v => setNewDesignationName(v)}
+                options={[{value:'Software Engineer',label:'Software Engineer'},{value:'Senior Developer',label:'Senior Developer'},{value:'Branch Manager',label:'Branch Manager'},{value:'Sales Manager',label:'Sales Manager'},{value:'Service Staff',label:'Service Staff'},{value:'HR Executive',label:'HR Executive'},{value:'UI/UX Designer',label:'UI/UX Designer'}]}
+                size="sm"
+              />
             </div>
             <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
               <label className="hrms-label">Effective Date *</label>

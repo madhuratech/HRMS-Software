@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AppDropdown from '../ui/AppDropdown';
 import { Save, Users, Shield, Lock, Plus, X, RefreshCw, Check, Layers, UserPlus, Trash2 } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 
@@ -512,16 +513,12 @@ export function SettingsUsers() {
               </div>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Clone Permissions From</label>
-                <select
+                <AppDropdown
                   value={newRoleData.template_role}
-                  onChange={(e) => setNewRoleData({ ...newRoleData, template_role: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}
-                >
-                  <option value="EMPLOYEE">Employee (Basic Self Service)</option>
-                  <option value="HR_MANAGER">HR Manager (Employee & HR Management)</option>
-                  <option value="DEPT_MANAGER">Department Manager (Team Oversight)</option>
-                  <option value="FINANCE_ADMIN">Finance Admin (Payroll & Expenses)</option>
-                </select>
+                  onChange={v => setNewRoleData({ ...newRoleData, template_role: v })}
+                  options={[{value:'EMPLOYEE',label:'Employee (Basic Self Service)'},{value:'HR_MANAGER',label:'HR Manager (Employee & HR Management)'},{value:'DEPT_MANAGER',label:'Department Manager (Team Oversight)'},{value:'FINANCE_ADMIN',label:'Finance Admin (Payroll & Expenses)'}]}
+                  size="sm"
+                />
               </div>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
                 <button
@@ -595,15 +592,7 @@ export function SettingsUsers() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Assign Role</label>
-                  <select
-                    value={newUserData.role_id}
-                    onChange={(e) => setNewUserData({ ...newUserData, role_id: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '14px', outline: 'none', background: '#fff', boxSizing: 'border-box' }}
-                  >
-                    {roles.map(r => (
-                      <option key={r.role_key} value={r.role_name}>{r.role_name}</option>
-                    ))}
-                  </select>
+                  <AppDropdown value={newUserData.role_id} options={[, ...(roles || [])]} size="sm" />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Department</label>
