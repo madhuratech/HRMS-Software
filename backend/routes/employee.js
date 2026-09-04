@@ -391,10 +391,10 @@ router.post("/", async (req, res) => {
   // Parse structured experience if not explicitly provided
   const parsedExp = EmployeeExperienceService.parseExperienceString(finalExperience);
   const finalExpType = experience_type || parsedExp.type || 'Fresher';
-  const finalTotYrs = total_experience_years !== undefined ? parseInt(total_experience_years, 10) : parsedExp.totalYears;
-  const finalTotMos = total_experience_months !== undefined ? parseInt(total_experience_months, 10) : parsedExp.totalMonths;
-  const finalRelYrs = relevant_experience_years !== undefined ? parseInt(relevant_experience_years, 10) : (parsedExp.relevantYears || finalTotYrs);
-  const finalRelMos = relevant_experience_months !== undefined ? parseInt(relevant_experience_months, 10) : (parsedExp.relevantMonths || finalTotMos);
+  const finalTotYrs = !isNaN(parseInt(total_experience_years, 10)) ? parseInt(total_experience_years, 10) : (parsedExp.totalYears || 0);
+  const finalTotMos = !isNaN(parseInt(total_experience_months, 10)) ? parseInt(total_experience_months, 10) : (parsedExp.totalMonths || 0);
+  const finalRelYrs = !isNaN(parseInt(relevant_experience_years, 10)) ? parseInt(relevant_experience_years, 10) : (parsedExp.relevantYears || finalTotYrs || 0);
+  const finalRelMos = !isNaN(parseInt(relevant_experience_months, 10)) ? parseInt(relevant_experience_months, 10) : (parsedExp.relevantMonths || finalTotMos || 0);
 
   if (!email || !email.trim()) {
     return res.status(400).json({ message: "Login email is required." });

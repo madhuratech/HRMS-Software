@@ -139,6 +139,8 @@ app.use("/app/tickets", require("./routes/tickets"));
 app.use("/app/rbac", require("./routes/rbacRoute"));
 app.use("/app/notifications", require("./routes/notifications"));
 app.use("/api/notifications", require("./routes/notifications"));
+app.use("/app/client-visits", require("./routes/clientVisits"));
+app.use("/api/client-visits", require("./routes/clientVisits"));
 
 // Projects Management Module
 app.use("/app/projects", require("./routes/projects"));

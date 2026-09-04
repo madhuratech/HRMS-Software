@@ -8,6 +8,7 @@ import { apiFetch } from '../../lib/api';
 import { GeoPunch } from './GeoPunch';
 import { useNavigate } from 'react-router-dom';
 import EmployeeAvatar from '../employee/EmployeeAvatar';
+import ClientVisits from './ClientVisits';
 
 export default function GPSAttendance() {
   const navigate = useNavigate();
@@ -17,6 +18,11 @@ export default function GPSAttendance() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showPunchModal, setShowPunchModal] = useState(false);
+
+  const auth = JSON.parse(localStorage.getItem('hrms_auth') || '{}');
+  const departmentName = auth?.user?.department_name || auth?.user?.department || '';
+  const isSalesOrMarketing = departmentName.toLowerCase().includes('sales') || departmentName.toLowerCase().includes('marketing') || (auth?.user?.role === 'SALES_MANAGER');
+  const [activeTab, setActiveTab] = useState('gps'); // 'gps' | 'client'
 
   // Map references - Using Leaflet map engine for 100% clean rendering
   const mapContainerRef = useRef(null);
@@ -212,7 +218,26 @@ export default function GPSAttendance() {
         </div>
       </div>
 
-      {/* Date Filter & Control Bar */}
+      {isSalesOrMarketing && (
+        <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid #E2E8F0', marginBottom: '24px' }}>
+          <button 
+            onClick={() => setActiveTab('gps')}
+            style={{ padding: '12px 16px', background: 'none', border: 'none', borderBottom: activeTab === 'gps' ? '2px solid #2563eb' : '2px solid transparent', color: activeTab === 'gps' ? '#2563eb' : '#64748b', fontWeight: activeTab === 'gps' ? '600' : '500', cursor: 'pointer', fontSize: '14px' }}
+          >
+            Geofence GPS Attendance
+          </button>
+          <button 
+            onClick={() => setActiveTab('client')}
+            style={{ padding: '12px 16px', background: 'none', border: 'none', borderBottom: activeTab === 'client' ? '2px solid #10B981' : '2px solid transparent', color: activeTab === 'client' ? '#10B981' : '#64748b', fontWeight: activeTab === 'client' ? '600' : '500', cursor: 'pointer', fontSize: '14px' }}
+          >
+            Client Visits & Live Tracking
+          </button>
+        </div>
+      )}
+
+      {activeTab === 'gps' ? (
+        <>
+          {/* Date Filter & Control Bar */}
       <div className="hrms-card hrms-mb-6" style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', borderRadius: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#F8FAFC', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '6px 12px' }}>
@@ -398,6 +423,10 @@ export default function GPSAttendance() {
           )}
         </div>
       </div>
+      </>
+      ) : (
+        <ClientVisits />
+      )}
 
       {/* Punch Attendance Modal */}
       {showPunchModal && (
