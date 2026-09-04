@@ -2,12 +2,93 @@ import React, { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '../../lib/api';
 import { MapPin, Navigation, Camera, CheckCircle2, Clock, XCircle, Play, Square } from 'lucide-react';
 
+const LiveTrackingMap = ({ visitId, onClose }) => {
+  const [data, setData] = useState(null);
+  const mapRef = useRef(null);
+  const mapInstance = useRef(null);
+  const polylineRef = useRef(null);
+  const markerRef = useRef(null);
+
+  const fetchData = async () => {
+    const res = await apiFetch(`/client-visits/${visitId}/track`);
+    if (res.success) {
+      setData(res);
+      updateMap(res.points);
+    }
+  };
+
+  const updateMap = (points) => {
+    if (!mapInstance.current || !points || points.length === 0) return;
+    const latlngs = points.map(p => [p.latitude, p.longitude]);
+    
+    if (polylineRef.current) {
+      polylineRef.current.setLatLngs(latlngs);
+    } else {
+      polylineRef.current = window.L.polyline(latlngs, { color: '#2563EB', weight: 4, dashArray: '5, 10' }).addTo(mapInstance.current);
+    }
+    
+    const lastPoint = latlngs[latlngs.length - 1];
+    if (markerRef.current) {
+      markerRef.current.setLatLng(lastPoint);
+    } else {
+      markerRef.current = window.L.circleMarker(lastPoint, { radius: 8, fillColor: '#10B981', color: '#FFF', weight: 2, fillOpacity: 1 }).addTo(mapInstance.current);
+    }
+    
+    // Use try-catch because bounds might be invalid if points are too close
+    try {
+      mapInstance.current.fitBounds(polylineRef.current.getBounds(), { padding: [40, 40], maxZoom: 16 });
+    } catch (e) {}
+  };
+
+  useEffect(() => {
+    if (!mapRef.current || !window.L || mapInstance.current) return;
+    mapInstance.current = window.L.map(mapRef.current).setView([0,0], 13);
+    window.L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: 'HRMS Maps'
+    }).addTo(mapInstance.current);
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+    const int = setInterval(fetchData, 10000); // 10s poll
+    return () => clearInterval(int);
+  }, [visitId]);
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(15, 23, 42, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+      <div style={{ background: '#FFF', width: '100%', maxWidth: '800px', margin: '0 auto', borderRadius: '16px', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: '80vh', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+        <div style={{ padding: '16px 20px', background: '#F8FAFC', borderBottom: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#0F172A', display: 'flex', alignItems: 'center', gap: '8px' }}><MapPin size={18} color="#2563EB"/> Live Tracking: {data?.visit?.employee_name || 'Loading...'}</h3>
+            <p style={{ margin: '4px 0 0', fontSize: '13px', color: '#64748B', fontWeight: '500' }}>En route to: {data?.visit?.client_name || '...'}</p>
+          </div>
+          <div style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+             <div style={{ textAlign: 'right' }}>
+               <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Live Distance</div>
+               <div style={{ fontSize: '18px', color: '#2563EB', fontWeight: '800' }}>{data?.liveDistance || '0.00'} km</div>
+             </div>
+             <div style={{ width: '1px', height: '30px', background: '#E2E8F0' }}></div>
+             <div style={{ textAlign: 'right' }}>
+               <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Live Fee</div>
+               <div style={{ fontSize: '18px', color: '#10B981', fontWeight: '800' }}>₹{data?.liveFee || '0.00'}</div>
+             </div>
+             <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '4px', display: 'flex', marginLeft: '12px' }}><XCircle size={28} color="#94A3B8" /></button>
+          </div>
+        </div>
+        <div ref={mapRef} style={{ flex: 1, width: '100%', background: '#E2E8F0' }}></div>
+      </div>
+    </div>
+  );
+};
+
 export default function ClientVisits() {
   const [activeVisits, setActiveVisits] = useState([]);
+  const [completedVisits, setCompletedVisits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showStartModal, setShowStartModal] = useState(false);
   const [showEndModal, setShowEndModal] = useState(false);
   const [selectedVisit, setSelectedVisit] = useState(null);
+  const [liveTrackId, setLiveTrackId] = useState(null);
 
   const [clientName, setClientName] = useState('');
   const [photoData, setPhotoData] = useState(null);
@@ -23,6 +104,7 @@ export default function ClientVisits() {
       const res = await apiFetch('/client-visits/active');
       if (res.success) {
         setActiveVisits(res.visits || []);
+        setCompletedVisits(res.completedVisits || []);
       }
     } catch (err) {
       console.error(err);
@@ -50,12 +132,8 @@ export default function ClientVisits() {
             const lng = position.coords.longitude;
             for (let visit of activeVisits) {
               try {
-                await fetch('http://localhost:5001/api/client-visits/track', {
+                await apiFetch('/client-visits/track', {
                   method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
-                  },
                   body: JSON.stringify({ visitId: visit.id, lat, lng })
                 });
               } catch (e) { console.error('Tracking Error', e); }
@@ -129,12 +207,10 @@ export default function ClientVisits() {
         formData.append('photo', dataURLtoBlob(photoData), 'checkin.jpg');
 
         try {
-          const res = await fetch('http://localhost:5001/api/client-visits/start', {
+          const data = await apiFetch('/client-visits/start', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
             body: formData
           });
-          const data = await res.json();
           if (data.success) {
             setShowStartModal(false);
             setClientName('');
@@ -165,14 +241,12 @@ export default function ClientVisits() {
         formData.append('photo', dataURLtoBlob(photoData), 'checkout.jpg');
 
         try {
-          const res = await fetch('http://localhost:5001/api/client-visits/end', {
+          const data = await apiFetch('/client-visits/end', {
             method: 'POST',
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` },
             body: formData
           });
-          const data = await res.json();
           if (data.success) {
-            alert(`Visit Ended! \nDistance: ${data.data.distance} km\nFee: $${data.data.fee}`);
+            alert(`Visit Ended! \nDistance: ${data.data.distance} km\nFee: ₹${data.data.fee}`);
             setShowEndModal(false);
             setPhotoData(null);
             setSelectedVisit(null);
@@ -203,6 +277,8 @@ export default function ClientVisits() {
         </button>
       </div>
 
+      {liveTrackId && <LiveTrackingMap visitId={liveTrackId} onClose={() => setLiveTrackId(null)} />}
+
       {loading ? (
         <p style={{ color: '#64748b' }}>Loading active visits...</p>
       ) : activeVisits.length === 0 ? (
@@ -217,9 +293,29 @@ export default function ClientVisits() {
                 <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0F172A' }}>{visit.client_name}</h3>
                 <span style={{ fontSize: '11px', background: '#ECFDF5', color: '#10B981', padding: '4px 8px', borderRadius: '4px', fontWeight: '600' }}>Active Now</span>
               </div>
-              <p style={{ fontSize: '13px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px' }}>
+              
+              {visit.employee_name && (
+                <div style={{ fontSize: '13px', fontWeight: '700', color: '#2563EB', marginBottom: '10px' }}>
+                  Agent: {visit.employee_name}
+                </div>
+              )}
+              
+              {visit.photo_in_url && (
+                <div style={{ marginBottom: '14px', borderRadius: '8px', overflow: 'hidden', height: '140px', background: '#F1F5F9' }}>
+                  <img src={visit.photo_in_url} alt="Check-in" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              )}
+
+              <p style={{ fontSize: '13px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px' }}>
                 <Clock size={14} /> Checked in at: {new Date(visit.check_in_time).toLocaleTimeString()}
               </p>
+
+              <button 
+                  onClick={() => setLiveTrackId(visit.id)}
+                  style={{ fontSize: '13px', color: '#FFF', background: '#2563EB', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px', padding: '8px 12px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontWeight: '600', width: '100%', justifyContent: 'center' }}
+                >
+                  <MapPin size={14} /> Live Track Agent
+              </button>
               
               <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
                 <button 
@@ -231,6 +327,48 @@ export default function ClientVisits() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {completedVisits && completedVisits.length > 0 && (
+        <div style={{ marginTop: '40px' }}>
+          <h3 style={{ fontSize: '18px', fontWeight: '800', color: '#0F172A', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+             <CheckCircle2 size={18} color="#10B981"/> Today's Completed Visits
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
+            {completedVisits.map(visit => (
+              <div key={`comp-${visit.id}`} className="hrms-card" style={{ padding: '20px', borderRadius: '16px', border: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#0F172A' }}>{visit.client_name}</h3>
+                  <span style={{ fontSize: '11px', background: '#F1F5F9', color: '#64748B', padding: '4px 8px', borderRadius: '4px', fontWeight: '600' }}>Completed</span>
+                </div>
+                
+                {visit.employee_name && (
+                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#475569', marginBottom: '10px' }}>
+                    Agent: {visit.employee_name}
+                  </div>
+                )}
+                
+                <p style={{ fontSize: '13px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                  <Clock size={14} /> In: {new Date(visit.check_in_time).toLocaleTimeString()}
+                </p>
+                <p style={{ fontSize: '13px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+                  <Clock size={14} /> Out: {new Date(visit.check_out_time).toLocaleTimeString()}
+                </p>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #E2E8F0', paddingTop: '12px', marginTop: '12px' }}>
+                  <div>
+                    <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '700' }}>TOTAL DISTANCE</div>
+                    <div style={{ fontSize: '15px', color: '#2563EB', fontWeight: '800' }}>{visit.distance_travelled || '0.00'} km</div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '11px', color: '#64748B', fontWeight: '700' }}>ACCOM. FEE</div>
+                    <div style={{ fontSize: '15px', color: '#10B981', fontWeight: '800' }}>₹{visit.calculated_fee || '0.00'}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

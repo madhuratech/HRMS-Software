@@ -20,5 +20,6 @@ router.post('/track', authenticateJWT, clientVisitController.trackLocation);
 router.post('/end', authenticateJWT, upload.single('photo'), clientVisitController.endVisit);
 router.get('/active', authenticateJWT, clientVisitController.getActiveVisits);
 router.get('/live', authenticateJWT, clientVisitController.getLiveDashboard);
+router.get('/:id/track', authenticateJWT, clientVisitController.getLiveTrack);
 
 module.exports = router;

@@ -88,10 +88,19 @@ class ClientVisitService {
     return visits;
   }
 
+  static async getCompletedVisitsForEmployee(employeeId) {
+    const today = new Date().toISOString().split('T')[0];
+    const visits = await query(`
+      SELECT * FROM client_visits
+      WHERE employee_id = ? AND status = 'Completed' AND date = ?
+    `, [employeeId, today]);
+    return visits;
+  }
+
   static async getLiveVisits() {
     // Fetch all active visits and their latest location
     const activeVisits = await query(`
-      SELECT cv.id, cv.employee_id, cv.client_name, cv.check_in_time, e.name as employee_name,
+      SELECT cv.id, cv.employee_id, cv.client_name, cv.check_in_time, cv.photo_in_url, e.name as employee_name,
              (SELECT latitude FROM LocationHistory lh WHERE lh.visit_id = cv.id ORDER BY recorded_at DESC LIMIT 1) as last_lat,
              (SELECT longitude FROM LocationHistory lh WHERE lh.visit_id = cv.id ORDER BY recorded_at DESC LIMIT 1) as last_lng,
              (SELECT recorded_at FROM LocationHistory lh WHERE lh.visit_id = cv.id ORDER BY recorded_at DESC LIMIT 1) as last_update
@@ -110,6 +119,40 @@ class ClientVisitService {
     `, [today]);
 
     return { activeVisits, completedVisits };
+  }
+
+  static async getLiveVisitDetails(visitId) {
+    const visits = await query(`
+      SELECT cv.*, e.name as employee_name
+      FROM client_visits cv
+      JOIN employees e ON cv.employee_id = e.id
+      WHERE cv.id = ?
+    `, [visitId]);
+
+    if (visits.length === 0) throw new Error("Visit not found");
+    const visit = visits[0];
+
+    const points = await query(`
+      SELECT latitude, longitude, recorded_at FROM LocationHistory
+      WHERE visit_id = ?
+      ORDER BY recorded_at ASC
+    `, [visitId]);
+
+    let totalDistanceKm = 0;
+    for (let i = 1; i < points.length; i++) {
+      const p1 = points[i - 1];
+      const p2 = points[i];
+      totalDistanceKm += getDistanceFromLatLonInKm(p1.latitude, p1.longitude, p2.latitude, p2.longitude);
+    }
+
+    const currentFee = totalDistanceKm * 5;
+
+    return {
+      visit,
+      points,
+      liveDistance: totalDistanceKm.toFixed(2),
+      liveFee: currentFee.toFixed(2)
+    };
   }
 }
 

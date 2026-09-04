@@ -21,7 +21,7 @@ export default function GPSAttendance() {
 
   const auth = JSON.parse(localStorage.getItem('hrms_auth') || '{}');
   const departmentName = auth?.user?.department_name || auth?.user?.department || '';
-  const isSalesOrMarketing = departmentName.toLowerCase().includes('sales') || departmentName.toLowerCase().includes('marketing') || (auth?.user?.role === 'SALES_MANAGER');
+  const isSalesOrMarketing = departmentName.toLowerCase().includes('sales') || departmentName.toLowerCase().includes('marketing') || ['SALES_MANAGER', 'SUPER_ADMIN'].includes(auth?.user?.role);
   const [activeTab, setActiveTab] = useState('gps'); // 'gps' | 'client'
 
   // Map references - Using Leaflet map engine for 100% clean rendering
@@ -88,6 +88,12 @@ export default function GPSAttendance() {
   useEffect(() => {
     loadFeed();
   }, [loadFeed]);
+
+  useEffect(() => {
+    if (activeTab === 'gps' && mapInstance.current) {
+      setTimeout(() => mapInstance.current.invalidateSize(), 100);
+    }
+  }, [activeTab]);
 
   // Render Map using Leaflet OpenStreetMap Engine
   useEffect(() => {
@@ -235,8 +241,7 @@ export default function GPSAttendance() {
         </div>
       )}
 
-      {activeTab === 'gps' ? (
-        <>
+      <div style={{ display: activeTab === 'gps' ? 'block' : 'none' }}>
           {/* Date Filter & Control Bar */}
       <div className="hrms-card hrms-mb-6" style={{ padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', borderRadius: '12px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
@@ -423,10 +428,10 @@ export default function GPSAttendance() {
           )}
         </div>
       </div>
-      </>
-      ) : (
+      </div>
+      <div style={{ display: activeTab === 'client' ? 'block' : 'none' }}>
         <ClientVisits />
-      )}
+      </div>
 
       {/* Punch Attendance Modal */}
       {showPunchModal && (

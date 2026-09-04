@@ -438,19 +438,23 @@ router.post("/", async (req, res) => {
         (name, email, phone, dob, join_date, gender, employment_type, experience, experience_type, total_experience_years, total_experience_months, relevant_experience_years, relevant_experience_months, shift_type, salary, address, emergency_contact, bank_details, password_hash, branch_id, department_id, designation_id, manager_id, team_id)
         VALUES (
           ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-          (SELECT id FROM branches WHERE branch_name = ? LIMIT 1),
-          (SELECT id FROM departments WHERE dept_name = ? LIMIT 1),
-          (SELECT id FROM designations WHERE role_name = ? OR role_code = ? LIMIT 1),
-          (SELECT id FROM (SELECT id FROM employees WHERE name = ? LIMIT 1) as temp),
-          (SELECT id FROM teams WHERE name = ? LIMIT 1)
+          (SELECT IF(? REGEXP '^[0-9]+$', ?, (SELECT id FROM branches WHERE branch_name = ? LIMIT 1))),
+          (SELECT IF(? REGEXP '^[0-9]+$', ?, (SELECT id FROM departments WHERE dept_name = ? LIMIT 1))),
+          (SELECT IF(? REGEXP '^[0-9]+$', ?, (SELECT id FROM designations WHERE role_name = ? OR role_code = ? LIMIT 1))),
+          (SELECT IF(? REGEXP '^[0-9]+$', ?, (SELECT id FROM (SELECT id FROM employees WHERE name = ? LIMIT 1) as temp))),
+          (SELECT IF(? REGEXP '^[0-9]+$', ?, (SELECT id FROM teams WHERE name = ? LIMIT 1)))
         )
       `;
 
       db.query(
         insertEmpSql,
         [
-          cleanName, cleanEmail, phone, dob, joinDate, gender, employmentType || 'Full-time', finalExperience, finalExpType, finalTotYrs, finalTotMos, finalRelYrs, finalRelMos, finalShiftType, salary || 0, address, emergencyContact, bankDetails, password_hash,
-          branch, department, designation, designation, managerName, teamName
+          cleanName, cleanEmail, phone, dob || null, joinDate || null, gender, employmentType || 'Full-time', finalExperience, finalExpType, finalTotYrs, finalTotMos, finalRelYrs, finalRelMos, finalShiftType, salary || 0, address, emergencyContact, bankDetails, password_hash,
+          branch, branch, branch,
+          department, department, department,
+          designation, designation, designation, designation,
+          managerName, managerName, managerName,
+          teamName, teamName, teamName
         ],
         async (empErr, result) => {
           if (empErr) {

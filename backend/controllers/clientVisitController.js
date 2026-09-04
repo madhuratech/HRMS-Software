@@ -62,8 +62,18 @@ exports.endVisit = async (req, res) => {
 exports.getActiveVisits = async (req, res) => {
   try {
     const employeeId = req.user.id;
-    const visits = await ClientVisitService.getActiveVisitsForEmployee(employeeId);
-    res.json({ success: true, visits });
+    const role = req.user.role;
+    let visits = [];
+    let completed = [];
+    if (role === 'SUPER_ADMIN' || role === 'SALES_MANAGER' || role === 'TEAM_LEADER') {
+      const data = await ClientVisitService.getLiveVisits();
+      visits = data.activeVisits;
+      completed = data.completedVisits;
+    } else {
+      visits = await ClientVisitService.getActiveVisitsForEmployee(employeeId);
+      completed = await ClientVisitService.getCompletedVisitsForEmployee(employeeId);
+    }
+    res.json({ success: true, visits, completedVisits: completed });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: error.message });
@@ -75,6 +85,17 @@ exports.getLiveDashboard = async (req, res) => {
     // Ideally check if req.user has TL/Manager rights, but we handle it in frontend logic for now
     const data = await ClientVisitService.getLiveVisits();
     res.json({ success: true, data });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.getLiveTrack = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const data = await ClientVisitService.getLiveVisitDetails(id);
+    res.json({ success: true, ...data });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: error.message });
