@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const clientVisitController = require('../controllers/clientVisitController');
 const authenticateJWT = require('../middlewares/authMiddleware');
+const { requireSalesAndMarketing } = require('../middlewares/gpsAuth');
 const multer = require('multer');
 const path = require('path');
 
@@ -15,11 +16,13 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-router.post('/start', authenticateJWT, upload.single('photo'), clientVisitController.startVisit);
-router.post('/track', authenticateJWT, clientVisitController.trackLocation);
-router.post('/end', authenticateJWT, upload.single('photo'), clientVisitController.endVisit);
-router.get('/active', authenticateJWT, clientVisitController.getActiveVisits);
-router.get('/live', authenticateJWT, clientVisitController.getLiveDashboard);
-router.get('/:id/track', authenticateJWT, clientVisitController.getLiveTrack);
+router.post('/start-journey', authenticateJWT, requireSalesAndMarketing, clientVisitController.startJourney);
+router.post('/track', authenticateJWT, requireSalesAndMarketing, clientVisitController.trackLocation);
+router.post('/reach-client', authenticateJWT, requireSalesAndMarketing, upload.single('photo'), clientVisitController.reachClient);
+router.post('/end-meeting', authenticateJWT, requireSalesAndMarketing, upload.single('photo'), clientVisitController.endMeeting);
+router.post('/reach-office', authenticateJWT, requireSalesAndMarketing, clientVisitController.reachOffice);
+router.get('/active', authenticateJWT, requireSalesAndMarketing, clientVisitController.getActiveVisits);
+router.get('/live', authenticateJWT, requireSalesAndMarketing, clientVisitController.getLiveDashboard);
+router.get('/:id/track', authenticateJWT, requireSalesAndMarketing, clientVisitController.getLiveTrack);
 
 module.exports = router;

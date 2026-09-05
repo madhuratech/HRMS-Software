@@ -75,10 +75,12 @@ export function Sidebar({ userRole, onLogout, onClose }) {
           const name = parsed.name || userObj.name || localStorage.getItem('userName') || 'Admin User';
           const role = parsed.role || userObj.role || localStorage.getItem('userRole') || userRole || 'SUPER_ADMIN';
           const photo = userObj.profile_photo || userObj.avatar || null;
+          const department = userObj.department_name || userObj.department || '';
 
           return {
             name,
             role,
+            department,
             initials: name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
             photoUrl: photo ? getAvatarUrl(photo) : null
           };
@@ -92,6 +94,7 @@ export function Sidebar({ userRole, onLogout, onClose }) {
     return {
       name: storedName,
       role: localStorage.getItem('userRole') || userRole || 'SUPER_ADMIN',
+      department: '',
       initials: storedName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
       photoUrl: null
     };
@@ -327,6 +330,14 @@ export function Sidebar({ userRole, onLogout, onClose }) {
   ];
 
   const isItemPermitted = (item) => {
+    if (item.id === 'gps-attendance') {
+      if (isProtectedAdmin || userInfo.department === 'Sales & Marketing') {
+        // Fallthrough to permission check if they pass department check, or return true for admin
+        if (isProtectedAdmin) return true;
+      } else {
+        return false;
+      }
+    }
     if (isProtectedAdmin) return true;
     if (!userPermissions) return false;
     return canView(userPermissions, normRole, item.moduleKey, item.submoduleKey);

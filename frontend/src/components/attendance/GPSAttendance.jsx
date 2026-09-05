@@ -1,14 +1,62 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import Map, { Marker, Source, Layer, useMap } from 'react-map-gl/maplibre';
+import 'maplibre-gl/dist/maplibre-gl.css';
 import AppDropdown from '../ui/AppDropdown';
 import {
-  Filter, Navigation, MapPin, ChevronDown, RefreshCw, CalendarIcon,
-  CheckCircle2, XCircle, Clock, Eye
+  Filter, Navigation, MapPin, RefreshCw, CalendarIcon,
+  CheckCircle2
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { GeoPunch } from './GeoPunch';
 import { useNavigate } from 'react-router-dom';
 import EmployeeAvatar from '../employee/EmployeeAvatar';
 import ClientVisits from './ClientVisits';
+
+// Helper: Generate accurate GeoJSON circle polygon from center + radius in meters
+function createGeoJSONCircle(center, radiusInMeters, points = 64) {
+  const km = radiusInMeters / 1000;
+  const ret = [];
+  const distanceX = km / (111.320 * Math.cos(center[0] * Math.PI / 180));
+  const distanceY = km / 110.574;
+  for (let i = 0; i < points; i++) {
+    const theta = (i / points) * (2 * Math.PI);
+    ret.push([center[1] + distanceX * Math.cos(theta), center[0] + distanceY * Math.sin(theta)]);
+  }
+  ret.push(ret[0]);
+  return { type: 'Feature', geometry: { type: 'Polygon', coordinates: [ret] } };
+}
+
+// OpenStreetMap standard tile style object for MapLibre GL
+const MAP_STYLE = {
+  version: 8,
+  sources: {
+    'osm': {
+      type: 'raster',
+      tiles: [
+        'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
+      ],
+      tileSize: 256,
+      attribution: '&copy; OpenStreetMap contributors'
+    }
+  },
+  layers: [{ id: 'osm-layer', type: 'raster', source: 'osm', minzoom: 0, maxzoom: 19 }]
+};
+
+// Auto-fit map bounds when geofences or records change
+function AutoFitBounds({ geofences, records }) {
+  const { current: map } = useMap();
+  useEffect(() => {
+    if (!map) return;
+    const pts = [];
+    geofences.forEach(gf => { if (gf.lat && gf.lng) pts.push([gf.lng, gf.lat]); });
+    records.forEach(r => { if (r.lat && r.lng) pts.push([r.lng, r.lat]); });
+    if (pts.length === 0) return;
+    const lngs = pts.map(p => p[0]);
+    const lats = pts.map(p => p[1]);
+    try { map.fitBounds([[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]], { padding: 60, maxZoom: 15, duration: 1000 }); } catch {}
+  }, [geofences, records, map]);
+  return null;
+}
 
 export default function GPSAttendance() {
   const navigate = useNavigate();
@@ -18,57 +66,23 @@ export default function GPSAttendance() {
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [showPunchModal, setShowPunchModal] = useState(false);
+  const [popupInfo, setPopupInfo] = useState(null);
 
   const auth = JSON.parse(localStorage.getItem('hrms_auth') || '{}');
   const departmentName = auth?.user?.department_name || auth?.user?.department || '';
-  const isSalesOrMarketing = departmentName.toLowerCase().includes('sales') || departmentName.toLowerCase().includes('marketing') || ['SALES_MANAGER', 'SUPER_ADMIN'].includes(auth?.user?.role);
-  const [activeTab, setActiveTab] = useState('gps'); // 'gps' | 'client'
+  const isSalesOrMarketing = departmentName === 'Sales & Marketing' || ['SUPER_ADMIN', 'ADMIN'].includes(String(auth?.user?.role || '').toUpperCase());
+  const [activeTab, setActiveTab] = useState('gps');
 
-  // Map references - Using Leaflet map engine for 100% clean rendering
-  const mapContainerRef = useRef(null);
-  const [mapLoaded, setMapLoaded] = useState(false);
-  const mapInstance = useRef(null);
-  const mapObjects = useRef([]);
+  const [viewState, setViewState] = useState({ longitude: 76.9567, latitude: 11.0130, zoom: 12 });
 
-  // Dynamically load Leaflet library
-  useEffect(() => {
-    let isMounted = true;
-
-    if (window.L) {
-      setMapLoaded(true);
-      return;
-    }
-
-    // Insert Leaflet CSS
-    if (!document.getElementById('leaflet-css')) {
-      const css = document.createElement('link');
-      css.id = 'leaflet-css';
-      css.rel = 'stylesheet';
-      css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(css);
-    }
-
-    // Insert Leaflet JS
-    const existingScript = document.getElementById('leaflet-js');
-    if (existingScript) {
-      existingScript.addEventListener('load', () => {
-        if (isMounted) setMapLoaded(true);
-      });
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.id = 'leaflet-js';
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.onload = () => {
-      if (isMounted) setMapLoaded(true);
-    };
-    document.body.appendChild(script);
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  // GeoJSON FeatureCollection for all geofence circles
+  const geofenceCircles = useMemo(() => ({
+    type: 'FeatureCollection',
+    features: geofences.filter(gf => gf.lat && gf.lng).map(gf => ({
+      ...createGeoJSONCircle([gf.lat, gf.lng], gf.radius || 300),
+      properties: { name: gf.name, radius: gf.radius }
+    }))
+  }), [geofences]);
 
   const loadFeed = useCallback(async () => {
     setLoading(true);
@@ -89,110 +103,9 @@ export default function GPSAttendance() {
     loadFeed();
   }, [loadFeed]);
 
-  useEffect(() => {
-    if (activeTab === 'gps' && mapInstance.current) {
-      setTimeout(() => mapInstance.current.invalidateSize(), 100);
-    }
-  }, [activeTab]);
+  // (activeTab switch no longer requires invalidateSize — react-map-gl handles this)
 
-  // Render Map using Leaflet OpenStreetMap Engine
-  useEffect(() => {
-    if (!mapLoaded || !mapContainerRef.current || !window.L) return;
 
-    const L = window.L;
-    const defaultCenter = [11.0130, 76.9567]; // Default Tamil Nadu / HQ coordinates
-
-    if (!mapInstance.current) {
-      mapInstance.current = L.map(mapContainerRef.current, {
-        center: defaultCenter,
-        zoom: 12,
-        zoomControl: true
-      });
-
-      // Add CartoDB Voyager Tile Layer for crisp, modern styling
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; OpenStreetMap &copy; CARTO',
-        maxZoom: 19
-      }).addTo(mapInstance.current);
-    }
-
-    // Clear existing map layers
-    mapObjects.current.forEach(obj => obj.remove());
-    mapObjects.current = [];
-
-    const boundsGroup = [];
-
-    // 1. Render Geofence Office Zones (Circles & Markers)
-    geofences.forEach(gf => {
-      if (!gf.lat || !gf.lng) return;
-
-      const circle = L.circle([gf.lat, gf.lng], {
-        color: '#2563EB',
-        fillColor: '#3B82F6',
-        fillOpacity: 0.18,
-        weight: 2,
-        radius: gf.radius || 300
-      }).addTo(mapInstance.current);
-
-      circle.bindPopup(`
-        <div style="font-family:sans-serif; padding:4px">
-          <b style="font-size:13px; color:#1E293B">${gf.name}</b><br/>
-          <span style="font-size:11px; color:#2563EB; font-weight:600">Geofence Radius: ${gf.radius}m</span><br/>
-          <span style="font-size:11px; color:#64748B">Center: ${gf.lat.toFixed(4)}°, ${gf.lng.toFixed(4)}°</span>
-        </div>
-      `);
-      mapObjects.current.push(circle);
-
-      // Office Pin Marker
-      const officeMarker = L.circleMarker([gf.lat, gf.lng], {
-        radius: 7,
-        fillColor: '#2563EB',
-        color: '#FFFFFF',
-        weight: 2,
-        fillOpacity: 1
-      }).addTo(mapInstance.current);
-
-      officeMarker.bindPopup(`<b>${gf.name}</b>`);
-      mapObjects.current.push(officeMarker);
-
-      boundsGroup.push([gf.lat, gf.lng]);
-    });
-
-    // 2. Render Live Employee Attendance Pins
-    records.forEach(r => {
-      if (!r.lat || !r.lng) return;
-
-      const isInside = r.status === 'On-Site';
-      const color = isInside ? '#10B981' : '#F59E0B';
-
-      const empMarker = L.circleMarker([r.lat, r.lng], {
-        radius: 9,
-        fillColor: color,
-        color: '#FFFFFF',
-        weight: 3,
-        fillOpacity: 1
-      }).addTo(mapInstance.current);
-
-      empMarker.bindPopup(`
-        <div style="font-family:sans-serif; padding:4px">
-          <b style="font-size:13px; color:#0F172A">${r.name}</b><br/>
-          <span style="font-size:11px; color:#475569">Location: ${r.location || 'Logged Location'}</span><br/>
-          <span style="font-size:11px; color:#475569">Time: ${r.checkIn || r.checkOut || '—'}</span><br/>
-          <span style="display:inline-block; margin-top:6px; padding:3px 8px; border-radius:6px; font-size:10px; font-weight:700; background:${color}20; color:${color}">
-            ${r.status || 'On-Site'} (${r.distance || 0}m from office)
-          </span>
-        </div>
-      `);
-
-      mapObjects.current.push(empMarker);
-      boundsGroup.push([r.lat, r.lng]);
-    });
-
-    // Auto-adjust camera bounds to encompass all geofences and pins
-    if (boundsGroup.length > 0) {
-      mapInstance.current.fitBounds(boundsGroup, { padding: [40, 40], maxZoom: 15 });
-    }
-  }, [mapLoaded, geofences, records]);
 
   const onSitePct = kpis.totalCheckins > 0
     ? ((kpis.onSite / kpis.totalCheckins) * 100).toFixed(1)
@@ -293,7 +206,7 @@ export default function GPSAttendance() {
           <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff' }}>
             <div>
               <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#1e293b' }}>Interactive Geofence Map</h3>
-              <p style={{ margin: 0, fontSize: '12px', color: '#64748b', marginTop: '2px' }}>Live monitoring of employee positions and configured geofence ranges</p>
+              <p style={{ margin: 0, fontSize: '12px', color: '#64748b', marginTop: '2px' }}>Live monitoring powered by MapLibre GL — smooth, hardware-accelerated</p>
             </div>
             <div style={{ display: 'flex', gap: '12px' }}>
               <span style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -305,13 +218,62 @@ export default function GPSAttendance() {
             </div>
           </div>
 
-          <div style={{ height: '380px', backgroundColor: '#f1f5f9', position: 'relative' }}>
-            {!mapLoaded && (
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', fontSize: 13, zIndex: 10 }}>
-                Loading Interactive Map engine...
-              </div>
-            )}
-            <div ref={mapContainerRef} style={{ width: '100%', height: '100%', zIndex: 1 }} />
+          <div style={{ height: '380px', position: 'relative' }}>
+            <Map
+              {...viewState}
+              onMove={evt => setViewState(evt.viewState)}
+              mapStyle={MAP_STYLE}
+              style={{ width: '100%', height: '100%' }}
+            >
+              <AutoFitBounds geofences={geofences} records={records} />
+
+              {/* Geofence Circle Polygons */}
+              {geofenceCircles.features.length > 0 && (
+                <Source type="geojson" data={geofenceCircles}>
+                  <Layer id="geofence-fill" type="fill" paint={{ 'fill-color': '#3B82F6', 'fill-opacity': 0.15 }} />
+                  <Layer id="geofence-outline" type="line" paint={{ 'line-color': '#2563EB', 'line-width': 2 }} />
+                </Source>
+              )}
+
+              {/* Geofence Center Markers */}
+              {geofences.filter(gf => gf.lat && gf.lng).map(gf => (
+                <Marker key={`gf-${gf.id}`} longitude={gf.lng} latitude={gf.lat} anchor="center">
+                  <div title={`${gf.name} (r=${gf.radius}m)`} style={{ width: '14px', height: '14px', backgroundColor: '#2563EB', border: '2px solid #fff', borderRadius: '50%', boxShadow: '0 2px 6px rgba(37,99,235,0.5)', cursor: 'pointer' }} />
+                </Marker>
+              ))}
+
+              {/* Employee Markers */}
+              {records.filter(r => r.lat && r.lng).map((r, i) => {
+                const isInside = r.status === 'On-Site';
+                const color = isInside ? '#10B981' : '#F59E0B';
+                return (
+                  <Marker key={`emp-${i}`} longitude={r.lng} latitude={r.lat} anchor="center">
+                    <div
+                      title={`${r.name} — ${r.status}`}
+                      onClick={() => setPopupInfo(r)}
+                      style={{ width: '18px', height: '18px', backgroundColor: color, border: '3px solid #fff', borderRadius: '50%', boxShadow: `0 3px 10px ${color}60`, cursor: 'pointer', transition: 'transform 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.4)'}
+                      onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                    />
+                  </Marker>
+                );
+              })}
+
+              {/* Popup on marker click */}
+              {popupInfo && (
+                <Marker longitude={popupInfo.lng} latitude={popupInfo.lat} anchor="bottom">
+                  <div style={{ background: '#fff', border: '1px solid #E2E8F0', borderRadius: '10px', padding: '10px 14px', boxShadow: '0 8px 24px rgba(0,0,0,0.12)', fontSize: '12px', minWidth: '160px', position: 'relative' }}>
+                    <button onClick={() => setPopupInfo(null)} style={{ position: 'absolute', top: '6px', right: '8px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#94A3B8' }}>✕</button>
+                    <div style={{ fontWeight: 700, fontSize: '13px', color: '#0F172A', marginBottom: '4px' }}>{popupInfo.name}</div>
+                    <div style={{ color: '#475569' }}>{popupInfo.location || 'Logged Location'}</div>
+                    <div style={{ color: '#475569' }}>Time: {popupInfo.checkIn || popupInfo.checkOut || '—'}</div>
+                    <span style={{ display: 'inline-block', marginTop: '6px', padding: '3px 8px', borderRadius: '6px', fontSize: '10px', fontWeight: '700', background: popupInfo.status === 'On-Site' ? '#D1FAE5' : '#FEF3C7', color: popupInfo.status === 'On-Site' ? '#065F46' : '#92400E' }}>
+                      {popupInfo.status || 'On-Site'} ({popupInfo.distance || 0}m from office)
+                    </span>
+                  </div>
+                </Marker>
+              )}
+            </Map>
           </div>
         </div>
 

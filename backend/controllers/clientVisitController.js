@@ -1,20 +1,79 @@
 const ClientVisitService = require('../services/ClientVisitService');
 
-exports.startVisit = async (req, res) => {
+exports.startJourney = async (req, res) => {
   try {
-    const employeeId = req.user.id;
-    const { clientName, lat, lng } = req.body;
+    const employeeId = req.user.employeeId || req.user.employee_id || (req.user.role === 'SUPER_ADMIN' ? 1 : req.user.id);
+    const { clientName, lat, lng, clientAddress, destLat, destLng } = req.body;
+    
+    if (!clientName || !lat || !lng) {
+      return res.status(400).json({ success: false, message: "Missing required fields (clientName, lat, lng)" });
+    }
+
+    const visit = await ClientVisitService.startJourney(
+      employeeId, clientName,
+      parseFloat(lat), parseFloat(lng),
+      clientAddress || null,
+      destLat ? parseFloat(destLat) : null,
+      destLng ? parseFloat(destLng) : null
+    );
+    res.json({ success: true, visit });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.reachClient = async (req, res) => {
+  try {
+    const { visitId, lat, lng } = req.body;
     let photoUrl = null;
     if (req.file) {
       photoUrl = `/uploads/${req.file.filename}`;
     }
     
-    if (!clientName || !lat || !lng || !photoUrl) {
-      return res.status(400).json({ success: false, message: "Missing required fields (clientName, lat, lng, photo)" });
+    if (!visitId || !lat || !lng || !photoUrl) {
+      return res.status(400).json({ success: false, message: "Missing required fields (visitId, lat, lng, photo)" });
     }
 
-    const visit = await ClientVisitService.startVisit(employeeId, clientName, parseFloat(lat), parseFloat(lng), photoUrl);
-    res.json({ success: true, visit });
+    await ClientVisitService.reachClient(visitId, parseFloat(lat), parseFloat(lng), photoUrl);
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.endMeeting = async (req, res) => {
+  try {
+    const { visitId, lat, lng } = req.body;
+    let photoUrl = null;
+    if (req.file) {
+      photoUrl = `/uploads/${req.file.filename}`;
+    }
+    
+    if (!visitId || !lat || !lng || !photoUrl) {
+      return res.status(400).json({ success: false, message: "Missing required fields (visitId, lat, lng, photo)" });
+    }
+
+    await ClientVisitService.endMeeting(visitId, parseFloat(lat), parseFloat(lng), photoUrl);
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.reachOffice = async (req, res) => {
+  try {
+    const employeeId = req.user.employeeId || req.user.employee_id || (req.user.role === 'SUPER_ADMIN' ? 1 : req.user.id);
+    const { visitId, lat, lng } = req.body;
+    
+    if (!visitId || !lat || !lng) {
+      return res.status(400).json({ success: false, message: "Missing required fields (visitId, lat, lng)" });
+    }
+
+    const result = await ClientVisitService.reachOffice(visitId, employeeId, parseFloat(lat), parseFloat(lng));
+    res.json({ success: true, data: result });
   } catch (error) {
     console.error(error);
     res.status(500).json({ success: false, message: error.message });
@@ -23,7 +82,7 @@ exports.startVisit = async (req, res) => {
 
 exports.trackLocation = async (req, res) => {
   try {
-    const employeeId = req.user.id;
+    const employeeId = req.user.employeeId || req.user.employee_id || (req.user.role === 'SUPER_ADMIN' ? 1 : req.user.id);
     const { visitId, lat, lng } = req.body;
     
     if (!visitId || !lat || !lng) {
@@ -38,34 +97,13 @@ exports.trackLocation = async (req, res) => {
   }
 };
 
-exports.endVisit = async (req, res) => {
-  try {
-    const employeeId = req.user.id;
-    const { visitId, lat, lng } = req.body;
-    let photoUrl = null;
-    if (req.file) {
-      photoUrl = `/uploads/${req.file.filename}`;
-    }
-
-    if (!visitId || !lat || !lng || !photoUrl) {
-      return res.status(400).json({ success: false, message: "Missing required fields" });
-    }
-
-    const result = await ClientVisitService.endVisit(visitId, employeeId, parseFloat(lat), parseFloat(lng), photoUrl);
-    res.json({ success: true, data: result });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: error.message });
-  }
-};
-
 exports.getActiveVisits = async (req, res) => {
   try {
-    const employeeId = req.user.id;
+    const employeeId = req.user.employeeId || req.user.employee_id || (req.user.role === 'SUPER_ADMIN' ? 1 : req.user.id);
     const role = req.user.role;
     let visits = [];
     let completed = [];
-    if (role === 'SUPER_ADMIN' || role === 'SALES_MANAGER' || role === 'TEAM_LEADER') {
+    if (role === 'SUPER_ADMIN' || role === 'SALES_MANAGER' || role === 'TEAM_LEADER' || role === 'ADMIN') {
       const data = await ClientVisitService.getLiveVisits();
       visits = data.activeVisits;
       completed = data.completedVisits;
@@ -82,7 +120,6 @@ exports.getActiveVisits = async (req, res) => {
 
 exports.getLiveDashboard = async (req, res) => {
   try {
-    // Ideally check if req.user has TL/Manager rights, but we handle it in frontend logic for now
     const data = await ClientVisitService.getLiveVisits();
     res.json({ success: true, data });
   } catch (error) {

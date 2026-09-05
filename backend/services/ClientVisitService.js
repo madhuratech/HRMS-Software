@@ -14,36 +14,66 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
+// Calculate real distance with noise filtering:
+// - Ignore jumps < 10 meters (GPS noise when stationary)
+// - Ignore jumps > 2 km per point (GPS glitch / teleport)
+function calcRealDistance(points) {
+  let total = 0;
+  for (let i = 1; i < points.length; i++) {
+    const d = getDistanceFromLatLonInKm(
+      parseFloat(points[i-1].latitude), parseFloat(points[i-1].longitude),
+      parseFloat(points[i].latitude),   parseFloat(points[i].longitude)
+    );
+    if (d > 0.01 && d < 2.0) { // between 10m and 2km per step
+      total += d;
+    }
+  }
+  return total;
+}
+
 class ClientVisitService {
-  static async startVisit(employeeId, clientName, lat, lng, photoUrl) {
+  // officeLat/officeLng = where the employee is currently (office/start point)
+  static async startJourney(employeeId, clientName, officeLat, officeLng, clientAddress, destLat, destLng) {
     const today = new Date().toISOString().split('T')[0];
     const now = new Date();
     const result = await query(`
       INSERT INTO client_visits 
-      (employee_id, client_name, date, check_in_time, check_in_lat, check_in_lng, photo_in_url, status) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'Active')
-    `, [employeeId, clientName, today, now, lat, lng, photoUrl]);
+      (employee_id, client_name, date, start_journey_time, office_lat, office_lng, client_address, client_dest_lat, client_dest_lng, status) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'Travelling')
+    `, [employeeId, clientName, today, now, officeLat, officeLng, clientAddress || null, destLat || null, destLng || null]);
     
     const visitId = result.insertId;
     
-    // Also save the initial point in LocationHistory
+    // Store starting location in history
     await query(`
       INSERT INTO LocationHistory (employee_id, latitude, longitude, visit_id, recorded_at)
       VALUES (?, ?, ?, ?, ?)
-    `, [employeeId, lat, lng, visitId, now]);
+    `, [employeeId, officeLat, officeLng, visitId, now]);
 
-    return { id: visitId, employee_id: employeeId, status: 'Active' };
+    return { id: visitId, employee_id: employeeId, status: 'Travelling' };
   }
 
-  static async trackLocation(visitId, employeeId, lat, lng) {
+  static async reachClient(visitId, lat, lng, photoUrl) {
+    const now = new Date();
     await query(`
-      INSERT INTO LocationHistory (employee_id, latitude, longitude, visit_id)
-      VALUES (?, ?, ?, ?)
-    `, [employeeId, lat, lng, visitId]);
-    return { success: true };
+      UPDATE client_visits
+      SET check_in_time = ?, check_in_lat = ?, check_in_lng = ?, photo_in_url = ?, status = 'In Meeting'
+      WHERE id = ?
+    `, [now, lat, lng, photoUrl, visitId]);
   }
 
-  static async endVisit(visitId, employeeId, lat, lng, photoUrl) {
+  static async endMeeting(visitId, lat, lng, photoUrl) {
+    const now = new Date();
+    await query(`
+      UPDATE client_visits
+      SET check_out_time = ?, check_out_lat = ?, check_out_lng = ?, photo_out_url = ?, status = 'Returning'
+      WHERE id = ?
+    `, [now, lat, lng, photoUrl, visitId]);
+  }
+
+  static async reachOffice(visitId, employeeId, lat, lng) {
+    const now = new Date();
+
     // 1. Get all points for this visit to calculate total distance
     const points = await query(`
       SELECT latitude, longitude FROM LocationHistory
@@ -54,22 +84,16 @@ class ClientVisitService {
     // Add the final point
     points.push({ latitude: lat, longitude: lng });
 
-    let totalDistanceKm = 0;
-    for (let i = 1; i < points.length; i++) {
-      const p1 = points[i - 1];
-      const p2 = points[i];
-      totalDistanceKm += getDistanceFromLatLonInKm(p1.latitude, p1.longitude, p2.latitude, p2.longitude);
-    }
+    const totalDistanceKm = calcRealDistance(points);
 
     // Rate = 5 per km
     const fee = totalDistanceKm * 5;
-    const now = new Date();
 
     await query(`
       UPDATE client_visits
-      SET check_out_time = ?, check_out_lat = ?, check_out_lng = ?, photo_out_url = ?, distance_travelled = ?, calculated_fee = ?, status = 'Completed'
+      SET end_journey_time = ?, distance_travelled = ?, calculated_fee = ?, status = 'Completed'
       WHERE id = ? AND employee_id = ?
-    `, [now, lat, lng, photoUrl, totalDistanceKm, fee, visitId, employeeId]);
+    `, [now, totalDistanceKm, fee, visitId, employeeId]);
 
     // Save final point
     await query(`
@@ -77,13 +101,21 @@ class ClientVisitService {
       VALUES (?, ?, ?, ?, ?)
     `, [employeeId, lat, lng, visitId, now]);
 
-    return { success: true, distance: totalDistanceKm.toFixed(2), fee: fee.toFixed(2) };
+    return { distance: totalDistanceKm.toFixed(2), fee: fee.toFixed(2) };
+  }
+
+  static async trackLocation(visitId, employeeId, lat, lng) {
+    await query(`
+      INSERT INTO LocationHistory (employee_id, latitude, longitude, visit_id)
+      VALUES (?, ?, ?, ?)
+    `, [employeeId, lat, lng, visitId]);
+    return { success: true };
   }
 
   static async getActiveVisitsForEmployee(employeeId) {
     const visits = await query(`
       SELECT * FROM client_visits
-      WHERE employee_id = ? AND status = 'Active'
+      WHERE employee_id = ? AND status != 'Completed'
     `, [employeeId]);
     return visits;
   }
@@ -98,24 +130,24 @@ class ClientVisitService {
   }
 
   static async getLiveVisits() {
-    // Fetch all active visits and their latest location
     const activeVisits = await query(`
-      SELECT cv.id, cv.employee_id, cv.client_name, cv.check_in_time, cv.photo_in_url, e.name as employee_name,
+      SELECT cv.id, cv.employee_id, cv.client_name, cv.start_journey_time, cv.check_in_time, cv.photo_in_url, cv.check_out_time, cv.photo_out_url, cv.status, cv.office_lat, cv.office_lng, cv.client_address, e.name as employee_name,
              (SELECT latitude FROM LocationHistory lh WHERE lh.visit_id = cv.id ORDER BY recorded_at DESC LIMIT 1) as last_lat,
              (SELECT longitude FROM LocationHistory lh WHERE lh.visit_id = cv.id ORDER BY recorded_at DESC LIMIT 1) as last_lng,
              (SELECT recorded_at FROM LocationHistory lh WHERE lh.visit_id = cv.id ORDER BY recorded_at DESC LIMIT 1) as last_update
       FROM client_visits cv
       JOIN employees e ON cv.employee_id = e.id
-      WHERE cv.status = 'Active'
+      JOIN departments d ON e.department_id = d.id
+      WHERE cv.status != 'Completed' AND d.dept_name = 'Sales & Marketing'
     `);
     
-    // Also fetch completed visits for today just to show on dashboard
     const today = new Date().toISOString().split('T')[0];
     const completedVisits = await query(`
-      SELECT cv.id, cv.employee_id, cv.client_name, cv.check_in_time, cv.check_out_time, cv.distance_travelled, cv.calculated_fee, e.name as employee_name
+      SELECT cv.id, cv.employee_id, cv.client_name, cv.start_journey_time, cv.end_journey_time, cv.check_in_time, cv.check_out_time, cv.distance_travelled, cv.calculated_fee, cv.status, e.name as employee_name
       FROM client_visits cv
       JOIN employees e ON cv.employee_id = e.id
-      WHERE cv.date = ? AND cv.status = 'Completed'
+      JOIN departments d ON e.department_id = d.id
+      WHERE cv.date = ? AND cv.status = 'Completed' AND d.dept_name = 'Sales & Marketing'
     `, [today]);
 
     return { activeVisits, completedVisits };
@@ -132,24 +164,34 @@ class ClientVisitService {
     if (visits.length === 0) throw new Error("Visit not found");
     const visit = visits[0];
 
-    const points = await query(`
+    const rawPoints = await query(`
       SELECT latitude, longitude, recorded_at FROM LocationHistory
       WHERE visit_id = ?
       ORDER BY recorded_at ASC
     `, [visitId]);
 
-    let totalDistanceKm = 0;
-    for (let i = 1; i < points.length; i++) {
-      const p1 = points[i - 1];
-      const p2 = points[i];
-      totalDistanceKm += getDistanceFromLatLonInKm(p1.latitude, p1.longitude, p2.latitude, p2.longitude);
+    // Filter GPS noise: remove points that jump > 2km from previous (glitches)
+    // Keep only points that moved > 5m from previous (remove stationary noise)
+    const filteredPoints = [];
+    for (let i = 0; i < rawPoints.length; i++) {
+      if (i === 0) { filteredPoints.push(rawPoints[i]); continue; }
+      const prev = filteredPoints[filteredPoints.length - 1];
+      const d = getDistanceFromLatLonInKm(
+        parseFloat(prev.latitude), parseFloat(prev.longitude),
+        parseFloat(rawPoints[i].latitude), parseFloat(rawPoints[i].longitude)
+      );
+      // Only include if moved between 5m and 2km from last kept point
+      if (d > 0.005 && d < 2.0) {
+        filteredPoints.push(rawPoints[i]);
+      }
     }
 
+    const totalDistanceKm = calcRealDistance(filteredPoints);
     const currentFee = totalDistanceKm * 5;
 
     return {
       visit,
-      points,
+      points: filteredPoints,
       liveDistance: totalDistanceKm.toFixed(2),
       liveFee: currentFee.toFixed(2)
     };

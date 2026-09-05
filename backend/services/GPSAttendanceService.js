@@ -13,7 +13,7 @@ const query = (sql, params = []) => {
 class GPSAttendanceService {
   // Haversine formula to compute distance in meters
   static getDistance(lat1, lon1, lat2, lon2) {
-    const R = 6371e3; // Earth radius in meters
+    const R = 6371e3; 
     const phi1 = (lat1 * Math.PI) / 180;
     const phi2 = (lat2 * Math.PI) / 180;
     const deltaPhi = ((lat2 - lat1) * Math.PI) / 180;
@@ -208,11 +208,13 @@ class GPSAttendanceService {
 
     const statsRow = await query(`
       SELECT 
-        COUNT(DISTINCT employee_id) as total_checkins,
-        SUM(CASE WHEN check_in_time IS NOT NULL THEN 1 ELSE 0 END) as onsite_checkins,
+        COUNT(DISTINCT g.employee_id) as total_checkins,
+        SUM(CASE WHEN g.check_in_time IS NOT NULL THEN 1 ELSE 0 END) as onsite_checkins,
         0 as remote_checkins
-      FROM GPSAttendance
-      WHERE punch_date = ?${empScopeClause}
+      FROM GPSAttendance g
+      JOIN employees e ON e.id = g.employee_id
+      JOIN departments d ON e.department_id = d.id
+      WHERE g.punch_date = ? AND d.dept_name = 'Sales & Marketing' ${empScopeClause.replace(/employee_id/g, 'g.employee_id')}
     `, empScopeParams);
 
     const geofenceCountRow = await query(`SELECT COUNT(*) as active_geofences FROM GeofenceLocations WHERE status = 'Active'`);
@@ -232,13 +234,15 @@ class GPSAttendanceService {
         (
           SELECT COUNT(DISTINCT g.employee_id)
           FROM GPSAttendance g
-          WHERE g.punch_date = ? AND (g.punch_in_location = GeofenceLocations.name OR g.punch_out_location = GeofenceLocations.name)
+          JOIN employees e ON e.id = g.employee_id
+          JOIN departments d ON e.department_id = d.id
+          WHERE g.punch_date = ? AND d.dept_name = 'Sales & Marketing' AND (g.punch_in_location = GeofenceLocations.name OR g.punch_out_location = GeofenceLocations.name)
         ) as activeStaff
       FROM GeofenceLocations
       WHERE status = 'Active'
     `, [date]);
 
-    let feedWhere = ' WHERE (g.punch_date = ? OR DATE(g.check_in_time) = ?) ';
+    let feedWhere = " WHERE (g.punch_date = ? OR DATE(g.check_in_time) = ?) AND d.dept_name = 'Sales & Marketing' ";
     if (Array.isArray(allowedEmployeeIds)) {
       feedWhere += ' AND g.employee_id IN (?) ';
     }
@@ -341,7 +345,8 @@ class GPSAttendanceService {
         l.ip_address
       FROM AttendanceLogs l
       JOIN employees e ON e.id = l.employee_id
-      ${where}
+      JOIN departments d ON e.department_id = d.id
+      ${where} AND d.dept_name = 'Sales & Marketing'
       ORDER BY l.punch_time DESC
     `;
     return await query(sql, params);

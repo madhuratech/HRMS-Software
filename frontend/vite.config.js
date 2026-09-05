@@ -54,6 +54,9 @@ export default defineConfig({
     target: 'esnext',
     outDir: 'dist'
   },
+  optimizeDeps: {
+    exclude: ['maplibre-gl']
+  },
   server: {
     port: 3000,
     host: true,
