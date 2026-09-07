@@ -141,15 +141,6 @@ export default function ShiftRosterScreen({ navigation }) {
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
           <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
             <ChevronLeft size={24} color='#111827' />
-</View>
-  );
-
-  return (
-    <View style={styles.container}>
-      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
-            <ChevronLeft size={24} color='#111827' />
           </TouchableOpacity>
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Shift Roster</Text>
