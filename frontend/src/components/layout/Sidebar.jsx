@@ -20,6 +20,7 @@ import {
   ChevronRight,
   LogOut,
   Sparkles,
+  Briefcase,
   X
 } from 'lucide-react';
 import { cn, getAvatarUrl } from '../../lib/utils';
@@ -264,6 +265,15 @@ export function Sidebar({ userRole, onLogout, onClose }) {
         { id: 'timesheets', label: 'Timesheets', path: '/projects/timesheets', moduleKey: 'projects', submoduleKey: 'timesheets' },
         { id: 'milestones', label: 'Milestones', path: '/projects/milestones', moduleKey: 'projects', submoduleKey: 'milestones' },
         { id: 'team-members', label: 'Team Members', path: '/projects/team', moduleKey: 'projects', submoduleKey: 'team_members' }
+      ]
+    },
+    {
+      id: 'clients',
+      label: 'Clients',
+      icon: Briefcase,
+      roles: ['ALL'],
+      children: [
+        { id: 'all-clients', label: 'All Clients', path: '/clients/list', moduleKey: 'clients', submoduleKey: 'client_management' }
       ]
     },
     { id: 'reports', label: 'Reports', icon: FileBarChart, moduleKey: 'reports', submoduleKey: 'reports_directory', path: '/reports' },

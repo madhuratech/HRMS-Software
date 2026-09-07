@@ -138,6 +138,15 @@ const MODULE_STRUCTURE = [
     ]
   },
   {
+    key: 'clients',
+    label: 'Client Management',
+    category: 'Operations',
+    submodules: [
+      { key: 'client_management', label: 'All Clients' },
+      { key: 'client_projects', label: 'Client Projects' }
+    ]
+  },
+  {
     key: 'reports',
     label: 'Reports & Analytics',
     category: 'Analytics',
@@ -317,11 +326,14 @@ class RbacService {
     else if (['TEAM_LEADER', 'TEAM_LEAD', 'LEAD'].includes(keyUpper)) keyUpper = 'TEAM_LEADER';
     else if (['EMPLOYEE', 'STAFF', 'SERVICE_STAFF', 'SALES_MANAGER'].includes(keyUpper)) keyUpper = 'EMPLOYEE';
 
-    const permissions = await new Promise((resolve, reject) => {
+    const permissions = await new Promise((resolve) => {
       const sql = `SELECT * FROM role_permissions WHERE UPPER(role_key) = ?`;
       db.query(sql, [keyUpper], (err, rows) => {
-        if (err) return reject(err);
-        resolve(rows);
+        if (err) {
+          console.error('[RBAC WARN] Failed to fetch role_permissions from DB, using system defaults:', err.message);
+          return resolve([]);
+        }
+        resolve(rows || []);
       });
     });
 
@@ -344,12 +356,12 @@ class RbacService {
     const getDefaultSubmoduleView = (mKey, sKey) => {
       if (keyUpper === 'SUPER_ADMIN' || keyUpper === 'ADMIN') return true;
       if (keyUpper === 'HR_MANAGER' || keyUpper === 'HR') {
-        return ['dashboard', 'organization', 'employees', 'attendance', 'leave', 'payroll', 'recruitment', 'onboarding', 'performance', 'reports', 'expenses', 'documents', 'helpdesk', 'settings'].includes(mKey);
+        return ['dashboard', 'organization', 'employees', 'attendance', 'leave', 'payroll', 'recruitment', 'onboarding', 'performance', 'projects', 'clients', 'reports', 'expenses', 'documents', 'helpdesk', 'settings'].includes(mKey);
       }
       if (keyUpper === 'TEAM_LEADER') {
-        if (sKey === 'leave_approval' || sKey === 'comp_off' || sKey === 'employee_directory' || sKey === 'employee_profile' || sKey === 'tasks' || sKey === 'projects_list' || sKey === 'timesheets') return true;
+        if (sKey === 'leave_approval' || sKey === 'comp_off' || sKey === 'employee_directory' || sKey === 'employee_profile' || sKey === 'tasks' || sKey === 'projects_list' || sKey === 'timesheets' || sKey === 'client_projects') return true;
         if (sKey === 'leave_types' || sKey === 'leave_requests') return false;
-        return ['dashboard', 'employees', 'attendance', 'leave', 'projects', 'performance', 'reports', 'documents', 'helpdesk'].includes(mKey);
+        return ['dashboard', 'employees', 'attendance', 'leave', 'projects', 'clients', 'performance', 'reports', 'documents', 'helpdesk'].includes(mKey);
       }
       if (keyUpper === 'EMPLOYEE') {
         if (sKey === 'leave_balance' || sKey === 'my_leave' || sKey === 'holiday_list' || sKey === 'daily_attendance' || sKey === 'gps_attendance' || sKey === 'shift_roster' || sKey === 'employee_profile' || sKey === 'tasks' || sKey === 'timesheets' || sKey === 'generate_payslips') return true;
@@ -562,13 +574,13 @@ class RbacService {
     else if (['TEAM_LEADER', 'TEAM_LEAD', 'LEAD'].includes(inputUpper)) resolvedKey = 'TEAM_LEADER';
     else if (['EMPLOYEE', 'STAFF', 'SERVICE_STAFF', 'SALES_MANAGER'].includes(inputUpper)) resolvedKey = 'EMPLOYEE';
     else {
-      const roles = await new Promise((resolve, reject) => {
+      const roles = await new Promise((resolve) => {
         db.query('SELECT role_key FROM roles WHERE UPPER(role_key) = ? OR UPPER(REPLACE(role_name, " ", "_")) = ? OR LOWER(role_name) = LOWER(?)', [inputUpper, inputUpper, String(roleNameOrKey).trim()], (err, rows) => {
-          if (err) return reject(err);
+          if (err || !rows) return resolve([]);
           resolve(rows);
         });
       });
-      resolvedKey = roles.length > 0 ? roles[0].role_key : 'EMPLOYEE';
+      resolvedKey = (roles && roles.length > 0) ? roles[0].role_key : 'EMPLOYEE';
     }
     const matrix = await this.getRolePermissions(resolvedKey);
     const permObj = {};

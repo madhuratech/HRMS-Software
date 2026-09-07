@@ -632,7 +632,7 @@ export function TeamLeaderDashboard() {
         <div style={{
           position: 'fixed', inset: 0, zIndex: 1000,
           background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
-          display: 'flex', items: 'center', justify: 'center', padding: 20
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
         }}>
           <div style={{
             background: '#FFF', borderRadius: 16, width: '100%', maxWidth: 520,

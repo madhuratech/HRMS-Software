@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../../lib/api';
+import { getAvatarUrl } from '../../lib/utils';
 import { ChevronLeft, ChevronRight, ChevronDown } from 'lucide-react';
 
 const DEFAULT_EMPLOYEES = [
@@ -296,7 +297,15 @@ export default function ShiftRoster() {
                       <td style={{ padding: '16px 64px 16px 16px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           {row.avatar ? (
-                            <img src={row.avatar} alt={row.employee} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+                            <img
+                              src={getAvatarUrl(row.avatar, row.employee)}
+                              alt={row.employee}
+                              style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(row.employee || 'User')}&background=2563EB&color=fff&bold=true`;
+                              }}
+                            />
                           ) : (
                             <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#3b82f6', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: 'bold' }}>
                               {(row.employee || 'E').charAt(0)}

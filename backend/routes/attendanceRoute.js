@@ -204,23 +204,26 @@ router.get("/late-arrivals", authenticateJWT, (req, res) => {
   const db = require("../config/database");
   const sql = `
     SELECT 
-      a.id,
+      g.id,
       e.name as employee,
       e.profile_photo as avatar,
-      DATE_FORMAT(a.date, '%b %d, %Y') as date,
+      COALESCE(DATE_FORMAT(g.punch_date, '%b %d, %Y'), DATE_FORMAT(g.check_in_time, '%b %d, %Y'), DATE_FORMAT(NOW(), '%b %d, %Y')) as date,
       '09:00 AM' as expected,
-      COALESCE(TIME_FORMAT(a.punch_in, '%h:%i %p'), '09:30 AM') as checkIn,
-      CONCAT('00h ', COALESCE(TIMESTAMPDIFF(MINUTE, '09:00:00', a.punch_in), 30), 'm') as delay,
-      COALESCE(a.notes, 'Traffic delay') as reason,
+      COALESCE(TIME_FORMAT(g.check_in_time, '%h:%i %p'), '09:30 AM') as checkIn,
+      CONCAT('00h ', COALESCE(TIMESTAMPDIFF(MINUTE, '09:00:00', TIME(g.check_in_time)), 30), 'm') as delay,
+      COALESCE(g.checkout_reason, 'Traffic delay') as reason,
       'Late' as status
-    FROM attendance a
-    JOIN employees e ON a.employee_id = e.id
-    ORDER BY a.id DESC
+    FROM GPSAttendance g
+    JOIN employees e ON g.employee_id = e.id
+    ORDER BY g.id DESC
     LIMIT 20
   `;
   db.query(sql, (err, rows) => {
-    if (err) return res.status(500).json(err);
-    res.json(rows);
+    if (err) {
+      console.error("[attendance/late-arrivals] Error:", err.message);
+      return res.json([]);
+    }
+    res.json(rows || []);
   });
 });
 
@@ -232,13 +235,16 @@ router.get("/roster", authenticateJWT, (req, res) => {
       e.id,
       e.name as employee,
       e.profile_photo as avatar,
-      COALESCE(e.employee_code, CONCAT('EMP00', e.id)) as empId
+      COALESCE(e.employee_id, CONCAT('EMP00', e.id)) as empId
     FROM employees e
     WHERE e.status = 'Active'
     LIMIT 10
   `;
   db.query(sql, (err, employees) => {
-    if (err) return res.status(500).json(err);
+    if (err) {
+      console.error("[attendance/roster] Error:", err.message);
+      return res.json([]);
+    }
     const days = [
       { day: 'Mon', date: '20 May', shift: 'General Shift', time: '09:00 AM - 06:00 PM', type: 'general' },
       { day: 'Tue', date: '21 May', shift: 'General Shift', time: '09:00 AM - 06:00 PM', type: 'general' },
@@ -248,7 +254,7 @@ router.get("/roster", authenticateJWT, (req, res) => {
       { day: 'Sat', date: '25 May', shift: 'Weekly Off', time: '--', type: 'off' },
       { day: 'Sun', date: '26 May', shift: 'Weekly Off', time: '--', type: 'off' }
     ];
-    const roster = employees.map(emp => ({
+    const roster = (employees || []).map(emp => ({
       id: emp.id,
       employee: emp.employee,
       avatar: emp.avatar,

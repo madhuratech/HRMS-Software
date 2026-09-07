@@ -125,6 +125,11 @@ import Timesheets from './components/projects/Timesheets';
 import Milestones from './components/projects/Milestones';
 import TeamMembers from './components/projects/TeamMembers';
 
+// Client Management Module Imports
+import AllClients from './components/clients/AllClients';
+import AddClient from './components/clients/AddClient';
+import ClientDetails from './components/clients/ClientDetails';
+
 // Expenses Module Imports
 import ExpenseClaims from './components/expenses/ExpenseClaims';
 import ExpenseCategories from './components/expenses/ExpenseCategories';
@@ -536,6 +541,14 @@ function App() {
             <Route path="/projects/milestones" element={<PermissionGuard moduleKey="projects" submoduleKey="milestones"><Milestones /></PermissionGuard>} />
             <Route path="/projects/team" element={<PermissionGuard moduleKey="projects" submoduleKey="team_members"><TeamMembers /></PermissionGuard>} />
             <Route path="/projects/reports" element={<Navigate to="/reports/projects" replace />} />
+
+            {/* Client Management Module */}
+            <Route path="/clients" element={<Navigate to="/clients/list" replace />} />
+            <Route path="/clients/list" element={<PermissionGuard moduleKey="clients" submoduleKey="client_management" action="view"><AllClients /></PermissionGuard>} />
+            <Route path="/clients/add" element={<PermissionGuard moduleKey="clients" submoduleKey="client_management" action="create"><AddClient /></PermissionGuard>} />
+            <Route path="/clients/:id" element={<PermissionGuard moduleKey="clients" submoduleKey="client_management" action="view"><ClientDetails /></PermissionGuard>} />
+            <Route path="/clients/:id/edit" element={<PermissionGuard moduleKey="clients" submoduleKey="client_management" action="edit"><AddClient isEdit={true} /></PermissionGuard>} />
+            <Route path="/clients/projects" element={<Navigate to="/clients/list" replace />} />
 
             {/* Expenses Module */}
             <Route path="/expenses" element={<Navigate to="/expenses/claims" replace />} />

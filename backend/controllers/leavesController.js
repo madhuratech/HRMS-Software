@@ -242,31 +242,81 @@ exports.updateStatus = (req, res) => {
   const { id } = req.params;
   const { status, approved_by } = req.body;
 
-  if (!status) {
-    return res.status(400).json({ message: "Status is required" });
+  const appId = parseInt(id, 10);
+  if (isNaN(appId) || appId <= 0) {
+    return res.status(400).json({ success: false, message: "Invalid leave application ID" });
+  }
+
+  if (!status || typeof status !== 'string' || !status.trim()) {
+    return res.status(400).json({ success: false, message: "Status is required" });
+  }
+
+  // Normalize status string (TitleCase)
+  const rawStatus = status.trim().toLowerCase();
+  let normStatus = 'Pending';
+  if (rawStatus === 'approved') normStatus = 'Approved';
+  else if (rawStatus === 'rejected') normStatus = 'Rejected';
+  else if (rawStatus === 'pending') normStatus = 'Pending';
+  else if (rawStatus === 'escalated') normStatus = 'Escalated';
+  else {
+    return res.status(400).json({ success: false, message: `Invalid status '${status}'. Must be Approved, Rejected, Pending, or Escalated.` });
   }
 
   const fetchSql = `
     SELECT la.*, lt.name as leave_name 
     FROM leave_applications la 
-    JOIN leave_types lt ON la.leave_type_id = lt.id 
+    LEFT JOIN leave_types lt ON la.leave_type_id = lt.id 
     WHERE la.id = ?
   `;
-  db.query(fetchSql, [id], (errFetch, fetchRows) => {
-    const app = fetchRows && fetchRows.length > 0 ? fetchRows[0] : null;
-    const sql = "UPDATE leave_applications SET status = ?, approved_by = ? WHERE id = ?";
-    db.query(sql, [status, approved_by, id], (err) => {
-      if (err) return res.status(500).json(err);
+  db.query(fetchSql, [appId], (errFetch, fetchRows) => {
+    if (errFetch) {
+      console.error("Database error fetching leave application:", errFetch);
+      return res.status(500).json({ success: false, message: "Database query error", error: errFetch.message });
+    }
 
-      if (app) {
-        const NotificationService = require("../services/NotificationService");
-        const startStr = new Date(app.start_date).toISOString().split('T')[0];
-        const endStr = new Date(app.end_date).toISOString().split('T')[0];
-        NotificationService.triggerLeaveStatusUpdate(id, app.employee_id, app.leave_name, status, startStr, endStr)
-          .catch(e => console.error("Error triggering leave status update notification:", e));
-      }
+    if (!fetchRows || fetchRows.length === 0) {
+      return res.status(404).json({ success: false, message: "Leave application not found" });
+    }
 
-      res.json({ message: "Leave application updated successfully" });
+    const app = fetchRows[0];
+    const candidateApproverId = approved_by || (req.user && (req.user.employeeId || req.user.employee_id || req.user.id));
+
+    // Check if candidate approver ID exists in employees table to satisfy foreign key constraint
+    db.query("SELECT id FROM employees WHERE id = ?", [candidateApproverId], (errCheck, checkRows) => {
+      const finalApproverId = (!errCheck && checkRows && checkRows.length > 0) ? checkRows[0].id : null;
+
+      const sql = "UPDATE leave_applications SET status = ?, approved_by = ? WHERE id = ?";
+      db.query(sql, [normStatus, finalApproverId, appId], (errUpdate) => {
+        if (errUpdate) {
+          console.error("Database error updating leave application:", errUpdate);
+          return res.status(500).json({ success: false, message: "Database update error", error: errUpdate.message });
+        }
+
+        try {
+          const NotificationService = require("../services/NotificationService");
+          let startStr = 'N/A';
+          let endStr = 'N/A';
+          if (app.start_date) {
+            const sD = new Date(app.start_date);
+            if (!isNaN(sD.getTime())) startStr = sD.toISOString().split('T')[0];
+          }
+          if (app.end_date) {
+            const eD = new Date(app.end_date);
+            if (!isNaN(eD.getTime())) endStr = eD.toISOString().split('T')[0];
+          }
+          NotificationService.triggerLeaveStatusUpdate(appId, app.employee_id, app.leave_name, normStatus, startStr, endStr)
+            .catch(e => console.error("Error triggering leave status update notification:", e));
+        } catch (notifErr) {
+          console.error("Exception triggering notification on leave status update:", notifErr);
+        }
+
+        return res.status(200).json({
+          success: true,
+          message: `Leave application ${normStatus.toLowerCase()} successfully`,
+          id: appId,
+          status: normStatus
+        });
+      });
     });
   });
 };

@@ -7,14 +7,20 @@ class NotificationService {
   static async getEmployeeDetails(employeeId) {
     return new Promise((resolve) => {
       const sql = `
-        SELECT e.*, r.role_key 
+        SELECT e.*, COALESCE(r.role_key, 'EMPLOYEE') as role_key 
         FROM employees e 
         LEFT JOIN roles r ON e.role_id = r.id 
         WHERE e.id = ?
       `;
       db.query(sql, [employeeId], (err, rows) => {
-        if (err || rows.length === 0) resolve(null);
-        else resolve(rows[0]);
+        if (err || !rows || rows.length === 0) {
+          db.query(`SELECT *, 'EMPLOYEE' as role_key FROM employees WHERE id = ?`, [employeeId], (err2, rows2) => {
+            if (err2 || !rows2 || rows2.length === 0) resolve(null);
+            else resolve(rows2[0]);
+          });
+        } else {
+          resolve(rows[0]);
+        }
       });
     });
   }
@@ -34,12 +40,13 @@ class NotificationService {
     entity_id,
     action_url
   }) {
-    // Avoid duplicates for specific unique events
+    // Avoid duplicates for specific unique events created within last 2 minutes or currently unread
     if (entity_type && entity_id && type && (recipient_employee_id || recipient_user_id)) {
       const checkSql = `
         SELECT id FROM notifications 
         WHERE type = ? AND entity_type = ? AND entity_id = ? 
           AND (recipient_employee_id = ? OR recipient_user_id = ?)
+          AND (is_read = 0 OR created_at > NOW() - INTERVAL 2 MINUTE)
       `;
       const exists = await new Promise((resolve) => {
         db.query(checkSql, [type, entity_type, entity_id, recipient_employee_id || null, recipient_user_id || null], (err, rows) => {
@@ -87,13 +94,33 @@ class NotificationService {
   static async notifyAdminsAndHR(type, title, message, entityType, entityId, actionUrl) {
     return new Promise((resolve) => {
       const sql = `
-        SELECT e.id, e.team_id, r.role_key 
+        SELECT e.id, e.team_id, COALESCE(r.role_key, 'ADMIN') as role_key 
         FROM employees e 
-        JOIN roles r ON e.role_id = r.id 
-        WHERE r.role_key IN ('SUPER_ADMIN', 'HR_MANAGER') AND e.status = 'Active'
+        LEFT JOIN roles r ON e.role_id = r.id 
+        WHERE r.role_key IN ('SUPER_ADMIN', 'HR_MANAGER', 'ADMIN', 'HR') AND e.status = 'Active'
       `;
       db.query(sql, [], async (err, rows) => {
-        if (err) return resolve([]);
+        if (err || !rows || rows.length === 0) {
+          db.query(`SELECT id, team_id, 'ADMIN' as role_key FROM employees WHERE status = 'Active'`, async (err2, rows2) => {
+            if (err2 || !rows2) return resolve([]);
+            const promises = rows2.map(user => 
+              this.createNotification({
+                recipient_employee_id: user.id,
+                role: user.role_key,
+                team_id: user.team_id,
+                type,
+                title,
+                message,
+                entity_type: entityType,
+                entity_id: entityId,
+                action_url: actionUrl
+              })
+            );
+            const results = await Promise.all(promises);
+            resolve(results);
+          });
+          return;
+        }
         const promises = rows.map(user => 
           this.createNotification({
             recipient_employee_id: user.id,
@@ -120,13 +147,38 @@ class NotificationService {
     if (!teamId) return [];
     return new Promise((resolve) => {
       const sql = `
-        SELECT e.id, e.team_id, r.role_key 
+        SELECT e.id, e.team_id, COALESCE(r.role_key, 'TEAM_LEADER') as role_key 
         FROM employees e 
-        JOIN roles r ON e.role_id = r.id 
-        WHERE r.role_key = 'TEAM_LEADER' AND e.team_id = ? AND e.status = 'Active'
+        LEFT JOIN roles r ON e.role_id = r.id 
+        WHERE r.role_key IN ('TEAM_LEADER', 'TEAM_LEAD', 'TEAMLEADER')
+          AND e.team_id = ? AND e.status = 'Active'
       `;
       db.query(sql, [teamId], async (err, rows) => {
-        if (err) return resolve([]);
+        if (err || !rows || rows.length === 0) {
+          db.query(
+            `SELECT id, team_id, 'TEAM_LEADER' as role_key FROM employees WHERE team_id = ? AND status = 'Active'`,
+            [teamId],
+            async (err2, rows2) => {
+              if (err2 || !rows2) return resolve([]);
+              const promises = rows2.map(user => 
+                this.createNotification({
+                  recipient_employee_id: user.id,
+                  role: user.role_key,
+                  team_id: user.team_id,
+                  type,
+                  title,
+                  message,
+                  entity_type: entityType,
+                  entity_id: entityId,
+                  action_url: actionUrl
+                })
+              );
+              const results = await Promise.all(promises);
+              resolve(results);
+            }
+          );
+          return;
+        }
         const promises = rows.map(user => 
           this.createNotification({
             recipient_employee_id: user.id,
@@ -152,13 +204,33 @@ class NotificationService {
   static async notifyAllEmployees(type, title, message, entityType, entityId, actionUrl) {
     return new Promise((resolve) => {
       const sql = `
-        SELECT e.id, e.team_id, r.role_key 
+        SELECT e.id, e.team_id, COALESCE(r.role_key, 'EMPLOYEE') as role_key 
         FROM employees e 
-        JOIN roles r ON e.role_id = r.id 
+        LEFT JOIN roles r ON e.role_id = r.id 
         WHERE e.status = 'Active'
       `;
       db.query(sql, [], async (err, rows) => {
-        if (err) return resolve([]);
+        if (err || !rows || rows.length === 0) {
+          db.query(`SELECT id, team_id, 'EMPLOYEE' as role_key FROM employees WHERE status = 'Active'`, async (err2, rows2) => {
+            if (err2 || !rows2) return resolve([]);
+            const promises = rows2.map(user => 
+              this.createNotification({
+                recipient_employee_id: user.id,
+                role: user.role_key,
+                team_id: user.team_id,
+                type,
+                title,
+                message,
+                entity_type: entityType,
+                entity_id: entityId,
+                action_url: actionUrl
+              })
+            );
+            const results = await Promise.all(promises);
+            resolve(results);
+          });
+          return;
+        }
         const promises = rows.map(user => 
           this.createNotification({
             recipient_employee_id: user.id,
@@ -206,17 +278,18 @@ class NotificationService {
    */
   static async triggerLeaveStatusUpdate(leaveApplicationId, employeeId, leaveTypeName, status, startDateStr, endDateStr) {
     const emp = await this.getEmployeeDetails(employeeId);
-    if (!emp) return;
+    const roleKey = emp ? emp.role_key : 'EMPLOYEE';
+    const teamId = emp ? emp.team_id : null;
 
     const type = status === 'Approved' ? 'LEAVE_APPROVED' : status === 'Rejected' ? 'LEAVE_REJECTED' : 'LEAVE_CANCELLED';
     const title = `Leave ${status}`;
-    const message = `Your ${leaveTypeName || 'Leave'} request for ${startDateStr} - ${endDateStr} has been ${status.toLowerCase()}.`;
+    const message = `Your ${leaveTypeName || 'Leave'} request for ${startDateStr || 'requested dates'} has been ${status ? status.toLowerCase() : 'updated'}.`;
     const actionUrl = '/employee/leave';
 
     await this.createNotification({
       recipient_employee_id: employeeId,
-      role: emp.role_key,
-      team_id: emp.team_id,
+      role: roleKey,
+      team_id: teamId,
       type,
       title,
       message,
@@ -356,6 +429,166 @@ class NotificationService {
       entity_id: payslipId,
       action_url: actionUrl
     });
+  }
+
+  /**
+   * Trigger Help Desk Query Created notification
+   */
+  static async triggerHelpDeskCreated(ticketId, creatorEmpId, ticketSubject) {
+    const emp = await this.getEmployeeDetails(creatorEmpId);
+    const empName = emp ? emp.name : `Employee #${creatorEmpId}`;
+    const title = 'New Employee Query';
+    const message = `${empName} submitted a new query: "${ticketSubject}".`;
+    const actionUrl = '/help-desk';
+
+    await this.notifyAdminsAndHR('HELPDESK_TICKET_CREATED', title, message, 'ticket', ticketId, actionUrl);
+  }
+
+  /**
+   * Trigger Help Desk Ticket Status / Reply Update
+   */
+  static async triggerHelpDeskStatusUpdate(ticketId, creatorEmpId, ticketSubject, status) {
+    const emp = await this.getEmployeeDetails(creatorEmpId);
+    const roleKey = emp ? emp.role_key : 'EMPLOYEE';
+    const teamId = emp ? emp.team_id : null;
+
+    const title = 'Help Desk Query Response';
+    const message = `Your query "${ticketSubject}" status has been updated to ${status}.`;
+    const actionUrl = '/help-desk';
+
+    await this.createNotification({
+      recipient_employee_id: creatorEmpId,
+      role: roleKey,
+      team_id: teamId,
+      type: 'HELPDESK_STATUS_UPDATED',
+      title,
+      message,
+      entity_type: 'ticket',
+      entity_id: ticketId,
+      action_url: actionUrl
+    });
+  }
+
+  /**
+   * Trigger Expense Submission notification
+   */
+  static async triggerExpenseSubmitted(expenseId, employeeId, expenseTitle, amount) {
+    const emp = await this.getEmployeeDetails(employeeId);
+    const empName = emp ? emp.name : `Employee #${employeeId}`;
+
+    const title = 'New Expense Claim';
+    const message = `${empName} submitted an expense claim: "${expenseTitle}" (${amount || ''}).`;
+    const actionUrl = '/expenses';
+
+    await this.notifyAdminsAndHR('EXPENSE_SUBMITTED', title, message, 'expense', expenseId, actionUrl);
+
+    if (emp && emp.team_id) {
+      await this.notifyTeamLeaders(emp.team_id, 'EXPENSE_SUBMITTED', title, message, 'expense', expenseId, actionUrl);
+    }
+  }
+
+  /**
+   * Trigger Expense Status Update notification
+   */
+  static async triggerExpenseStatusUpdate(expenseId, employeeId, expenseTitle, status) {
+    const emp = await this.getEmployeeDetails(employeeId);
+    const roleKey = emp ? emp.role_key : 'EMPLOYEE';
+    const teamId = emp ? emp.team_id : null;
+
+    const title = `Expense ${status}`;
+    const message = `Your expense claim "${expenseTitle}" has been ${status ? status.toLowerCase() : 'updated'}.`;
+    const actionUrl = '/expenses';
+
+    await this.createNotification({
+      recipient_employee_id: employeeId,
+      role: roleKey,
+      team_id: teamId,
+      type: 'EXPENSE_STATUS_UPDATED',
+      title,
+      message,
+      entity_type: 'expense',
+      entity_id: expenseId,
+      action_url: actionUrl
+    });
+  }
+
+  /**
+   * Trigger Document Verification / Upload Notification
+   */
+  static async triggerDocumentUploaded(docId, employeeId, docName) {
+    const emp = await this.getEmployeeDetails(employeeId);
+    const empName = emp ? emp.name : `Employee #${employeeId}`;
+
+    const title = 'New Employee Document Uploaded';
+    const message = `${empName} uploaded a new document: "${docName}".`;
+    const actionUrl = '/employees/documents';
+
+    await this.notifyAdminsAndHR('DOCUMENT_UPLOADED', title, message, 'document', docId, actionUrl);
+  }
+
+  /**
+   * Trigger Attendance Regularization notification
+   */
+  static async triggerAttendanceRegularization(regId, employeeId, regDateStr, status) {
+    const emp = await this.getEmployeeDetails(employeeId);
+    const roleKey = emp ? emp.role_key : 'EMPLOYEE';
+    const teamId = emp ? emp.team_id : null;
+
+    const title = `Attendance Regularization ${status}`;
+    const message = `Your attendance regularization for ${regDateStr} has been ${status ? status.toLowerCase() : 'processed'}.`;
+    const actionUrl = '/attendance/regularization';
+
+    await this.createNotification({
+      recipient_employee_id: employeeId,
+      role: roleKey,
+      team_id: teamId,
+      type: 'ATTENDANCE_REGULARIZATION',
+      title,
+      message,
+      entity_type: 'regularization',
+      entity_id: regId,
+      action_url: actionUrl
+    });
+  }
+
+  /**
+   * Fire a notification when a client event occurs.
+   * Notifies Admins and HR managers.
+   */
+  static async notifyClientEvent(eventType, clientId, companyName, actorUserId) {
+    try {
+      let title, message;
+      const actionUrl = `/clients/${clientId}`;
+
+      switch (eventType) {
+        case 'NEW_CLIENT':
+          title = 'New Client Added';
+          message = `A new client "${companyName}" has been added to the system.`;
+          break;
+        case 'CLIENT_UPDATED':
+          title = 'Client Updated';
+          message = `Client "${companyName}" information has been updated.`;
+          break;
+        case 'CLIENT_STATUS_CHANGED':
+          title = 'Client Status Changed';
+          message = `The status of client "${companyName}" has been changed.`;
+          break;
+        default:
+          title = 'Client Activity';
+          message = `An activity occurred for client "${companyName}".`;
+      }
+
+      await this.notifyAdminsAndHR(
+        eventType,
+        title,
+        message,
+        'client',
+        clientId,
+        actionUrl
+      );
+    } catch (err) {
+      console.error('[NotificationService.notifyClientEvent] Error:', err.message);
+    }
   }
 }
 

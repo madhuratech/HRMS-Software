@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import AppDropdown from '../ui/AppDropdown';
 import { useNavigate } from 'react-router-dom';
-import { Edit2, Mail, Phone, MapPin, Briefcase, Calendar, DollarSign, Clock, FileText, Monitor, TrendingUp, Folder, User, Camera, Trash2, ChevronDown, Check, Plus, ShieldCheck, CheckCircle2, AlertCircle, XCircle, Building2, HelpCircle } from 'lucide-react';
+import { Edit2, Mail, Phone, MapPin, Briefcase, Calendar, DollarSign, Clock, FileText, Monitor, TrendingUp, Folder, User, Camera, Trash2, ChevronDown, Check, Plus, ShieldCheck, CheckCircle2, AlertCircle, XCircle, Building2, HelpCircle, X, UserCheck } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import EmployeeAvatar from './EmployeeAvatar';
 import './employee-module.css';
@@ -413,17 +413,23 @@ export default function EmployeeProfileContent() {
               {/* Custom Dropdown Panel */}
               {dropdownOpen && (
                 <div style={{
-                  position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                  position: 'absolute',
+                  top: 'calc(100% + 8px)',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
                   background: '#fff',
                   border: '1px solid #E2E8F0',
                   borderRadius: '14px',
-                  boxShadow: '0 8px 30px -4px rgba(15,23,42,0.16)',
+                  boxShadow: '0 10px 30px -4px rgba(15,23,42,0.16)',
                   minWidth: '240px',
-                  overflow: 'hidden',
+                  height: 'auto',
+                  maxHeight: 'min(320px, calc(100vh - 160px))',
+                  overflowY: 'auto',
+                  scrollbarWidth: 'thin',
                   zIndex: 999,
-                  animation: 'fadeSlideIn 0.15s ease'
+                  animation: 'fadeSlideInCenter 0.15s ease'
                 }}>
-                  <style>{`@keyframes fadeSlideIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: translateY(0); } }`}</style>
+                  <style>{`@keyframes fadeSlideInCenter { from { opacity: 0; transform: translate(-50%, -6px); } to { opacity: 1; transform: translate(-50%, 0); } }`}</style>
                   <div style={{ padding: '8px', display: 'flex', flexDirection: 'column', gap: '2px' }}>
                     {noTeamAssigned ? (
                       <div style={{ padding: '10px 12px', borderRadius: '8px', background: '#F8FAFC', fontSize: '13px', color: '#64748B' }}>
@@ -433,7 +439,7 @@ export default function EmployeeProfileContent() {
                       allEmployees.map((emp, idx) => {
                         const isSelected = String(emp.id) === String(currentEmpId);
                         const isMe = String(emp.id) === String(authUserId);
-                        const colors = ['#3B82F6','#8B5CF6','#10B981','#F59E0B','#EF4444','#06B6D4'];
+                        const colors = ['#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EF4444', '#06B6D4'];
                         const col = colors[idx % colors.length];
                         const initials = emp.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
                         return (
@@ -1026,153 +1032,298 @@ export default function EmployeeProfileContent() {
 
       {/* Edit Profile Modal */}
       {isEditing && (
-        <div className="hrms-modal-overlay" style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
-          display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000,
-          padding: '24px'
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px',
+          background: 'rgba(15, 23, 42, 0.55)',
+          backdropFilter: 'blur(6px)'
         }}>
-          <div className="hrms-card" style={{
-            width: '100%', maxWidth: '650px', maxHeight: '90vh', overflowY: 'auto',
-            border: '1px solid #e2e8f0', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
+          <div style={{
+            width: '720px',
+            maxWidth: '95vw',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            background: '#FFFFFF',
+            borderRadius: '22px',
+            boxShadow: '0 32px 80px rgba(15, 23, 42, 0.28)',
+            overflow: 'hidden',
+            border: '1px solid rgba(255,255,255,0.8)'
           }}>
-            <h2 className="hrms-font-semibold hrms-mb-6">Edit Employee Profile</h2>
-            <form onSubmit={handleSave}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
-                <div className="hrms-input-group">
-                  <label className="hrms-label">Full Name *</label>
-                  <input type="text" className="hrms-input" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} required />
-                </div>
-                <div className="hrms-input-group">
-                  <label className="hrms-label">Email *</label>
-                  <input type="email" className="hrms-input" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} required />
-                </div>
-                <div className="hrms-input-group">
-                  <label className="hrms-label">Phone *</label>
-                  <input type="text" className="hrms-input" value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} required />
-                </div>
-                <div className="hrms-input-group">
-                  <label className="hrms-label">Date of Birth</label>
-                  <input type="date" className="hrms-input" value={editForm.dob} onChange={e => setEditForm({ ...editForm, dob: e.target.value })} />
-                </div>
-                <div className="hrms-input-group">
-                  <label className="hrms-label">Gender</label>
-                  <AppDropdown
-                    value={editForm.gender}
-                    onChange={v => setEditForm({ ...editForm, gender: v })}
-                    options={[{value:'',label:'Select Gender'},{value:'Male',label:'Male'},{value:'Female',label:'Female'},{value:'Other',label:'Other'}]}
-                    size="sm"
-                  />
-                </div>
-                <div className="hrms-input-group">
-                  <label className="hrms-label">Employment Type</label>
-                  <AppDropdown
-                    value={editForm.employmentType}
-                    onChange={v => setEditForm({ ...editForm, employmentType: v })}
-                    options={[{value:'Full-time',label:'Full-time'},{value:'Part-time',label:'Part-time'},{value:'Contract',label:'Contract'}]}
-                    size="sm"
-                  />
-                </div>
-                <div className="hrms-input-group">
-                  <label className="hrms-label">Monthly Gross Salary (INR)</label>
-                  <input type="number" className="hrms-input" value={editForm.salary} onChange={e => setEditForm({ ...editForm, salary: e.target.value })} />
-                </div>
-                <div className="hrms-input-group">
-                  <label className="hrms-label">Emergency Contact</label>
-                  <input type="text" className="hrms-input" value={editForm.emergencyContact} onChange={e => setEditForm({ ...editForm, emergencyContact: e.target.value })} />
-                </div>
-                <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
-                  <label className="hrms-label">Address</label>
-                  <textarea className="hrms-input" rows="2" style={{ height: 'auto', resize: 'vertical' }} value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} />
-                </div>
+            {/* Modal Header */}
+            <div style={{
+              position: 'relative',
+              padding: '20px 24px',
+              background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              overflow: 'hidden',
+              flexShrink: 0
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '-30px',
+                right: '-30px',
+                width: '130px',
+                height: '130px',
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.08)',
+                pointerEvents: 'none'
+              }} />
 
-                <div style={{ gridColumn: 'span 2', fontWeight: '600', fontSize: '14px', borderTop: '1px solid #f1f5f9', paddingTop: '16px', color: '#1e293b' }}>
-                  Bank Account Details
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1, flex: 1, marginRight: '16px' }}>
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: 'rgba(255, 255, 255, 0.18)',
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  placeContent: 'center',
+                  color: '#FFFFFF',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  flexShrink: 0,
+                  lineHeight: 0,
+                  padding: 0
+                }}>
+                  <UserCheck size={22} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
                 </div>
-                <div className="hrms-input-group">
-                  <label className="hrms-label">Bank Name</label>
-                  <input type="text" className="hrms-input" value={editForm.bankName} onChange={e => setEditForm({ ...editForm, bankName: e.target.value })} />
-                </div>
-                <div className="hrms-input-group">
-                  <label className="hrms-label">Account Number</label>
-                  <input type="text" className="hrms-input" value={editForm.accountNumber} onChange={e => setEditForm({ ...editForm, accountNumber: e.target.value })} />
-                </div>
-                <div className="hrms-input-group">
-                  <label className="hrms-label">IFSC Code</label>
-                  <input type="text" className="hrms-input" value={editForm.ifscCode} onChange={e => setEditForm({ ...editForm, ifscCode: e.target.value })} />
-                </div>
-
-                <div style={{ gridColumn: 'span 2', fontWeight: '600', fontSize: '14px', borderTop: '1px solid #f1f5f9', paddingTop: '16px', color: '#1e293b' }}>
-                  Job Assignment Details
-                </div>
-                <div className="hrms-input-group">
-                  <label className="hrms-label">Branch</label>
-                  <AppDropdown
-                    value={editForm.branch}
-                    onChange={v => setEditForm({ ...editForm, branch: v })}
-                    options={[{value:'',label:'Select Branch'}, ...(branches || [])]}
-                    size="sm"
-                  />
-                </div>
-                <div className="hrms-input-group">
-                  <label className="hrms-label">Department</label>
-                  <AppDropdown
-                    value={editForm.department}
-                    onChange={v => setEditForm({ ...editForm, department: v })}
-                    options={[{value:'',label:'Select Department'}, ...(departments || [])]}
-                    size="sm"
-                  />
-                </div>
-                <div className="hrms-input-group">
-                  <label className="hrms-label">Designation</label>
-                  <AppDropdown
-                    value={editForm.designation}
-                    onChange={v => setEditForm({ ...editForm, designation: v })}
-                    options={[{value:'',label:'Select Designation'}, ...(designations || [])]}
-                    size="sm"
-                  />
-                </div>
-                <div className="hrms-input-group">
-                  <label className="hrms-label">Team</label>
-                  <AppDropdown
-                    value={editForm.teamName}
-                    onChange={v => setEditForm({ ...editForm, teamName: v })}
-                    options={[{value:'',label:'Select Team'}, ...(teams || [])]}
-                    size="sm"
-                  />
-                </div>
-                <div className="hrms-input-group">
-                  <label className="hrms-label">Employee Experience</label>
-                  <input
-                    type="text"
-                    className="hrms-input"
-                    value={editForm.experience}
-                    onChange={e => setEditForm({ ...editForm, experience: e.target.value })}
-                    placeholder="e.g. 3 Years"
-                  />
-                </div>
-                <div className="hrms-input-group">
-                  <label className="hrms-label">Employee Shift Type</label>
-                  <AppDropdown
-                    value={editForm.shiftType}
-                    onChange={v => setEditForm({ ...editForm, shiftType: v })}
-                    placeholder="Select Shift Type"
-                    options={[
-                      { value: 'Regular Shift', label: 'Regular Shift' },
-                      { value: 'Rotational Shift', label: 'Rotational Shift' },
-                      { value: 'Contract Shift', label: 'Contract Shift' }
-                    ]}
-                    size="sm"
-                  />
-                </div>
-                <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
-                  <label className="hrms-label">Manager Name</label>
-                  <input type="text" className="hrms-input" value={editForm.managerName} onChange={e => setEditForm({ ...editForm, managerName: e.target.value })} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#FFFFFF', letterSpacing: '-0.2px' }}>
+                    Edit Employee Profile
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'rgba(255, 255, 255, 0.85)' }}>
+                    Update personal information, banking details, and job assignments
+                  </p>
                 </div>
               </div>
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #f1f5f9', paddingTop: '16px' }}>
-                <button type="button" className="hrms-secondary-btn" onClick={() => setIsEditing(false)}>Cancel</button>
-                <button type="submit" className="hrms-primary-btn">Save Changes</button>
+
+              <button
+                type="button"
+                onClick={() => setIsEditing(false)}
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  background: 'rgba(255, 255, 255, 0.12)',
+                  backdropFilter: 'blur(4px)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  placeContent: 'center',
+                  cursor: 'pointer',
+                  zIndex: 1,
+                  transition: 'all 0.2s',
+                  flexShrink: 0,
+                  marginLeft: 'auto',
+                  lineHeight: 0,
+                  padding: 0
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
+              >
+                <X size={16} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
+              </button>
+            </div>
+
+            {/* Modal Body / Form */}
+            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+              <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto', flex: 1 }}>
+                
+                {/* Section 1: Personal Info */}
+                <div>
+                  <h4 style={{ margin: '0 0 14px 0', fontSize: '14px', fontWeight: '700', color: '#1E293B', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#2563EB', display: 'inline-block' }} />
+                    Personal & Contact Details
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div className="hrms-input-group">
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Full Name *</label>
+                      <input type="text" className="hrms-input" value={editForm.name} onChange={e => setEditForm({ ...editForm, name: e.target.value })} required style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} />
+                    </div>
+                    <div className="hrms-input-group">
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Email *</label>
+                      <input type="email" className="hrms-input" value={editForm.email} onChange={e => setEditForm({ ...editForm, email: e.target.value })} required style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} />
+                    </div>
+                    <div className="hrms-input-group">
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Phone *</label>
+                      <input type="text" className="hrms-input" value={editForm.phone} onChange={e => setEditForm({ ...editForm, phone: e.target.value })} required style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} />
+                    </div>
+                    <div className="hrms-input-group">
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Date of Birth</label>
+                      <input type="date" className="hrms-input" value={editForm.dob} onChange={e => setEditForm({ ...editForm, dob: e.target.value })} style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} />
+                    </div>
+                    <div className="hrms-input-group">
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Gender</label>
+                      <AppDropdown
+                        value={editForm.gender}
+                        onChange={v => setEditForm({ ...editForm, gender: v })}
+                        options={[{ value: '', label: 'Select Gender' }, { value: 'Male', label: 'Male' }, { value: 'Female', label: 'Female' }, { value: 'Other', label: 'Other' }]}
+                        size="sm"
+                      />
+                    </div>
+                    <div className="hrms-input-group">
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Employment Type</label>
+                      <AppDropdown
+                        value={editForm.employmentType}
+                        onChange={v => setEditForm({ ...editForm, employmentType: v })}
+                        options={[{ value: 'Full-time', label: 'Full-time' }, { value: 'Part-time', label: 'Part-time' }, { value: 'Contract', label: 'Contract' }]}
+                        size="sm"
+                      />
+                    </div>
+                    <div className="hrms-input-group">
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Monthly Gross Salary (INR)</label>
+                      <input type="number" className="hrms-input" value={editForm.salary} onChange={e => setEditForm({ ...editForm, salary: e.target.value })} style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} />
+                    </div>
+                    <div className="hrms-input-group">
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Emergency Contact</label>
+                      <input type="text" className="hrms-input" value={editForm.emergencyContact} onChange={e => setEditForm({ ...editForm, emergencyContact: e.target.value })} style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} />
+                    </div>
+                    <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Address</label>
+                      <textarea className="hrms-input" rows="2" style={{ height: 'auto', resize: 'vertical', borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} value={editForm.address} onChange={e => setEditForm({ ...editForm, address: e.target.value })} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 2: Bank Details */}
+                <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: '16px' }}>
+                  <h4 style={{ margin: '0 0 14px 0', fontSize: '14px', fontWeight: '700', color: '#1E293B', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#059669', display: 'inline-block' }} />
+                    Bank Account Details
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+                    <div className="hrms-input-group">
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Bank Name</label>
+                      <input type="text" className="hrms-input" value={editForm.bankName} onChange={e => setEditForm({ ...editForm, bankName: e.target.value })} style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} />
+                    </div>
+                    <div className="hrms-input-group">
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Account Number</label>
+                      <input type="text" className="hrms-input" value={editForm.accountNumber} onChange={e => setEditForm({ ...editForm, accountNumber: e.target.value })} style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} />
+                    </div>
+                    <div className="hrms-input-group">
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>IFSC Code</label>
+                      <input type="text" className="hrms-input" value={editForm.ifscCode} onChange={e => setEditForm({ ...editForm, ifscCode: e.target.value })} style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Section 3: Job Assignment */}
+                <div style={{ borderTop: '1px solid #F1F5F9', paddingTop: '16px' }}>
+                  <h4 style={{ margin: '0 0 14px 0', fontSize: '14px', fontWeight: '700', color: '#1E293B', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#D97706', display: 'inline-block' }} />
+                    Job Assignment Details
+                  </h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div className="hrms-input-group">
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Branch</label>
+                      <AppDropdown
+                        value={editForm.branch}
+                        onChange={v => setEditForm({ ...editForm, branch: v })}
+                        options={[{ value: '', label: 'Select Branch' }, ...(branches || [])]}
+                        size="sm"
+                      />
+                    </div>
+                    <div className="hrms-input-group">
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Department</label>
+                      <AppDropdown
+                        value={editForm.department}
+                        onChange={v => setEditForm({ ...editForm, department: v })}
+                        options={[{ value: '', label: 'Select Department' }, ...(departments || [])]}
+                        size="sm"
+                      />
+                    </div>
+                    <div className="hrms-input-group">
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Designation</label>
+                      <AppDropdown
+                        value={editForm.designation}
+                        onChange={v => setEditForm({ ...editForm, designation: v })}
+                        options={[{ value: '', label: 'Select Designation' }, ...(designations || [])]}
+                        size="sm"
+                      />
+                    </div>
+                    <div className="hrms-input-group">
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Team</label>
+                      <AppDropdown
+                        value={editForm.teamName}
+                        onChange={v => setEditForm({ ...editForm, teamName: v })}
+                        options={[{ value: '', label: 'Select Team' }, ...(teams || [])]}
+                        size="sm"
+                      />
+                    </div>
+                    <div className="hrms-input-group">
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Employee Experience</label>
+                      <input
+                        type="text"
+                        className="hrms-input"
+                        value={editForm.experience}
+                        onChange={e => setEditForm({ ...editForm, experience: e.target.value })}
+                        placeholder="e.g. 3 Years"
+                        style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }}
+                      />
+                    </div>
+                    <div className="hrms-input-group">
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Employee Shift Type</label>
+                      <AppDropdown
+                        value={editForm.shiftType}
+                        onChange={v => setEditForm({ ...editForm, shiftType: v })}
+                        placeholder="Select Shift Type"
+                        options={[
+                          { value: 'Regular Shift', label: 'Regular Shift' },
+                          { value: 'Rotational Shift', label: 'Rotational Shift' },
+                          { value: 'Contract Shift', label: 'Contract Shift' }
+                        ]}
+                        size="sm"
+                      />
+                    </div>
+                    <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
+                      <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Manager Name</label>
+                      <input type="text" className="hrms-input" value={editForm.managerName} onChange={e => setEditForm({ ...editForm, managerName: e.target.value })} style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} />
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* Modal Footer */}
+              <div style={{
+                padding: '16px 28px',
+                background: '#F8FAFC',
+                borderTop: '1px solid #E2E8F0',
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'flex-end',
+                flexShrink: 0
+              }}>
+                <button
+                  type="button"
+                  className="hrms-secondary-btn"
+                  onClick={() => setIsEditing(false)}
+                  style={{ borderRadius: '10px', padding: '9px 18px', fontWeight: '600' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="hrms-primary-btn"
+                  style={{
+                    borderRadius: '10px',
+                    padding: '9px 22px',
+                    fontWeight: '600',
+                    background: 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 100%)',
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+                  }}
+                >
+                  Save Changes
+                </button>
               </div>
             </form>
           </div>

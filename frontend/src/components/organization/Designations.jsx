@@ -152,28 +152,121 @@ export const Designations = () => {
   const renderFormModal = (title, subtitle, show, onClose, onSave, saveLabel) => {
     if (!show) return null;
     return (
-      <>
-        <div className="modal-backdrop-blur" onClick={onClose} />
-        <div className="modal-centered-content">
-          <div className="p-8 border-b border-slate-200 flex items-center justify-between shrink-0">
-            <div>
-              <h2 className="text-xl font-bold text-[#0A1629]">{title}</h2>
-              <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px',
+        background: 'rgba(15, 23, 42, 0.55)',
+        backdropFilter: 'blur(6px)'
+      }}>
+        <div style={{
+          width: '640px',
+          maxWidth: '95vw',
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#FFFFFF',
+          borderRadius: '22px',
+          boxShadow: '0 32px 80px rgba(15, 23, 42, 0.28)',
+          overflow: 'hidden',
+          border: '1px solid rgba(255,255,255,0.8)'
+        }}>
+          {/* Header */}
+          <div style={{
+            position: 'relative',
+            padding: '20px 24px',
+            background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            overflow: 'hidden',
+            flexShrink: 0
+          }}>
+            <div style={{
+              position: 'absolute',
+              top: '-30px',
+              right: '-30px',
+              width: '130px',
+              height: '130px',
+              borderRadius: '50%',
+              background: 'rgba(255, 255, 255, 0.08)',
+              pointerEvents: 'none'
+            }} />
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1, flex: 1, marginRight: '16px' }}>
+              <div style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '12px',
+                background: 'rgba(255, 255, 255, 0.18)',
+                backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                display: 'grid',
+                placeItems: 'center',
+                placeContent: 'center',
+                color: '#FFFFFF',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                flexShrink: 0,
+                lineHeight: 0,
+                padding: 0
+              }}>
+                <Award size={22} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#FFFFFF', letterSpacing: '-0.2px' }}>
+                  {title}
+                </h3>
+                <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'rgba(255, 255, 255, 0.85)' }}>
+                  {subtitle}
+                </p>
+              </div>
             </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition-colors"><X size={20} className="text-slate-400" /></button>
+
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '10px',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                background: 'rgba(255, 255, 255, 0.12)',
+                backdropFilter: 'blur(4px)',
+                display: 'grid',
+                placeItems: 'center',
+                placeContent: 'center',
+                cursor: 'pointer',
+                zIndex: 1,
+                transition: 'all 0.2s',
+                flexShrink: 0,
+                marginLeft: 'auto',
+                lineHeight: 0,
+                padding: 0
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
+            >
+              <X size={16} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
+            </button>
           </div>
-          <div className="p-8 overflow-y-auto flex-1 space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Designation Name <span className="text-red-500">*</span></label>
-                <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Enter designation name" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+
+          {/* Form Body */}
+          <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '18px', overflowY: 'auto', flex: 1 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="hrms-input-group">
+                <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Designation Name *</label>
+                <input type="text" className="hrms-input" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Enter designation name" style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} />
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Designation Code <span className="text-red-500">*</span></label>
-                <input type="text" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} placeholder="Enter designation code" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+              <div className="hrms-input-group">
+                <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Designation Code *</label>
+                <input type="text" className="hrms-input" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} placeholder="Enter designation code" style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} />
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Department <span className="text-red-500">*</span></label>
+              <div className="hrms-input-group">
+                <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Department *</label>
                 <AppDropdown
                   value={formData.department}
                   onChange={v => setFormData({ ...formData, department: v })}
@@ -182,8 +275,8 @@ export const Designations = () => {
                   size="sm"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Reports To</label>
+              <div className="hrms-input-group">
+                <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Reports To</label>
                 <AppDropdown
                   value={formData.reportsTo}
                   onChange={v => setFormData({ ...formData, reportsTo: v })}
@@ -192,8 +285,8 @@ export const Designations = () => {
                   size="sm"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Grade</label>
+              <div className="hrms-input-group">
+                <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Grade</label>
                 <AppDropdown
                   value={formData.grade}
                   onChange={v => setFormData({ ...formData, grade: v })}
@@ -202,8 +295,8 @@ export const Designations = () => {
                   size="sm"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Level</label>
+              <div className="hrms-input-group">
+                <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Level</label>
                 <AppDropdown
                   value={formData.level}
                   onChange={v => setFormData({ ...formData, level: v })}
@@ -212,27 +305,51 @@ export const Designations = () => {
                   size="sm"
                 />
               </div>
-              <div className="col-span-1 sm:col-span-2 pt-3">
-                <label className="block text-sm font-semibold text-slate-700 mb-3">Status <span className="text-red-500">*</span></label>
-                <div className="flex items-center gap-3 pt-1">
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input type="radio" name="status" checked={formData.status === 'Active'} onChange={() => setFormData({ ...formData, status: 'Active' })} className="w-4 h-4 text-blue-600 cursor-pointer" />
-                    <span className="text-sm font-semibold text-slate-700">Active</span>
+              <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
+                <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Status *</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', paddingTop: '4px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: '500', color: '#334155' }}>
+                    <input type="radio" name="status" checked={formData.status === 'Active'} onChange={() => setFormData({ ...formData, status: 'Active' })} style={{ accentColor: '#2563EB', width: '16px', height: '16px' }} />
+                    Active
                   </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input type="radio" name="status" checked={formData.status === 'Inactive'} onChange={() => setFormData({ ...formData, status: 'Inactive' })} className="w-4 h-4 text-blue-600 cursor-pointer" />
-                    <span className="text-sm font-semibold text-slate-700">Inactive</span>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: '500', color: '#334155' }}>
+                    <input type="radio" name="status" checked={formData.status === 'Inactive'} onChange={() => setFormData({ ...formData, status: 'Inactive' })} style={{ accentColor: '#2563EB', width: '16px', height: '16px' }} />
+                    Inactive
                   </label>
                 </div>
               </div>
             </div>
           </div>
-          <div className="flex items-center justify-end gap-4 p-8 border-t border-slate-200 shrink-0">
-            <button onClick={onClose} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-            <button onClick={onSave} className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">{saveLabel}</button>
+
+          {/* Footer */}
+          <div style={{
+            padding: '16px 28px',
+            background: '#F8FAFC',
+            borderTop: '1px solid #E2E8F0',
+            display: 'flex',
+            gap: '12px',
+            justifyContent: 'flex-end',
+            flexShrink: 0
+          }}>
+            <button
+              type="button"
+              className="hrms-secondary-btn"
+              onClick={onClose}
+              style={{ borderRadius: '10px', padding: '9px 18px', fontWeight: '600' }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="hrms-btn-primary"
+              onClick={onSave}
+              style={{ borderRadius: '10px', padding: '9px 22px', fontWeight: '600', background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)', color: '#FFF' }}
+            >
+              {saveLabel}
+            </button>
           </div>
         </div>
-      </>
+      </div>
     );
   };
 

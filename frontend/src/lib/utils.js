@@ -23,9 +23,16 @@ export function getAvatarUrl(profilePhoto, empName = 'User', empId = 1) {
     }
     if (trimmed.startsWith('/') || trimmed.startsWith('uploads')) {
       const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
-      return window.location.hostname === 'localhost' ? cleanPath : `${RENDER_BACKEND_URL}${cleanPath}`;
+      const isLocal = typeof window !== 'undefined' && (
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname.startsWith('192.168.') ||
+        window.location.hostname.startsWith('10.') ||
+        Boolean(window.location.port)
+      );
+      return isLocal ? cleanPath : `${RENDER_BACKEND_URL}${cleanPath}`;
     }
-    return trimmed;
+    return trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
   }
   return `https://ui-avatars.com/api/?name=${encodeURIComponent(empName || 'User')}&background=2563EB&color=fff&bold=true`;
 }

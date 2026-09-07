@@ -3,6 +3,7 @@ import AppDropdown from '../ui/AppDropdown';
 import { Search, Download, Plus, MoreVertical, Star, ChevronLeft, ChevronRight, X, Eye, Edit3, Trash2, Calendar, FileText, CheckCircle2, UserCheck, Briefcase, Mail, Phone, MapPin, DollarSign, Clock, Send, ShieldCheck, ArrowRightLeft } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { canCreate, canEdit, canDelete, checkActionPermission } from '../../lib/permissions';
+import { apiFetch } from '../../lib/api';
 
 export default function Candidates() {
   const { addToast } = useToast();
@@ -68,12 +69,11 @@ export default function Candidates() {
 
   const fetchMeta = async () => {
     try {
-      const res = await fetch('http://localhost:5000/app/departments', {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const data = await res.json();
-      if (data.success && data.data) {
-        setDepartments(data.data);
+      const res = await apiFetch('/departments');
+      if (Array.isArray(res)) {
+        setDepartments(res);
+      } else if (res && Array.isArray(res.data)) {
+        setDepartments(res.data);
       }
     } catch (e) {
       console.error('Error loading departments', e);
@@ -92,13 +92,16 @@ export default function Candidates() {
         location: filterLocation !== 'All Locations' ? filterLocation : ''
       });
 
-      const res = await fetch(`http://localhost:5000/app/candidates?${params.toString()}`, {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const json = await res.json();
-      if (json.success && json.data) {
-        setCandidatesData(json.data);
-        setTotal(json.pagination?.total || json.data.length || 0);
+      const res = await apiFetch(`/candidates?${params.toString()}`);
+      if (res && res.success && res.data) {
+        const candidateList = Array.isArray(res.data)
+          ? res.data
+          : (Array.isArray(res.data.candidates) ? res.data.candidates : []);
+        setCandidatesData(candidateList);
+        setTotal(res.data.total !== undefined ? res.data.total : (res.pagination?.total || candidateList.length));
+      } else if (Array.isArray(res)) {
+        setCandidatesData(res);
+        setTotal(res.length);
       } else {
         setCandidatesData([]);
         setTotal(0);
@@ -205,21 +208,16 @@ export default function Candidates() {
     if (!checkActionPermission('candidates', 'EDIT')) return;
     setSubmitting(true);
     try {
-      const res = await fetch(`http://localhost:5000/app/candidates/${selectedCandidate.id}`, {
+      const data = await apiFetch(`/candidates/${selectedCandidate.id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
         body: JSON.stringify(editFormData)
       });
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         addToast('Candidate updated successfully', 'success');
         setShowEditModal(false);
         fetchCandidates();
       } else {
-        addToast(data.message || 'Failed to update candidate', 'error');
+        addToast((data && data.message) || 'Failed to update candidate', 'error');
       }
     } catch (e) {
       addToast('Error updating candidate', 'error');
@@ -232,24 +230,19 @@ export default function Candidates() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const res = await fetch(`http://localhost:5000/app/interviews`, {
+      const data = await apiFetch('/interviews', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
         body: JSON.stringify({
           candidate_id: selectedCandidate.id,
           ...interviewData
         })
       });
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         addToast('Interview scheduled successfully', 'success');
         setShowScheduleModal(false);
         fetchCandidates();
       } else {
-        addToast(data.message || 'Failed to schedule interview', 'error');
+        addToast((data && data.message) || 'Failed to schedule interview', 'error');
       }
     } catch (e) {
       addToast('Error scheduling interview', 'error');
@@ -262,24 +255,19 @@ export default function Candidates() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const res = await fetch(`http://localhost:5000/app/offers`, {
+      const data = await apiFetch('/offers', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
         body: JSON.stringify({
           candidate_id: selectedCandidate.id,
           ...offerData
         })
       });
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         addToast('Offer letter issued successfully', 'success');
         setShowOfferModal(false);
         fetchCandidates();
       } else {
-        addToast(data.message || 'Failed to issue offer', 'error');
+        addToast((data && data.message) || 'Failed to issue offer', 'error');
       }
     } catch (e) {
       addToast('Error issuing offer', 'error');
@@ -300,7 +288,7 @@ export default function Candidates() {
         gender: formData.gender,
         dob: formData.dob,
         department: formData.department,
-        department_id: departments.find(d => d.department_name === formData.department)?.id || null,
+        department_id: departments.find(d => d.dept_name === formData.department || d.name === formData.department || d.department_name === formData.department)?.id || null,
         job_position: formData.job,
         experience: formData.experience,
         current_company: formData.currentCompany,
@@ -313,16 +301,11 @@ export default function Candidates() {
         resume_url: formData.resume || (resumeFile ? resumeFile.name : null)
       };
 
-      const res = await fetch('http://localhost:5000/app/candidates', {
+      const data = await apiFetch('/candidates', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
         body: JSON.stringify(payload)
       });
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         addToast('Candidate added successfully', 'success');
         setShowAddModal(false);
         setFormData({
@@ -333,7 +316,7 @@ export default function Candidates() {
         setResumeFile(null);
         fetchCandidates();
       } else {
-        addToast(data.message || 'Failed to add candidate', 'error');
+        addToast((data && data.message) || 'Failed to add candidate', 'error');
       }
     } catch (e) {
       addToast('Error adding candidate', 'error');
@@ -341,6 +324,7 @@ export default function Candidates() {
       setSubmitting(false);
     }
   };
+  const handleSave = handleCreateSubmit;
 
   const getStageColor = (stg) => {
     switch (stg) {
@@ -458,7 +442,7 @@ export default function Candidates() {
                 </tr>
               </thead>
               <tbody>
-                {candidatesData.length === 0 ? (
+                {(!Array.isArray(candidatesData) || candidatesData.length === 0) ? (
                   <tr>
                     <td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No candidates found</td>
                   </tr>
@@ -1031,7 +1015,7 @@ export default function Candidates() {
                 <X size={20} className="text-slate-400" />
               </button>
             </div>
-            <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
+            <form onSubmit={handleCreateSubmit} className="p-6 overflow-y-auto flex-1 space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Candidate Name <span className="text-red-500">*</span></label>

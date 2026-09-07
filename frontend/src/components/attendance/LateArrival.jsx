@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { apiFetch } from '../../lib/api';
+import { getAvatarUrl } from '../../lib/utils';
 import { Calendar as CalendarIcon, Filter, MoreVertical, TrendingUp, Clock, AlertTriangle, ChevronDown } from 'lucide-react';
 import { AreaChart, Area, ResponsiveContainer, Tooltip } from 'recharts';
 
@@ -81,7 +82,16 @@ export default function LateArrival() {
                 {lateData.map((record) => (
                   <div key={record.id} className="hrms-flex-between">
                     <div className="hrms-user-info" style={{ gap: '12px' }}>
-                      <img src={record.avatar} alt={record.employee} className="hrms-avatar" style={{width: '32px', height: '32px'}} />
+                      <img
+                        src={getAvatarUrl(record.avatar, record.employee)}
+                        alt={record.employee}
+                        className="hrms-avatar"
+                        style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(record.employee || 'User')}&background=2563EB&color=fff&bold=true`;
+                        }}
+                      />
                       <span className="hrms-font-medium hrms-text-primary" style={{ fontSize: '13px' }}>{record.employee}</span>
                     </div>
                     <span className="hrms-font-medium hrms-text-sm" style={{ color: '#64748b' }}>
@@ -110,7 +120,16 @@ export default function LateArrival() {
                   <tr key={record.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '16px 24px', whiteSpace: 'nowrap', verticalAlign: 'middle' }}>
                       <div className="hrms-user-info" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <img src={record.avatar} alt={record.employee} className="hrms-avatar" style={{width: '32px', height: '32px'}} />
+                        <img
+                          src={getAvatarUrl(record.avatar, record.employee)}
+                          alt={record.employee}
+                          className="hrms-avatar"
+                          style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }}
+                          onError={(e) => {
+                            e.target.onerror = null;
+                            e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(record.employee || 'User')}&background=2563EB&color=fff&bold=true`;
+                          }}
+                        />
                         <span className="hrms-font-medium hrms-text-primary">{record.employee}</span>
                       </div>
                     </td>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { getAvatarUrl } from '../../lib/utils';
-import { Search, Filter, Download, Calendar as CalendarIcon, Edit2, Eye, ChevronDown, Check, X, Plus } from 'lucide-react';
+import { Search, Filter, Download, Calendar as CalendarIcon, Edit2, Eye, ChevronDown, Check, X, Plus, CheckCircle2, Clock } from 'lucide-react';
 
 export default function Regularization() {
   const [activeTab, setActiveTab] = useState('pending');
@@ -23,24 +23,21 @@ export default function Regularization() {
 
   const loadEmployees = async () => {
     try {
-      const data = await apiFetch('/employees?status=Active');
-      if (Array.isArray(data)) {
-        setEmployees(data);
-        if (data.length > 0) {
-          setFormData(prev => ({ ...prev, employee_id: data[0].id }));
-        }
+      const res = await apiFetch('/employees');
+      if (Array.isArray(res)) {
+        setEmployees(res.map(e => ({ value: e.id, label: `${e.first_name || ''} ${e.last_name || ''}`.trim() || e.name || `Employee #${e.id}` })));
       }
     } catch (e) {
-      console.error("Failed to load employees:", e);
+      console.error("Failed to load employees for dropdown:", e);
     }
   };
 
   const loadRequests = async () => {
     setLoading(true);
     try {
-      const data = await apiFetch(`/attendance/regularization?status=${activeTab}`);
-      if (Array.isArray(data)) {
-        setRequests(data);
+      const res = await apiFetch(`/attendance/regularization?status=${activeTab}`);
+      if (Array.isArray(res)) {
+        setRequests(res);
       }
     } catch (e) {
       console.error("Failed to load regularization requests:", e);
@@ -74,14 +71,14 @@ export default function Regularization() {
 
     setSubmitting(true);
     try {
-      const selectedEmp = employees.find(emp => String(emp.id) === String(formData.employee_id));
+      const selectedEmp = employees.find(emp => String(emp.value) === String(formData.employee_id));
       const formattedDate = new Date(formData.date).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 
       await apiFetch('/attendance/regularization', {
         method: 'POST',
         body: JSON.stringify({
           employee_id: formData.employee_id,
-          employee_name: selectedEmp ? selectedEmp.name : 'Employee',
+          employee_name: selectedEmp ? selectedEmp.label : 'Employee',
           date: formattedDate,
           type: formData.type,
           time: formData.time,
@@ -243,77 +240,129 @@ export default function Regularization() {
 
       {/* Apply Regularization Modal */}
       {showApplyModal && (
-        <div style={{
-          position: 'fixed', inset: 0, zIndex: 1000,
-          background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20
-        }}>
-          <div style={{
-            background: '#FFF', borderRadius: 16, width: '100%', maxWidth: 480,
-            overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)'
-          }}>
-            <div style={{
-              padding: '16px 20px', borderBottom: '1px solid #E2E8F0',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#F8FAFC'
-            }}>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#0F172A' }}>New Regularization Request</h3>
-              <button onClick={() => setShowApplyModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748B', fontSize: 18 }}>✕</button>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(15, 23, 42, 0.55)', backdropFilter: 'blur(6px)' }}>
+          <div style={{ width: '560px', maxWidth: '95vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', background: '#FFFFFF', borderRadius: '22px', boxShadow: '0 32px 80px rgba(15, 23, 42, 0.28)', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.8)' }}>
+            
+            {/* Modal Header */}
+            <div style={{ position: 'relative', padding: '20px 24px', background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', overflow: 'hidden', flexShrink: 0 }}>
+              <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '130px', height: '130px', borderRadius: '50%', background: 'rgba(255, 255, 255, 0.08)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', bottom: '-40px', left: '20%', width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(255, 255, 255, 0.05)', pointerEvents: 'none' }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1, flex: 1, marginRight: '16px' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.18)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255, 255, 255, 0.3)', display: 'grid', placeItems: 'center', placeContent: 'center', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', flexShrink: 0, lineHeight: 0, padding: 0 }}>
+                  <Clock size={22} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#FFFFFF', letterSpacing: '-0.01em' }}>
+                    New Regularization Request
+                  </h3>
+                  <p style={{ margin: '3px 0 0 0', fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)' }}>
+                    Submit an attendance punch or correction request for approval
+                  </p>
+                </div>
+              </div>
+
+              <button 
+                type="button"
+                onClick={() => setShowApplyModal(false)} 
+                style={{ width: '34px', height: '34px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.25)', background: 'rgba(255, 255, 255, 0.12)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', placeContent: 'center', cursor: 'pointer', zIndex: 1, transition: 'all 0.2s', flexShrink: 0, marginLeft: 'auto', lineHeight: 0, padding: 0 }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
+              >
+                <X size={16} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
+              </button>
             </div>
 
-            <form onSubmit={handleCreateRequest} style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Employee</label>
-                <AppDropdown value={formData.employee_id} options={[, ...(employees || [])]} size="sm" />
-              </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Date</label>
-                  <input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #CBD5E1', borderRadius: 8, fontSize: 14, color: '#0F172A', outline: 'none' }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Type</label>
-                  <AppDropdown
-                value={formData.type}
-                onChange={v => setFormData({ ...formData, type: v })}
-                options={[{value:'Late Arrival',label:'Late Arrival'},{value:'Early Exit',label:'Early Exit'},{value:'Missed Punch',label:'Missed Punch'},{value:'On-Duty',label:'On-Duty'},{value:'Absent',label:'Absent'}]}
-                size="sm"
-              />
-                </div>
-              </div>
+            {/* Modal Body / Form */}
+            <form onSubmit={handleCreateRequest} style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '16px', background: '#FFFFFF', overflowY: 'auto', flex: 1 }}>
 
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 6 }}>Regularization Reason</label>
-                <textarea
-                  rows="3"
-                  placeholder="State the reason for regularization request..."
-                  value={formData.reason}
-                  onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #CBD5E1', borderRadius: 8, fontSize: 14, color: '#0F172A', outline: 'none', resize: 'none' }}
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '7px' }}>
+                  Employee <span style={{ color: '#EF4444' }}>*</span>
+                </label>
+                <AppDropdown 
+                  value={formData.employee_id} 
+                  options={[{ value: '', label: 'Select Employee' }, ...(employees || [])]} 
+                  onChange={(val) => setFormData({ ...formData, employee_id: val })}
+                  size="sm" 
                 />
               </div>
 
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end', marginTop: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '7px' }}>
+                    Date <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    style={{ width: '100%', height: '44px', padding: '0 14px', borderRadius: '11px', border: '1.5px solid #E2E8F0', fontSize: '13.5px', color: '#1E293B', background: '#FAFBFC', outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box' }}
+                    onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; e.target.style.background = '#FFF'; }}
+                    onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '7px' }}>
+                    Type <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <AppDropdown
+                    value={formData.type}
+                    onChange={v => setFormData({ ...formData, type: v })}
+                    options={[{value:'Late Arrival',label:'Late Arrival'},{value:'Early Exit',label:'Early Exit'},{value:'Missed Punch',label:'Missed Punch'},{value:'On-Duty',label:'On-Duty'},{value:'Absent',label:'Absent'}]}
+                    size="sm"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '7px' }}>
+                  Regularization Reason <span style={{ color: '#EF4444' }}>*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  placeholder="State the reason for regularization request..."
+                  value={formData.reason}
+                  onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: '11px', border: '1.5px solid #E2E8F0', fontSize: '13.5px', color: '#1E293B', background: '#FAFBFC', outline: 'none', transition: 'all 0.2s', resize: 'none', boxSizing: 'border-box' }}
+                  onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; e.target.style.background = '#FFF'; }}
+                  onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
+                />
+              </div>
+
+              {/* Notice Banner */}
+              <div style={{ background: 'linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%)', borderRadius: '12px', padding: '12px 16px', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#2563EB', flexShrink: 0 }} />
+                <p style={{ margin: 0, fontSize: '12px', color: '#1E40AF', fontWeight: '500', lineHeight: '1.4' }}>
+                  Regularization requests are sent to reporting manager for verification and attendance update.
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '4px', paddingTop: '16px', borderTop: '1px solid #F1F5F9', flexShrink: 0 }}>
                 <button
                   type="button"
                   onClick={() => setShowApplyModal(false)}
-                  style={{ padding: '10px 16px', background: '#F1F5F9', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, color: '#475569', cursor: 'pointer' }}
+                  style={{ height: '44px', padding: '0 20px', borderRadius: '11px', border: '1.5px solid #E2E8F0', background: '#FFFFFF', color: '#475569', fontSize: '13.5px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.borderColor = '#CBD5E1'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.borderColor = '#E2E8F0'; }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  style={{ padding: '10px 20px', background: '#2563EB', border: 'none', borderRadius: 8, fontSize: 14, fontWeight: 600, color: '#FFF', cursor: 'pointer' }}
+                  style={{ height: '44px', padding: '0 26px', borderRadius: '11px', border: 'none', background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#FFFFFF', fontSize: '13.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)', transition: 'all 0.2s', opacity: submitting ? 0.7 : 1 }}
+                  onMouseEnter={e => { if (!submitting) e.currentTarget.style.boxShadow = '0 6px 18px rgba(37, 99, 235, 0.45)'; }}
+                  onMouseLeave={e => { if (!submitting) e.currentTarget.style.boxShadow = '0 4px 14px rgba(37, 99, 235, 0.35)'; }}
                 >
+                  <CheckCircle2 size={16} />
                   {submitting ? 'Submitting...' : 'Submit Request'}
                 </button>
               </div>
+
             </form>
           </div>
         </div>

@@ -59,6 +59,14 @@ router.post("/", authenticateJWT, checkPermission('helpdesk', 'support_tickets',
   const code = `TKT-${Math.floor(1000 + Math.random() * 9000)}`;
   db.query(sql, [code, subject, cat || 'IT Support', priority || 'Medium', requester || 'User'], (err, result) => {
     if (err) return res.status(500).json(err);
+
+    const creatorId = req.user?.employeeId || req.user?.employee_id || req.user?.id || 1;
+    try {
+      const NotificationService = require("../services/NotificationService");
+      NotificationService.triggerHelpDeskCreated(result.insertId || code, creatorId, subject)
+        .catch(e => console.error("Ticket notification error:", e));
+    } catch (e) { }
+
     res.json({ message: "Ticket created successfully", id: code });
   });
 });
@@ -66,9 +74,22 @@ router.post("/", authenticateJWT, checkPermission('helpdesk', 'support_tickets',
 router.put("/:id/status", authenticateJWT, checkPermission('helpdesk', 'support_tickets', 'edit'), (req, res) => {
   const { id } = req.params;
   const { status } = req.body;
-  db.query("UPDATE helpdesk_tickets SET status = ? WHERE ticket_code = ? OR id = ?", [status, id, id], (err, result) => {
-    if (err) return res.status(500).json(err);
-    res.json({ message: "Ticket status updated successfully" });
+
+  db.query("SELECT * FROM helpdesk_tickets WHERE ticket_code = ? OR id = ?", [id, id], (errFetch, rows) => {
+    db.query("UPDATE helpdesk_tickets SET status = ? WHERE ticket_code = ? OR id = ?", [status, id, id], (err, result) => {
+      if (err) return res.status(500).json(err);
+
+      if (rows && rows.length > 0) {
+        const ticket = rows[0];
+        try {
+          const NotificationService = require("../services/NotificationService");
+          NotificationService.triggerHelpDeskStatusUpdate(ticket.id, ticket.employee_id || 1, ticket.subject, status)
+            .catch(e => console.error("Ticket status notification error:", e));
+        } catch (e) { }
+      }
+
+      res.json({ message: "Ticket status updated successfully" });
+    });
   });
 });
 

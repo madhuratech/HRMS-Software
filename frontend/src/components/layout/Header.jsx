@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Search, ChevronRight, X, Menu } from 'lucide-react';
-import { LeaveApprovals } from '../attendance/LeaveApprovals';
+import {
+  Bell, Search, ChevronRight, X, Calendar, CheckSquare, Folder,
+  Settings, FileText, HelpCircle,
+  CheckCircle2, XCircle, User, Clock, Wallet, AlignJustify
+} from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 
 export function Header({ title, userRole, currentView }) {
@@ -9,7 +12,6 @@ export function Header({ title, userRole, currentView }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
-  const isManager = userRole === 'BRANCH_MANAGER' || userRole === 'SUPER_ADMIN';
 
   const authRaw = localStorage.getItem('hrms_auth');
   let authData = {};
@@ -48,19 +50,20 @@ export function Header({ title, userRole, currentView }) {
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 15000); // Poll every 15 seconds
+    const interval = setInterval(fetchNotifications, 15000);
     return () => clearInterval(interval);
   }, []);
 
   const handleNotificationClick = async (notif) => {
     try {
-      if (!notif.is_read) {
+      if (!notif.isRead && !notif.is_read) {
         await apiFetch(`/notifications/${notif.id}/read`, { method: 'PUT' });
       }
-      fetchNotifications();
+      setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, isRead: true, is_read: true } : n));
+      setUnreadCount(prev => Math.max(0, prev - 1));
       setShowNotifications(false);
-      if (notif.action_url) {
-        navigate(notif.action_url);
+      if (notif.actionUrl || notif.action_url) {
+        navigate(notif.actionUrl || notif.action_url);
       }
     } catch (e) {
       console.error('Failed to mark notification as read:', e);
@@ -70,15 +73,18 @@ export function Header({ title, userRole, currentView }) {
   const handleMarkAllRead = async () => {
     try {
       await apiFetch('/notifications/mark-all-read', { method: 'POST' });
-      fetchNotifications();
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true, is_read: true })));
+      setUnreadCount(0);
     } catch (e) {
       console.error('Failed to mark all notifications read:', e);
     }
   };
 
   const getRelativeTime = (dateStr) => {
+    if (!dateStr) return 'Just now';
     const now = new Date();
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return 'Just now';
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
@@ -89,16 +95,97 @@ export function Header({ title, userRole, currentView }) {
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
     return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
   };
 
-  const getNotificationIcon = (type) => {
+  // Returns rowBg (full row tint), iconBg, and icon element per notification type
+  const getItemTheme = (type) => {
     const t = (type || '').toUpperCase();
-    if (t.includes('LEAVE')) return <Calendar size={16} className="text-amber-500" />;
-    if (t.includes('TASK')) return <CheckSquare size={16} className="text-blue-500" />;
-    if (t.includes('PROJECT')) return <Folder size={16} className="text-indigo-500" />;
-    if (t.includes('PERMISSION') || t.includes('ROLE')) return <Settings size={16} className="text-purple-500" />;
-    return <FileText size={16} className="text-slate-500" />;
+
+    if (t.includes('LEAVE_APPROVED') || t.includes('LEAVE_APPROVAL')) {
+      return {
+        rowBg: '#F3FDF6',
+        iconBg: '#D1FAE5',
+        icon: <CheckCircle2 size={22} style={{ color: '#16A34A' }} />,
+      };
+    }
+    if (t.includes('LEAVE_REJECTED') || t.includes('LEAVE_REJECTION')) {
+      return {
+        rowBg: '#FFF5F5',
+        iconBg: '#FEE2E2',
+        icon: <XCircle size={22} style={{ color: '#DC2626' }} />,
+      };
+    }
+    if (t.includes('LEAVE')) {
+      return {
+        rowBg: '#F0F4FF',
+        iconBg: '#DBEAFE',
+        icon: <Calendar size={22} style={{ color: '#1D61E7' }} />,
+      };
+    }
+    if (t.includes('PAYROLL') || t.includes('PAYSLIP')) {
+      return {
+        rowBg: '#F3FDF6',
+        iconBg: '#D1FAE5',
+        icon: <Wallet size={22} style={{ color: '#16A34A' }} />,
+      };
+    }
+    if (t.includes('ATTENDANCE')) {
+      return {
+        rowBg: '#F3FDF6',
+        iconBg: '#D1FAE5',
+        icon: <Clock size={22} style={{ color: '#16A34A' }} />,
+      };
+    }
+    if (t.includes('PERMISSION') || t.includes('ROLE')) {
+      return {
+        rowBg: '#F8F4FF',
+        iconBg: '#EDE9FE',
+        icon: <Settings size={22} style={{ color: '#7C3AED' }} />,
+      };
+    }
+    if (t.includes('DOCUMENT')) {
+      return {
+        rowBg: '#F0F4FF',
+        iconBg: '#DBEAFE',
+        icon: <FileText size={22} style={{ color: '#1D61E7' }} />,
+      };
+    }
+    if (t.includes('TASK')) {
+      return {
+        rowBg: '#F0F4FF',
+        iconBg: '#DBEAFE',
+        icon: <CheckSquare size={22} style={{ color: '#1D61E7' }} />,
+      };
+    }
+    if (t.includes('PROJECT')) {
+      return {
+        rowBg: '#F8F4FF',
+        iconBg: '#EDE9FE',
+        icon: <Folder size={22} style={{ color: '#7C3AED' }} />,
+      };
+    }
+    if (t.includes('TICKET') || t.includes('HELPDESK')) {
+      return {
+        rowBg: '#FFF5F5',
+        iconBg: '#FEE2E2',
+        icon: <HelpCircle size={22} style={{ color: '#DC2626' }} />,
+      };
+    }
+    if (t.includes('EMPLOYEE') || t.includes('PROFILE')) {
+      return {
+        rowBg: '#F0F4FF',
+        iconBg: '#DBEAFE',
+        icon: <User size={22} style={{ color: '#1D61E7' }} />,
+      };
+    }
+    // default
+    return {
+      rowBg: '#F0F4FF',
+      iconBg: '#DBEAFE',
+      icon: <Bell size={22} style={{ color: '#1D61E7' }} />,
+    };
   };
 
   const getBreadcrumbs = () => {
@@ -173,7 +260,7 @@ export function Header({ title, userRole, currentView }) {
           {breadcrumbs.map((crumb, index) => (
             <React.Fragment key={index}>
               {index > 0 && <ChevronRight size={14} className="text-slate-400" />}
-              <span className={index === breadcrumbs.length - 1 ? "font-semibold text-slate-800" : "text-slate-500"}>
+              <span className={index === breadcrumbs.length - 1 ? 'font-semibold text-slate-800' : 'text-slate-500'}>
                 {crumb}
               </span>
             </React.Fragment>
@@ -182,7 +269,7 @@ export function Header({ title, userRole, currentView }) {
       </div>
 
       {/* Right: Search, Notifications, User */}
-      <div className="flex items-center gap-5">
+      <div className="flex items-center gap-6">
         {/* Search */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
@@ -193,59 +280,310 @@ export function Header({ title, userRole, currentView }) {
           />
         </div>
 
-        {/* Notifications */}
+        {/* Notification bell */}
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
             className={`relative p-2 rounded-full transition-colors ${showNotifications ? 'bg-blue-100 text-blue-600' : 'text-slate-500 hover:bg-slate-100'}`}
           >
             <Bell size={20} />
-            {isManager && (
-              <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white">
-                3
+            {unreadCount > 0 && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -4,
+                  minWidth: unreadCount > 9 ? 18 : 18,
+                  height: 18,
+                  width: unreadCount > 9 ? 'auto' : 18,
+                  padding: unreadCount > 9 ? '0 5px' : 0,
+                  background: '#EF4444',
+                  color: '#fff',
+                  fontSize: 10,
+                  fontWeight: 700,
+                  borderRadius: 100,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '2px solid #fff',
+                  boxShadow: '0 1px 4px rgba(0,0,0,0.18)',
+                  lineHeight: 1,
+                }}
+              >
+                {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
           </button>
 
+          {/* ══════════════════════════════════════════════
+              NOTIFICATION DROPDOWN — reference image match
+          ══════════════════════════════════════════════ */}
           {showNotifications && (
             <>
+              {/* Backdrop */}
               <div
                 className="fixed inset-0 z-10 cursor-default"
                 onClick={() => setShowNotifications(false)}
               />
-              <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-xl shadow-xl border border-slate-200 z-20 overflow-hidden">
-                <div className="p-4 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                  <h3 className="font-bold text-slate-800">Notifications</h3>
-                  <button onClick={() => setShowNotifications(false)} className="text-slate-400 hover:text-slate-600">
-                    <X size={16} />
-                  </button>
+
+              {/* Card */}
+              <div
+                style={{
+                  position: 'absolute',
+                  right: 0,
+                  top: 'calc(100% + 8px)',
+                  width: 520,
+                  maxWidth: 'calc(100vw - 2rem)',
+                  background: '#FFFFFF',
+                  borderRadius: 24,
+                  boxShadow: '0 20px 60px rgba(15,23,42,0.13)',
+                  border: '1px solid #E8EDF5',
+                  zIndex: 20,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  maxHeight: 'min(580px, 85vh)',
+                  overflow: 'hidden',
+                }}
+              >
+
+                {/* ── HEADER (fixed) ── */}
+                <div
+                  style={{
+                    flexShrink: 0,
+                    padding: '20px 24px 16px 24px',
+                    borderBottom: '1px solid #F0F4FA',
+                    background: '#FFFFFF',
+                  }}
+                >
+                  {/* Row 1: title + badge  |  mark-all-read + divider + X */}
+                  <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                    {/* Left */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span style={{ fontSize: 18, fontWeight: 800, color: '#0F172A', letterSpacing: '-0.3px', lineHeight: 1 }}>
+                        Notifications
+                      </span>
+                      {unreadCount > 0 && (
+                        <span
+                          style={{
+                            background: '#EBF3FF',
+                            color: '#1A73E8',
+                            border: '1px solid #C5DAFC',
+                            borderRadius: 100,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: '2px 10px',
+                            lineHeight: '18px',
+                          }}
+                        >
+                          {unreadCount} new
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Right */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={handleMarkAllRead}
+                          style={{
+                            display: 'flex', alignItems: 'center', gap: 5,
+                            fontSize: 13, fontWeight: 600, color: '#1A73E8',
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            padding: 0, lineHeight: 1,
+                          }}
+                        >
+                          <CheckCircle2 size={15} style={{ color: '#1A73E8' }} />
+                          Mark all read
+                        </button>
+                      )}
+                      {unreadCount > 0 && (
+                        <span style={{ width: 1, height: 18, background: '#CBD5E1', display: 'inline-block', margin: '0 2px' }} />
+                      )}
+                      <button
+                        onClick={() => setShowNotifications(false)}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          width: 28, height: 28, borderRadius: 8,
+                          background: 'none', border: 'none', cursor: 'pointer',
+                          color: '#94A3B8',
+                        }}
+                        onMouseEnter={e => { e.currentTarget.style.background = '#F1F5F9'; e.currentTarget.style.color = '#475569'; }}
+                        onMouseLeave={e => { e.currentTarget.style.background = 'none'; e.currentTarget.style.color = '#94A3B8'; }}
+                      >
+                        <X size={18} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Row 2: subtitle */}
+                  <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 4, fontWeight: 400 }}>
+                    Recent activity and updates
+                  </p>
                 </div>
 
-                <div className="max-h-[400px] overflow-y-auto">
-                  {isManager ? (
-                    <div className="p-4">
-                      <p className="text-xs font-bold text-slate-400 uppercase mb-3">Leave Requests</p>
-                      <LeaveApprovals compact limit={3} />
+                {/* ── NOTIFICATION LIST (scrollable) ── */}
+                <div
+                  style={{
+                    flex: 1,
+                    overflowY: 'auto',
+                    scrollbarWidth: 'thin',
+                    scrollbarColor: '#CBD5E1 transparent',
+                  }}
+                >
+                  {notifications.length === 0 ? (
+                    /* ── Empty state ── */
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '52px 24px', textAlign: 'center' }}>
+                      <div
+                        style={{
+                          width: 56, height: 56, borderRadius: 16,
+                          background: '#F8FAFF', border: '1px solid #E2E8F0',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          marginBottom: 14,
+                        }}
+                      >
+                        <Bell size={24} style={{ color: '#CBD5E1' }} />
+                      </div>
+                      <p style={{ fontSize: 14, fontWeight: 700, color: '#475569', margin: 0 }}>No new notifications</p>
+                      <p style={{ fontSize: 12, color: '#94A3B8', marginTop: 4 }}>You're all caught up.</p>
                     </div>
                   ) : (
-                    <div className="p-8 text-center text-slate-500 text-sm">
-                      <Bell size={32} className="mx-auto mb-2 opacity-20" />
-                      No new notifications
+                    /* ── Notification rows ── */
+                    <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {notifications.map((n) => {
+                        const isUnread = !n.isRead && !n.is_read;
+                        const theme = getItemTheme(n.type);
+                        return (
+                          <div
+                            key={n.id}
+                            onClick={() => handleNotificationClick(n)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'flex-start',
+                              gap: 14,
+                              padding: '14px 16px',
+                              borderRadius: 16,
+                              background: theme.rowBg,
+                              cursor: 'pointer',
+                              transition: 'opacity 0.15s',
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.opacity = '0.88'; }}
+                            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+                          >
+                            {/* ── Icon box ── */}
+                            <div
+                              style={{
+                                width: 48, height: 48, minWidth: 48,
+                                borderRadius: 13,
+                                background: theme.iconBg,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                flexShrink: 0,
+                              }}
+                            >
+                              {theme.icon}
+                            </div>
+
+                            {/* ── Text ── */}
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              {/* Title row */}
+                              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                                <span
+                                  style={{
+                                    fontSize: 14,
+                                    fontWeight: 700,
+                                    color: '#0F172A',
+                                    lineHeight: '1.35',
+                                    flex: 1,
+                                    minWidth: 0,
+                                  }}
+                                >
+                                  {n.title}
+                                </span>
+                                {/* Time + unread dot */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0, paddingTop: 1 }}>
+                                  <span style={{ fontSize: 12, color: '#94A3B8', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                    {getRelativeTime(n.createdAt || n.created_at)}
+                                  </span>
+                                  {isUnread && (
+                                    <span
+                                      style={{
+                                        width: 9, height: 9,
+                                        borderRadius: '50%',
+                                        background: '#2563EB',
+                                        display: 'inline-block',
+                                        flexShrink: 0,
+                                      }}
+                                    />
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Description */}
+                              <p
+                                style={{
+                                  fontSize: 13,
+                                  color: '#64748B',
+                                  lineHeight: '1.5',
+                                  marginTop: 3,
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                {n.message}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
 
-                {isManager && (
-                  <div className="p-3 border-t border-slate-100 bg-slate-50 text-center">
-                    <button className="text-blue-600 text-xs font-bold hover:underline">
-                      View All Notifications
-                    </button>
-                  </div>
-                )}
+                {/* ── FOOTER (fixed) ── */}
+                <div
+                  style={{
+                    flexShrink: 0,
+                    borderTop: '1px solid #F0F4FA',
+                    background: '#FFFFFF',
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      setShowNotifications(false);
+                      navigate('/notifications');
+                    }}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      padding: '18px 24px',
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: '#1A73E8',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s',
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.background = '#F0F7FF'; }}
+                    onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+                  >
+                    <AlignJustify size={16} style={{ color: '#1A73E8' }} />
+                    <span>View All Notifications</span>
+                    <ChevronRight size={16} style={{ color: '#1A73E8' }} />
+                  </button>
+                </div>
+
               </div>
+              {/* end card */}
             </>
           )}
+          {/* end showNotifications */}
         </div>
+        {/* end notification bell wrapper */}
 
         {/* User Info */}
         <div

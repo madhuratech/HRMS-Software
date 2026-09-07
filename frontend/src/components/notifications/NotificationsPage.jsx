@@ -27,8 +27,20 @@ export function NotificationsPage({ userRole }) {
     setLoading(true);
     try {
       const res = await apiFetch('/notifications');
-      if (res && res.success && Array.isArray(res.data)) {
-        setNotifications(res.data);
+      if (res && res.success) {
+        const rawList = res.notifications || res.data || [];
+        const normalized = rawList.map(n => ({
+          ...n,
+          id: n.id,
+          title: n.title,
+          message: n.message,
+          type: n.type || '',
+          is_read: Boolean(n.is_read || n.isRead),
+          isRead: Boolean(n.is_read || n.isRead),
+          created_at: n.created_at || n.createdAt,
+          action_url: n.action_url || n.actionUrl
+        }));
+        setNotifications(normalized);
       } else {
         addToast('Failed to load notifications', 'error');
       }
@@ -49,15 +61,10 @@ export function NotificationsPage({ userRole }) {
       if (!notif.is_read) {
         await apiFetch(`/notifications/${notif.id}/read`, { method: 'PUT' });
       }
-      // Re-fetch to update state
-      const res = await apiFetch('/notifications');
-      if (res && res.success && Array.isArray(res.data)) {
-        setNotifications(res.data);
-      }
+      setNotifications(prev => prev.map(n => n.id === notif.id ? { ...n, is_read: true, isRead: true } : n));
       
       // Perform security permission check before navigating
       if (notif.action_url) {
-        // Map url prefix to module key
         let permitted = true;
         if (userPermissions && userRole !== 'SUPER_ADMIN' && userRole !== 'Super Admin') {
           const url = notif.action_url.toLowerCase();
@@ -83,16 +90,18 @@ export function NotificationsPage({ userRole }) {
   const handleMarkAllRead = async () => {
     try {
       await apiFetch('/notifications/mark-all-read', { method: 'POST' });
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true, isRead: true })));
       addToast('All notifications marked as read', 'success');
-      fetchNotifications();
     } catch (e) {
       addToast('Failed to mark notifications read', 'error');
     }
   };
 
   const getRelativeTime = (dateStr) => {
+    if (!dateStr) return 'Just now';
     const now = new Date();
     const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return 'Just now';
     const diffMs = now - date;
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
@@ -130,6 +139,7 @@ export function NotificationsPage({ userRole }) {
   const filteredNotifications = notifications.filter(n => {
     const t = (n.type || '').toUpperCase();
     if (filter === 'UNREAD') return !n.is_read;
+    if (filter === 'READ') return n.is_read;
     if (filter === 'LEAVE') return t.includes('LEAVE');
     if (filter === 'ATTENDANCE') return t.includes('ATTENDANCE');
     if (filter === 'TASKS') return t.includes('TASK');
@@ -140,6 +150,7 @@ export function NotificationsPage({ userRole }) {
   });
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
+  const readCount = notifications.filter(n => n.is_read).length;
 
   return (
     <div style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
@@ -175,13 +186,14 @@ export function NotificationsPage({ userRole }) {
       {/* Main Content Layout */}
       <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: '24px', alignItems: 'start' }}>
         {/* Sidebar Filters */}
-        <div style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '12px', display: 'flex', flexDirection: 'col', gap: '4px' }}>
+        <div style={{ background: '#FFFFFF', borderRadius: '12px', border: '1px solid #E2E8F0', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 12px', color: '#475569', fontSize: '13px', fontWeight: 700, borderBottom: '1px solid #F1F5F9', marginBottom: '8px' }}>
             <Filter size={14} /> FILTERS
           </div>
           {[
             { key: 'ALL', label: 'All Notifications', count: notifications.length },
             { key: 'UNREAD', label: 'Unread Only', count: unreadCount },
+            { key: 'READ', label: 'Read History', count: readCount },
             { key: 'LEAVE', label: 'Leave & Absences', count: notifications.filter(n => n.type.includes('LEAVE')).length, permission: 'leave' },
             { key: 'ATTENDANCE', label: 'Attendance alerts', count: notifications.filter(n => n.type.includes('ATTENDANCE')).length, permission: 'attendance' },
             { key: 'TASKS', label: 'Tasks & Reminders', count: notifications.filter(n => n.type.includes('TASK')).length, permission: 'projects' },

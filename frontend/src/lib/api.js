@@ -27,6 +27,16 @@ export const apiFetch = async (path, options = {}) => {
     } catch (e) {}
   }
 
+  let targetPath = path || '';
+  if (targetPath.startsWith('/app/')) {
+    targetPath = targetPath.substring(4);
+  } else if (targetPath.startsWith('/api/')) {
+    targetPath = targetPath.substring(4);
+  }
+  if (!targetPath.startsWith('/')) {
+    targetPath = '/' + targetPath;
+  }
+
   const isFormData = options.body instanceof FormData;
   const headers = {
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
@@ -36,12 +46,16 @@ export const apiFetch = async (path, options = {}) => {
     ...(options.headers || {})
   };
   try {
-    const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+    const res = await fetch(`${API_BASE}${targetPath}`, { ...options, headers });
     const text = await res.text();
     if (!text || !text.trim()) {
       return { success: res.ok, status: res.status };
     }
-    return JSON.parse(text);
+    const json = JSON.parse(text);
+    if (!res.ok && json && json.message && !json.error) {
+      json.error = json.message;
+    }
+    return json;
   } catch (e) {
     console.error(`apiFetch error for ${path}:`, e);
     return { success: false, message: e.message };

@@ -156,12 +156,17 @@ export function resolveModuleKeys(modKey) {
   if (['settings_company', 'company_settings'].includes(cleanKey)) return { moduleKey: 'settings', submoduleKey: 'settings_company' };
   if (['settings_hr', 'hr_settings'].includes(cleanKey)) return { moduleKey: 'settings', submoduleKey: 'settings_hr' };
 
+  // Clients submodules
+  if (['client_management', 'clientmanagement', 'all_clients', 'allclients', 'clients_list'].includes(cleanKey)) return { moduleKey: 'clients', submoduleKey: 'client_management' };
+  if (['client_projects', 'clientprojects', 'client_project'].includes(cleanKey)) return { moduleKey: 'clients', submoduleKey: 'client_projects' };
+
   // Plural normalization for core modules
   if (cleanKey === 'employee') return { moduleKey: 'employees', submoduleKey: null };
   if (cleanKey === 'project') return { moduleKey: 'projects', submoduleKey: null };
   if (cleanKey === 'leaves') return { moduleKey: 'leave', submoduleKey: null };
   if (cleanKey === 'expense') return { moduleKey: 'expenses', submoduleKey: null };
   if (cleanKey === 'document') return { moduleKey: 'documents', submoduleKey: null };
+  if (cleanKey === 'client') return { moduleKey: 'clients', submoduleKey: null };
 
   return { moduleKey: cleanKey, submoduleKey: null };
 }

@@ -147,25 +147,56 @@ class DocumentService {
   // ─── TEMPLATES ───
   static async createTemplate(data, userId) {
     const sql = `
-      INSERT INTO document_templates (template_name, category, content, status, created_by, updated_by)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO document_templates (
+        template_name, category, description, template_source_type,
+        original_file_name, file_path, file_type, file_size,
+        content, status, created_by, updated_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
-      data.template_name.trim(), data.category, data.content || null, data.status || 'Active', userId, userId
+      data.template_name ? data.template_name.trim() : '',
+      data.category || 'Offer Letters',
+      data.description || null,
+      data.template_source_type || 'editor',
+      data.original_file_name || null,
+      data.file_path || null,
+      data.file_type || null,
+      data.file_size || null,
+      data.content || null,
+      data.status || 'Active',
+      userId,
+      userId
     ];
     const res = await query(sql, params);
     return { id: res.insertId };
   }
 
   static async updateTemplate(id, data, userId) {
+    const existing = await query('SELECT * FROM document_templates WHERE id = ?', [id]);
+    if (!existing || existing.length === 0) throw new Error('Template not found');
+
     const sql = `
       UPDATE document_templates SET
-        template_name = ?, category = ?, content = ?, status = ?, updated_by = ?
+        template_name = ?, category = ?, description = ?, template_source_type = ?,
+        original_file_name = ?, file_path = ?, file_type = ?, file_size = ?,
+        content = ?, status = ?, updated_by = ?
       WHERE id = ?
     `;
-    await query(sql, [
-      data.template_name.trim(), data.category, data.content || null, data.status, userId, id
-    ]);
+    const params = [
+      data.template_name ? data.template_name.trim() : existing[0].template_name,
+      data.category || existing[0].category,
+      data.description !== undefined ? data.description : existing[0].description,
+      data.template_source_type || existing[0].template_source_type || 'editor',
+      data.original_file_name !== undefined ? data.original_file_name : existing[0].original_file_name,
+      data.file_path !== undefined ? data.file_path : existing[0].file_path,
+      data.file_type !== undefined ? data.file_type : existing[0].file_type,
+      data.file_size !== undefined ? data.file_size : existing[0].file_size,
+      data.content !== undefined ? data.content : existing[0].content,
+      data.status || existing[0].status,
+      userId,
+      id
+    ];
+    await query(sql, params);
     return true;
   }
 
@@ -178,13 +209,17 @@ class DocumentService {
     let sql = 'SELECT * FROM document_templates WHERE 1=1';
     const params = [];
     if (filters.search) {
-      sql += ' AND (template_name LIKE ? OR category LIKE ?)';
+      sql += ' AND (template_name LIKE ? OR category LIKE ? OR description LIKE ?)';
       const term = `%${filters.search}%`;
-      params.push(term, term);
+      params.push(term, term, term);
     }
     if (filters.category && filters.category !== 'all') {
       sql += ' AND category = ?';
       params.push(filters.category);
+    }
+    if (filters.status && filters.status !== 'all') {
+      sql += ' AND status = ?';
+      params.push(filters.status);
     }
     sql += ' ORDER BY created_at DESC';
     return await query(sql, params);

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
-import { Search, Check, X, Eye, ChevronLeft, ChevronRight, AlertCircle, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Search, Check, X, Clock, CheckCircle, XCircle, AlertCircle, ShieldAlert } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { canEdit, showPermissionDenied } from '../../lib/permissions';
 
 export default function LeaveApproval() {
   const { addToast } = useToast();
@@ -11,12 +12,33 @@ export default function LeaveApproval() {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Permissions state
+  const [userRole, setUserRole] = useState('EMPLOYEE');
+  const [userPermissions, setUserPermissions] = useState(null);
+
   // Statistics KPI
   const [stats, setStats] = useState({
     pending: 0,
     approved: 0,
     rejected: 0
   });
+
+  useEffect(() => {
+    const fetchPerms = async () => {
+      try {
+        const auth = localStorage.getItem('hrms_auth');
+        if (auth) {
+          const parsed = JSON.parse(auth);
+          setUserRole(parsed.role || (parsed.user && parsed.user.role) || 'EMPLOYEE');
+        }
+        const data = await apiFetch('/rbac/user-permissions');
+        if (data && data.success && data.permissions) {
+          setUserPermissions(data.permissions);
+        }
+      } catch (err) { }
+    };
+    fetchPerms();
+  }, []);
 
   const loadApplications = async () => {
     setLoading(true);
@@ -42,13 +64,21 @@ export default function LeaveApproval() {
     loadApplications();
   }, []);
 
+  const canApproveAction = canEdit(userPermissions, userRole, 'leave', 'leave_approval');
+
   const handleAction = async (id, newStatus) => {
+    if (!canApproveAction) {
+      showPermissionDenied("You do not have permission to approve or reject leave applications.");
+      return;
+    }
+
     const auth = localStorage.getItem('hrms_auth');
-    let managerId = 1;
+    let managerId = null;
     if (auth) {
       try {
         const parsed = JSON.parse(auth);
-        if (parsed.user && parsed.user.id) managerId = parsed.user.id;
+        const userObj = parsed.user || parsed;
+        managerId = userObj.employee_id || userObj.employeeId || userObj.id || null;
       } catch (e) {}
     }
 
@@ -61,11 +91,11 @@ export default function LeaveApproval() {
         })
       });
 
-      if (res.message) {
-        addToast(`Leave application ${newStatus.toLowerCase()} successfully!`, "success");
+      if (res && (res.success || res.message)) {
+        addToast(res.message || `Leave application ${newStatus.toLowerCase()} successfully!`, "success");
         loadApplications();
       } else {
-        addToast(res.message || "Failed to update application status", "error");
+        addToast((res && (res.message || res.error)) || "Failed to update application status", "error");
       }
     } catch (err) {
       console.error(err);
@@ -87,7 +117,7 @@ export default function LeaveApproval() {
 
   // Only show pending for approval actions
   const pendingRequests = applications.filter(app => {
-    const matchName = app.employee_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchName = (app.employee_name || '').toLowerCase().includes(searchTerm.toLowerCase()) || 
                       `EMP${String(app.employee_id).padStart(3,'0')}`.toLowerCase().includes(searchTerm.toLowerCase());
     return matchName && app.status === 'Pending';
   });
@@ -122,7 +152,7 @@ export default function LeaveApproval() {
           
           <div style={{ padding: '24px', borderBottom: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: '16px' }}>
-              <AppDropdown value={deptFilter} options={[{value:'All Departments',label:'All Departments'},{value:'Design',label:'Design'},{value:'Engineering',label:'Engineering'}]} size="sm" />
+              <AppDropdown value={deptFilter} onChange={(val) => setDeptFilter(val)} options={[{value:'All Departments',label:'All Departments'},{value:'Design',label:'Design'},{value:'Engineering',label:'Engineering'}]} size="sm" />
               <div style={{ position: 'relative', width: '240px' }}>
                 <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: '#94a3b8' }} />
                 <input 
@@ -169,14 +199,14 @@ export default function LeaveApproval() {
                       <tr key={app.id} style={{ borderBottom: '1px solid #f1f5f9' }}>
                         <td style={{ padding: '16px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(app.employee_name)}&background=f1f5f9&color=64748b`} alt={app.employee_name} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+                            <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(app.employee_name || 'User')}&background=f1f5f9&color=64748b`} alt={app.employee_name} style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
                             <div>
                               <div style={{ fontSize: '13px', fontWeight: '600', color: '#1e293b' }}>{app.employee_name}</div>
                               <div style={{ fontSize: '11px', color: '#94a3b8' }}>EMP{String(app.employee_id).padStart(3,'0')}</div>
                             </div>
                           </div>
                         </td>
-                        <td style={{ padding: '16px', fontSize: '13px', color: '#475569', fontWeight: '500' }}>{app.leave_code}</td>
+                        <td style={{ padding: '16px', fontSize: '13px', color: '#475569', fontWeight: '500' }}>{app.leave_code || app.leave_name || 'CL'}</td>
                         <td style={{ padding: '16px', fontSize: '13px', color: '#475569' }}>{duration}</td>
                         <td style={{ padding: '16px', fontSize: '13px', color: '#475569' }}>{new Date(app.applied_on || new Date()).toLocaleDateString()}</td>
                         <td style={{ padding: '16px' }}>
@@ -185,22 +215,28 @@ export default function LeaveApproval() {
                           </span>
                         </td>
                         <td style={{ padding: '16px', textAlign: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                            <button 
-                              onClick={() => handleAction(app.id, 'Approved')}
-                              style={{ background: '#ecfdf5', border: 'none', cursor: 'pointer', color: '#10b981', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
-                              title="Approve"
-                            >
-                              <Check size={16} />
-                            </button>
-                            <button 
-                              onClick={() => handleAction(app.id, 'Rejected')}
-                              style={{ background: '#fef2f2', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
-                              title="Reject"
-                            >
-                              <X size={16} />
-                            </button>
-                          </div>
+                          {canApproveAction ? (
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+                              <button 
+                                onClick={() => handleAction(app.id, 'Approved')}
+                                style={{ background: '#ecfdf5', border: 'none', cursor: 'pointer', color: '#10b981', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
+                                title="Approve"
+                              >
+                                <Check size={16} />
+                              </button>
+                              <button 
+                                onClick={() => handleAction(app.id, 'Rejected')}
+                                style={{ background: '#fef2f2', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '6px', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} 
+                                title="Reject"
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: '11px', fontWeight: '600', color: '#94a3b8', background: '#f8fafc', padding: '4px 8px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                              <ShieldAlert size={12} /> View Only
+                            </span>
+                          )}
                         </td>
                       </tr>
                     );

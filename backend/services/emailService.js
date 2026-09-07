@@ -84,3 +84,61 @@ exports.sendOtpEmail = async ({ toEmail, recipientName, otpCode }) => {
     throw err;
   }
 };
+
+exports.sendOfferLetterEmail = async ({ toEmail, candidateName, jobPosition, pdfBuffer, contentText }) => {
+  try {
+    const transporter = await getTransporter();
+    const fromName = process.env.SMTP_FROM || '"Madhura Technologies HR" <hr@madhuratech.com>';
+    const nameDisplay = candidateName || 'Candidate';
+
+    const attachments = [];
+    if (pdfBuffer) {
+      attachments.push({
+        filename: `Offer_Letter_${nameDisplay.replace(/\s+/g, '_')}.pdf`,
+        content: pdfBuffer,
+        contentType: 'application/pdf'
+      });
+    }
+
+    const mailOptions = {
+      from: fromName,
+      to: toEmail,
+      subject: `Offer of Employment - ${jobPosition || 'Position'} at Madhura Technologies`,
+      text: contentText || `Dear ${nameDisplay},\n\nWe are pleased to offer you the position of ${jobPosition} at Madhura Technologies. Please find your official offer letter attached.\n\nBest regards,\nHR Department\nMadhura Technologies`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 650px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+          <div style="background-color: #2563eb; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
+            <h1 style="color: #ffffff; margin: 0; font-size: 22px;">Madhura Technologies</h1>
+            <p style="color: #e0e7ff; margin: 6px 0 0; font-size: 13px;">Official Employment Offer</p>
+          </div>
+          <div style="padding: 28px 20px; color: #334155; line-height: 1.6;">
+            <h2 style="color: #1e293b; margin-top: 0; font-size: 18px;">Offer of Employment: ${jobPosition || ''}</h2>
+            <p>Dear <strong>${nameDisplay}</strong>,</p>
+            <div style="background-color: #f8fafc; border-left: 4px solid #2563eb; padding: 16px; margin: 20px 0; border-radius: 0 8px 8px 0; font-family: monospace; white-space: pre-wrap; font-size: 13px; color: #1e293b;">
+${contentText || 'Please review your attached offer letter for details.'}
+            </div>
+            <p>Please review the details in the attached official offer document and confirm your acceptance.</p>
+            <p style="margin-top: 24px;">Sincerely,<br/><strong>Human Resources</strong><br/>Madhura Technologies</p>
+          </div>
+          <div style="border-top: 1px solid #e2e8f0; padding-top: 16px; text-align: center; color: #94a3b8; font-size: 12px;">
+            &copy; 2026 Madhura Technologies. All rights reserved.
+          </div>
+        </div>
+      `,
+      attachments
+    };
+
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`[OFFER EMAIL SENT] Sent to ${toEmail} | Message ID: ${info.messageId}`);
+    if (nodemailer.getTestMessageUrl && info) {
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      if (previewUrl) {
+        console.log(`[OFFER EMAIL PREVIEW URL] ${previewUrl}`);
+      }
+    }
+    return info;
+  } catch (err) {
+    console.error("[OFFER EMAIL SERVICE ERROR]:", err);
+    throw err;
+  }
+};

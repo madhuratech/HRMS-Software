@@ -368,31 +368,48 @@ export default function PunchLocations() {
 
       {/* Modal - Add / Edit / View Geofence */}
       {showModal && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15,23,42,0.45)', backdropFilter: 'blur(4px)' }}>
-          <div style={{ background: '#FFF', borderRadius: 14, border: '1px solid #E5E7EB', width: '90%', maxWidth: 900, height: '90%', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(15, 23, 42, 0.55)', backdropFilter: 'blur(6px)' }}>
+          <div style={{ background: '#FFF', borderRadius: '22px', border: '1px solid rgba(255,255,255,0.8)', width: '90%', maxWidth: 940, height: '90vh', maxHeight: '90vh', display: 'flex', flexDirection: 'column', overflow: 'hidden', boxShadow: '0 32px 80px rgba(15, 23, 42, 0.28)' }}>
             
             {/* Modal Header */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #E5E7EB' }}>
-              <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: '#111827' }}>
-                {modalMode === 'add' && 'Create Geofence Location'}
-                {modalMode === 'edit' && 'Edit Geofence Location'}
-                {modalMode === 'view' && `View ${formData.name}`}
-              </h2>
+            <div style={{ position: 'relative', padding: '20px 24px', background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', overflow: 'hidden', flexShrink: 0 }}>
+              <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '130px', height: '130px', borderRadius: '50%', background: 'rgba(255, 255, 255, 0.08)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', bottom: '-40px', left: '20%', width: '100px', height: '100px', borderRadius: '50%', background: 'rgba(255, 255, 255, 0.05)', pointerEvents: 'none' }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1, flex: 1, marginRight: '16px' }}>
+                <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'rgba(255, 255, 255, 0.18)', backdropFilter: 'blur(8px)', border: '1px solid rgba(255, 255, 255, 0.3)', display: 'grid', placeItems: 'center', placeContent: 'center', boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)', flexShrink: 0, lineHeight: 0, padding: 0 }}>
+                  <MapPin size={22} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#FFFFFF', letterSpacing: '-0.01em' }}>
+                    {modalMode === 'add' && 'Create Geofence Location'}
+                    {modalMode === 'edit' && 'Edit Geofence Location'}
+                    {modalMode === 'view' && `View ${formData.name}`}
+                  </h3>
+                  <p style={{ margin: '3px 0 0 0', fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)' }}>
+                    Define GPS boundaries and allowed punch radius for attendance
+                  </p>
+                </div>
+              </div>
+
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
-                style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', padding: 4 }}
+                style={{ width: '34px', height: '34px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.25)', background: 'rgba(255, 255, 255, 0.12)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', placeContent: 'center', cursor: 'pointer', zIndex: 1, transition: 'all 0.2s', flexShrink: 0, marginLeft: 'auto', lineHeight: 0, padding: 0 }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
               >
-                <X size={18} />
+                <X size={16} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
               </button>
             </div>
 
             {/* Modal Body */}
-            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '360px 1fr', overflow: 'hidden' }}>
+            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '380px 1fr', overflow: 'hidden' }}>
               
               {/* Form Side */}
-              <form onSubmit={handleFormSubmit} style={{ padding: 24, borderRight: '1px solid #E5E7EB', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 14 }}>
+              <form onSubmit={handleFormSubmit} style={{ padding: '24px 28px', borderRight: '1px solid #E2E8F0', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px', background: '#FFFFFF' }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#374151', marginBottom: 4 }}>Location Name *</label>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '7px' }}>Location Name <span style={{ color: '#EF4444' }}>*</span></label>
                   <input
                     type="text"
                     required
@@ -400,25 +417,29 @@ export default function PunchLocations() {
                     placeholder="e.g. Headquarters"
                     value={formData.name}
                     onChange={e => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    style={{ width: '100%', height: 38, padding: '0 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, outline: 'none' }}
+                    style={{ width: '100%', height: '42px', padding: '0 14px', borderRadius: '11px', border: '1.5px solid #E2E8F0', fontSize: '13.5px', color: '#1E293B', background: '#FAFBFC', outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box' }}
+                    onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; e.target.style.background = '#FFF'; }}
+                    onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#374151', marginBottom: 4 }}>Branch / Division</label>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '7px' }}>Branch / Division</label>
                   <input
                     type="text"
                     disabled={modalMode === 'view'}
                     placeholder="e.g. Bangalore Corporate"
                     value={formData.branch}
                     onChange={e => setFormData(prev => ({ ...prev, branch: e.target.value }))}
-                    style={{ width: '100%', height: 38, padding: '0 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, outline: 'none' }}
+                    style={{ width: '100%', height: '42px', padding: '0 14px', borderRadius: '11px', border: '1.5px solid #E2E8F0', fontSize: '13.5px', color: '#1E293B', background: '#FAFBFC', outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box' }}
+                    onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; e.target.style.background = '#FFF'; }}
+                    onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#374151', marginBottom: 4 }}>Latitude *</label>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '7px' }}>Latitude <span style={{ color: '#EF4444' }}>*</span></label>
                     <input
                       type="number"
                       step="any"
@@ -426,11 +447,13 @@ export default function PunchLocations() {
                       disabled={modalMode === 'view'}
                       value={formData.latitude}
                       onChange={e => setFormData(prev => ({ ...prev, latitude: parseFloat(e.target.value) || 0 }))}
-                      style={{ width: '100%', height: 38, padding: '0 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, outline: 'none' }}
+                      style={{ width: '100%', height: '42px', padding: '0 14px', borderRadius: '11px', border: '1.5px solid #E2E8F0', fontSize: '13.5px', color: '#1E293B', background: '#FAFBFC', outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box' }}
+                      onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; e.target.style.background = '#FFF'; }}
+                      onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
                     />
                   </div>
                   <div>
-                    <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#374151', marginBottom: 4 }}>Longitude *</label>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '7px' }}>Longitude <span style={{ color: '#EF4444' }}>*</span></label>
                     <input
                       type="number"
                       step="any"
@@ -438,14 +461,16 @@ export default function PunchLocations() {
                       disabled={modalMode === 'view'}
                       value={formData.longitude}
                       onChange={e => setFormData(prev => ({ ...prev, longitude: parseFloat(e.target.value) || 0 }))}
-                      style={{ width: '100%', height: 38, padding: '0 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, outline: 'none' }}
+                      style={{ width: '100%', height: '42px', padding: '0 14px', borderRadius: '11px', border: '1.5px solid #E2E8F0', fontSize: '13.5px', color: '#1E293B', background: '#FAFBFC', outline: 'none', transition: 'all 0.2s', boxSizing: 'border-box' }}
+                      onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; e.target.style.background = '#FFF'; }}
+                      onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#374151', marginBottom: 4 }}>Allowed Radius (Meters) *</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '7px' }}>Allowed Radius (Meters) <span style={{ color: '#EF4444' }}>*</span></label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <input
                       type="range"
                       min="50"
@@ -454,49 +479,58 @@ export default function PunchLocations() {
                       disabled={modalMode === 'view'}
                       value={formData.radius}
                       onChange={e => setFormData(prev => ({ ...prev, radius: parseInt(e.target.value) }))}
-                      style={{ flex: 1 }}
+                      style={{ flex: 1, accentColor: '#2563EB' }}
                     />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: '#2563EB', background: '#EFF6FF', padding: '4px 10px', borderRadius: 6, minWidth: 50, textAlign: 'center' }}>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#2563EB', background: '#EFF6FF', padding: '6px 12px', borderRadius: '8px', border: '1px solid #BFDBFE', minWidth: '60px', textAlign: 'center' }}>
                       {formData.radius}m
                     </span>
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#374151', marginBottom: 4 }}>Address</label>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '7px' }}>Address</label>
                   <textarea
                     disabled={modalMode === 'view'}
                     placeholder="Physical address of the office..."
                     value={formData.address}
                     onChange={e => setFormData(prev => ({ ...prev, address: e.target.value }))}
-                    style={{ width: '100%', minHeight: 60, padding: 8, border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, resize: 'vertical', outline: 'none' }}
+                    style={{ width: '100%', minHeight: '60px', padding: '10px 14px', borderRadius: '11px', border: '1.5px solid #E2E8F0', fontSize: '13.5px', color: '#1E293B', background: '#FAFBFC', outline: 'none', transition: 'all 0.2s', resize: 'vertical', boxSizing: 'border-box' }}
+                    onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; e.target.style.background = '#FFF'; }}
+                    onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#374151', marginBottom: 4 }}>Description</label>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '7px' }}>Description</label>
                   <textarea
                     disabled={modalMode === 'view'}
                     placeholder="Short description/notes..."
                     value={formData.description}
                     onChange={e => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                    style={{ width: '100%', minHeight: 60, padding: 8, border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, resize: 'vertical', outline: 'none' }}
+                    style={{ width: '100%', minHeight: '60px', padding: '10px 14px', borderRadius: '11px', border: '1.5px solid #E2E8F0', fontSize: '13.5px', color: '#1E293B', background: '#FAFBFC', outline: 'none', transition: 'all 0.2s', resize: 'vertical', boxSizing: 'border-box' }}
+                    onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; e.target.style.background = '#FFF'; }}
+                    onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
                   />
                 </div>
 
                 {modalMode !== 'view' && (
-                  <div style={{ marginTop: 'auto', display: 'flex', gap: 10 }}>
+                  <div style={{ marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #F1F5F9', display: 'flex', gap: '12px' }}>
                     <button
                       type="button"
                       onClick={() => setShowModal(false)}
-                      style={{ flex: 1, height: 38, border: '1px solid #D1D5DB', borderRadius: 8, fontSize: 13, fontWeight: 600, background: '#FFF', color: '#374151', cursor: 'pointer' }}
+                      style={{ flex: 1, height: '42px', borderRadius: '11px', border: '1.5px solid #E2E8F0', background: '#FFFFFF', color: '#475569', fontSize: '13.5px', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s' }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.borderColor = '#CBD5E1'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.borderColor = '#E2E8F0'; }}
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      style={{ flex: 1, height: 38, border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, background: '#2952E3', color: '#FFF', cursor: 'pointer' }}
+                      style={{ flex: 1, height: '42px', borderRadius: '11px', border: 'none', background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#FFFFFF', fontSize: '13.5px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)', transition: 'all 0.2s' }}
+                      onMouseEnter={e => e.currentTarget.style.boxShadow = '0 6px 18px rgba(37, 99, 235, 0.45)'}
+                      onMouseLeave={e => e.currentTarget.style.boxShadow = '0 4px 14px rgba(37, 99, 235, 0.35)'}
                     >
+                      <CheckCircle2 size={16} />
                       Save Location
                     </button>
                   </div>

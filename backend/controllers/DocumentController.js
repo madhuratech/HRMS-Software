@@ -1,5 +1,7 @@
 const DocumentService = require('../services/DocumentService');
 const response = require('../utils/response');
+const mammoth = require('mammoth');
+const path = require('path');
 
 class DocumentController {
   // ─── EMPLOYEE DOCUMENTS ───
@@ -143,7 +145,30 @@ class DocumentController {
   static async createTemplate(req, res) {
     try {
       const userId = req.user?.id || 1;
-      const result = await DocumentService.createTemplate(req.body, userId);
+      const data = { ...req.body };
+
+      if (req.file) {
+        data.template_source_type = 'file';
+        data.original_file_name = req.file.originalname;
+        data.file_path = `uploads/templates/${req.file.filename}`;
+        data.file_type = path.extname(req.file.originalname).toLowerCase();
+        data.file_size = req.file.size;
+
+        if (data.file_type === '.docx') {
+          try {
+            const extracted = await mammoth.extractRawText({ path: req.file.path });
+            if (extracted && extracted.value && !data.content) {
+              data.content = extracted.value.trim();
+            }
+          } catch (mErr) {
+            console.warn('[Mammoth extraction error]', mErr.message);
+          }
+        }
+      } else {
+        data.template_source_type = data.template_source_type || 'editor';
+      }
+
+      const result = await DocumentService.createTemplate(data, userId);
       return response(res, true, 201, 'Template created successfully.', result);
     } catch (err) {
       return response(res, false, 500, 'Failed to save Template.', null, err.message);
@@ -153,7 +178,28 @@ class DocumentController {
   static async updateTemplate(req, res) {
     try {
       const userId = req.user?.id || 1;
-      await DocumentService.updateTemplate(req.params.id, req.body, userId);
+      const data = { ...req.body };
+
+      if (req.file) {
+        data.template_source_type = 'file';
+        data.original_file_name = req.file.originalname;
+        data.file_path = `uploads/templates/${req.file.filename}`;
+        data.file_type = path.extname(req.file.originalname).toLowerCase();
+        data.file_size = req.file.size;
+
+        if (data.file_type === '.docx') {
+          try {
+            const extracted = await mammoth.extractRawText({ path: req.file.path });
+            if (extracted && extracted.value && !data.content) {
+              data.content = extracted.value.trim();
+            }
+          } catch (mErr) {
+            console.warn('[Mammoth extraction error]', mErr.message);
+          }
+        }
+      }
+
+      await DocumentService.updateTemplate(req.params.id, data, userId);
       return response(res, true, 200, 'Template updated successfully.');
     } catch (err) {
       return response(res, false, 500, 'Failed to update Template.', null, err.message);

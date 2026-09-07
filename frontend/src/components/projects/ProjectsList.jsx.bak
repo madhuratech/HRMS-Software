@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+﻿import React, { useState, useEffect, useCallback } from 'react';
 import AppDropdown from '../ui/AppDropdown';
 import { Search, Plus, Edit2, Link2, ChevronLeft, ChevronRight, ChevronDown, X, Trash2 } from 'lucide-react';
 import { useToast } from '../ui/Toast';
@@ -44,7 +44,6 @@ export default function Projects() {
   const [editingId, setEditingId] = useState(null);
   const [projectsList, setProjectsList] = useState([]);
   const [meta, setMeta] = useState({ employees: [], departments: [], projects: [] });
-  const [activeClients, setActiveClients] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [deptFilter, setDeptFilter] = useState('');
@@ -56,7 +55,6 @@ export default function Projects() {
     project_name: '',
     project_code: '',
     client: '',
-    client_id: '',
     project_manager_id: '',
     team_members: [],
     start_date: '',
@@ -75,16 +73,6 @@ export default function Projects() {
       if (res.success && res.data) setMeta(res.data);
     } catch (err) {
       console.error('Failed to load project meta:', err);
-    }
-  }, []);
-
-  // Fetch active clients for project-client linkage dropdown
-  const fetchActiveClients = useCallback(async () => {
-    try {
-      const res = await apiFetch('/clients/active/list');
-      if (res.success && res.data) setActiveClients(res.data);
-    } catch (err) {
-      console.warn('Could not load active clients list:', err);
     }
   }, []);
 
@@ -118,14 +106,13 @@ export default function Projects() {
 
   useEffect(() => { fetchMeta(); }, [fetchMeta]);
   useEffect(() => { fetchProjects(); }, [fetchProjects]);
-  useEffect(() => { fetchActiveClients(); }, [fetchActiveClients]);
 
   const openAdd = () => {
     if (!requireActionPermission('projects', 'projects_list', 'create', null, addToast, 'You do not have permission to create a project. Please contact your administrator.')) {
       return;
     }
     setEditingId(null);
-    setFormData({ project_name: '', project_code: '', client: '', client_id: '', project_manager_id: '', team_members: [], start_date: '', end_date: '', budget: '', priority: 'Medium', status: 'In Progress', description: '' });
+    setFormData({ project_name: '', project_code: '', client: '', project_manager_id: '', team_members: [], start_date: '', end_date: '', budget: '', priority: 'Medium', status: 'In Progress', description: '' });
     setShowAddModal(true);
   };
 
@@ -139,7 +126,6 @@ export default function Projects() {
       project_name: project.project_name,
       project_code: project.project_code,
       client: project.client || '',
-      client_id: project.client_id ? String(project.client_id) : '',
       project_manager_id: String(project.project_manager_id || ''),
       team_members: teamIds,
       start_date: project.start_date || '',
@@ -163,12 +149,10 @@ export default function Projects() {
       return;
     }
     setSubmitting(true);
-    const selectedClient = activeClients.find(c => c.id === parseInt(formData.client_id));
     const payload = {
       project_name: formData.project_name.trim(),
       project_code: formData.project_code.trim(),
-      client: selectedClient ? selectedClient.company_name : (formData.client || '').trim(),
-      client_id: formData.client_id ? parseInt(formData.client_id) : null,
+      client: formData.client.trim(),
       project_manager_id: parseInt(formData.project_manager_id),
       team_members: (formData.team_members || []).map(Number),
       start_date: formData.start_date,
@@ -481,51 +465,16 @@ export default function Projects() {
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>
                         Client <span style={{ color: '#EF4444' }}>*</span>
                       </label>
-                      {activeClients && activeClients.length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <AppDropdown
-                            value={formData.client_id ? String(formData.client_id) : ''}
-                            onChange={val => {
-                              const sel = activeClients.find(c => String(c.id) === String(val));
-                              setFormData(prev => ({
-                                ...prev,
-                                client_id: val || '',
-                                client: sel ? (sel.company_name || sel.client_name) : (val ? prev.client : '')
-                              }));
-                            }}
-                            options={[
-                              { value: '', label: '-- Select from Client Master --' },
-                              ...activeClients.map(c => ({
-                                value: String(c.id),
-                                label: c.company_name ? `${c.company_name} (${c.client_code || c.client_name})` : c.client_name
-                              }))
-                            ]}
-                            placeholder="Select Client..."
-                            size="md"
-                          />
-                          <input 
-                            type="text" 
-                            required 
-                            value={formData.client} 
-                            onChange={e => setFormData({ ...formData, client: e.target.value, client_id: '' })} 
-                            placeholder="Or type client name manually" 
-                            style={{ width: '100%', height: '38px', padding: '0 14px', border: '1.5px solid #CBD5E1', borderRadius: '10px', fontSize: '13px', color: '#1E293B', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
-                            onFocus={e => e.target.style.borderColor = '#3B82F6'}
-                            onBlur={e => e.target.style.borderColor = '#CBD5E1'}
-                          />
-                        </div>
-                      ) : (
-                        <input 
-                          type="text" 
-                          required 
-                          value={formData.client} 
-                          onChange={e => setFormData({ ...formData, client: e.target.value })} 
-                          placeholder="e.g. Acme Corporation" 
-                          style={{ width: '100%', height: '44px', padding: '0 16px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '14px', color: '#1E293B', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
-                          onFocus={e => e.target.style.borderColor = '#3B82F6'}
-                          onBlur={e => e.target.style.borderColor = '#CBD5E1'}
-                        />
-                      )}
+                      <input 
+                        type="text" 
+                        required 
+                        value={formData.client} 
+                        onChange={e => setFormData({ ...formData, client: e.target.value })} 
+                        placeholder="e.g. Acme Corporation" 
+                        style={{ width: '100%', height: '44px', padding: '0 16px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '14px', color: '#1E293B', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
+                        onFocus={e => e.target.style.borderColor = '#3B82F6'}
+                        onBlur={e => e.target.style.borderColor = '#CBD5E1'}
+                      />
                     </div>
                   </div>
                 </div>
@@ -668,7 +617,7 @@ export default function Projects() {
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>
-                        Budget (₹) <span style={{ color: '#EF4444' }}>*</span>
+                        Budget (Ôé╣) <span style={{ color: '#EF4444' }}>*</span>
                       </label>
                       <input 
                         type="text" 
@@ -687,7 +636,7 @@ export default function Projects() {
                         <AppDropdown
                 value={formData.priority}
                 onChange={v => setFormData({ ...formData, priority: v })}
-                options={[{value:'High',label:'🔴 High'},{value:'Medium',label:'🟡 Medium'},{value:'Low',label:'🟢 Low'}]}
+                options={[{value:'High',label:'­ƒö┤ High'},{value:'Medium',label:'­ƒƒí Medium'},{value:'Low',label:'­ƒƒó Low'}]}
                 size="sm"
               />
                         <ChevronDown size={16} style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748B' }} />

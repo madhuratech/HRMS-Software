@@ -506,6 +506,11 @@ exports.updateAttendanceRecord = async (req, res) => {
       return res.status(400).json({ success: false, message: "Missing employee ID or date" });
     }
 
+    const validEmpId = await GPSAttendanceService.resolveEmployeeId(employeeId);
+    if (!validEmpId) {
+      return res.status(404).json({ success: false, message: "No valid employee record found in the database." });
+    }
+
     if (!scopeData.isUnrestricted && Array.isArray(scopeData.allowedEmployeeIds)) {
       if (!scopeData.allowedEmployeeIds.includes(targetEmpId)) {
         return res.status(403).json({ success: false, message: "Permission Denied: You cannot modify attendance records for employees outside your authorized data scope." });
@@ -517,7 +522,7 @@ exports.updateAttendanceRecord = async (req, res) => {
     const checkOutTimestamp = checkOutTime ? new Date(`${date} ${checkOutTime}`) : null;
 
     const existing = await new Promise((resolve, reject) => {
-      db.query("SELECT * FROM GPSAttendance WHERE employee_id = ? AND punch_date = ?", [employeeId, date], (err, rows) => {
+      db.query("SELECT * FROM GPSAttendance WHERE employee_id = ? AND punch_date = ?", [validEmpId, date], (err, rows) => {
         if (err) return reject(err);
         resolve(rows);
       });
@@ -529,7 +534,7 @@ exports.updateAttendanceRecord = async (req, res) => {
         VALUES (?, ?, ?, ?, ?, ?, 11.013011, 76.956732, 'Main Headquarters')
       `;
       await new Promise((resolve, reject) => {
-        db.query(sqlInsert, [employeeId, date, checkInTimestamp, checkOutTimestamp, workingHours || '08h 00m', status || 'Present'], (err, results) => {
+        db.query(sqlInsert, [validEmpId, date, checkInTimestamp, checkOutTimestamp, workingHours || '08h 00m', status || 'Present'], (err, results) => {
           if (err) return reject(err);
           resolve(results);
         });
@@ -541,7 +546,7 @@ exports.updateAttendanceRecord = async (req, res) => {
         WHERE employee_id = ? AND punch_date = ?
       `;
       await new Promise((resolve, reject) => {
-        db.query(sqlUpdate, [checkInTimestamp, checkOutTimestamp, workingHours || '08h 00m', status || 'Present', employeeId, date], (err, results) => {
+        db.query(sqlUpdate, [checkInTimestamp, checkOutTimestamp, workingHours || '08h 00m', status || 'Present', validEmpId, date], (err, results) => {
           if (err) return reject(err);
           resolve(results);
         });
@@ -549,7 +554,7 @@ exports.updateAttendanceRecord = async (req, res) => {
     }
 
     await new Promise((resolve, reject) => {
-      db.query("DELETE FROM attendance WHERE employee_id = ? AND DATE(punch_time) = ?", [employeeId, date], (err, results) => {
+      db.query("DELETE FROM attendance WHERE employee_id = ? AND DATE(punch_time) = ?", [validEmpId, date], (err, results) => {
         if (err) return reject(err);
         resolve(results);
       });
@@ -557,7 +562,7 @@ exports.updateAttendanceRecord = async (req, res) => {
 
     if (checkInTimestamp) {
       await new Promise((resolve, reject) => {
-        db.query("INSERT INTO attendance (employee_id, punch_type, punch_time, latitude, longitude) VALUES (?, 'IN', ?, 11.013011, 76.956732)", [employeeId, checkInTimestamp], (err, results) => {
+        db.query("INSERT INTO attendance (employee_id, punch_type, punch_time, latitude, longitude) VALUES (?, 'IN', ?, 11.013011, 76.956732)", [validEmpId, checkInTimestamp], (err, results) => {
           if (err) return reject(err);
           resolve(results);
         });
@@ -565,7 +570,7 @@ exports.updateAttendanceRecord = async (req, res) => {
     }
     if (checkOutTimestamp) {
       await new Promise((resolve, reject) => {
-        db.query("INSERT INTO attendance (employee_id, punch_type, punch_time, latitude, longitude) VALUES (?, 'OUT', ?, 11.013011, 76.956732)", [employeeId, checkOutTimestamp], (err, results) => {
+        db.query("INSERT INTO attendance (employee_id, punch_type, punch_time, latitude, longitude) VALUES (?, 'OUT', ?, 11.013011, 76.956732)", [validEmpId, checkOutTimestamp], (err, results) => {
           if (err) return reject(err);
           resolve(results);
         });

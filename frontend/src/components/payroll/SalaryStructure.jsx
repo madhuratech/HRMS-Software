@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
-import { 
-  Plus, Edit2, Trash2, Eye, Building2, CheckCircle2, Wallet, Users, 
-  ChevronLeft, ChevronRight, Loader2, X, UserCheck, AlertCircle, ArrowRight 
+import {
+  Plus, Edit2, Trash2, Eye, Building2, CheckCircle2, Wallet, Users,
+  ChevronLeft, ChevronRight, Loader2, X, UserCheck, AlertCircle, ArrowRight
 } from 'lucide-react';
 import { hasPermission } from '../../lib/permissions';
 
@@ -454,7 +454,7 @@ export default function SalaryStructure() {
       {showCreateModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)' }}>
           <div style={{ width: '640px', maxWidth: '95vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', background: '#FFFFFF', borderRadius: '20px', boxShadow: '0 25px 60px -12px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
-            
+
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', background: '#FAFBFF', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '700', color: '#1E293B' }}>Create Salary Structure</h3>
               <button onClick={() => setShowCreateModal(false)} style={{ width: '32px', height: '32px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
@@ -463,7 +463,7 @@ export default function SalaryStructure() {
             </div>
 
             <form onSubmit={handleCreateStructure} style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              
+
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
@@ -513,11 +513,11 @@ export default function SalaryStructure() {
                     Pay Frequency
                   </label>
                   <AppDropdown
-                value={frequency}
-                onChange={v => setFrequency(v)}
-                options={[{value:'Monthly',label:'Monthly'},{value:'Bi-Weekly',label:'Bi-Weekly'},{value:'Annual',label:'Annual'}]}
-                size="sm"
-              />
+                    value={frequency}
+                    onChange={v => setFrequency(v)}
+                    options={[{ value: 'Monthly', label: 'Monthly' }, { value: 'Bi-Weekly', label: 'Bi-Weekly' }, { value: 'Annual', label: 'Annual' }]}
+                    size="sm"
+                  />
                 </div>
               </div>
 
@@ -608,7 +608,7 @@ export default function SalaryStructure() {
       {showAssignModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)' }}>
           <div style={{ width: '500px', maxWidth: '95vw', background: '#FFFFFF', borderRadius: '20px', boxShadow: '0 25px 60px -12px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
-            
+
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', background: '#FAFBFF', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <UserCheck size={18} color="#2563EB" />
@@ -620,23 +620,23 @@ export default function SalaryStructure() {
             </div>
 
             <form onSubmit={handleAssignStructure} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              
+
               <div>
                 <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
                   Select Employee <span style={{ color: '#EF4444' }}>*</span>
                 </label>
                 <AppDropdown
-                value={assignEmpId}
-                onChange={v => {
+                  value={assignEmpId}
+                  onChange={v => {
                     setAssignEmpId(v);
                     const selected = activeEmployees.find(emp => String(emp.id) === v);
                     if (selected && selected.salary) {
                       setCustomGross(selected.salary);
                     }
                   }}
-                options={[{value:'',label:'-- Choose Active Employee --'}]}
-                size="sm"
-              />
+                  options={[{ value: '', label: '-- Choose Active Employee --' }]}
+                  size="sm"
+                />
               </div>
 
               <div>
@@ -644,11 +644,11 @@ export default function SalaryStructure() {
                   Select Salary Structure <span style={{ color: '#EF4444' }}>*</span>
                 </label>
                 <AppDropdown
-                value={assignStructId}
-                onChange={v => setAssignStructId(v)}
-                options={[{value:'',label:'-- Choose Salary Structure --'}]}
-                size="sm"
-              />
+                  value={assignStructId}
+                  onChange={v => setAssignStructId(v)}
+                  options={[{ value: '', label: '-- Choose Salary Structure --' }]}
+                  size="sm"
+                />
               </div>
 
               <div>
@@ -704,7 +704,7 @@ export default function SalaryStructure() {
       {showEditModal && editingStructure && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)' }}>
           <div style={{ width: '640px', maxWidth: '95vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', background: '#FFFFFF', borderRadius: '20px', boxShadow: '0 25px 60px -12px rgba(0,0,0,0.3)', overflow: 'hidden' }}>
-            
+
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', background: '#FAFBFF', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <Edit2 size={18} color="#2563EB" />
@@ -716,7 +716,7 @@ export default function SalaryStructure() {
             </div>
 
             <form onSubmit={handleUpdateStructure} style={{ padding: '24px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              
+
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#64748B', textTransform: 'uppercase', marginBottom: '6px' }}>
@@ -765,11 +765,11 @@ export default function SalaryStructure() {
                     Pay Frequency
                   </label>
                   <AppDropdown
-                value={editFrequency}
-                onChange={v => setEditFrequency(v)}
-                options={[{value:'Monthly',label:'Monthly'},{value:'Bi-Weekly',label:'Bi-Weekly'},{value:'Annual',label:'Annual'}]}
-                size="sm"
-              />
+                    value={editFrequency}
+                    onChange={v => setEditFrequency(v)}
+                    options={[{ value: 'Monthly', label: 'Monthly' }, { value: 'Bi-Weekly', label: 'Bi-Weekly' }, { value: 'Annual', label: 'Annual' }]}
+                    size="sm"
+                  />
                 </div>
 
                 <div>
@@ -777,11 +777,11 @@ export default function SalaryStructure() {
                     Status
                   </label>
                   <AppDropdown
-                value={editStatus}
-                onChange={v => setEditStatus(v)}
-                options={[{value:'Active',label:'Active'},{value:'Inactive',label:'Inactive'}]}
-                size="sm"
-              />
+                    value={editStatus}
+                    onChange={v => setEditStatus(v)}
+                    options={[{ value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' }]}
+                    size="sm"
+                  />
                 </div>
               </div>
 
@@ -875,7 +875,7 @@ export default function SalaryStructure() {
             <div style={{ width: '52px', height: '52px', borderRadius: '16px', background: '#FEF2F2', color: '#EF4444', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
               <Trash2 size={26} />
             </div>
-            
+
             <h3 style={{ margin: '0 0 8px 0', fontSize: '18px', fontWeight: '700', color: '#1E293B' }}>Delete Salary Structure</h3>
             <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#64748B', lineHeight: '1.5' }}>
               Are you sure you want to delete <strong style={{ color: '#1E293B' }}>"{deletingStructure.name}"</strong> ({deletingStructure.code})? Any mapped employees will be unassigned.

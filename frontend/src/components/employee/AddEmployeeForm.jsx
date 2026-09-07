@@ -376,53 +376,129 @@ export default function AddEmployeeForm() {
 
   return (
     <div className="hrms-content">
-      <div className="hrms-header">
-        <h1>Add Employee</h1>
-      </div>
-
-      <div className="hrms-card">
-        {/* Step Indicator */}
-        <div className="hrms-steps">
-          <div style={{ position: 'absolute', top: '16px', left: '0', right: '0', height: '2px', backgroundColor: '#e2e8f0', zIndex: 0 }} />
-          <div style={{ position: 'absolute', top: '16px', left: '0', width: `${((activeStep - 1) / (steps.length - 1)) * 100}%`, height: '2px', backgroundColor: '#2952E3', zIndex: 0, transition: 'width 0.3s ease' }} />
-
-          {steps.map((step) => (
-            <div key={step.id} className={`hrms-step ${activeStep >= step.id ? 'active' : ''}`}>
-              <div className="hrms-step-circle">
-                {activeStep > step.id ? <Check size={16} /> : step.id}
-              </div>
-              <span className="hrms-step-label">{step.label}</span>
-            </div>
-          ))}
+      {/* Premium Header Banner */}
+      <div className="hrms-header" style={{ marginBottom: '24px', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: '700',
+              textTransform: 'uppercase',
+              letterSpacing: '0.6px',
+              backgroundColor: '#EFF6FF',
+              color: '#2563EB',
+              padding: '4px 10px',
+              borderRadius: '20px',
+              border: '1px solid #BFDBFE'
+            }}>
+              Onboarding Module
+            </span>
+            <span style={{ fontSize: '13px', color: '#94A3B8', fontWeight: '500' }}>•</span>
+            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '600' }}>
+              Step {activeStep} of {steps.length}: {steps.find(s => s.id === activeStep)?.label}
+            </span>
+          </div>
+          <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#0F172A', margin: 0, letterSpacing: '-0.3px' }}>
+            Add New Employee Profile
+          </h1>
+          <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#64748B' }}>
+            Complete the guided steps below to configure employee personal details, employment terms, and previous experience history.
+          </p>
         </div>
 
-        {/* Step Rendering */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '48px' }}>
+        <button
+          type="button"
+          className="hrms-secondary-btn"
+          onClick={() => navigate('/employees/list')}
+          style={{ borderRadius: '10px', padding: '9px 16px', fontSize: '13px' }}
+        >
+          Cancel & Exit
+        </button>
+      </div>
+
+      {/* Main Container Card */}
+      <div className="hrms-card" style={{
+        backgroundColor: '#FFFFFF',
+        borderRadius: '20px',
+        border: '1px solid rgba(226, 232, 240, 0.9)',
+        boxShadow: '0 12px 32px rgba(15, 23, 42, 0.05), 0 2px 6px rgba(15, 23, 42, 0.02)',
+        padding: '32px'
+      }}>
+        {/* Step Indicator Bar */}
+        <div className="hrms-steps-wrapper">
+          <div className="hrms-steps">
+            <div style={{ position: 'absolute', top: '18px', left: '20px', right: '20px', height: '3px', backgroundColor: '#E2E8F0', zIndex: 0, borderRadius: '4px' }} />
+            <div style={{
+              position: 'absolute',
+              top: '18px',
+              left: '20px',
+              width: `${((activeStep - 1) / (steps.length - 1)) * 96}%`,
+              height: '3px',
+              background: 'linear-gradient(90deg, #2563EB 0%, #1D4ED8 100%)',
+              zIndex: 0,
+              transition: 'width 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+              borderRadius: '4px'
+            }} />
+
+            {steps.map((step) => {
+              const isCompleted = activeStep > step.id;
+              const isActive = activeStep === step.id;
+              return (
+                <div
+                  key={step.id}
+                  className={`hrms-step ${isActive ? 'active' : ''} ${isCompleted ? 'completed' : ''}`}
+                  onClick={() => {
+                    if (isCompleted || step.id < activeStep) setActiveStep(step.id);
+                  }}
+                  title={`Go to ${step.label}`}
+                >
+                  <div className="hrms-step-circle">
+                    {isCompleted ? <Check size={16} strokeWidth={2.5} /> : step.id}
+                  </div>
+                  <span className="hrms-step-label">{step.label}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Step Content & Sidebar Layout */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 310px', gap: '40px', alignItems: 'start' }}>
+          {/* Form Left Panel */}
           <div>
             {/* STEP 1: PERSONAL INFO */}
             {activeStep === 1 && (
               <>
-                <h2 className="hrms-font-semibold hrms-mb-6">Personal Information</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid #F1F5F9' }}>
+                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#EFF6FF', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <UserCheck size={20} />
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0F172A' }}>Personal Information</h2>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748B' }}>Basic identity and demographic info for the employee.</p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                   <div className="hrms-input-group">
-                    <label className="hrms-label">First Name *</label>
+                    <label className="hrms-label">First Name <span style={{ color: '#EF4444' }}>*</span></label>
                     <input type="text" name="firstName" value={formData.firstName} onChange={handleChange} className="hrms-input" placeholder="e.g. Aarav" />
                   </div>
                   <div className="hrms-input-group">
-                    <label className="hrms-label">Last Name *</label>
+                    <label className="hrms-label">Last Name <span style={{ color: '#EF4444' }}>*</span></label>
                     <input type="text" name="lastName" value={formData.lastName} onChange={handleChange} className="hrms-input" placeholder="e.g. Sharma" />
                   </div>
                   <div className="hrms-input-group">
-                    <label className="hrms-label">Date of Birth *</label>
+                    <label className="hrms-label">Date of Birth <span style={{ color: '#EF4444' }}>*</span></label>
                     <input type="date" name="dob" value={formData.dob} onChange={handleChange} className="hrms-input" />
                   </div>
                   <div className="hrms-input-group">
-                    <label className="hrms-label">Gender *</label>
-                    <AppDropdown value={formData.gender} onChange={(val) => setDropdownField('gender', val)} options={[{value:'',label:'Select Gender'},{value:'Male',label:'Male'},{value:'Female',label:'Female'},{value:'Other',label:'Other'}]} size="sm" />
+                    <label className="hrms-label">Gender <span style={{ color: '#EF4444' }}>*</span></label>
+                    <AppDropdown value={formData.gender} onChange={(val) => setDropdownField('gender', val)} options={[{ value: '', label: 'Select Gender' }, { value: 'Male', label: 'Male' }, { value: 'Female', label: 'Female' }, { value: 'Other', label: 'Other' }]} size="sm" />
                   </div>
                   <div className="hrms-input-group">
                     <label className="hrms-label">Marital Status</label>
-                    <AppDropdown value={formData.maritalStatus} onChange={(val) => setDropdownField('maritalStatus', val)} options={[{value:'',label:'Select Status'},{value:'Single',label:'Single'},{value:'Married',label:'Married'}]} size="sm" />
+                    <AppDropdown value={formData.maritalStatus} onChange={(val) => setDropdownField('maritalStatus', val)} options={[{ value: '', label: 'Select Status' }, { value: 'Single', label: 'Single' }, { value: 'Married', label: 'Married' }]} size="sm" />
                   </div>
                   <div className="hrms-input-group">
                     <label className="hrms-label">Blood Group</label>
@@ -435,18 +511,27 @@ export default function AddEmployeeForm() {
             {/* STEP 2: EMPLOYMENT INFO */}
             {activeStep === 2 && (
               <>
-                <h2 className="hrms-font-semibold hrms-mb-6">Employment Information</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid #F1F5F9' }}>
+                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#EEF2FF', color: '#4F46E5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Briefcase size={20} />
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0F172A' }}>Employment Information</h2>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748B' }}>Department, designation, shift type, and organizational assignment.</p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                   <div className="hrms-input-group">
                     <label className="hrms-label">Department</label>
-                    <AppDropdown value={formData.department} onChange={(val) => setDropdownField('department', val)} options={[{value:'',label:'Select Department'}, ...(departments || [])]} size="sm" />
+                    <AppDropdown value={formData.department} onChange={(val) => setDropdownField('department', val)} options={[{ value: '', label: 'Select Department' }, ...(departments || [])]} size="sm" />
                   </div>
                   <div className="hrms-input-group">
                     <label className="hrms-label">Designation</label>
-                    <AppDropdown value={formData.designation} onChange={(val) => setDropdownField('designation', val)} options={[{value:'',label:'Select Designation'}, ...(designations || [])]} size="sm" />
+                    <AppDropdown value={formData.designation} onChange={(val) => setDropdownField('designation', val)} options={[{ value: '', label: 'Select Designation' }, ...(designations || [])]} size="sm" />
                   </div>
                   <div className="hrms-input-group">
-                    <label className="hrms-label">Employee Shift Type *</label>
+                    <label className="hrms-label">Employee Shift Type <span style={{ color: '#EF4444' }}>*</span></label>
                     <AppDropdown
                       value={formData.shiftType}
                       onChange={(val) => setDropdownField('shiftType', val)}
@@ -462,15 +547,15 @@ export default function AddEmployeeForm() {
                   </div>
                   <div className="hrms-input-group">
                     <label className="hrms-label">Employment Type</label>
-                    <AppDropdown value={formData.employmentType} onChange={(val) => setDropdownField('employmentType', val)} options={[{value:'Full-time',label:'Full-time'},{value:'Part-time',label:'Part-time'},{value:'Contract',label:'Contract'}]} size="sm" />
+                    <AppDropdown value={formData.employmentType} onChange={(val) => setDropdownField('employmentType', val)} options={[{ value: 'Full-time', label: 'Full-time' }, { value: 'Part-time', label: 'Part-time' }, { value: 'Contract', label: 'Contract' }]} size="sm" />
                   </div>
                   <div className="hrms-input-group">
                     <label className="hrms-label">Branch</label>
-                    <AppDropdown value={formData.branch} onChange={(val) => setDropdownField('branch', val)} options={[{value:'',label:'Select Branch'}, ...(branches || [])]} size="sm" />
+                    <AppDropdown value={formData.branch} onChange={(val) => setDropdownField('branch', val)} options={[{ value: '', label: 'Select Branch' }, ...(branches || [])]} size="sm" />
                   </div>
                   <div className="hrms-input-group">
                     <label className="hrms-label">Team</label>
-                    <AppDropdown value={formData.teamName} onChange={(val) => setDropdownField('teamName', val)} options={[{value:'',label:'Select Team'}, ...(teams || [])]} size="sm" />
+                    <AppDropdown value={formData.teamName} onChange={(val) => setDropdownField('teamName', val)} options={[{ value: '', label: 'Select Team' }, ...(teams || [])]} size="sm" />
                   </div>
                   <div className="hrms-input-group">
                     <label className="hrms-label">Reporting Manager</label>
@@ -487,29 +572,35 @@ export default function AddEmployeeForm() {
             {/* STEP 3: PREVIOUS EXPERIENCE */}
             {activeStep === 3 && (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-                  <div>
-                    <h2 className="hrms-font-semibold" style={{ margin: '0 0 4px 0' }}>Previous Experience & History</h2>
-                    <p style={{ margin: 0, fontSize: '13px', color: '#64748B' }}>
-                      Configure previous employment records that will be preserved in the employee profile.
-                    </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid #F1F5F9' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#F3E8FF', color: '#7E22CE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Building size={20} />
+                    </div>
+                    <div>
+                      <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0F172A' }}>Previous Experience & History</h2>
+                      <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748B' }}>
+                        Configure previous employment records that will be preserved in the employee profile.
+                      </p>
+                    </div>
                   </div>
 
                   {/* Experience Type Toggle */}
-                  <div style={{ display: 'flex', background: '#F1F5F9', padding: '4px', borderRadius: '10px' }}>
+                  <div style={{ display: 'flex', background: '#F1F5F9', padding: '4px', borderRadius: '12px', border: '1px solid #E2E8F0' }}>
                     <button
                       type="button"
                       onClick={() => setExperienceType('Experienced')}
                       style={{
-                        padding: '6px 16px',
-                        borderRadius: '8px',
+                        padding: '7px 18px',
+                        borderRadius: '9px',
                         border: 'none',
                         fontSize: '13px',
-                        fontWeight: '600',
+                        fontWeight: '700',
                         cursor: 'pointer',
                         background: experienceType === 'Experienced' ? '#2563EB' : 'transparent',
                         color: experienceType === 'Experienced' ? '#FFFFFF' : '#64748B',
-                        transition: 'all 0.15s ease'
+                        boxShadow: experienceType === 'Experienced' ? '0 2px 8px rgba(37, 99, 235, 0.3)' : 'none',
+                        transition: 'all 0.2s ease'
                       }}
                     >
                       Experienced
@@ -525,15 +616,16 @@ export default function AddEmployeeForm() {
                         setRelevantExpMonths(0);
                       }}
                       style={{
-                        padding: '6px 16px',
-                        borderRadius: '8px',
+                        padding: '7px 18px',
+                        borderRadius: '9px',
                         border: 'none',
                         fontSize: '13px',
-                        fontWeight: '600',
+                        fontWeight: '700',
                         cursor: 'pointer',
                         background: experienceType === 'Fresher' ? '#7E22CE' : 'transparent',
                         color: experienceType === 'Fresher' ? '#FFFFFF' : '#64748B',
-                        transition: 'all 0.15s ease'
+                        boxShadow: experienceType === 'Fresher' ? '0 2px 8px rgba(126, 34, 206, 0.3)' : 'none',
+                        transition: 'all 0.2s ease'
                       }}
                     >
                       Fresher
@@ -543,33 +635,35 @@ export default function AddEmployeeForm() {
 
                 {experienceType === 'Fresher' ? (
                   <div style={{
-                    padding: '32px',
+                    padding: '36px 24px',
                     borderRadius: '16px',
-                    background: '#FAF5FF',
+                    background: 'linear-gradient(135deg, #FAF5FF 0%, #F3E8FF 100%)',
                     border: '1px solid #E9D5FF',
                     textAlign: 'center',
                     marginBottom: '24px'
                   }}>
-                    <Award size={40} color="#7E22CE" style={{ margin: '0 auto 12px' }} />
-                    <h3 style={{ margin: '0 0 6px 0', fontSize: '16px', fontWeight: '700', color: '#581C87' }}>Fresher Candidate</h3>
-                    <p style={{ margin: 0, fontSize: '13px', color: '#6B21A8', maxWidth: '420px', marginLeft: 'auto', marginRight: 'auto' }}>
-                      This employee has no previous corporate employment history. Their profile will be recorded as Fresher with 0 previous experience.
+                    <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#FFFFFF', color: '#7E22CE', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto', boxShadow: '0 4px 12px rgba(126, 34, 206, 0.15)' }}>
+                      <Award size={28} />
+                    </div>
+                    <h3 style={{ margin: '0 0 6px 0', fontSize: '17px', fontWeight: '700', color: '#581C87' }}>Fresher Candidate Selected</h3>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#6B21A8', maxWidth: '440px', marginLeft: 'auto', marginRight: 'auto', lineHeight: '1.5' }}>
+                      This employee is joining as a Fresher with 0 prior corporate experience. Their experience summary will be saved as Fresher.
                     </p>
                   </div>
                 ) : (
                   <>
                     {/* Experience Summary Metric Inputs */}
                     <div style={{
-                      padding: '20px',
-                      borderRadius: '14px',
+                      padding: '20px 24px',
+                      borderRadius: '16px',
                       background: '#F8FAFC',
                       border: '1px solid #E2E8F0',
                       marginBottom: '24px'
                     }}>
-                      <h4 style={{ margin: '0 0 14px 0', fontSize: '14px', fontWeight: '700', color: '#1E293B' }}>Experience Summary</h4>
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                      <h4 style={{ margin: '0 0 14px 0', fontSize: '14px', fontWeight: '700', color: '#1E293B' }}>Experience Duration Breakdown</h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
                         <div>
-                          <label className="hrms-label" style={{ marginBottom: '6px' }}>Total Previous Experience</label>
+                          <label className="hrms-label" style={{ marginBottom: '8px' }}>Total Previous Experience</label>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <input
@@ -581,7 +675,7 @@ export default function AddEmployeeForm() {
                                 className="hrms-input"
                                 placeholder="Years"
                               />
-                              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: '500' }}>Yrs</span>
+                              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: '600' }}>Yrs</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <input
@@ -593,13 +687,13 @@ export default function AddEmployeeForm() {
                                 className="hrms-input"
                                 placeholder="Months"
                               />
-                              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: '500' }}>Mos</span>
+                              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: '600' }}>Mos</span>
                             </div>
                           </div>
                         </div>
 
                         <div>
-                          <label className="hrms-label" style={{ marginBottom: '6px' }}>Relevant Experience</label>
+                          <label className="hrms-label" style={{ marginBottom: '8px' }}>Relevant Experience</label>
                           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <input
@@ -611,7 +705,7 @@ export default function AddEmployeeForm() {
                                 className="hrms-input"
                                 placeholder="Years"
                               />
-                              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: '500' }}>Yrs</span>
+                              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: '600' }}>Yrs</span>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                               <input
@@ -623,7 +717,7 @@ export default function AddEmployeeForm() {
                                 className="hrms-input"
                                 placeholder="Months"
                               />
-                              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: '500' }}>Mos</span>
+                              <span style={{ fontSize: '12px', color: '#64748B', fontWeight: '600' }}>Mos</span>
                             </div>
                           </div>
                         </div>
@@ -632,7 +726,7 @@ export default function AddEmployeeForm() {
 
                     {/* Previous Employment History Cards */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                      <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#1E293B' }}>
+                      <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '700', color: '#1E293B' }}>
                         Previous Companies & History ({previousExperiences.length})
                       </h4>
                       <button
@@ -640,10 +734,10 @@ export default function AddEmployeeForm() {
                         onClick={handleAddPreviousExperience}
                         style={{
                           display: 'flex', alignItems: 'center', gap: '6px',
-                          padding: '8px 14px', borderRadius: '8px',
+                          padding: '9px 16px', borderRadius: '10px',
                           border: 'none', background: '#2563EB',
                           color: '#FFFFFF', fontSize: '13px', fontWeight: '600',
-                          cursor: 'pointer'
+                          cursor: 'pointer', boxShadow: '0 2px 8px rgba(37, 99, 235, 0.25)'
                         }}
                       >
                         <Plus size={15} /> Add Previous Company
@@ -652,15 +746,15 @@ export default function AddEmployeeForm() {
 
                     {previousExperiences.length === 0 ? (
                       <div style={{
-                        padding: '24px',
-                        borderRadius: '12px',
+                        padding: '28px 20px',
+                        borderRadius: '14px',
                         border: '1px dashed #CBD5E1',
                         textAlign: 'center',
                         color: '#64748B',
                         background: '#FAFAFA'
                       }}>
-                        <Building size={28} color="#94A3B8" style={{ margin: '0 auto 8px' }} />
-                        <p style={{ margin: '0 0 6px 0', fontSize: '13px', fontWeight: '500' }}>No previous company records added yet.</p>
+                        <Building size={32} color="#94A3B8" style={{ margin: '0 auto 10px' }} />
+                        <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: '600', color: '#334155' }}>No previous company records added yet.</p>
                         <p style={{ margin: 0, fontSize: '12px', color: '#94A3B8' }}>
                           Click "Add Previous Company" above to add previous employment history for reference.
                         </p>
@@ -703,7 +797,7 @@ export default function AddEmployeeForm() {
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                               <div className="hrms-input-group">
-                                <label className="hrms-label">Company Name *</label>
+                                <label className="hrms-label">Company Name <span style={{ color: '#EF4444' }}>*</span></label>
                                 <input
                                   type="text"
                                   value={exp.company_name}
@@ -714,7 +808,7 @@ export default function AddEmployeeForm() {
                               </div>
 
                               <div className="hrms-input-group">
-                                <label className="hrms-label">Designation / Role *</label>
+                                <label className="hrms-label">Designation / Role <span style={{ color: '#EF4444' }}>*</span></label>
                                 <input
                                   type="text"
                                   value={exp.designation}
@@ -804,10 +898,19 @@ export default function AddEmployeeForm() {
             {/* STEP 4: CONTACT & LOGIN CREDENTIALS */}
             {activeStep === 4 && (
               <>
-                <h2 className="hrms-font-semibold hrms-mb-6">Contact & Login Credentials</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid #F1F5F9' }}>
+                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#ECFDF5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <ShieldCheck size={20} />
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0F172A' }}>Contact & Login Credentials</h2>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748B' }}>Set corporate email, phone, and initial login access details.</p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                   <div className="hrms-input-group">
-                    <label className="hrms-label">Login Email *</label>
+                    <label className="hrms-label">Login Email <span style={{ color: '#EF4444' }}>*</span></label>
                     <input
                       type="email"
                       name="email"
@@ -836,13 +939,13 @@ export default function AddEmployeeForm() {
                     )}
                   </div>
                   <div className="hrms-input-group">
-                    <label className="hrms-label">Phone *</label>
+                    <label className="hrms-label">Phone <span style={{ color: '#EF4444' }}>*</span></label>
                     <input type="text" name="phone" value={formData.phone} onChange={handleChange} className="hrms-input" placeholder="e.g. +91 99999 99999" />
                   </div>
                   <div className="hrms-input-group">
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <label className="hrms-label" style={{ margin: 0 }}>Login Password *</label>
-                      <button type="button" onClick={generatePassword} style={{ fontSize: '11px', color: '#2563EB', fontWeight: '600', background: 'none', border: 'none', cursor: 'pointer' }}>⚡ Auto Generate</button>
+                      <label className="hrms-label" style={{ margin: 0 }}>Login Password <span style={{ color: '#EF4444' }}>*</span></label>
+                      <button type="button" onClick={generatePassword} style={{ fontSize: '11px', color: '#2563EB', fontWeight: '700', background: 'none', border: 'none', cursor: 'pointer' }}>⚡ Auto Generate</button>
                     </div>
                     <input type="text" name="password" value={formData.password} onChange={handleChange} className="hrms-input" placeholder="Set login password..." />
                   </div>
@@ -861,8 +964,17 @@ export default function AddEmployeeForm() {
             {/* STEP 5: SALARY INFO */}
             {activeStep === 5 && (
               <>
-                <h2 className="hrms-font-semibold hrms-mb-6">Salary & Banking Info</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid #F1F5F9' }}>
+                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#FEF3C7', color: '#D97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <DollarSign size={20} />
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0F172A' }}>Salary & Banking Info</h2>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748B' }}>Configure compensation details and bank account references.</p>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                   <div className="hrms-input-group">
                     <label className="hrms-label">Monthly Gross Salary (INR)</label>
                     <input type="number" name="salary" value={formData.salary} onChange={handleChange} className="hrms-input" />
@@ -886,12 +998,21 @@ export default function AddEmployeeForm() {
             {/* STEP 6: DOCUMENTS */}
             {activeStep === 6 && (
               <>
-                <h2 className="hrms-font-semibold hrms-mb-6">Documents Upload</h2>
-                <div style={{ border: '2px dashed #e2e8f0', borderRadius: '12px', padding: '32px', textAlign: 'center' }}>
-                  <UploadCloud size={32} className="hrms-text-muted" style={{ margin: '0 auto 16px' }} />
-                  <p className="hrms-text-sm hrms-font-medium hrms-mb-2">Drag and drop employee records here</p>
-                  <p className="hrms-text-xs hrms-text-muted">PAN, Aadhaar, Passport, Contract agreements, Previous Relieving Letters (Max 5MB each)</p>
-                  <button type="button" className="hrms-secondary-btn hrms-mt-4" style={{ margin: '16px auto 0' }}>Select Files</button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid #F1F5F9' }}>
+                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#F0F9FF', color: '#0284C7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <UploadCloud size={20} />
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0F172A' }}>Documents Upload</h2>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748B' }}>Upload onboarding agreements, identity cards, or relieving letters.</p>
+                  </div>
+                </div>
+
+                <div style={{ border: '2px dashed #CBD5E1', borderRadius: '16px', padding: '40px 24px', textAlign: 'center', background: '#F8FAFC' }}>
+                  <UploadCloud size={36} color="#64748B" style={{ margin: '0 auto 16px' }} />
+                  <p className="hrms-text-sm hrms-font-semibold hrms-mb-2" style={{ color: '#1E293B' }}>Drag and drop employee onboarding records here</p>
+                  <p className="hrms-text-xs hrms-text-muted" style={{ maxWidth: '400px', margin: '0 auto' }}>PAN, Aadhaar, Passport, Contract agreements, Previous Relieving Letters (Max 5MB each)</p>
+                  <button type="button" className="hrms-secondary-btn hrms-mt-4" style={{ margin: '20px auto 0', borderRadius: '10px' }}>Select Files</button>
                 </div>
               </>
             )}
@@ -899,34 +1020,46 @@ export default function AddEmployeeForm() {
             {/* STEP 7: REVIEW */}
             {activeStep === 7 && (
               <>
-                <h2 className="hrms-font-semibold hrms-mb-6">Review & Submit</h2>
-                <div className="hrms-card" style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '24px', paddingBottom: '16px', borderBottom: '1px solid #F1F5F9' }}>
+                  <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#DCFCE7', color: '#15803D', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Check size={20} strokeWidth={2.5} />
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#0F172A' }}>Review & Submit</h2>
+                    <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748B' }}>Verify all details before saving to the employee directory.</p>
+                  </div>
+                </div>
+
+                <div style={{ backgroundColor: '#F8FAFC', borderRadius: '16px', border: '1px solid #E2E8F0', padding: '24px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                     <div>
-                      <p className="hrms-mb-2"><strong>Name:</strong> {formData.firstName} {formData.lastName}</p>
-                      <p className="hrms-mb-2"><strong>Role/Designation:</strong> {formData.designation}</p>
-                      <p className="hrms-mb-2"><strong>Department:</strong> {formData.department}</p>
-                      <p className="hrms-mb-2"><strong>Shift Type:</strong> {formData.shiftType || '—'}</p>
-                      <p className="hrms-mb-2"><strong>Email:</strong> {formData.email}</p>
-                      <p className="hrms-mb-2"><strong>Branch:</strong> {formData.branch}</p>
+                      <p className="hrms-mb-2" style={{ fontSize: '13px', color: '#475569' }}><strong style={{ color: '#0F172A' }}>Full Name:</strong> {formData.firstName} {formData.lastName}</p>
+                      <p className="hrms-mb-2" style={{ fontSize: '13px', color: '#475569' }}><strong style={{ color: '#0F172A' }}>Role / Designation:</strong> {formData.designation || '—'}</p>
+                      <p className="hrms-mb-2" style={{ fontSize: '13px', color: '#475569' }}><strong style={{ color: '#0F172A' }}>Department:</strong> {formData.department || '—'}</p>
+                      <p className="hrms-mb-2" style={{ fontSize: '13px', color: '#475569' }}><strong style={{ color: '#0F172A' }}>Shift Type:</strong> {formData.shiftType || '—'}</p>
+                      <p className="hrms-mb-2" style={{ fontSize: '13px', color: '#475569' }}><strong style={{ color: '#0F172A' }}>Email:</strong> {formData.email}</p>
+                      <p className="hrms-mb-2" style={{ fontSize: '13px', color: '#475569' }}><strong style={{ color: '#0F172A' }}>Branch:</strong> {formData.branch || '—'}</p>
                     </div>
                     <div>
-                      <p className="hrms-mb-2"><strong>Experience Type:</strong> <span style={{ fontWeight: '700', color: experienceType === 'Fresher' ? '#7E22CE' : '#15803D' }}>{experienceType}</span></p>
-                      <p className="hrms-mb-2"><strong>Total Previous Experience:</strong> {experienceType === 'Fresher' ? '0 Yrs' : `${totalExpYears} Yrs ${totalExpMonths} Mos`}</p>
-                      <p className="hrms-mb-2"><strong>Relevant Experience:</strong> {experienceType === 'Fresher' ? '0 Yrs' : `${relevantExpYears} Yrs ${relevantExpMonths} Mos`}</p>
-                      <p className="hrms-mb-2"><strong>Previous Companies:</strong> {previousExperiences.length} company record(s)</p>
-                      <p className="hrms-mb-2"><strong>Salary:</strong> INR {formData.salary}</p>
-                      <p className="hrms-mb-2"><strong>Employment Type:</strong> {formData.employmentType}</p>
+                      <p className="hrms-mb-2" style={{ fontSize: '13px', color: '#475569' }}><strong style={{ color: '#0F172A' }}>Experience Type:</strong> <span style={{ padding: '2px 8px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', backgroundColor: experienceType === 'Fresher' ? '#F3E8FF' : '#DCFCE7', color: experienceType === 'Fresher' ? '#7E22CE' : '#15803D' }}>{experienceType}</span></p>
+                      <p className="hrms-mb-2" style={{ fontSize: '13px', color: '#475569' }}><strong style={{ color: '#0F172A' }}>Total Previous Exp:</strong> {experienceType === 'Fresher' ? '0 Yrs' : `${totalExpYears} Yrs ${totalExpMonths} Mos`}</p>
+                      <p className="hrms-mb-2" style={{ fontSize: '13px', color: '#475569' }}><strong style={{ color: '#0F172A' }}>Relevant Exp:</strong> {experienceType === 'Fresher' ? '0 Yrs' : `${relevantExpYears} Yrs ${relevantExpMonths} Mos`}</p>
+                      <p className="hrms-mb-2" style={{ fontSize: '13px', color: '#475569' }}><strong style={{ color: '#0F172A' }}>Previous Companies:</strong> {previousExperiences.length} company record(s)</p>
+                      <p className="hrms-mb-2" style={{ fontSize: '13px', color: '#475569' }}><strong style={{ color: '#0F172A' }}>Salary:</strong> INR {formData.salary}</p>
+                      <p className="hrms-mb-2" style={{ fontSize: '13px', color: '#475569' }}><strong style={{ color: '#0F172A' }}>Employment Type:</strong> {formData.employmentType}</p>
                     </div>
                   </div>
 
                   {previousExperiences.length > 0 && (
                     <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #E2E8F0' }}>
-                      <strong style={{ fontSize: '13px', display: 'block', marginBottom: '8px' }}>Previous Companies List:</strong>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <strong style={{ fontSize: '13px', display: 'block', marginBottom: '10px', color: '#0F172A' }}>Previous Companies Summary:</strong>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                         {previousExperiences.map((item, i) => (
-                          <div key={i} style={{ fontSize: '12px', color: '#475569', background: '#FFFFFF', padding: '6px 12px', borderRadius: '6px', border: '1px solid #E2E8F0' }}>
-                            <strong>{item.company_name}</strong> — {item.designation} ({item.total_years}y {item.total_months}m)
+                          <div key={i} style={{ fontSize: '12px', color: '#475569', background: '#FFFFFF', padding: '8px 14px', borderRadius: '8px', border: '1px solid #E2E8F0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div>
+                              <strong style={{ color: '#1E293B' }}>{item.company_name}</strong> — {item.designation}
+                            </div>
+                            <span style={{ fontSize: '11px', color: '#64748B', fontWeight: '600' }}>{item.employment_type || 'Full-time'}</span>
                           </div>
                         ))}
                       </div>
@@ -937,66 +1070,161 @@ export default function AddEmployeeForm() {
             )}
           </div>
 
-          {/* Profile Photo upload placeholder */}
-          <div>
-            <div style={{
-              padding: '24px',
-              borderLeft: '1px solid #f1f5f9',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              backgroundColor: '#f8fafc',
-              height: '100%'
-            }}>
-              <h3 className="hrms-label hrms-mb-4" style={{ alignSelf: 'flex-start' }}>Profile Photo</h3>
+          {/* Right Panel: Profile Photo & Progress Checklist */}
+          <div style={{
+            background: '#F8FAFC',
+            border: '1px solid #E2E8F0',
+            borderRadius: '16px',
+            padding: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center'
+          }}>
+            <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#1E293B', margin: '0 0 20px 0', alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              Employee Identity
+            </h3>
 
-              <div style={{ marginBottom: '24px' }}>
-                <EmployeeAvatar
-                  name={`${formData.firstName} ${formData.lastName}`.trim() || 'New Employee'}
-                  photoUrl={photoPreview || formData.photo}
-                  size={120}
-                />
+            {/* Avatar Preview */}
+            <div style={{
+              position: 'relative',
+              padding: '6px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, #2563EB 0%, #7C3AED 100%)',
+              boxShadow: '0 8px 20px rgba(37, 99, 235, 0.2)',
+              marginBottom: '16px'
+            }}>
+              <EmployeeAvatar
+                name={`${formData.firstName} ${formData.lastName}`.trim() || 'New Employee'}
+                photoUrl={photoPreview || formData.photo}
+                size={110}
+              />
+            </div>
+
+            <p style={{ margin: '0 0 4px 0', fontSize: '15px', fontWeight: '700', color: '#0F172A', textAlign: 'center' }}>
+              {`${formData.firstName} ${formData.lastName}`.trim() || 'New Employee'}
+            </p>
+            <p style={{ margin: '0 0 16px 0', fontSize: '12px', color: '#64748B', textAlign: 'center' }}>
+              {formData.designation || 'Position not set'}
+            </p>
+
+            <input
+              type="file"
+              ref={photoInputRef}
+              onChange={handlePhotoChange}
+              accept="image/jpeg,image/png,image/webp"
+              style={{ display: 'none' }}
+            />
+
+            <button
+              type="button"
+              className="hrms-secondary-btn"
+              style={{
+                borderRadius: '10px',
+                padding: '8px 16px',
+                fontSize: '12px',
+                fontWeight: '600',
+                backgroundColor: '#FFFFFF',
+                color: '#2563EB',
+                border: '1px solid #BFDBFE',
+                width: '100%',
+                justifyContent: 'center',
+                marginBottom: '20px'
+              }}
+              onClick={() => photoInputRef.current?.click()}
+            >
+              <UploadCloud size={15} /> Upload Photo
+            </button>
+
+            {/* Completion Progress Gauge */}
+            <div style={{ width: '100%', paddingTop: '16px', borderTop: '1px solid #E2E8F0' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '12px', fontWeight: '600', color: '#475569' }}>Form Completion</span>
+                <span style={{ fontSize: '12px', fontWeight: '700', color: '#2563EB' }}>
+                  {Math.round((activeStep / steps.length) * 100)}%
+                </span>
+              </div>
+              <div style={{ height: '6px', background: '#E2E8F0', borderRadius: '10px', overflow: 'hidden', marginBottom: '16px' }}>
+                <div style={{
+                  height: '100%',
+                  width: `${Math.round((activeStep / steps.length) * 100)}%`,
+                  background: 'linear-gradient(90deg, #2563EB 0%, #10B981 100%)',
+                  borderRadius: '10px',
+                  transition: 'width 0.3s ease'
+                }} />
               </div>
 
-              <input
-                type="file"
-                ref={photoInputRef}
-                onChange={handlePhotoChange}
-                accept="image/jpeg,image/png,image/webp"
-                style={{ display: 'none' }}
-              />
-
-              <button
-                type="button"
-                className="hrms-secondary-btn hrms-text-primary"
-                style={{ border: 'none', backgroundColor: '#eff6ff', marginBottom: '8px' }}
-                onClick={() => photoInputRef.current?.click()}
-              >
-                <UploadCloud size={16} /> Upload Photo
-              </button>
-              <p className="hrms-text-xs hrms-text-muted">JPG, PNG. Max 2MB.</p>
+              {/* Steps Checklist */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {steps.map(s => {
+                  const done = activeStep > s.id;
+                  const current = activeStep === s.id;
+                  return (
+                    <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12px', color: done ? '#059669' : current ? '#2563EB' : '#94A3B8', fontWeight: current || done ? '600' : '400' }}>
+                      <span style={{ width: '16px', height: '16px', borderRadius: '50%', background: done ? '#DCFCE7' : current ? '#EFF6FF' : '#F1F5F9', color: done ? '#15803D' : current ? '#2563EB' : '#94A3B8', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '700' }}>
+                        {done ? '✓' : s.id}
+                      </span>
+                      {s.label}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="hrms-flex-between" style={{ marginTop: '48px', paddingTop: '24px', borderTop: '1px solid #f1f5f9' }}>
+        {/* Action Buttons Footer */}
+        <div className="hrms-flex-between" style={{ marginTop: '40px', paddingTop: '20px', borderTop: '1px solid #F1F5F9' }}>
           <div>
             {activeStep > 1 && (
-              <button type="button" className="hrms-secondary-btn" onClick={() => setActiveStep(activeStep - 1)}>
+              <button
+                type="button"
+                className="hrms-secondary-btn"
+                onClick={() => setActiveStep(activeStep - 1)}
+                style={{ borderRadius: '10px', padding: '10px 20px' }}
+              >
                 <ChevronLeft size={16} /> Previous
               </button>
             )}
           </div>
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <button type="button" className="hrms-secondary-btn" style={{ border: 'none' }} onClick={() => navigate('/employees/list')}>Cancel</button>
-            {activeStep < 7 ? (
-              <button type="button" className="hrms-primary-btn" onClick={handleNext}>
+
+          <div style={{ display: 'flex', gap: '12px' }}>
+            <button
+              type="button"
+              className="hrms-secondary-btn"
+              onClick={() => navigate('/employees/list')}
+              style={{ borderRadius: '10px', padding: '10px 20px', border: 'none' }}
+            >
+              Cancel
+            </button>
+
+            {activeStep < steps.length ? (
+              <button
+                type="button"
+                className="hrms-primary-btn"
+                onClick={handleNext}
+                style={{
+                  borderRadius: '10px',
+                  padding: '10px 24px',
+                  background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+                }}
+              >
                 Next <ChevronRight size={16} />
               </button>
             ) : (
-              <button type="button" className="hrms-primary-btn" onClick={handleSubmit}>
-                Save Employee
+              <button
+                type="button"
+                className="hrms-primary-btn"
+                onClick={handleSubmit}
+                style={{
+                  borderRadius: '10px',
+                  padding: '10px 28px',
+                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                  boxShadow: '0 4px 12px rgba(5, 150, 105, 0.3)',
+                  fontWeight: '700'
+                }}
+              >
+                Save & Complete Onboarding
               </button>
             )}
           </div>

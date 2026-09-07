@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
-import { Clock, Briefcase, CheckCircle2, RefreshCw, DollarSign, FileText, Plus, Check } from 'lucide-react';
+import { Clock, Briefcase, CheckCircle2, RefreshCw, DollarSign, FileText, Plus, Check, X, LogOut } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { getAvatarUrl } from '../../lib/utils';
 import './employee-module.css';
@@ -115,45 +115,211 @@ export default function ExitManagement() {
       </div>
 
       {showAddForm && (
-        <form onSubmit={handleCreateExit} className="hrms-card hrms-mb-6" style={{ maxWidth: '600px' }}>
-          <h3 className="hrms-font-semibold hrms-mb-4">File Employee Exit Process</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-            <div className="hrms-input-group">
-              <label className="hrms-label">Select Employee *</label>
-              <AppDropdown
-                value={employeeId}
-                onChange={v => setEmployeeId(v)}
-                options={[{value:'',label:'Choose Employee'}]}
-                size="sm"
-              />
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px',
+          background: 'rgba(15, 23, 42, 0.55)',
+          backdropFilter: 'blur(6px)'
+        }}>
+          <div style={{
+            width: '600px',
+            maxWidth: '95vw',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            background: '#FFFFFF',
+            borderRadius: '22px',
+            boxShadow: '0 32px 80px rgba(15, 23, 42, 0.28)',
+            overflow: 'hidden',
+            border: '1px solid rgba(255,255,255,0.8)'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              position: 'relative',
+              padding: '20px 24px',
+              background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              overflow: 'hidden',
+              flexShrink: 0
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '-20px',
+                right: '-20px',
+                width: '120px',
+                height: '120px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                borderRadius: '50%',
+                pointerEvents: 'none'
+              }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1, flex: 1, marginRight: '16px' }}>
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: 'rgba(255, 255, 255, 0.18)',
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  placeContent: 'center',
+                  color: '#FFFFFF',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  flexShrink: 0,
+                  lineHeight: 0,
+                  padding: 0
+                }}>
+                  <LogOut size={22} style={{ display: 'block', margin: 'auto' }} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#FFFFFF', letterSpacing: '-0.2px' }}>
+                    File Employee Exit Process
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'rgba(255, 255, 255, 0.85)' }}>
+                    Record resignation, termination, or retirement details
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowAddForm(false)}
+                style={{
+                  zIndex: 1,
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  borderRadius: '10px',
+                  width: '32px',
+                  height: '32px',
+                  display: 'grid',
+                  placeItems: 'center',
+                  placeContent: 'center',
+                  color: '#FFFFFF',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  flexShrink: 0,
+                  marginLeft: 'auto',
+                  lineHeight: 0,
+                  padding: 0
+                }}
+              >
+                <X size={18} style={{ display: 'block', margin: 'auto' }} />
+              </button>
             </div>
-            <div className="hrms-input-group">
-              <label className="hrms-label">Exit Type *</label>
-              <AppDropdown
-                value={exitType}
-                onChange={v => setExitType(v)}
-                options={[{value:'Resignation',label:'Resignation'},{value:'Termination',label:'Termination'},{value:'Retirement',label:'Retirement'}]}
-                size="sm"
-              />
-            </div>
-            <div className="hrms-input-group">
-              <label className="hrms-label">Notice Date *</label>
-              <input type="date" className="hrms-input" value={noticeDate} onChange={(e) => setNoticeDate(e.target.value)} />
-            </div>
-            <div className="hrms-input-group">
-              <label className="hrms-label">Last Working Date *</label>
-              <input type="date" className="hrms-input" value={exitDate} onChange={(e) => setExitDate(e.target.value)} />
-            </div>
-            <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
-              <label className="hrms-label">Reason *</label>
-              <textarea className="hrms-input" rows="2" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason for exit..." style={{ height: 'auto' }} />
-            </div>
+
+            {/* Modal Form Body */}
+            <form onSubmit={handleCreateExit} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+              <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', flex: 1 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div className="hrms-input-group">
+                    <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Select Employee *</label>
+                    <AppDropdown
+                      value={employeeId}
+                      onChange={v => setEmployeeId(v)}
+                      options={[
+                        { value: '', label: 'Choose Employee...' },
+                        ...employees.map(emp => ({
+                          value: String(emp.id),
+                          label: `${emp.first_name || emp.name || ''} ${emp.last_name || ''} (EMP${String(emp.id).padStart(4, '0')})`
+                        }))
+                      ]}
+                      size="sm"
+                    />
+                  </div>
+
+                  <div className="hrms-input-group">
+                    <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Exit Type *</label>
+                    <AppDropdown
+                      value={exitType}
+                      onChange={v => setExitType(v)}
+                      options={[
+                        { value: 'Resignation', label: 'Resignation' },
+                        { value: 'Termination', label: 'Termination' },
+                        { value: 'Retirement', label: 'Retirement' }
+                      ]}
+                      size="sm"
+                    />
+                  </div>
+
+                  <div className="hrms-input-group">
+                    <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Notice Date *</label>
+                    <input 
+                      type="date" 
+                      className="hrms-input" 
+                      value={noticeDate} 
+                      onChange={(e) => setNoticeDate(e.target.value)}
+                      style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }}
+                    />
+                  </div>
+
+                  <div className="hrms-input-group">
+                    <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Last Working Date *</label>
+                    <input 
+                      type="date" 
+                      className="hrms-input" 
+                      value={exitDate} 
+                      onChange={(e) => setExitDate(e.target.value)}
+                      style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }}
+                    />
+                  </div>
+                </div>
+
+                <div className="hrms-input-group">
+                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Reason for Exit *</label>
+                  <textarea 
+                    className="hrms-input" 
+                    rows="3" 
+                    value={reason} 
+                    onChange={(e) => setReason(e.target.value)} 
+                    placeholder="Enter detailed reason for exit or severance notes..." 
+                    style={{ height: 'auto', borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} 
+                  />
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div style={{
+                padding: '16px 28px',
+                background: '#F8FAFC',
+                borderTop: '1px solid #E2E8F0',
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'flex-end',
+                flexShrink: 0
+              }}>
+                <button 
+                  type="button" 
+                  className="hrms-secondary-btn" 
+                  onClick={() => setShowAddForm(false)}
+                  style={{ borderRadius: '10px', padding: '9px 18px', fontWeight: '600' }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="hrms-primary-btn"
+                  style={{
+                    borderRadius: '10px',
+                    padding: '9px 22px',
+                    fontWeight: '600',
+                    background: 'linear-gradient(135deg, #1D4ED8 0%, #2563EB 100%)',
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+                  }}
+                >
+                  File Exit Record
+                </button>
+              </div>
+            </form>
           </div>
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-            <button type="button" className="hrms-secondary-btn" onClick={() => setShowAddForm(false)}>Cancel</button>
-            <button type="submit" className="hrms-primary-btn">File Exit</button>
-          </div>
-        </form>
+        </div>
       )}
 
       <div className="hrms-grid-4 hrms-mb-6">

@@ -28,8 +28,8 @@ router.delete('/policies/:id', authenticateJWT, checkPermission('documents', 'do
 
 // Templates
 router.get('/templates', authenticateJWT, checkPermission('documents', 'doc_templates', 'view'), DocumentController.listTemplates);
-router.post('/templates', authenticateJWT, checkPermission('documents', 'doc_templates', 'create'), DocumentController.createTemplate);
-router.put('/templates/:id', authenticateJWT, checkPermission('documents', 'doc_templates', 'edit'), DocumentController.updateTemplate);
+router.post('/templates', authenticateJWT, checkPermission('documents', 'doc_templates', 'create'), upload.single('file'), DocumentController.createTemplate);
+router.put('/templates/:id', authenticateJWT, checkPermission('documents', 'doc_templates', 'edit'), upload.single('file'), DocumentController.updateTemplate);
 router.delete('/templates/:id', authenticateJWT, checkPermission('documents', 'doc_templates', 'delete'), DocumentController.deleteTemplate);
 
 // Digital Signatures

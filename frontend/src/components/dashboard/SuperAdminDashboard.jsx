@@ -391,7 +391,7 @@ export function SuperAdminDashboard() {
           boxShadow: '0 4px 16px rgba(15,23,42,0.04)', 
           display: 'flex', 
           flexDirection: 'column',
-          justify: 'space-between',
+          justifyContent: 'space-between',
           boxSizing: 'border-box'
         }}>
           <div>

@@ -13,6 +13,8 @@ const storage = multer.diskStorage({
     if (req.baseUrl.includes('documents') || req.url.includes('documents')) {
       if (req.url.includes('company') || req.path.includes('company')) {
         dest = path.join(uploadDir, 'company_documents');
+      } else if (req.url.includes('templates') || req.path.includes('templates')) {
+        dest = path.join(uploadDir, 'templates');
       } else {
         dest = path.join(uploadDir, 'documents/employee');
       }

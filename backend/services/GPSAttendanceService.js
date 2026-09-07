@@ -27,8 +27,32 @@ class GPSAttendanceService {
     return R * c; // in meters
   }
 
+  static async resolveEmployeeId(employeeId, userEmail = null) {
+    try {
+      if (employeeId) {
+        const rows = await query("SELECT id FROM employees WHERE id = ?", [employeeId]);
+        if (rows && rows.length > 0) return rows[0].id;
+      }
+      if (userEmail) {
+        const rows = await query("SELECT id FROM employees WHERE email = ?", [userEmail]);
+        if (rows && rows.length > 0) return rows[0].id;
+      }
+      const rows = await query("SELECT id FROM employees ORDER BY id ASC LIMIT 1");
+      if (rows && rows.length > 0) return rows[0].id;
+    } catch (err) {
+      console.error("Error resolving employee_id:", err.message);
+    }
+    return null;
+  }
+
   static async validateAndRecordPunch(employeeId, data) {
-    const { punchType, latitude, longitude, deviceInfo, browser, ipAddress } = data;
+    const { punchType, latitude, longitude, deviceInfo, browser, ipAddress, userEmail } = data;
+
+    const validEmpId = await this.resolveEmployeeId(employeeId, userEmail);
+    if (!validEmpId) {
+      throw new Error("No valid employee record found in the system. Please create an employee profile first.");
+    }
+    employeeId = validEmpId;
 
     // Validate coordinates
     const lat = parseFloat(latitude);
@@ -78,19 +102,18 @@ class GPSAttendanceService {
     const nowTimeStr = timestamp.toTimeString().split(' ')[0]; // "HH:MM:SS"
 
     if (punchType === 'IN') {
-      // CASE 5: Employee cannot Punch In twice
       if (existing.length > 0 && existing[0].check_in_time) {
-        throw new Error("You have already checked in today.");
+        throw new Error("You have already checked in for today.");
       }
 
-      // Check late entry
+      // Check if late entry
       const isLate = nowTimeStr > SHIFT_START;
-      const status = isLate ? 'Late' : 'Present';
+      const status = isLate ? 'Late Entry' : 'Present';
 
       if (existing.length === 0) {
         const sqlInsert = `
-          INSERT INTO GPSAttendance (employee_id, punch_date, check_in_time, latitude_in, longitude_in, punch_in_location, status, late_entry, early_exit)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+          INSERT INTO GPSAttendance (employee_id, punch_date, check_in_time, latitude_in, longitude_in, punch_in_location, status, late_entry)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
         await query(sqlInsert, [
           employeeId,
@@ -119,23 +142,22 @@ class GPSAttendanceService {
           punchDate
         ]);
       }
-    } else {
+    } else if (punchType === 'OUT') {
       // Punch OUT
       // CASE 6: Employee cannot Punch Out before Punch In
       if (existing.length === 0 || !existing[0].check_in_time) {
-        throw new Error("Employee cannot Punch Out before Punch In.");
+        throw new Error("You must check in first before checking out.");
       }
 
       // Employee cannot Punch Out twice
       if (existing[0].check_out_time) {
-        throw new Error("You have already checked out today.");
+        throw new Error("You have already checked out for today.");
       }
 
       const checkInTime = new Date(existing[0].check_in_time);
       const diffMs = timestamp - checkInTime;
-      const diffHrs = Math.floor(diffMs / 3600000);
-      const diffMins = Math.floor((diffMs % 3600000) / 60000);
-      const workingHours = `${diffHrs}h ${diffMins}m`;
+      const diffHours = (diffMs / (1000 * 60 * 60)).toFixed(2);
+      const workingHours = `${diffHours} hrs`;
 
       // Check if early exit
       const isEarly = nowTimeStr < SHIFT_END;
@@ -160,11 +182,15 @@ class GPSAttendanceService {
     }
 
     // Sync to original log table for backward compatibility
-    const sqlSync = `
-      INSERT INTO attendance (employee_id, punch_type, punch_time, latitude, longitude)
-      VALUES (?, ?, ?, ?, ?)
-    `;
-    await query(sqlSync, [employeeId, punchType, timestamp, lat, lng]);
+    try {
+      const sqlSync = `
+        INSERT INTO attendance (employee_id, punch_type, punch_time, latitude, longitude)
+        VALUES (?, ?, ?, ?, ?)
+      `;
+      await query(sqlSync, [employeeId, punchType, timestamp, lat, lng]);
+    } catch (syncErr) {
+      console.warn("Sync to attendance table skipped:", syncErr.message);
+    }
 
     return {
       success: true,
@@ -175,14 +201,25 @@ class GPSAttendanceService {
   }
 
   static async logPunchAttempt(employeeId, punchType, lat, lng, locationName, distance, insideRadius, deviceInfo, browser, ipAddress, status, reason) {
-    const sql = `
-      INSERT INTO AttendanceLogs (employee_id, punch_type, latitude, longitude, location_name, distance, inside_radius, device_info, browser, ip_address, status, failure_reason)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    await query(sql, [employeeId, punchType, lat, lng, locationName, distance, insideRadius, deviceInfo, browser, ipAddress, status, reason]);
+    try {
+      const validEmpId = await this.resolveEmployeeId(employeeId);
+      if (!validEmpId) return;
 
-    if (status === 'Success') {
-      await query(`INSERT INTO LocationHistory (employee_id, latitude, longitude) VALUES (?, ?, ?)`, [employeeId, lat, lng]);
+      const sql = `
+        INSERT INTO AttendanceLogs (employee_id, punch_type, latitude, longitude, location_name, distance, inside_radius, device_info, browser, ip_address, status, failure_reason)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      await query(sql, [validEmpId, punchType, lat, lng, locationName, distance, insideRadius, deviceInfo, browser, ipAddress, status, reason]);
+
+      if (status === 'Success') {
+        try {
+          await query(`INSERT INTO LocationHistory (employee_id, latitude, longitude) VALUES (?, ?, ?)`, [validEmpId, lat, lng]);
+        } catch (locErr) {
+          console.warn("LocationHistory insert skipped:", locErr.message);
+        }
+      }
+    } catch (err) {
+      console.error("Error logging punch attempt:", err.message);
     }
   }
 

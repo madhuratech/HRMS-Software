@@ -649,151 +649,336 @@ export function Departments() {
 
       {/* Add / Edit Department Modal */}
       {isAddEditModalOpen && (
-        <>
-          <div className="modal-backdrop-blur" />
-          <div className="modal-centered-content">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <div>
-                <h3 className="text-lg font-bold text-slate-800">
-                  {selectedDept ? 'Edit Department' : 'Add Department'}
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {selectedDept ? 'Modify department details.' : 'Create a new department.'}
-                </p>
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px',
+          background: 'rgba(15, 23, 42, 0.55)',
+          backdropFilter: 'blur(6px)'
+        }}>
+          <div style={{
+            width: '640px',
+            maxWidth: '95vw',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            background: '#FFFFFF',
+            borderRadius: '22px',
+            boxShadow: '0 32px 80px rgba(15, 23, 42, 0.28)',
+            overflow: 'hidden',
+            border: '1px solid rgba(255,255,255,0.8)'
+          }}>
+            {/* Header */}
+            <div style={{
+              position: 'relative',
+              padding: '20px 24px',
+              background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              overflow: 'hidden',
+              flexShrink: 0
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '-30px',
+                right: '-30px',
+                width: '130px',
+                height: '130px',
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.08)',
+                pointerEvents: 'none'
+              }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1, flex: 1, marginRight: '16px' }}>
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: 'rgba(255, 255, 255, 0.18)',
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  placeContent: 'center',
+                  color: '#FFFFFF',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  flexShrink: 0,
+                  lineHeight: 0,
+                  padding: 0
+                }}>
+                  <Building2 size={22} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#FFFFFF', letterSpacing: '-0.2px' }}>
+                    {selectedDept ? 'Edit Department' : 'Add Department'}
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'rgba(255, 255, 255, 0.85)' }}>
+                    {selectedDept ? 'Modify department details.' : 'Create a new department.'}
+                  </p>
+                </div>
               </div>
+
               <button
+                type="button"
                 onClick={() => setIsAddEditModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  background: 'rgba(255, 255, 255, 0.12)',
+                  backdropFilter: 'blur(4px)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  placeContent: 'center',
+                  cursor: 'pointer',
+                  zIndex: 1,
+                  transition: 'all 0.2s',
+                  flexShrink: 0,
+                  marginLeft: 'auto',
+                  lineHeight: 0,
+                  padding: 0
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
               >
-                <X size={20} />
+                <X size={16} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
               </button>
             </div>
 
-            <div className="p-6 overflow-y-auto flex-1 form-grid-2col">
-              <div className="form-group-field">
-                <label className="form-field-label">Department Name *</label>
-                <input
-                  type="text"
-                  className={`form-field-input ${formErrors.name ? 'border-red-500' : ''}`}
-                  value={formData.name}
-                  onChange={(e) => handleFormChange('name', e.target.value)}
-                />
-                {formErrors.name && <span className="text-xs text-red-500 mt-1">{formErrors.name}</span>}
-              </div>
+            {/* Form Body */}
+            <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '18px', overflowY: 'auto', flex: 1 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="hrms-input-group">
+                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Department Name *</label>
+                  <input
+                    type="text"
+                    className={`hrms-input ${formErrors.name ? 'border-red-500' : ''}`}
+                    value={formData.name}
+                    onChange={(e) => handleFormChange('name', e.target.value)}
+                    style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }}
+                  />
+                  {formErrors.name && <span className="text-xs text-red-500 mt-1">{formErrors.name}</span>}
+                </div>
 
-              <div className="form-group-field">
-                <label className="form-field-label">Department Code *</label>
-                <input
-                  type="text"
-                  className={`form-field-input ${formErrors.code ? 'border-red-500' : ''}`}
-                  value={formData.code}
-                  onChange={(e) => handleFormChange('code', e.target.value)}
-                />
-                {formErrors.code && <span className="text-xs text-red-500 mt-1">{formErrors.code}</span>}
-              </div>
+                <div className="hrms-input-group">
+                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Department Code *</label>
+                  <input
+                    type="text"
+                    className={`hrms-input ${formErrors.code ? 'border-red-500' : ''}`}
+                    value={formData.code}
+                    onChange={(e) => handleFormChange('code', e.target.value)}
+                    style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }}
+                  />
+                  {formErrors.code && <span className="text-xs text-red-500 mt-1">{formErrors.code}</span>}
+                </div>
 
-              <CustomSelect
-                label="Department Head"
-                value={formData.headName || 'Unassigned'}
-                placeholder="Select Employee"
-                options={['Unassigned', ...employeesList.map(emp => emp.name)]}
-                error={formErrors.headName}
-                onChange={(val) => {
-                  const isUnassigned = val === 'Unassigned' || !val;
-                  const selectedEmp = employeesList.find(e => e.name === val);
-                  setFormData(prev => ({
-                    ...prev,
-                    headName: isUnassigned ? '' : val,
-                    headAvatar: isUnassigned ? '' : (selectedEmp?.profile_photo || selectedEmp?.avatar || selectedEmp?.photo || ''),
-                    headRole: isUnassigned ? '' : (selectedEmp?.designation || selectedEmp?.role || selectedEmp?.jobTitle || 'Department Manager')
-                  }));
-                }}
-              />
+                <div className="hrms-input-group">
+                  <CustomSelect
+                    label="Department Head"
+                    value={formData.headName || 'Unassigned'}
+                    placeholder="Select Employee"
+                    options={['Unassigned', ...employeesList.map(emp => emp.name)]}
+                    error={formErrors.headName}
+                    onChange={(val) => {
+                      const isUnassigned = val === 'Unassigned' || !val;
+                      const selectedEmp = employeesList.find(e => e.name === val);
+                      setFormData(prev => ({
+                        ...prev,
+                        headName: isUnassigned ? '' : val,
+                        headAvatar: isUnassigned ? '' : (selectedEmp?.profile_photo || selectedEmp?.avatar || selectedEmp?.photo || ''),
+                        headRole: isUnassigned ? '' : (selectedEmp?.designation || selectedEmp?.role || selectedEmp?.jobTitle || 'Department Manager')
+                      }));
+                    }}
+                  />
+                </div>
 
-              <CustomSelect
-                label="Parent Department"
-                value={formData.parentDepartment}
-                placeholder="Select Parent Department"
-                options={['None', ...departments.filter(d => !selectedDept || d.id !== selectedDept.id).map(d => d.name)]}
-                onChange={(val) => handleFormChange('parentDepartment', val === 'None' ? '' : val)}
-              />
+                <div className="hrms-input-group">
+                  <CustomSelect
+                    label="Parent Department"
+                    value={formData.parentDepartment}
+                    placeholder="Select Parent Department"
+                    options={['None', ...departments.filter(d => !selectedDept || d.id !== selectedDept.id).map(d => d.name)]}
+                    onChange={(val) => handleFormChange('parentDepartment', val === 'None' ? '' : val)}
+                  />
+                </div>
 
-              <div className="form-group-field">
-                <label className="form-field-label">Department Email</label>
-                <input
-                  type="email"
-                  className="form-field-input"
-                  value={formData.email}
-                  onChange={(e) => handleFormChange('email', e.target.value)}
-                />
-              </div>
+                <div className="hrms-input-group">
+                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Department Email</label>
+                  <input
+                    type="email"
+                    className="hrms-input"
+                    value={formData.email}
+                    onChange={(e) => handleFormChange('email', e.target.value)}
+                    style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }}
+                  />
+                </div>
 
-              <div className="form-group-field">
-                <label className="form-field-label">Department Phone</label>
-                <input
-                  type="text"
-                  className="form-field-input"
-                  value={formData.phone}
-                  onChange={(e) => handleFormChange('phone', e.target.value)}
-                />
-              </div>
+                <div className="hrms-input-group">
+                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Department Phone</label>
+                  <input
+                    type="text"
+                    className="hrms-input"
+                    value={formData.phone}
+                    onChange={(e) => handleFormChange('phone', e.target.value)}
+                    style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }}
+                  />
+                </div>
 
-              <div className="form-group-field">
-                <label className="form-field-label">Status</label>
-                <div className="form-toggle-wrapper">
-                  <span className="text-sm text-slate-500">Toggle Status</span>
-                  <label className="form-toggle-switch">
-                    <input
-                      type="checkbox"
-                      checked={formData.status === 'Active'}
-                      onChange={(e) => handleFormChange('status', e.target.checked ? 'Active' : 'Inactive')}
-                    />
-                    <span className="form-toggle-slider"></span>
-                  </label>
+                <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Status</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingTop: '4px' }}>
+                    <span style={{ fontSize: '14px', color: '#64748B' }}>Toggle Active State</span>
+                    <label className="form-toggle-switch">
+                      <input
+                        type="checkbox"
+                        checked={formData.status === 'Active'}
+                        onChange={(e) => handleFormChange('status', e.target.checked ? 'Active' : 'Inactive')}
+                      />
+                      <span className="form-toggle-slider"></span>
+                    </label>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3 rounded-b-xl">
+            {/* Footer */}
+            <div style={{
+              padding: '16px 28px',
+              background: '#F8FAFC',
+              borderTop: '1px solid #E2E8F0',
+              display: 'flex',
+              gap: '12px',
+              justifyContent: 'flex-end',
+              flexShrink: 0
+            }}>
               <button
                 type="button"
+                className="hrms-secondary-btn"
                 onClick={() => setIsAddEditModalOpen(false)}
-                className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-100 transition-colors bg-white"
+                style={{ borderRadius: '10px', padding: '9px 18px', fontWeight: '600' }}
               >
                 Cancel
               </button>
               <button
                 type="button"
+                className="hrms-btn-primary"
                 onClick={handleSaveDepartment}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                style={{ borderRadius: '10px', padding: '9px 22px', fontWeight: '600', background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)', color: '#FFF' }}
               >
                 Save Department
               </button>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* View Department Details Modal */}
       {isViewModalOpen && selectedDept && (
-        <>
-          <div className="modal-backdrop-blur" />
-          <div className="modal-centered-content modal-centered-content-view">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                  <Building2 size={20} />
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px',
+          background: 'rgba(15, 23, 42, 0.55)',
+          backdropFilter: 'blur(6px)'
+        }}>
+          <div style={{
+            width: '640px',
+            maxWidth: '95vw',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            background: '#FFFFFF',
+            borderRadius: '22px',
+            boxShadow: '0 32px 80px rgba(15, 23, 42, 0.28)',
+            overflow: 'hidden',
+            border: '1px solid rgba(255,255,255,0.8)'
+          }}>
+            {/* Header */}
+            <div style={{
+              position: 'relative',
+              padding: '20px 24px',
+              background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              overflow: 'hidden',
+              flexShrink: 0
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '-30px',
+                right: '-30px',
+                width: '130px',
+                height: '130px',
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.08)',
+                pointerEvents: 'none'
+              }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1, flex: 1, marginRight: '16px' }}>
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: 'rgba(255, 255, 255, 0.18)',
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  placeContent: 'center',
+                  color: '#FFFFFF',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  flexShrink: 0,
+                  lineHeight: 0,
+                  padding: 0
+                }}>
+                  <Building2 size={22} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-800">{selectedDept.name}</h3>
-                  <p className="text-xs text-slate-400 font-mono mt-0.5">{selectedDept.code}</p>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#FFFFFF', letterSpacing: '-0.2px' }}>
+                    {selectedDept.name}
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'rgba(255, 255, 255, 0.85)', fontFamily: 'monospace' }}>
+                    {selectedDept.code}
+                  </p>
                 </div>
               </div>
+
               <button
+                type="button"
                 onClick={() => setIsViewModalOpen(false)}
-                className="text-slate-400 hover:text-slate-600 transition-colors"
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  background: 'rgba(255, 255, 255, 0.12)',
+                  backdropFilter: 'blur(4px)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  placeContent: 'center',
+                  cursor: 'pointer',
+                  zIndex: 1,
+                  transition: 'all 0.2s',
+                  flexShrink: 0,
+                  marginLeft: 'auto',
+                  lineHeight: 0,
+                  padding: 0
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
               >
-                <X size={20} />
+                <X size={16} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
               </button>
             </div>
 
@@ -882,17 +1067,25 @@ export function Departments() {
               </div>
             </div>
 
-            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-center rounded-b-xl">
+            <div style={{
+              padding: '16px 28px',
+              background: '#F8FAFC',
+              borderTop: '1px solid #E2E8F0',
+              display: 'flex',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
               <button
                 type="button"
                 onClick={() => setIsViewModalOpen(false)}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors"
+                className="hrms-btn-primary"
+                style={{ borderRadius: '10px', padding: '9px 28px', fontWeight: '600', background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)', color: '#FFF' }}
               >
                 Close Details
               </button>
             </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* Delete Confirmation Modal */}

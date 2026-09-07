@@ -190,22 +190,35 @@ function TeamLeadSelect({ selectedDepartment, value, selectedId, onChange, emplo
               <>
                 {/* Search Input */}
                 <div className="relative flex items-center">
-                  <Search size={14} className="absolute left-3 text-slate-400 pointer-events-none z-10" />
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" />
                   <input
                     type="text"
-                    placeholder={`Search team lead in ${selectedDepartment}...`}
+                    placeholder="Search team lead..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    style={{
+                      width: '100%',
+                      paddingLeft: '38px',
+                      paddingRight: '12px',
+                      paddingTop: '9px',
+                      paddingBottom: '9px',
+                      fontSize: '13px',
+                      border: '1px solid #CBD5E1',
+                      borderRadius: '10px',
+                      background: '#FFFFFF',
+                      color: '#1E293B',
+                      outline: 'none',
+                      boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)'
+                    }}
                   />
                 </div>
 
                 {/* Employee List */}
                 <div className="max-h-52 overflow-y-auto space-y-1.5 p-1 bg-white border border-slate-200/80 rounded-lg">
                   {loading ? (
-                    <div className="p-4 text-center text-xs text-slate-400 italic">Loading team leaders...</div>
+                    <div className="p-4 text-center text-xs text-slate-400 italic">Loading department employees...</div>
                   ) : filteredLeads.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-slate-400 italic">No team leaders found in {selectedDepartment}</div>
+                    <div className="p-4 text-center text-xs text-slate-400 italic">No matching leads found</div>
                   ) : (
                     filteredLeads.map((emp) => {
                       const isSelected = selectedEmp && String(selectedEmp.id) === String(emp.id);
@@ -222,8 +235,8 @@ function TeamLeadSelect({ selectedDepartment, value, selectedId, onChange, emplo
                             {emp.name ? emp.name[0].toUpperCase() : '👤'}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold text-slate-800 truncate">{emp.name}</p>
-                            <p className="text-[11px] text-blue-600 font-medium truncate">
+                            <p className="text-[13px] font-bold text-slate-900 truncate">{emp.name}</p>
+                            <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">
                               {designationText} • {emp.dept_name || emp.department || selectedDepartment}
                             </p>
                           </div>
@@ -350,13 +363,26 @@ function TeamMembersSelect({ selectedDepartment, selectedMemberIds, onChange, em
           <div className="border-t border-slate-100 bg-slate-50/50 p-3 space-y-3">
             {/* Search Input */}
             <div className="relative flex items-center">
-              <Search size={14} className="absolute left-3 text-slate-400 pointer-events-none z-10" />
+              <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" />
               <input
                 type="text"
                 placeholder="Search employees..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs border border-slate-200 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{
+                  width: '100%',
+                  paddingLeft: '38px',
+                  paddingRight: '12px',
+                  paddingTop: '9px',
+                  paddingBottom: '9px',
+                  fontSize: '13px',
+                  border: '1px solid #CBD5E1',
+                  borderRadius: '10px',
+                  background: '#FFFFFF',
+                  color: '#1E293B',
+                  outline: 'none',
+                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.04)'
+                }}
               />
             </div>
 
@@ -389,8 +415,8 @@ function TeamMembersSelect({ selectedDepartment, selectedMemberIds, onChange, em
                         {emp.name ? emp.name[0].toUpperCase() : '👤'}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-xs font-semibold text-slate-800 truncate">{emp.name}</p>
-                        <p className="text-[11px] text-slate-500 truncate">
+                        <p className="text-[13px] font-bold text-slate-900 truncate">{emp.name}</p>
+                        <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">
                           {emp.role_name || emp.designation || 'Employee'} • {emp.dept_name || emp.department || 'General'}
                         </p>
                       </div>
@@ -619,55 +645,152 @@ export const Teams = () => {
   const renderFormModal = (title, subtitle, show, onClose, onSave, saveLabel) => {
     if (!show) return null;
     return (
-      <>
-        <div className="modal-backdrop-blur" onClick={onClose} />
-        <div className="modal-centered-content">
-          <div className="p-8 border-b border-slate-200 flex items-center justify-between shrink-0">
-            <div>
-              <h2 className="text-xl font-bold text-[#0A1629]">{title}</h2>
-              <p className="text-sm text-slate-500 mt-1">{subtitle}</p>
-            </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition-colors"><X size={20} className="text-slate-400" /></button>
-          </div>
-          <div className="p-8 overflow-y-auto flex-1 space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Team Name <span className="text-red-500">*</span></label>
-                <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Enter team name" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+      <div style={{
+        position: 'fixed',
+        inset: 0,
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '16px',
+        background: 'rgba(15, 23, 42, 0.55)',
+        backdropFilter: 'blur(6px)'
+      }}>
+        <div style={{
+          width: '680px',
+          maxWidth: '95vw',
+          maxHeight: '90vh',
+          display: 'flex',
+          flexDirection: 'column',
+          background: '#FFFFFF',
+          borderRadius: '22px',
+          boxShadow: '0 32px 80px rgba(15, 23, 42, 0.28)',
+          overflow: 'hidden',
+          border: '1px solid rgba(255,255,255,0.8)'
+        }}>
+          {/* Header */}
+          <div style={{
+            position: 'relative',
+            padding: '20px 24px',
+            background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            overflow: 'hidden',
+            flexShrink: 0
+          }}>
+            <div style={{
+              position: 'absolute',
+              top: '-30px',
+              right: '-30px',
+              width: '130px',
+              height: '130px',
+              borderRadius: '50%',
+              background: 'rgba(255, 255, 255, 0.08)',
+              pointerEvents: 'none'
+            }} />
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1, flex: 1, marginRight: '16px' }}>
+              <div style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '12px',
+                background: 'rgba(255, 255, 255, 0.18)',
+                backdropFilter: 'blur(8px)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                display: 'grid',
+                placeItems: 'center',
+                placeContent: 'center',
+                color: '#FFFFFF',
+                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                flexShrink: 0,
+                lineHeight: 0,
+                padding: 0
+              }}>
+                <Users size={22} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Team Code <span className="text-red-500">*</span></label>
-                <input type="text" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} placeholder="Enter team code" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#FFFFFF', letterSpacing: '-0.2px' }}>
+                  {title}
+                </h3>
+                <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'rgba(255, 255, 255, 0.85)' }}>
+                  {subtitle}
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                width: '34px',
+                height: '34px',
+                borderRadius: '10px',
+                border: '1px solid rgba(255, 255, 255, 0.25)',
+                background: 'rgba(255, 255, 255, 0.12)',
+                backdropFilter: 'blur(4px)',
+                display: 'grid',
+                placeItems: 'center',
+                placeContent: 'center',
+                cursor: 'pointer',
+                zIndex: 1,
+                transition: 'all 0.2s',
+                flexShrink: 0,
+                marginLeft: 'auto',
+                lineHeight: 0,
+                padding: 0
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
+            >
+              <X size={16} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
+            </button>
+          </div>
+
+          {/* Form Body */}
+          <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '18px', overflowY: 'auto', flex: 1 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="hrms-input-group">
+                <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Team Name *</label>
+                <input type="text" className="hrms-input" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Enter team name" style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} />
+              </div>
+              <div className="hrms-input-group">
+                <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Team Code *</label>
+                <input type="text" className="hrms-input" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} placeholder="Enter team code" style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} />
               </div>
 
               {/* Department Dropdown */}
-              <CustomSelect
-                label="Department"
-                required
-                value={formData.department}
-                onChange={handleDepartmentChange}
-                options={departmentOptions}
-                placeholder="Select department"
-              />
+              <div className="hrms-input-group">
+                <CustomSelect
+                  label="Department"
+                  required
+                  value={formData.department}
+                  onChange={handleDepartmentChange}
+                  options={departmentOptions}
+                  placeholder="Select department"
+                />
+              </div>
 
               {/* Dynamic Searchable Team Lead Selection */}
-              <TeamLeadSelect
-                selectedDepartment={formData.department}
-                value={formData.teamLead}
-                selectedId={formData.teamLeadId}
-                employees={allEmployees}
-                loading={loadingEmployees}
-                onChange={(selectedEmp) => {
-                  setFormData(prev => ({
-                    ...prev,
-                    teamLead: selectedEmp ? selectedEmp.name : '',
-                    teamLeadId: selectedEmp ? selectedEmp.id : null
-                  }));
-                }}
-              />
+              <div className="hrms-input-group">
+                <TeamLeadSelect
+                  selectedDepartment={formData.department}
+                  value={formData.teamLead}
+                  selectedId={formData.teamLeadId}
+                  employees={allEmployees}
+                  loading={loadingEmployees}
+                  onChange={(selectedEmp) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      teamLead: selectedEmp ? selectedEmp.name : '',
+                      teamLeadId: selectedEmp ? selectedEmp.id : null
+                    }));
+                  }}
+                />
+              </div>
 
               {/* Dynamic Multi-Select Team Members Selection */}
-              <div className="sm:col-span-2">
+              <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
                 <TeamMembersSelect
                   selectedDepartment={formData.department}
                   selectedMemberIds={formData.teamMemberIds || []}
@@ -684,27 +807,51 @@ export const Teams = () => {
                 />
               </div>
 
-              <div className="pt-0 sm:col-span-2">
-                <label className="block text-sm font-semibold text-slate-700 mb-3">Status <span className="text-red-500">*</span></label>
-                <div className="flex items-center gap-3 pt-1">
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input type="radio" name="teamStatus" checked={formData.status === 'Active'} onChange={() => setFormData({ ...formData, status: 'Active' })} className="w-4 h-4 text-blue-600 cursor-pointer" />
-                    <span className="text-sm font-semibold text-slate-700">Active</span>
+              <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
+                <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Status *</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '20px', paddingTop: '4px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: '500', color: '#334155' }}>
+                    <input type="radio" name="teamStatus" checked={formData.status === 'Active'} onChange={() => setFormData({ ...formData, status: 'Active' })} style={{ accentColor: '#2563EB', width: '16px', height: '16px' }} />
+                    Active
                   </label>
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input type="radio" name="teamStatus" checked={formData.status === 'Inactive'} onChange={() => setFormData({ ...formData, status: 'Inactive' })} className="w-4 h-4 text-blue-600 cursor-pointer" />
-                    <span className="text-sm font-semibold text-slate-700">Inactive</span>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: '500', color: '#334155' }}>
+                    <input type="radio" name="teamStatus" checked={formData.status === 'Inactive'} onChange={() => setFormData({ ...formData, status: 'Inactive' })} style={{ accentColor: '#2563EB', width: '16px', height: '16px' }} />
+                    Inactive
                   </label>
                 </div>
               </div>
             </div>
           </div>
-          <div className="flex items-center justify-end gap-4 p-8 border-t border-slate-200 shrink-0">
-            <button onClick={onClose} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-            <button onClick={onSave} className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">{saveLabel}</button>
+
+          {/* Footer */}
+          <div style={{
+            padding: '16px 28px',
+            background: '#F8FAFC',
+            borderTop: '1px solid #E2E8F0',
+            display: 'flex',
+            gap: '12px',
+            justifyContent: 'flex-end',
+            flexShrink: 0
+          }}>
+            <button
+              type="button"
+              className="hrms-secondary-btn"
+              onClick={onClose}
+              style={{ borderRadius: '10px', padding: '9px 18px', fontWeight: '600' }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="hrms-btn-primary"
+              onClick={onSave}
+              style={{ borderRadius: '10px', padding: '9px 22px', fontWeight: '600', background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)', color: '#FFF' }}
+            >
+              {saveLabel}
+            </button>
           </div>
         </div>
-      </>
+      </div>
     );
   };
 

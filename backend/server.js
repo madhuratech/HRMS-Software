@@ -87,6 +87,18 @@ app.use("/uploads", express.static(uploadsDir, {
 }));
 
 // Safe endpoint for static upload files
+app.get("/uploads/photos/:filename", (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(uploadsDir, 'photos', filename);
+  if (fs.existsSync(filePath)) {
+    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    return res.sendFile(path.resolve(filePath));
+  }
+  const cleanName = filename.replace(/^emp_\d+_|\.[^.]+$/g, '') || 'User';
+  return res.redirect(`https://ui-avatars.com/api/?name=${encodeURIComponent(cleanName)}&background=2563EB&color=fff&bold=true`);
+});
+
 app.get("/uploads/:filename", (req, res) => {
   const filename = req.params.filename;
   const filePath = path.join(uploadsDir, filename);
@@ -133,6 +145,8 @@ app.use("/app/promotions", require("./routes/promotions"));
 
 app.use("/app/leaves", require("./routes/leaves"));
 app.use("/app/organization", require("./routes/organizationRoute"));
+app.use("/app", require("./routes/organizationRoute"));
+app.use("/api", require("./routes/organizationRoute"));
 app.use("/app/payroll", require("./routes/payroll"));
 app.use("/api/payroll", require("./routes/payroll"));
 app.use("/app/tickets", require("./routes/tickets"));
@@ -147,6 +161,9 @@ app.use("/app/sprints", require("./routes/sprints"));
 app.use("/app/timesheets", require("./routes/timesheets"));
 app.use("/app/milestones", require("./routes/milestones"));
 app.use("/app/project-team", require("./routes/teamMembers"));
+
+// Client Management Module
+app.use("/app/clients", require("./routes/clients"));
 app.use("/app/reports", require("./routes/reports"));
 app.use("/app/expenses", require("./routes/expenses"));
 app.use("/app/documents", require("./routes/documents"));
