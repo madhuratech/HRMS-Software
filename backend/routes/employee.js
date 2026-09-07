@@ -436,14 +436,7 @@ router.get("/:id/profile", authenticateJWT, (req, res) => {
         // Verify target employee belongs to Team Leader's assigned teamId
         const sqlCheck = "SELECT id, team_id FROM employees WHERE id = ? AND team_id = ?";
         return db.query(sqlCheck, [targetId, teamId], (vErr, vRows) => {
-          if (vErr || !vRows || vRows.length === 0) {
-            return res.status(403).json({
-              error: "Access denied. You are authorized to view profiles of your own team members ONLY.",
-              code: "TEAM_ACCESS_RESTRICTED"
-            });
-          }
-
-          // In team -> Return profile but STRIP SENSITIVE FIELDS (salary, bank details)
+          // Allow viewing everyone's profile with stripped sensitive fields
           return renderEmployeeProfileResponse(targetId, true, res);
         });
       }
@@ -475,12 +468,6 @@ router.get("/:id", authenticateJWT, (req, res) => {
 
         const sqlCheck = "SELECT id, team_id FROM employees WHERE id = ? AND team_id = ?";
         return db.query(sqlCheck, [targetId, teamId], (vErr, vRows) => {
-          if (vErr || !vRows || vRows.length === 0) {
-            return res.status(403).json({
-              error: "Access denied. You are authorized to view profiles of your own team members ONLY.",
-              code: "TEAM_ACCESS_RESTRICTED"
-            });
-          }
           return renderEmployeeProfileResponse(targetId, true, res);
         });
       }

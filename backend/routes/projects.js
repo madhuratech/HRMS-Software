@@ -5,7 +5,7 @@ const { authenticateJWT, checkRole } = require('../middlewares/auth');
 const validationMiddleware = require('../middlewares/validation');
 const { validateProject } = require('../validators/projectValidator');
 
-const readRoles = ['Super Admin', 'HR Admin', 'HR Manager', 'Department Manager', 'Viewer'];
+const readRoles = ['Super Admin', 'HR Admin', 'HR Manager', 'Department Manager', 'Viewer', 'Employee'];
 const writeRoles = ['Super Admin', 'HR Admin', 'HR Manager', 'Department Manager'];
 
 router.get('/', authenticateJWT, checkRole(readRoles), ProjectController.list);

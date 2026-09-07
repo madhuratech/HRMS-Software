@@ -60,6 +60,7 @@ app.use("/app/verifications", require("./routes/verifications"));
 app.use("/app/assets", require("./routes/assets"));
 app.use("/app/orientations", require("./routes/orientations"));
 app.use("/app/probations", require("./routes/probations"));
+app.use("/app/training", require("./routes/trainingRoute"));
 app.use("/app/goals", require("./routes/goals"));
 app.use("/app/kpis", require("./routes/kpis"));
 app.use("/app/kras", require("./routes/kras"));

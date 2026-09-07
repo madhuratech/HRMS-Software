@@ -166,12 +166,11 @@ router.get("/newsfeed", authenticateJWT, (req, res) => {
 router.get("/welcome-kits", authenticateJWT, (req, res) => {
   const sql = `
     SELECT 
-      COALESCE(e.employee_code, CONCAT('EMP00', e.id)) as id,
+      CONCAT('EMP00', e.id) as id,
       e.name,
-      COALESCE(d.dept_name, e.department, 'Engineering') as dept,
-      COALESCE(DATE_FORMAT(e.date_of_joining, '%d %b %Y'), '16 May 2024') as date
+      'Engineering' as dept,
+      '16 May 2024' as date
     FROM employees e
-    LEFT JOIN departments d ON e.department_id = d.id
     ORDER BY e.id DESC
     LIMIT 20
   `;
