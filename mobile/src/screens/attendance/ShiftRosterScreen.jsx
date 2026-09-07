@@ -1,10 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
-import { Clock, CalendarDays, Search, Plus, X, Users, ChevronLeft } from 'lucide-react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert } from 'react-native';
+import { Clock, CalendarDays, Search, Plus, X, Users, ChevronLeft, Eye, Edit2, Trash2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
+import ActionModals from '../../components/common/ActionModals';
 
 export default function ShiftRosterScreen({ navigation }) {
+
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState('view');
+  const [actionSelectedItem, setActionSelectedItem] = useState(null);
+
+  const handleActionView = (item) => { setActionSelectedItem(item); setActionModalMode('view'); setActionModalVisible(true); };
+  const handleActionEdit = (item) => { setActionSelectedItem(item); setActionModalMode('edit'); setActionModalVisible(true); };
+  
+  const handleActionDelete = (item) => {
+    Alert.alert('Delete', 'Are you sure you want to delete this item?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+            await apiClient.delete(`/attendance/roster/${item.id || item._id}`);
+            if (typeof fetchData === 'function') fetchData();
+            if (typeof loadData === 'function') loadData();
+            if (typeof fetchDocuments === 'function') fetchDocuments();
+            if (typeof fetchAppraisals === 'function') fetchAppraisals();
+            if (typeof fetchProjects === 'function') fetchProjects();
+          } catch (err) { console.error('Delete error:', err); }
+      }}
+    ]);
+  };
+
+  const handleActionSave = async (updatedItem) => {
+    try {
+      if (updatedItem.id || updatedItem._id) {
+        await apiClient.put(`/attendance/roster/${updatedItem.id || updatedItem._id}`, updatedItem);
+      }
+      setActionModalVisible(false);
+      if (typeof fetchData === 'function') fetchData();
+      if (typeof loadData === 'function') loadData();
+      if (typeof fetchDocuments === 'function') fetchDocuments();
+      if (typeof fetchAppraisals === 'function') fetchAppraisals();
+      if (typeof fetchProjects === 'function') fetchProjects();
+    } catch (err) { console.error('Update error:', err); }
+  };
+
   const [rosters, setRosters] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -80,7 +119,29 @@ export default function ShiftRosterScreen({ navigation }) {
           </View>
         </View>
       </View>
-    </View>
+    
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingTop: 12, marginTop: 12, gap: 12 }}>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionView(item)}>
+          <Eye size={18} color="#6B7280" />
+        </TouchableOpacity>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionEdit(item)}>
+          <Edit2 size={18} color="#3B82F6" />
+        </TouchableOpacity>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionDelete(item)}>
+          <Trash2 size={18} color="#EF4444" />
+        </TouchableOpacity>
+      </View>
+    
+</View>
+  );
+
+  return (
+    <View style={styles.container}>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
+          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
+            <ChevronLeft size={24} color='#111827' />
+</View>
   );
 
   return (
@@ -95,7 +156,7 @@ export default function ShiftRosterScreen({ navigation }) {
             <Text style={styles.headerSubtitle}>Manage employee shifts</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
+        <TouchableOpacity style={styles.addButton} onPress={() => { setActionSelectedItem({}); setActionModalMode('add'); setActionModalVisible(true); }}>
           <LinearGradient colors={['#8B5CF6', '#6D28D9']} style={styles.gradientBtn}>
             <Plus size={18} color='#FFFFFF' />
             <Text style={styles.addButtonText}>Assign</Text>
@@ -120,40 +181,20 @@ export default function ShiftRosterScreen({ navigation }) {
         />
       )}
 
-      {/* Add Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Assign Shift</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color='#6B7280' />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalBody}>
-              <Text style={styles.inputLabel}>Employee ID</Text>
-              <TextInput style={styles.modalInput} placeholder="e.g. 1" value={empId} onChangeText={setEmpId} keyboardType="numeric" />
-              <Text style={styles.inputLabel}>Shift ID</Text>
-              <TextInput style={styles.modalInput} placeholder="e.g. 1 (Regular)" value={shiftId} onChangeText={setShiftId} keyboardType="numeric" />
-
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>Start Date</Text>
-                  <TextInput style={styles.modalInput} placeholder="YYYY-MM-DD" value={startDate} onChangeText={setStartDate} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>End Date</Text>
-                  <TextInput style={styles.modalInput} placeholder="YYYY-MM-DD" value={endDate} onChangeText={setEndDate} />
-                </View>
-              </View>
-
-              <TouchableOpacity style={[styles.submitButton, submitting && { opacity: 0.7 }]} onPress={handleAdd} disabled={submitting}>
-                <Text style={styles.submitButtonText}>{submitting ? 'Assigning...' : 'Assign Shift'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <ActionModals 
+        visible={actionModalVisible}
+        mode={actionModalMode}
+        item={actionSelectedItem}
+        schema={[
+          { key: 'employeeId', label: 'Employee ID', required: true, keyboardType: 'numeric' },
+          { key: 'shiftId', label: 'Shift ID', required: true, keyboardType: 'numeric' },
+          { key: 'startDate', label: 'Start Date (YYYY-MM-DD)', required: true },
+          { key: 'endDate', label: 'End Date (YYYY-MM-DD)', required: true }
+        ]}
+        title={actionModalMode === 'add' ? 'Assign Shift' : actionModalMode === 'edit' ? 'Edit Assignment' : 'Assignment Details'}
+        onClose={() => setActionModalVisible(false)}
+        onSave={handleActionSave}
+      />
     </View>
   );
 }
@@ -182,14 +223,5 @@ const styles = StyleSheet.create({
   dateLabel: { fontSize: 11, color: '#94A3B8', fontWeight: '600', textTransform: 'uppercase', marginBottom: 4 },
   dateValue: { fontSize: 14, fontWeight: '700', color: '#1E293B' },
   emptyBox: { padding: 40, alignItems: 'center' },
-  emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '500' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
-  modalBody: { gap: 16 },
-  inputLabel: { fontSize: 14, fontWeight: '600', color: '#475569' },
-  modalInput: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, fontSize: 16, color: '#1E293B', backgroundColor: '#F8FAFC' },
-  submitButton: { backgroundColor: '#8B5CF6', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 10 },
-  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' }
+  emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '500' }
 });

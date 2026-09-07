@@ -7,15 +7,17 @@ import EmployeeDashboardScreen from './EmployeeDashboardScreen';
 export default function DashboardMain({ navigation }) {
   const { user } = useAuth();
 
-  if (user?.type === 'EMPLOYEE') {
+  const roleStr = String(user?.role || user?.type || '').toUpperCase();
+  const isEmployee = roleStr === 'EMPLOYEE' || roleStr === 'TEAM_LEADER' || roleStr === 'STAFF';
+
+  if (isEmployee) {
     return <EmployeeDashboardScreen navigation={navigation} />;
   }
 
-  // Super Admin
-  if (user?.role === 'SUPER_ADMIN' || user?.type === 'SUPER_ADMIN' || !user?.type) {
+  if (roleStr === 'SUPER_ADMIN') {
     return <SuperAdminDashboardScreen navigation={navigation} />;
   }
 
-  // For other Admins
+  // For other Admins (HR_MANAGER, ADMIN, etc)
   return <AdminDashboardScreen navigation={navigation} />;
 }

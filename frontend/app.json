@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "HRMS App",
+    "slug": "hrms-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "permissions": [
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.INTERNET"
+      ],
+      "package": "com.placeholder.appid",
+      "usesCleartextTraffic": true
+    },
+    "web": {}
+  }
+}

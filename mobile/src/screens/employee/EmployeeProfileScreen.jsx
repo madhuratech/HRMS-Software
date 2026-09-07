@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Modal
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Modal, Alert } from 'react-native';
+import { Edit2, Mail, Phone, MapPin, Camera, Trash2, FileText, Briefcase, IndianRupee, ShieldCheck, ChevronLeft } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity, Modal, Alert } from 'react-native';
 import { Edit2, Mail, Phone, MapPin, Camera, Trash2, FileText, Briefcase, IndianRupee, ShieldCheck, ChevronLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SIZES, FONTS } from '../../components/ui/theme';
@@ -10,6 +12,8 @@ import { HRMSButton } from '../../components/ui/HRMSButton';
 import { HRMSTextInput } from '../../components/ui/HRMSTextInput';
 import { HRMSAvatar } from '../../components/ui/HRMSAvatar';
 import apiClient from '../../api/client';
+import ActionModals from '../../components/common/ActionModals';
+import { useAuth } from '../../context/AuthContext';
 
 const TABS = [
   'Overview', 'Employment', 'Salary', 'Attendance', 'Leave', 
@@ -17,16 +21,17 @@ const TABS = [
 ];
 
 export default function EmployeeProfileScreen({ route, navigation }) {
-  // Using route.params.id to get the passed ID, defaulting to 1 for demo
-  const empId = route.params?.id || 1;
+  const { user } = useAuth();
+  // Using route.params.id to get the passed ID, or the logged-in user's ID
+  const empId = route.params?.id || user?.id || 1;
   const [activeTab, setActiveTab] = useState('Overview');
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [documents, setDocuments] = useState([]);
 
-  // Editing state (simplified for Phase 1 demo)
+  // Editing state
   const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState({});
+  const [editForm, setEditForm] = useState(null);
 
   const loadProfile = async () => {
     try {
@@ -82,6 +87,7 @@ export default function EmployeeProfileScreen({ route, navigation }) {
 
   const handleEditClick = () => {
     setEditForm({
+      id: empId,
       name: profile.name || '',
       email: profile.email || '',
       phone: profile.phone || '',
@@ -90,16 +96,16 @@ export default function EmployeeProfileScreen({ route, navigation }) {
     setIsEditing(true);
   };
 
-  const handleSave = async () => {
+  const handleSave = async (updatedData) => {
     try {
       await apiClient.put(`/employees/${empId}`, {
-        name: editForm.name || profile.name,
-        email: editForm.email || profile.email,
-        phone: editForm.phone || profile.phone,
+        name: updatedData.name || profile.name,
+        email: updatedData.email || profile.email,
+        phone: updatedData.phone || profile.phone,
         dob: profile.dob,
         gender: profile.gender,
         employmentType: profile.employmentType,
-        salary: parseFloat(editForm.salary) || parseFloat(profile.salary) || 0,
+        salary: parseFloat(updatedData.salary) || parseFloat(profile.salary) || 0,
         address: profile.address,
         emergencyContact: profile.emergencyContact,
         bankDetails: profile.bankDetails,
@@ -325,36 +331,23 @@ export default function EmployeeProfileScreen({ route, navigation }) {
 
         <View style={styles.contentArea}>
           {renderTabContent()}
+          {isEditing && (
+            <ActionModals
+              visible={isEditing}
+              mode="edit"
+              item={editForm}
+              title="Edit Profile"
+              schema={[
+                { key: 'name', label: 'Full Name', required: true },
+                { key: 'email', label: 'Email', keyboardType: 'email-address', required: true },
+                { key: 'phone', label: 'Phone', keyboardType: 'phone-pad', required: true },
+                { key: 'salary', label: 'Salary', keyboardType: 'numeric', required: true }
+              ]}
+              onClose={() => setIsEditing(false)}
+              onSave={handleSave}
+            />
+          )}
         </View>
-
-      <Modal visible={isEditing} animationType="slide" transparent={true}>
-        <View style={styles.modalOverlay}>
-          <HRMSCard style={styles.modalCard}>
-            <Text style={styles.sectionTitle}>Edit Profile (Quick)</Text>
-            <ScrollView>
-              <HRMSTextInput 
-                label="Full Name" 
-                value={editForm.name} 
-                onChangeText={t => setEditForm({...editForm, name: t})} 
-              />
-              <HRMSTextInput 
-                label="Email" 
-                value={editForm.email} 
-                onChangeText={t => setEditForm({...editForm, email: t})} 
-              />
-              <HRMSTextInput 
-                label="Phone" 
-                value={editForm.phone} 
-                onChangeText={t => setEditForm({...editForm, phone: t})} 
-              />
-            </ScrollView>
-            <View style={styles.modalActions}>
-              <HRMSButton title="Cancel" variant="secondary" onPress={() => setIsEditing(false)} style={{ flex: 1, marginRight: 8 }} />
-              <HRMSButton title="Save Changes" onPress={handleSave} style={{ flex: 1, marginLeft: 8 }} />
-            </View>
-          </HRMSCard>
-        </View>
-      </Modal>
       </ScrollView>
     </View>
   );

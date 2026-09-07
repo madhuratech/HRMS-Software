@@ -1,404 +1,280 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, FlatList, Modal, TextInput } from 'react-native';
-import { Search, Plus, Clock, AlertCircle, CheckCircle, ChevronRight, X, Calendar as CalendarIcon, Briefcase } from 'lucide-react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, TextInput, Alert } from 'react-native';
+import { Search, Plus, Edit2, Trash2, Calendar, Briefcase, ChevronRight, User, CheckCircle, Clock } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
+import ActionModals from '../../components/common/ActionModals';
+
+const createTimesheetSchema = (meta) => [
+  { key: 'employee_id', label: 'Employee', type: 'select', options: (meta?.employees || []).map(e => ({ label: e.name, value: e.id })), required: true },
+  { key: 'project_id', label: 'Project', type: 'select', options: (meta?.projects || []).map(p => ({ label: p.name, value: p.id })), required: true },
+  { key: 'log_date', label: 'Date (YYYY-MM-DD)', required: true },
+  { key: 'hours', label: 'Hours Logged', keyboardType: 'numeric', required: true },
+  { key: 'billable', label: 'Billable Type', type: 'select', options: ['Billable', 'Non-Billable'] },
+  { key: 'status', label: 'Approval Status', type: 'select', options: ['Pending', 'Approved', 'Rejected'] },
+  { key: 'task_description', label: 'Task Description', multiline: true }
+];
 
 export default function TimesheetsScreen({ navigation }) {
-  const [timesheets, setTimesheets] = useState([]);
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
   
-  const [summary, setSummary] = useState({ totalHours: 0, billableHours: 0, nonBillableHours: 0, pendingCount: 0 });
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState('view');
+  const [actionSelectedItem, setActionSelectedItem] = useState(null);
+  
+  const [meta, setMeta] = useState({ employees: [], projects: [] });
 
-  // Modal State
-  const [modalVisible, setModalVisible] = useState(false);
-  const [newHours, setNewHours] = useState('');
-  const [newDesc, setNewDesc] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [res, metaRes] = await Promise.all([
+        apiClient.get(`/timesheets?page=${page}&limit=${limit}`).catch(() => null),
+        apiClient.get('/projects/meta').catch(() => null)
+      ]);
+      
+      if (metaRes?.data?.success && metaRes.data.data) {
+        setMeta(metaRes.data.data);
+      }
 
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('focus', () => {
-      fetchData();
-    });
-    return unsubscribe;
-  }, [navigation]);
+      if (res?.data?.success && res.data?.data?.timesheets) {
+        setData(res.data.data.timesheets);
+      } else {
+        setData([]);
+      }
+    } catch (error) {
+      console.warn('Error fetching timesheets:', error);
+      setData([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [page, limit]);
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [fetchData]);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      // Mock data for timesheets
-      const mockData = [
-        { id: 1, date: '2026-08-20', project: 'Website Redesign', hours: 6, billable: 'Billable', status: 'Approved', desc: 'Developed new landing page' },
-        { id: 2, date: '2026-08-21', project: 'Mobile App', hours: 4, billable: 'Billable', status: 'Pending', desc: 'API Integration' },
-        { id: 3, date: '2026-08-22', project: 'Internal Tool', hours: 2, billable: 'Non-Billable', status: 'Approved', desc: 'Team meeting and planning' },
-      ];
-      setTimesheets(mockData);
-      
-      let tot = 0, bill = 0, nonbill = 0, pen = 0;
-      mockData.forEach(t => {
-        tot += t.hours;
-        if (t.billable === 'Billable') bill += t.hours;
-        else nonbill += t.hours;
-        if (t.status === 'Pending') pen++;
-      });
-      setSummary({ totalHours: tot, billableHours: bill, nonBillableHours: nonbill, pendingCount: pen });
-      
-    } catch (err) {
-      console.error('Error fetching timesheets:', err);
-    } finally {
-      setLoading(false);
-    }
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchData();
   };
 
-  const handleAddTimesheet = async () => {
-    if (!newHours.trim()) return;
-    try {
-      setSubmitting(true);
-      // Simulate API post
-      setTimeout(() => {
-        setNewHours('');
-        setNewDesc('');
-        setModalVisible(false);
-        fetchData();
-        setSubmitting(false);
-      }, 500);
-    } catch (err) {
-      console.error('Error adding timesheet:', err);
-      setSubmitting(false);
-    }
+  const handleActionEdit = (item) => { 
+    setActionSelectedItem({
+      ...item,
+      employee_id: item.employee_id ? parseInt(item.employee_id) : '',
+      project_id: item.project_id ? parseInt(item.project_id) : '',
+      log_date: item.log_date ? item.log_date.slice(0,10) : '',
+      hours: item.hours ? String(item.hours) : '',
+      billable: item.billable === 'Billable' ? 'Billable' : 'Non-Billable',
+      status: item.status || 'Pending'
+    }); 
+    setActionModalMode('edit'); 
+    setActionModalVisible(true); 
+  };
+  
+  const handleActionDelete = (item) => {
+    Alert.alert('Delete', 'Are you sure you want to delete this timesheet entry?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+             await apiClient.delete(`/timesheets/${item.id}`);
+             fetchData();
+          } catch(err) {
+             Alert.alert('Error', 'Failed to delete timesheet');
+          }
+      }}
+    ]);
   };
 
-  const filteredData = timesheets.filter(t => 
-    t.project?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    t.desc?.toLowerCase().includes(searchQuery.toLowerCase())
+  const handleActionSave = async (updatedItem) => {
+    try {
+      const payload = {
+        ...updatedItem,
+        employee_id: parseInt(updatedItem.employee_id),
+        project_id: parseInt(updatedItem.project_id),
+        hours: parseFloat(updatedItem.hours)
+      };
+      if (updatedItem.id) {
+        await apiClient.put(`/timesheets/${updatedItem.id}`, payload);
+      } else {
+        await apiClient.post('/timesheets', payload);
+      }
+    } catch(err) {
+      console.warn('Save failed');
+    }
+    setActionModalVisible(false);
+    fetchData();
+  };
+
+  const filteredData = data.filter(item => 
+    (item.employee_name || '').toLowerCase().includes(search.toLowerCase()) || 
+    (item.project_name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (item.task_description || '').toLowerCase().includes(search.toLowerCase())
   );
 
   const getStatusColor = (status) => {
-    switch(status) {
-      case 'Approved': return '#10B981';
-      case 'Rejected': return '#EF4444';
-      default: return '#F59E0B'; // Pending
+    switch (status) {
+      case 'Approved': return { bg: '#DCFCE7', text: '#15803D' };
+      case 'Pending': return { bg: '#FEF3C7', text: '#D97706' };
+      case 'Rejected': return { bg: '#FEE2E2', text: '#DC2626' };
+      default: return { bg: '#F3F4F6', text: '#6B7280' };
     }
   };
 
-  const KPICard = ({ label, value, unit, color, bg, icon: Icon }) => (
-    <View style={[styles.kpiCard, { borderColor: bg }]}>
-      <View style={[styles.kpiIconBox, { backgroundColor: bg }]}>
-        <Icon size={18} color={color} />
-      </View>
-      <View>
-        <View style={styles.kpiValueRow}>
-          <Text style={styles.kpiValue}>{value}</Text>
-          {unit && <Text style={styles.kpiUnit}>{unit}</Text>}
-        </View>
-        <Text style={styles.kpiLabel}>{label}</Text>
-      </View>
-    </View>
-  );
+  const renderItem = ({ item }) => {
+    const status = item.status || 'Pending';
+    const statusColors = getStatusColor(status);
 
-  const renderItem = ({ item }) => (
-    <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.titleRow}>
-          <Briefcase size={16} color="#3B82F6" />
-          <Text style={styles.cardTitle}>{item.project}</Text>
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={styles.employeeName} numberOfLines={1}>{item.employee_name}</Text>
+            <Text style={styles.projectName} numberOfLines={1}>{item.project_name}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
+            <Text style={[styles.statusText, { color: statusColors.text }]}>{status}</Text>
+          </View>
         </View>
-        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) + '15' }]}>
-          <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
-            {item.status}
-          </Text>
+
+        <View style={styles.divider} />
+
+        <View style={styles.detailsGrid}>
+          <View style={styles.detailItem}>
+            <Calendar size={14} color="#64748B" />
+            <Text style={styles.detailText} numberOfLines={1}>
+              {item.log_date ? new Date(item.log_date).toLocaleDateString('en-IN') : '--'}
+            </Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Clock size={14} color="#64748B" />
+            <Text style={styles.detailText} numberOfLines={1}>{item.hours} Hrs</Text>
+          </View>
+          <View style={styles.detailItemFull}>
+            <CheckCircle size={14} color="#64748B" />
+            <Text style={styles.detailTextFull} numberOfLines={2}>{item.task_description || 'No Description'}</Text>
+          </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.footerRow}>
+          <View style={styles.billableBadge}>
+            <Text style={[styles.billableText, { color: item.billable === 'Billable' ? '#2563EB' : '#64748B' }]}>{item.billable}</Text>
+          </View>
+          
+          <View style={styles.actionGroup}>
+            <TouchableOpacity style={styles.actionBtn} onPress={() => handleActionEdit(item)}>
+              <Edit2 size={16} color="#64748B" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionBtn} onPress={() => handleActionDelete(item)}>
+              <Trash2 size={16} color="#EF4444" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
-
-      <Text style={styles.cardDesc} numberOfLines={2}>{item.desc}</Text>
-
-      <View style={styles.divider} />
-
-      <View style={styles.cardFooter}>
-        <View style={styles.footerInfo}>
-          <CalendarIcon size={14} color='#6B7280' style={{marginRight: 4}} />
-          <Text style={styles.dateLabel}>{new Date(item.date).toLocaleDateString()}</Text>
-        </View>
-        <View style={styles.footerInfo}>
-          <Clock size={14} color='#6B7280' style={{marginRight: 4}} />
-          <Text style={styles.hoursLabel}>{item.hours} hrs</Text>
-        </View>
-        <View style={[styles.billableBadge, { backgroundColor: item.billable === 'Billable' ? '#EFF6FF' : '#F1F5F9' }]}>
-          <Text style={[styles.billableText, { color: item.billable === 'Billable' ? '#3B82F6' : '#64748B' }]}>{item.billable}</Text>
-        </View>
-      </View>
-    </View>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>Timesheets</Text>
-          <Text style={styles.headerSubtitle}>Log and manage your work hours</Text>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.headerTitle}>Timesheets</Text>
+            <Text style={styles.headerSubtitle}>Manage employee work logs</Text>
+          </View>
+          <TouchableOpacity style={styles.addBtn} onPress={() => {
+            setActionSelectedItem({ billable: 'Billable', status: 'Pending' });
+            setActionModalMode('add');
+            setActionModalVisible(true);
+          }}>
+            <Plus size={20} color="#FFFFFF" />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
-          <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.gradientBtn}>
-            <Plus size={18} color='#FFFFFF' />
-            <Text style={styles.addButtonText}>Log Time</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.kpiScroll}>
-        <KPICard label="Total Logged" value={summary.totalHours} unit="hrs" color="#6366F1" bg="#EEF2FF" icon={Clock} />
-        <KPICard label="Billable" value={summary.billableHours} unit="hrs" color="#10B981" bg="#D1FAE5" icon={CheckCircle} />
-        <KPICard label="Non-Billable" value={summary.nonBillableHours} unit="hrs" color="#6B7280" bg="#F3F4F6" icon={AlertCircle} />
-        <KPICard label="Pending Approval" value={summary.pendingCount} unit="logs" color="#F59E0B" bg="#FEF3C7" icon={Clock} />
-      </ScrollView>
-
-      <View style={styles.toolbar}>
-        <View style={styles.searchBox}>
-          <Search size={20} color='#6B7280' />
-          <TextInput 
-            style={styles.searchInput} 
-            placeholder="Search timesheets..." 
-            placeholderTextColor="#94A3B8"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
+        <View style={styles.searchRow}>
+          <View style={styles.searchBox}>
+            <Search size={18} color="#94A3B8" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search timesheets..."
+              value={search}
+              onChangeText={setSearch}
+              placeholderTextColor="#94A3B8"
+            />
+          </View>
         </View>
-      </View>
+      </LinearGradient>
 
-      {loading ? (
-        <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#2563EB" />
-        </View>
+      {loading && !refreshing ? (
+        <ActivityIndicator size="large" color="#2563EB" style={{ marginTop: 40 }} />
       ) : (
         <FlatList
           data={filteredData}
-          keyExtractor={(item) => item.id.toString()}
           renderItem={renderItem}
+          keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
           ListEmptyComponent={
             <View style={styles.emptyBox}>
+              <Clock size={40} color="#CBD5E1" />
               <Text style={styles.emptyText}>No timesheets found</Text>
             </View>
           }
         />
       )}
 
-      {/* Add Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Log Work Time</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color='#6B7280' />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalBody}>
-              <Text style={styles.inputLabel}>Hours</Text>
-              <TextInput 
-                style={styles.modalInput}
-                placeholder="e.g. 4.5"
-                placeholderTextColor="#94A3B8"
-                keyboardType="numeric"
-                value={newHours}
-                onChangeText={setNewHours}
-              />
-              <Text style={styles.inputLabel}>Task Description</Text>
-              <TextInput 
-                style={[styles.modalInput, { height: 80 }]}
-                placeholder="What did you work on?"
-                placeholderTextColor="#94A3B8"
-                multiline
-                textAlignVertical="top"
-                value={newDesc}
-                onChangeText={setNewDesc}
-              />
-              <TouchableOpacity style={styles.submitBtn} onPress={handleAddTimesheet} disabled={submitting}>
-                <LinearGradient colors={['#2563EB', '#1D4ED8']} style={styles.submitGradient}>
-                  {submitting ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={styles.submitText}>Save Log</Text>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {actionModalVisible && (
+        <ActionModals
+          visible={actionModalVisible}
+          mode={actionModalMode}
+          item={actionSelectedItem}
+          schema={createTimesheetSchema(meta)}
+          onClose={() => setActionModalVisible(false)}
+          onSave={handleActionSave}
+          title={actionModalMode === 'add' ? 'Log Time' : actionModalMode === 'edit' ? 'Edit Log' : 'Log Details'}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: {
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: '#0F172A' },
-  headerSubtitle: { fontSize: 14, color: '#64748B', marginTop: 4 },
-  addButton: { borderRadius: 8, overflow: 'hidden' },
-  gradientBtn: {
-    flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 6,
-  },
-  addButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
-  kpiScroll: {
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-    gap: 12,
-  },
-  kpiCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderWidth: 1,
-    minWidth: 140,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  kpiIconBox: {
-    width: 36,
-    height: 36,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  kpiValueRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 4,
-  },
-  kpiValue: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#1E293B',
-  },
-  kpiUnit: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  kpiLabel: {
-    fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
-  },
-  toolbar: { paddingHorizontal: 20, marginBottom: 16 },
-  searchBox: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 10,
-    paddingHorizontal: 14, height: 44, borderWidth: 1, borderColor: '#E2E8F0',
-    shadowColor: '#111827', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1
-  },
-  searchInput: { flex: 1, marginLeft: 10, fontSize: 15, color: '#111827', fontWeight: '500' },
-  centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  listContent: { paddingHorizontal: 20, paddingBottom: 24 },
-  emptyBox: { padding: 40, alignItems: 'center' },
-  emptyText: { color: '#64748B', fontSize: 15 },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 10,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-    flex: 1,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  cardDesc: {
-    fontSize: 14,
-    color: '#475569',
-    marginBottom: 12,
-    lineHeight: 20,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#F1F5F9',
-    marginBottom: 12,
-  },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  footerInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  dateLabel: {
-    fontSize: 13,
-    color: '#64748B',
-    fontWeight: '500',
-  },
-  hoursLabel: {
-    fontSize: 13,
-    color: '#64748B',
-    fontWeight: '600',
-  },
-  billableBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  billableText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15,23,42,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, minHeight: '60%' },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#0F172A' },
-  modalBody: { flex: 1 },
-  inputLabel: { fontSize: 14, fontWeight: '500', color: '#475569', marginBottom: 8, marginTop: 16 },
-  modalInput: { backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, padding: 12, fontSize: 15, color: '#0F172A' },
-  submitBtn: { marginTop: 32, borderRadius: 12, overflow: 'hidden' },
-  submitGradient: { paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
-  submitText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' }
+  header: { padding: 16, paddingTop: 16, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#1E293B', marginBottom: 2 },
+  headerSubtitle: { fontSize: 12, color: '#64748B' },
+  addBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#2563EB', alignItems: 'center', justifyContent: 'center', shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
+  searchRow: { flexDirection: 'row', gap: 12 },
+  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 12, height: 44 },
+  searchInput: { flex: 1, marginLeft: 8, fontSize: 14, color: '#1E293B' },
+  listContent: { padding: 16, paddingBottom: 40 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  employeeName: { fontSize: 15, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
+  projectName: { fontSize: 12, color: '#64748B', fontWeight: '500' },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  statusText: { fontSize: 10, fontWeight: '600' },
+  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 },
+  detailsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  detailItem: { width: '45%', flexDirection: 'row', alignItems: 'center', gap: 6 },
+  detailText: { fontSize: 12, color: '#475569', flex: 1 },
+  detailItemFull: { width: '100%', flexDirection: 'row', alignItems: 'flex-start', gap: 6, marginTop: 4 },
+  detailTextFull: { fontSize: 12, color: '#475569', flex: 1 },
+  footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  billableBadge: { backgroundColor: '#EFF6FF', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  billableText: { fontSize: 10, fontWeight: '600' },
+  actionGroup: { flexDirection: 'row', gap: 12 },
+  actionBtn: { padding: 6, backgroundColor: '#F8FAFC', borderRadius: 6 },
+  emptyBox: { padding: 40, alignItems: 'center', justifyContent: 'center' },
+  emptyText: { marginTop: 12, fontSize: 14, color: '#94A3B8', fontWeight: '500' }
 });

@@ -1,23 +1,69 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Modal, ToastAndroid, Platform } from 'react-native';
-import { Search, Plus, MoreVertical, Award, X, CheckCircle, TrendingUp, IndianRupee, ChevronLeft } from 'lucide-react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Modal, ToastAndroid, Platform, Alert } from 'react-native';
+import { Search, Plus, MoreVertical, Award, X, CheckCircle, TrendingUp, IndianRupee, ChevronLeft, Eye, Edit2, Trash2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import apiClient from '../../api/client';
+import ActionModals from '../../components/common/ActionModals';
 
 export default function PromotionsScreen() {
+
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState('view');
+  const [actionSelectedItem, setActionSelectedItem] = useState(null);
+
+  const handleActionView = (item) => { setActionSelectedItem(item); setActionModalMode('view'); setActionModalVisible(true); };
+  const handleActionEdit = (item) => { setActionSelectedItem(item); setActionModalMode('edit'); setActionModalVisible(true); };
+  const handleActionAdd = () => { setActionSelectedItem(null); setActionModalMode('add'); setActionModalVisible(true); };
+  
+  const handleActionDelete = (item) => {
+    Alert.alert('Delete', 'Are you sure you want to delete this item?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+            await apiClient.delete(`/employees/promotions/${item.id || item._id}`);
+            if (typeof fetchData === 'function') fetchData();
+            if (typeof loadData === 'function') loadData();
+            if (typeof fetchDocuments === 'function') fetchDocuments();
+            if (typeof fetchAppraisals === 'function') fetchAppraisals();
+            if (typeof fetchProjects === 'function') fetchProjects();
+          } catch (err) { console.error('Delete error:', err); }
+      }}
+    ]);
+  };
+
+  const handleActionSave = async (updatedItem) => {
+    try {
+      if (actionModalMode === 'add') {
+        const res = await apiClient.post('/employees/promotions', { 
+          employeeId: updatedItem.employeeId, 
+          newDesignationName: updatedItem.newDesignationName,
+          newSalary: updatedItem.newSalary ? parseFloat(updatedItem.newSalary) : null,
+          effectiveDate: updatedItem.effectiveDate || new Date().toISOString().split('T')[0]
+        });
+        showToast('Promotion Successful! Salary updated automatically.');
+      } else {
+        if (updatedItem.id || updatedItem._id) {
+          await apiClient.put(`/employees/promotions/${updatedItem.id || updatedItem._id}`, updatedItem);
+        }
+      }
+      setActionModalVisible(false);
+      if (typeof fetchData === 'function') fetchData();
+      if (typeof loadData === 'function') loadData();
+      if (typeof fetchDocuments === 'function') fetchDocuments();
+      if (typeof fetchAppraisals === 'function') fetchAppraisals();
+      if (typeof fetchProjects === 'function') fetchProjects();
+      fetchPromotions();
+    } catch (err) {
+      console.error('Update error:', err);
+      showToast('Failed to promote employee.');
+    }
+  };
+
   const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const navigation = useNavigation();
-
-  // Modal State
-  const [modalVisible, setModalVisible] = useState(false);
-  const [empId, setEmpId] = useState('');
-  const [newDesignation, setNewDesignation] = useState('');
-  const [newSalary, setNewSalary] = useState('');
-  const [effectiveDate, setEffectiveDate] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchPromotions();
@@ -42,35 +88,6 @@ export default function PromotionsScreen() {
       ToastAndroid.show(message, ToastAndroid.SHORT);
     } else {
       alert(message);
-    }
-  };
-
-  const handleAddPromotion = async () => {
-    if (!empId.trim() || !newDesignation.trim()) return;
-    try {
-      setSubmitting(true);
-      const res = await apiClient.post('/employees/promotions', { 
-        employeeId: empId, 
-        newDesignationName: newDesignation,
-        newSalary: newSalary ? parseFloat(newSalary) : null,
-        effectiveDate: effectiveDate || new Date().toISOString().split('T')[0]
-      });
-
-      // Auto-approve if needed, or if the backend handles it, just show success
-      // Let's assume the backend takes care of updating salary and we just show toast
-      showToast('Promotion Successful! Salary updated automatically.');
-
-      setEmpId('');
-      setNewDesignation('');
-      setNewSalary('');
-      setEffectiveDate('');
-      setModalVisible(false);
-      fetchPromotions();
-    } catch (err) {
-      console.error('Error adding promotion:', err);
-      showToast('Failed to promote employee.');
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -124,14 +141,19 @@ export default function PromotionsScreen() {
         {item.reason && (
           <Text style={styles.reasonText}>Reason: {item.reason}</Text>
         )}
+      
+        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingTop: 12, marginTop: 12, gap: 12 }}>
+          <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionView(item)}>
+            <Eye size={18} color="#6B7280" />
+          </TouchableOpacity>
+          <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionEdit(item)}>
+            <Edit2 size={18} color="#3B82F6" />
+          </TouchableOpacity>
+          <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionDelete(item)}>
+            <Trash2 size={18} color="#EF4444" />
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
-  );
-
-  // Quick chevron icon component for the flow
-  const ChevronRight = ({ size, color }) => (
-    <View style={{ width: size, height: size, justifyContent: 'center', alignItems: 'center' }}>
-      <Text style={{ fontSize: size/1.5, color, fontWeight: 'bold' }}>→</Text>
     </View>
   );
 
@@ -146,7 +168,7 @@ export default function PromotionsScreen() {
             <Text style={styles.pageTitle}>Promotions</Text>
             <Text style={styles.pageSubtitle}>Manage employee role changes</Text>
           </View>
-          <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
+          <TouchableOpacity style={styles.addButton} onPress={handleActionAdd}>
             <LinearGradient colors={['#2563EB', '#2563EB']} style={styles.gradientBtn}>
               <Plus size={18} color='#FFFFFF' />
               <Text style={styles.addButtonText}>Promote</Text>
@@ -187,63 +209,20 @@ export default function PromotionsScreen() {
         />
       )}
 
-      {/* Add Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Request Promotion</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color='#6B7280' />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalBody}>
-              <Text style={styles.inputLabel}>Employee ID</Text>
-              <TextInput 
-                style={styles.modalInput}
-                placeholder="e.g. 1"
-                placeholderTextColor="#94A3B8"
-                value={empId}
-                onChangeText={setEmpId}
-                keyboardType="numeric"
-              />
-              <Text style={styles.inputLabel}>New Designation</Text>
-              <TextInput 
-                style={styles.modalInput}
-                placeholder="e.g. Senior Manager"
-                placeholderTextColor="#94A3B8"
-                value={newDesignation}
-                onChangeText={setNewDesignation}
-              />
-              <Text style={styles.inputLabel}>New Salary (Optional)</Text>
-              <TextInput 
-                style={styles.modalInput}
-                placeholder="e.g. 80000"
-                placeholderTextColor="#94A3B8"
-                value={newSalary}
-                onChangeText={setNewSalary}
-                keyboardType="numeric"
-              />
-              <Text style={styles.inputLabel}>Effective Date (YYYY-MM-DD)</Text>
-              <TextInput 
-                style={styles.modalInput}
-                placeholder="2026-08-01"
-                placeholderTextColor="#94A3B8"
-                value={effectiveDate}
-                onChangeText={setEffectiveDate}
-              />
-
-              <TouchableOpacity 
-                style={[styles.submitButton, submitting && { opacity: 0.7 }]} 
-                onPress={handleAddPromotion}
-                disabled={submitting}
-              >
-                <Text style={styles.submitButtonText}>{submitting ? 'Submitting...' : 'Submit Request'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <ActionModals 
+        visible={actionModalVisible}
+        mode={actionModalMode}
+        item={actionSelectedItem}
+        schema={[
+          { key: 'employeeId', label: 'Employee ID', required: true, keyboardType: 'numeric' },
+          { key: 'newDesignationName', label: 'New Designation', required: true },
+          { key: 'newSalary', label: 'New Salary (Optional)', keyboardType: 'numeric' },
+          { key: 'effectiveDate', label: 'Effective Date (YYYY-MM-DD)' }
+        ]}
+        title={actionModalMode === 'add' ? 'Request Promotion' : actionModalMode === 'edit' ? 'Edit Promotion' : 'Promotion Details'}
+        onClose={() => setActionModalVisible(false)}
+        onSave={handleActionSave}
+      />
     </View>
   );
 }
@@ -292,16 +271,5 @@ const styles = StyleSheet.create({
   flowArrow: { width: 40, alignItems: 'center' },
   reasonText: { marginTop: 12, fontSize: 13, color: '#475569', fontStyle: 'italic', fontWeight: '500' },
   emptyBox: { padding: 40, alignItems: 'center' },
-  emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
-
-  // Modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  modalTitle: { fontSize: 22, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },
-  modalBody: { gap: 16 },
-  inputLabel: { fontSize: 14, fontWeight: '700', color: '#475569' },
-  modalInput: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, padding: 16, fontSize: 16, color: '#1E293B', backgroundColor: '#F8FAFC' },
-  submitButton: { backgroundColor: '#2563EB', borderRadius: 16, padding: 18, alignItems: 'center', marginTop: 16, shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' }
+  emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' }
 });

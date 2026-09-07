@@ -1,10 +1,49 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
-import { AlertCircle, Clock, ChevronLeft } from 'lucide-react-native';
+import { AlertCircle, Clock, ChevronLeft, Eye, Edit2, Trash2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
+import ActionModals from '../../components/common/ActionModals';
 
 export default function LateArrivalScreen({ navigation }) {
+
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState('view');
+  const [actionSelectedItem, setActionSelectedItem] = useState(null);
+
+  const handleActionView = (item) => { setActionSelectedItem(item); setActionModalMode('view'); setActionModalVisible(true); };
+  const handleActionEdit = (item) => { setActionSelectedItem(item); setActionModalMode('edit'); setActionModalVisible(true); };
+  
+  const handleActionDelete = (item) => {
+    Alert.alert('Delete', 'Are you sure you want to delete this item?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+            await apiClient.delete(`/attendance/late-arrivals/${item.id || item._id}`);
+            if (typeof fetchData === 'function') fetchData();
+            if (typeof loadData === 'function') loadData();
+            if (typeof fetchDocuments === 'function') fetchDocuments();
+            if (typeof fetchAppraisals === 'function') fetchAppraisals();
+            if (typeof fetchProjects === 'function') fetchProjects();
+          } catch (err) { console.error('Delete error:', err); }
+      }}
+    ]);
+  };
+
+  const handleActionSave = async (updatedItem) => {
+    try {
+      if (updatedItem.id || updatedItem._id) {
+        await apiClient.put(`/attendance/late-arrivals/${updatedItem.id || updatedItem._id}`, updatedItem);
+      }
+      setActionModalVisible(false);
+      if (typeof fetchData === 'function') fetchData();
+      if (typeof loadData === 'function') loadData();
+      if (typeof fetchDocuments === 'function') fetchDocuments();
+      if (typeof fetchAppraisals === 'function') fetchAppraisals();
+      if (typeof fetchProjects === 'function') fetchProjects();
+    } catch (err) { console.error('Update error:', err); }
+  };
+
   const [lateData, setLateData] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -44,7 +83,20 @@ export default function LateArrivalScreen({ navigation }) {
       <View style={styles.cardBody}>
         <Text style={styles.reasonText}>Reason: {item.reason || 'None provided'}</Text>
       </View>
-    </View>
+    
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingTop: 12, marginTop: 12, gap: 12 }}>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionView(item)}>
+          <Eye size={18} color="#6B7280" />
+        </TouchableOpacity>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionEdit(item)}>
+          <Edit2 size={18} color="#3B82F6" />
+        </TouchableOpacity>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionDelete(item)}>
+          <Trash2 size={18} color="#EF4444" />
+        </TouchableOpacity>
+      </View>
+    
+</View>
   );
 
   return (
@@ -79,6 +131,13 @@ export default function LateArrivalScreen({ navigation }) {
           }
         />
       )}
+          <ActionModals 
+        visible={actionModalVisible}
+        mode={actionModalMode}
+        item={actionSelectedItem}
+        onClose={() => setActionModalVisible(false)}
+        onSave={handleActionSave}
+      />
     </View>
   );
 }

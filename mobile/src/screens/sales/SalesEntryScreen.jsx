@@ -3,6 +3,14 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { Search, Plus, X, DollarSign, Calendar, Building2, StickyNote, ChevronLeft } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
+import ActionModals from '../../components/common/ActionModals';
+
+const createEntrySchema = (enquiries) => [
+  { key: 'enquiry_id', label: 'Select Enquiry / Customer', type: 'select', options: (enquiries || []).map(e => ({ label: e.customer_name, value: e.id })), required: true },
+  { key: 'amount', label: 'Amount (₹)', keyboardType: 'numeric', required: true },
+  { key: 'sale_date', label: 'Sale Date (YYYY-MM-DD)', required: true },
+  { key: 'notes', label: 'Notes', multiline: true }
+];
 
 export default function SalesEntryScreen({ navigation }) {
   const [entries, setEntries] = useState([]);
@@ -10,13 +18,9 @@ export default function SalesEntryScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Modal State
-  const [modalVisible, setModalVisible] = useState(false);
-  const [selectedEnquiry, setSelectedEnquiry] = useState('');
-  const [amount, setAmount] = useState('');
-  const [saleDate, setSaleDate] = useState(new Date().toISOString().split('T')[0]);
-  const [notes, setNotes] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState('view');
+  const [actionSelectedItem, setActionSelectedItem] = useState(null);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -45,9 +49,7 @@ export default function SalesEntryScreen({ navigation }) {
         // Filter to only show won enquiries as options for new sales?
         // Let's show all for now, but in reality maybe only qualified/won
         setEnquiries(enquiriesRes.data);
-        if (enquiriesRes.data.length > 0) {
-          setSelectedEnquiry(enquiriesRes.data[0].id.toString());
-        }
+        setEnquiries(enquiriesRes.data);
       }
     } catch (err) {
       console.error('Error fetching sales entries:', err);
@@ -56,29 +58,23 @@ export default function SalesEntryScreen({ navigation }) {
     }
   };
 
-  const handleAddEntry = async () => {
-    if (!selectedEnquiry || !amount || !saleDate) {
-      Alert.alert('Required', 'Please fill in all required fields (Enquiry, Amount, Date).');
-      return;
-    }
+  const handleActionSave = async (updatedItem) => {
     try {
-      setSubmitting(true);
-      await apiClient.post('/sales/entries', { 
-        enquiry_id: selectedEnquiry,
-        amount: parseFloat(amount),
-        sale_date: saleDate,
-        notes: notes
-      });
-      setAmount('');
-      setNotes('');
-      setSaleDate(new Date().toISOString().split('T')[0]);
-      setModalVisible(false);
+      const payload = {
+        ...updatedItem,
+        enquiry_id: parseInt(updatedItem.enquiry_id),
+        amount: parseFloat(updatedItem.amount)
+      };
+      if (updatedItem.id) {
+        await apiClient.put(`/sales/entries/${updatedItem.id}`, payload);
+      } else {
+        await apiClient.post('/sales/entries', payload);
+      }
+      setActionModalVisible(false);
       fetchEntries();
     } catch (err) {
-      console.error('Error adding sales entry:', err);
-      Alert.alert('Error', 'Failed to add sales entry.');
-    } finally {
-      setSubmitting(false);
+      console.error('Error saving sales entry:', err);
+      Alert.alert('Error', 'Failed to save sales entry.');
     }
   };
 
@@ -99,7 +95,11 @@ export default function SalesEntryScreen({ navigation }) {
             <Text style={styles.headerSubtitle}>Log and track closed sales</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
+        <TouchableOpacity style={styles.addButton} onPress={() => {
+          setActionSelectedItem({ sale_date: new Date().toISOString().split('T')[0] });
+          setActionModalMode('add');
+          setActionModalVisible(true);
+        }}>
           <LinearGradient colors={['#10B981', '#059669']} style={styles.gradientBtn}>
             <Plus size={18} color='#FFFFFF' />
             <Text style={styles.addButtonText}>Log Sale</Text>
@@ -162,81 +162,17 @@ export default function SalesEntryScreen({ navigation }) {
         </ScrollView>
       )}
 
-      {/* Add Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Log New Sale</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color='#6B7280' />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Select Enquiry / Customer</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row', paddingVertical: 4 }}>
-                  {enquiries.map(enq => (
-                    <TouchableOpacity 
-                      key={enq.id} 
-                      style={[styles.pill, selectedEnquiry == enq.id && styles.pillActive]}
-                      onPress={() => setSelectedEnquiry(enq.id.toString())}
-                    >
-                      <Text style={[styles.pillText, selectedEnquiry == enq.id && styles.pillTextActive]}>{enq.customer_name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              </View>
-
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>Amount (₹)</Text>
-                  <TextInput 
-                    style={styles.modalInput}
-                    placeholder="0.00"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="numeric"
-                    value={amount}
-                    onChangeText={setAmount}
-                  />
-                </View>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>Sale Date</Text>
-                  <TextInput 
-                    style={styles.modalInput}
-                    placeholder="YYYY-MM-DD"
-                    placeholderTextColor="#94A3B8"
-                    value={saleDate}
-                    onChangeText={setSaleDate}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Notes</Text>
-                <TextInput 
-                  style={[styles.modalInput, { height: 100, textAlignVertical: 'top' }]}
-                  placeholder="Details about the deal..."
-                  placeholderTextColor="#94A3B8"
-                  multiline
-                  value={notes}
-                  onChangeText={setNotes}
-                />
-              </View>
-
-              <TouchableOpacity 
-                style={[styles.submitButton, submitting && { opacity: 0.7 }]} 
-                onPress={handleAddEntry}
-                disabled={submitting}
-              >
-                <Text style={styles.submitButtonText}>{submitting ? 'Saving...' : 'Log Sale'}</Text>
-              </TouchableOpacity>
-              <View style={{ height: 20 }} />
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      {actionModalVisible && (
+        <ActionModals
+          visible={actionModalVisible}
+          mode={actionModalMode}
+          item={actionSelectedItem}
+          schema={createEntrySchema(enquiries)}
+          onClose={() => setActionModalVisible(false)}
+          onSave={handleActionSave}
+          title={actionModalMode === 'add' ? 'Log New Sale' : actionModalMode === 'edit' ? 'Edit Sale' : 'Sale Details'}
+        />
+      )}
     </View>
   );
 }

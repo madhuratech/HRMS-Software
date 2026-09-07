@@ -1,10 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
-import { Clock, Calendar, Search, MapPin, UserCheck, CalendarOff, ChevronLeft, X } from 'lucide-react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, Alert } from 'react-native';
+import { Clock, Calendar, Search, MapPin, UserCheck, CalendarOff, ChevronLeft, X, Eye, Edit2, Trash2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
+import ActionModals from '../../components/common/ActionModals';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 export default function DailyAttendanceScreen({ navigation }) {
+
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState('view');
+  const [actionSelectedItem, setActionSelectedItem] = useState(null);
+
+  const handleActionView = (item) => { setActionSelectedItem(item); setActionModalMode('view'); setActionModalVisible(true); };
+  const handleActionEdit = (item) => { setActionSelectedItem(item); setActionModalMode('edit'); setActionModalVisible(true); };
+  
+  const handleActionDelete = (item) => {
+    Alert.alert('Delete', 'Are you sure you want to delete this item?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+            await apiClient.delete(`/attendance/daily/${item.id || item._id}`);
+            if (typeof fetchData === 'function') fetchData();
+            if (typeof loadData === 'function') loadData();
+            if (typeof fetchDocuments === 'function') fetchDocuments();
+            if (typeof fetchAppraisals === 'function') fetchAppraisals();
+            if (typeof fetchProjects === 'function') fetchProjects();
+          } catch (err) { console.error('Delete error:', err); }
+      }}
+    ]);
+  };
+
+  const handleActionSave = async (updatedItem) => {
+    try {
+      if (updatedItem.id || updatedItem._id) {
+        await apiClient.put(`/attendance/daily/${updatedItem.id || updatedItem._id}`, updatedItem);
+      }
+      setActionModalVisible(false);
+      if (typeof fetchData === 'function') fetchData();
+      if (typeof loadData === 'function') loadData();
+      if (typeof fetchDocuments === 'function') fetchDocuments();
+      if (typeof fetchAppraisals === 'function') fetchAppraisals();
+      if (typeof fetchProjects === 'function') fetchProjects();
+    } catch (err) { console.error('Update error:', err); }
+  };
+
   const [attendance, setAttendance] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('Employee');
@@ -116,7 +155,20 @@ export default function DailyAttendanceScreen({ navigation }) {
           <Text style={{ fontSize: 12, color: '#64748B' }}>{item.work_done}</Text>
         </View>
       )}
-    </View>
+    
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingTop: 12, marginTop: 12, gap: 12 }}>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionView(item)}>
+          <Eye size={18} color="#6B7280" />
+        </TouchableOpacity>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionEdit(item)}>
+          <Edit2 size={18} color="#3B82F6" />
+        </TouchableOpacity>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionDelete(item)}>
+          <Trash2 size={18} color="#EF4444" />
+        </TouchableOpacity>
+      </View>
+    
+</View>
   );
 
   return (
@@ -224,6 +276,13 @@ export default function DailyAttendanceScreen({ navigation }) {
         </View>
       </Modal>
 
+          <ActionModals 
+        visible={actionModalVisible}
+        mode={actionModalMode}
+        item={actionSelectedItem}
+        onClose={() => setActionModalVisible(false)}
+        onSave={handleActionSave}
+      />
     </View>
   );
 }

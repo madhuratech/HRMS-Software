@@ -1,329 +1,299 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from '../context/AuthContext';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { DrawerContentScrollView } from '@react-navigation/drawer';
-import { LayoutDashboard, Building2, Users, CalendarCheck, CalendarOff, DollarSign, UserPlus, ClipboardList, BarChart3, FolderKanban, FileBarChart, Receipt, FileText, LifeBuoy, Settings, ChevronDown, ChevronRight, LogOut, Bird, BookOpen } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import {
+  LayoutDashboard, Building2, Users, CalendarCheck, CalendarOff, DollarSign,
+  UserPlus, ClipboardList, BarChart3, FolderKanban, FileBarChart, Receipt,
+  FileText, LifeBuoy, Settings, ChevronDown, ChevronRight, LogOut,
+  Network, Clock, Sparkles, Calendar, TrendingUp, Activity
+} from 'lucide-react-native';
 
-const superAdminMenuItems = [
-  { id: 'DashboardMain', label: 'Dashboard', icon: LayoutDashboard, path: 'DashboardMain' },
-  { id: 'CompanyProfile', label: 'Company Profile', icon: Building2, path: 'CompanyProfile' },
-  { id: 'Departments', label: 'Departments', icon: Building2, path: 'Departments' },
-  { id: 'Designations', label: 'Designations', icon: Building2, path: 'Designations' },
-  { id: 'Teams', label: 'Teams', icon: Users, path: 'Teams' },
-  { id: 'OrganizationChart', label: 'Organization Chart', icon: Building2, path: 'OrganizationChart' },
-  { id: 'HolidayCalendar', label: 'Holiday Calendar', icon: CalendarOff, path: 'HolidayCalendar' },
-  { id: 'ShiftManagement', label: 'Shift Management', icon: CalendarCheck, path: 'ShiftManagement' },
-  { id: 'EmployeeList', label: 'Employees', icon: Users, path: 'EmployeeList' },
-  { id: 'EmployeeProfile', label: 'Employee Details', icon: UserPlus, path: 'EmployeeProfile' },
-  { id: 'Tasks', label: 'Tasks', icon: FolderKanban, path: 'Tasks' },
-  { id: 'TaskBoard', label: 'Task Board', icon: FolderKanban, path: 'SprintBoard' },
-  { id: 'NewJob', label: 'New Job', icon: ClipboardList, path: 'JobOpenings' },
-  { id: 'TaskDetails', label: 'Task Details', icon: FileText, path: 'TaskDetails' },
-  { id: 'Timesheets', label: 'Timesheets', icon: CalendarCheck, path: 'Timesheets' },
-  { id: 'SalesEnquiries', label: 'Sales Enquiries', icon: DollarSign, path: 'SalesEnquiries' },
-  { id: 'SalesEntry', label: 'Sales Entry', icon: DollarSign, path: 'SalesEntry' },
-  { id: 'CustomerSalesDetails', label: 'Customer Sales Details', icon: Users, path: 'CustomerSalesDetails' },
-  { id: 'FollowUp', label: 'Follow-up', icon: FileText, path: 'FollowUp' },
-  { id: 'Training', label: 'Training', icon: BookOpen, path: 'Training' },
-  { id: 'HelpDesk', label: 'Help Desk', icon: LifeBuoy, path: 'HelpDeskDashboard' },
-  { id: 'SupportTickets', label: 'Support Tickets', icon: LifeBuoy, path: 'Tickets' },
-  { id: 'AnalyticsReports', label: 'Analytics Reports', icon: BarChart3, path: 'AnalyticsReports' },
-  { id: 'SettingsSystem', label: 'Settings', icon: Settings, path: 'SettingsSystem' }
+const employeeMenuItems = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: 'EmployeeDashboard' },
+  { id: 'profile', label: 'My Profile', icon: Users, path: 'EmployeeProfile' },
+  { id: 'attendance', label: 'My Attendance', icon: CalendarCheck, path: 'AttendanceMain' },
+  { id: 'shift', label: 'My Shift', icon: Clock, path: 'ShiftRoster' },
+  { id: 'leave', label: 'My Leave', icon: CalendarOff, path: 'LeaveMain' },
+  { id: 'leave-types', label: 'Leave Types', icon: CalendarOff, path: 'LeaveTypes' },
+  { id: 'holiday-list', label: 'Holiday List', icon: Calendar, path: 'HolidayList' },
+  { id: 'payroll', label: 'My Payroll', icon: DollarSign, path: 'SalaryStructure' },
+  { id: 'tasks', label: 'My Tasks', icon: ClipboardList, path: 'Tasks' },
+  { id: 'team', label: 'My Team', icon: Network, path: 'Teams' },
+  { id: 'performance', label: 'My Performance', icon: BarChart3, path: 'Goals' },
+  { id: 'documents', label: 'My Documents', icon: FileText, path: 'EmployeeDocumentsModule' },
+  { id: 'announcements', label: 'Announcements', icon: Sparkles, path: 'DashboardMain' },
+  { id: 'help', label: 'Help & Support', icon: LifeBuoy, path: 'HelpDeskDashboard' },
+];
+
+const teamLeaderMenuItems = [
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: 'EmployeeDashboard' },
+  { id: 'profile', label: 'My Profile', icon: Users, path: 'EmployeeProfile' },
+  { id: 'my-attendance', label: 'My Attendance', icon: CalendarCheck, path: 'AttendanceMain' },
+  { id: 'my-shift', label: 'My Shift', icon: Clock, path: 'ShiftRoster' },
+  { id: 'my-team', label: 'My Team', icon: Network, path: 'Teams' },
+  { id: 'team-attendance', label: 'Team Attendance', icon: CalendarCheck, path: 'AttendanceReports' },
+  { id: 'projects', label: 'Projects', icon: FolderKanban, path: 'ProjectDashboard' },
+  { id: 'team-tasks', label: 'Team Tasks', icon: ClipboardList, path: 'Tasks' },
+  { id: 'team-performance', label: 'Team Performance', icon: BarChart3, path: 'KPI' },
+  { id: 'my-leave', label: 'My Leave', icon: CalendarOff, path: 'LeaveMain' },
+  { id: 'team-leave', label: 'Team Leave Overview', icon: CalendarOff, path: 'LeaveApproval' },
+  { id: 'holidays', label: 'Holiday List', icon: CalendarOff, path: 'HolidayCalendar' },
+  { id: 'leave-types', label: 'Leave Types', icon: CalendarOff, path: 'LeaveTypes' },
+  { id: 'my-payroll', label: 'My Payroll', icon: DollarSign, path: 'SalaryStructure' },
+  { id: 'help', label: 'Help & Support', icon: LifeBuoy, path: 'HelpDeskDashboard' },
 ];
 
 const menuItems = [
-  { id: 'DashboardMain', label: 'Dashboard', icon: LayoutDashboard, path: 'DashboardMain' },
+  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: 'DashboardMain' },
   {
     id: 'organization', label: 'Organization', icon: Building2,
     children: [
-      { id: 'CompanyProfile', label: 'Company Profile', path: 'CompanyProfile' },
-      { id: 'Departments', label: 'Departments', path: 'Departments' },
-      { id: 'Designations', label: 'Designations', path: 'Designations' },
-      { id: 'Teams', label: 'Teams', path: 'Teams' },
-      { id: 'ShiftManagement', label: 'Shift Management', path: 'ShiftManagement' },
-      { id: 'HolidayCalendar', label: 'Holiday Calendar', path: 'HolidayCalendar' },
-      { id: 'OrganizationChart', label: 'Organization Chart', path: 'OrganizationChart' }
+      { id: 'company-profile', label: 'Company Profile', path: 'CompanyProfile' },
+      { id: 'departments', label: 'Departments', path: 'Departments' },
+      { id: 'designations', label: 'Designations', path: 'Designations' },
+      { id: 'teams', label: 'Teams', path: 'Teams' },
+      { id: 'shift-management', label: 'Shift Management', path: 'ShiftManagement' },
+      { id: 'holiday-calendar', label: 'Holiday Calendar', path: 'HolidayCalendar' },
+      { id: 'organization-chart', label: 'Organization Chart', path: 'OrganizationChart' },
+      { id: 'user-roles', label: 'User Roles & Permissions', path: 'UserRoles' }
     ]
   },
   {
     id: 'employees', label: 'Employees', icon: Users,
     children: [
-      { id: 'EmployeeDirectory', label: 'Employee Directory', path: 'EmployeeDirectory' },
-      { id: 'EmployeeList', label: 'Employee List', path: 'EmployeeList' },
-      { id: 'AddEmployee', label: 'Add Employee', path: 'AddEmployee' },
-      { id: 'EmployeeProfile', label: 'Employee Profile', path: 'EmployeeProfile' },
-      { id: 'EmploymentHistory', label: 'Employment History', path: 'EmploymentHistory' },
-      { id: 'Promotions', label: 'Promotions', path: 'Promotions' },
-      { id: 'Transfers', label: 'Transfers', path: 'Transfers' },
-      { id: 'ExitManagement', label: 'Exit Management', path: 'ExitManagement' },
-      { id: 'EmployeeDocuments', label: 'Employee Documents', path: 'EmployeeDocuments' }
+      { id: 'employee-dashboard', label: 'Employee Dashboard', path: 'EmployeeDashboard' },
+      { id: 'employee-directory', label: 'Employee Directory', path: 'EmployeeDirectory' },
+      { id: 'employee-list', label: 'Employee List', path: 'EmployeeList' },
+      { id: 'add-employee', label: 'Add Employee', path: 'AddEmployee' },
+      { id: 'employee-profile', label: 'Employee Profile', path: 'EmployeeProfile' },
+      { id: 'employment-history', label: 'Employment History', path: 'EmploymentHistory' },
+      { id: 'promotions', label: 'Promotions', path: 'Promotions' },
+      { id: 'transfers', label: 'Transfers', path: 'Transfers' },
+      { id: 'exit-management', label: 'Exit Management', path: 'ExitManagement' },
+      { id: 'employee-documents', label: 'Employee Documents', path: 'EmployeeDocuments' }
     ]
   },
   {
     id: 'attendance', label: 'Attendance', icon: CalendarCheck,
     children: [
-      { id: 'DailyAttendance', label: 'Daily Attendance', path: 'DailyAttendance' },
-      { id: 'GpsAttendance', label: 'GPS Attendance', path: 'AttendanceMain' },
-      { id: 'Regularization', label: 'Regularization', path: 'Regularization' },
-      { id: 'ShiftRoster', label: 'Shift Roster', path: 'ShiftRoster' },
-      { id: 'Overtime', label: 'Overtime', path: 'Overtime' },
-      { id: 'LateArrival', label: 'Late Arrival', path: 'LateArrival' },
-      { id: 'AttendanceReports', label: 'Attendance Reports', path: 'AttendanceReports' }
+      { id: 'daily-attendance', label: 'Daily Attendance', path: 'DailyAttendance' },
+      { id: 'gps-attendance', label: 'GPS Attendance', path: 'AttendanceMain' },
+      { id: 'regularization', label: 'Regularization', path: 'Regularization' },
+      { id: 'shift-roster', label: 'Shift Roster', path: 'ShiftRoster' },
+      { id: 'overtime', label: 'Overtime', path: 'Overtime' },
+      { id: 'late-arrival', label: 'Late Arrival', path: 'LateArrival' },
+      { id: 'punch-locations', label: 'Punch Locations', path: 'AttendanceMain' }
     ]
   },
   {
     id: 'leave-management', label: 'Leave Management', icon: CalendarOff,
     children: [
-      { id: 'LeaveDashboard', label: 'Leave Dashboard', path: 'LeaveMain' },
-      { id: 'LeaveApplications', label: 'Leave Applications', path: 'LeaveApplications' },
-      { id: 'LeaveApproval', label: 'Leave Approval', path: 'LeaveApproval' },
-      { id: 'LeaveBalance', label: 'Leave Balance', path: 'LeaveBalance' },
-      { id: 'LeaveTypes', label: 'Leave Types', path: 'LeaveTypes' },
-      { id: 'HolidayList', label: 'Holiday List', path: 'HolidayList' },
-      { id: 'CompOff', label: 'Comp Off', path: 'CompOff' }
+      { id: 'leave-dashboard', label: 'Leave Dashboard', path: 'LeaveMain' },
+      { id: 'leave-applications', label: 'Leave Applications', path: 'LeaveApplications' },
+      { id: 'leave-approval', label: 'Leave Approval', path: 'LeaveApproval' },
+      { id: 'leave-balance', label: 'Leave Balance', path: 'LeaveBalance' },
+      { id: 'leave-types', label: 'Leave Types', path: 'LeaveTypes' },
+      { id: 'holiday-list', label: 'Holiday List', path: 'HolidayList' },
+      { id: 'comp-off', label: 'Comp Off', path: 'CompOff' }
     ]
   },
   {
     id: 'payroll', label: 'Payroll', icon: DollarSign,
     children: [
-      { id: 'SalaryStructure', label: 'Salary Structure', path: 'SalaryStructure' },
-      { id: 'SalaryComponents', label: 'Salary Components', path: 'SalaryComponents' },
-      { id: 'PayrollProcessing', label: 'Payroll Processing', path: 'PayrollProcessing' },
-      { id: 'GeneratePayslips', label: 'Generate Payslips', path: 'GeneratePayslips' },
-      { id: 'BonusIncentives', label: 'Bonus & Incentives', path: 'BonusIncentives' },
-      { id: 'Reimbursements', label: 'Reimbursements', path: 'Reimbursements' },
-      { id: 'LoansAdvances', label: 'Loans & Advances', path: 'LoansAdvances' },
-      { id: 'TaxManagement', label: 'Tax Management', path: 'TaxManagement' },
-      { id: 'PayrollReports', label: 'Payroll Reports', path: 'PayrollReports' }
+      { id: 'salary-structure', label: 'Salary Structure', path: 'SalaryStructure' },
+      { id: 'salary-components', label: 'Salary Components', path: 'SalaryComponents' },
+      { id: 'payroll-processing', label: 'Payroll Processing', path: 'PayrollProcessing' },
+      { id: 'generate-payslips', label: 'Generate Payslips', path: 'GeneratePayslips' },
+      { id: 'bonus-incentives', label: 'Bonus & Incentives', path: 'BonusIncentives' },
+      { id: 'reimbursements', label: 'Reimbursements', path: 'Reimbursements' },
+      { id: 'loans-advances', label: 'Loans & Advances', path: 'LoansAdvances' },
+      { id: 'tax-management', label: 'Tax Management', path: 'TaxManagement' }
     ]
   },
   {
     id: 'recruitment', label: 'Recruitment', icon: UserPlus,
     children: [
-      { id: 'RecruitmentDashboard', label: 'Dashboard', path: 'RecruitmentDashboard' },
-      { id: 'JobOpenings', label: 'Job Openings', path: 'JobOpenings' },
-      { id: 'Candidates', label: 'Candidates', path: 'Candidates' },
-      { id: 'InterviewSchedule', label: 'Interview Schedule', path: 'InterviewSchedule' },
-      { id: 'OfferLetters', label: 'Offer Letters', path: 'OfferLetters' },
-      { id: 'HiringPipeline', label: 'Hiring Pipeline', path: 'HiringPipeline' }
+      { id: 'recruitment-dashboard', label: 'Dashboard', path: 'RecruitmentDashboard' },
+      { id: 'job-openings', label: 'Job Openings', path: 'JobOpenings' },
+      { id: 'candidates', label: 'Candidates', path: 'Candidates' },
+      { id: 'interview-schedule', label: 'Interview Schedule', path: 'InterviewSchedule' },
+      { id: 'offer-letters', label: 'Offer Letters', path: 'OfferLetters' },
+      { id: 'hiring-pipeline', label: 'Hiring Pipeline', path: 'HiringPipeline' }
     ]
   },
   {
     id: 'onboarding', label: 'Onboarding', icon: ClipboardList,
     children: [
-      { id: 'NewJoiners', label: 'New Joiners', path: 'NewJoiners' },
-      { id: 'DocumentVerification', label: 'Document Verification', path: 'DocumentVerification' },
-      { id: 'AssetAllocation', label: 'Asset Allocation', path: 'AssetAllocation' },
-      { id: 'WelcomeKit', label: 'Welcome Kit', path: 'WelcomeKit' },
-      { id: 'Orientation', label: 'Orientation', path: 'Orientation' },
-      { id: 'Probation', label: 'Probation', path: 'Probation' }
+      { id: 'new-joiners', label: 'New Joiners', path: 'NewJoiners' },
+      { id: 'document-verification', label: 'Document Verification', path: 'DocumentVerification' },
+      { id: 'asset-allocation', label: 'Asset Allocation', path: 'AssetAllocation' },
+      { id: 'welcome-kit', label: 'Welcome Kit', path: 'WelcomeKit' },
+      { id: 'orientation', label: 'Orientation', path: 'Orientation' },
+      { id: 'probation', label: 'Probation', path: 'Probation' }
     ]
   },
   {
     id: 'performance', label: 'Performance', icon: BarChart3,
     children: [
-      { id: 'Goals', label: 'Goals', path: 'Goals' },
-      { id: 'KPI', label: 'KPI', path: 'KPI' },
-      { id: 'KRAs', label: 'KRAs', path: 'KRAs' },
-      { id: 'Appraisals', label: 'Appraisals', path: 'Appraisals' },
-      { id: 'Reviews', label: 'Reviews', path: 'Reviews' },
-      { id: 'Feedback', label: 'Feedback', path: 'Feedback' },
-      { id: 'PromotionsPerformance', label: 'Promotions', path: 'PromotionsPerformance' }
+      { id: 'goals', label: 'Goals', path: 'Goals' },
+      { id: 'kpi', label: 'KPI', path: 'KPI' },
+      { id: 'kras', label: 'KRAs', path: 'KRAs' },
+      { id: 'appraisals', label: 'Appraisals', path: 'Appraisals' },
+      { id: 'reviews', label: 'Reviews', path: 'Reviews' },
+      { id: 'feedback', label: 'Feedback', path: 'Feedback' },
+      { id: 'promotions-performance', label: 'Promotions', path: 'Promotions' }
     ]
   },
   {
     id: 'projects', label: 'Projects', icon: FolderKanban,
     children: [
-      { id: 'ProjectDashboard', label: 'Project Dashboard', path: 'ProjectDashboard' },
-      { id: 'ProjectsList', label: 'Projects', path: 'ProjectsList' },
-      { id: 'Tasks', label: 'Tasks', path: 'Tasks' },
-      { id: 'SprintBoard', label: 'Sprint Board', path: 'SprintBoard' },
-      { id: 'Timesheets', label: 'Timesheets', path: 'Timesheets' },
-      { id: 'Milestones', label: 'Milestones', path: 'Milestones' },
-      { id: 'TeamMembers', label: 'Team Members', path: 'TeamMembers' }
+      { id: 'project-dashboard', label: 'Project Dashboard', path: 'ProjectDashboard' },
+      { id: 'projects-list', label: 'Projects', path: 'ProjectsList' },
+      { id: 'tasks', label: 'Tasks', path: 'Tasks' },
+      { id: 'sprint-board', label: 'Sprint Board', path: 'SprintBoard' },
+      { id: 'timesheets', label: 'Timesheets', path: 'Timesheets' },
+      { id: 'milestones', label: 'Milestones', path: 'Milestones' },
+      { id: 'team-members', label: 'Team Members', path: 'TeamMembers' }
     ]
   },
-  {
-    id: 'reports', label: 'Reports', icon: FileBarChart,
-    children: [
-      { id: 'EmployeeReports', label: 'Employee Reports', path: 'EmployeeReports' },
-      { id: 'AttendanceReportsModule', label: 'Attendance Reports', path: 'AttendanceReportsModule' },
-      { id: 'LeaveReports', label: 'Leave Reports', path: 'LeaveReports' },
-      { id: 'PayrollReportsModule', label: 'Payroll Reports', path: 'PayrollReportsModule' },
-      { id: 'RecruitmentReports', label: 'Recruitment Reports', path: 'RecruitmentReports' },
-      { id: 'PerformanceReports', label: 'Performance Reports', path: 'PerformanceReports' },
-      { id: 'ProjectReports', label: 'Project Reports', path: 'ProjectReports' }
-    ]
-  },
-  {
-    id: 'sales', label: 'Sales', icon: DollarSign,
-    children: [
-      { id: 'SalesEnquiries', label: 'Sales Enquiries', path: 'SalesEnquiries' },
-      { id: 'SalesEntry', label: 'Sales Entry', path: 'SalesEntry' },
-      { id: 'CustomerSalesDetails', label: 'Customer Details', path: 'CustomerSalesDetails' },
-      { id: 'FollowUp', label: 'Follow-ups', path: 'FollowUp' }
-    ]
-  },
+  { id: 'reports', label: 'Reports', icon: FileBarChart, path: 'AnalyticsReports' },
   {
     id: 'expenses', label: 'Expenses', icon: Receipt,
     children: [
-      { id: 'ExpenseClaims', label: 'Expense Claims', path: 'ExpenseClaims' },
-      { id: 'ExpenseCategories', label: 'Expense Categories', path: 'ExpenseCategories' },
-      { id: 'ExpenseApproval', label: 'Expense Approval', path: 'ExpenseApproval' },
-      { id: 'ExpenseReimbursements', label: 'Reimbursements', path: 'ExpenseReimbursements' },
-      { id: 'ExpenseReports', label: 'Expense Reports', path: 'ExpenseReports' }
+      { id: 'expense-claims', label: 'Expense Claims', path: 'ExpenseClaims' },
+      { id: 'expense-categories', label: 'Expense Categories', path: 'ExpenseCategories' },
+      { id: 'expense-approval', label: 'Expense Approval', path: 'ExpenseApproval' },
+      { id: 'expense-reimbursements', label: 'Reimbursements', path: 'Reimbursements' },
+      { id: 'expense-reports', label: 'Expense Reports', path: 'ExpenseReports' }
     ]
   },
   {
     id: 'documents', label: 'Documents', icon: FileText,
     children: [
-      { id: 'EmployeeDocumentsModule', label: 'Employee Documents', path: 'EmployeeDocumentsModule' },
-      { id: 'CompanyDocuments', label: 'Company Documents', path: 'CompanyDocuments' },
-      { id: 'HRPolicies', label: 'HR Policies', path: 'HRPolicies' },
-      { id: 'Templates', label: 'Templates', path: 'Templates' },
-      { id: 'DigitalSignatures', label: 'Digital Signatures', path: 'DigitalSignatures' }
+      { id: 'employee-documents-module', label: 'Employee Documents', path: 'EmployeeDocumentsModule' },
+      { id: 'company-documents', label: 'Company Documents', path: 'CompanyDocuments' },
+      { id: 'hr-policies', label: 'HR Policies', path: 'HRPolicies' },
+      { id: 'templates', label: 'Templates', path: 'Templates' },
+      { id: 'digital-signatures', label: 'Digital Signatures', path: 'DigitalSignatures' }
     ]
   },
   {
     id: 'help-desk', label: 'Help Desk', icon: LifeBuoy,
     children: [
-      { id: 'HelpDeskDashboard', label: 'Dashboard', path: 'HelpDeskDashboard' },
-      { id: 'Tickets', label: 'Tickets', path: 'Tickets' },
-      { id: 'Categories', label: 'Categories', path: 'Categories' },
-      { id: 'Priorities', label: 'Priorities', path: 'Priorities' },
-      { id: 'KnowledgeBase', label: 'Knowledge Base', path: 'KnowledgeBase' },
-      { id: 'HelpDeskReports', label: 'Reports', path: 'HelpDeskReports' }
+      { id: 'help-desk-dashboard', label: 'Dashboard', path: 'HelpDeskDashboard' },
+      { id: 'tickets', label: 'Tickets', path: 'Tickets' },
+      { id: 'categories', label: 'Categories', path: 'Categories' },
+      { id: 'priorities', label: 'Priorities', path: 'Priorities' },
+      { id: 'help-desk-reports', label: 'Reports', path: 'HelpDeskReports' }
     ]
   },
   {
     id: 'settings', label: 'Settings', icon: Settings,
     children: [
-      { id: 'SettingsCompany', label: 'Company Information', path: 'SettingsCompany' },
-      { id: 'SettingsBranding', label: 'Branding', path: 'SettingsBranding' },
-      { id: 'SettingsOrganization', label: 'Organization', path: 'SettingsOrganization' },
-      { id: 'SettingsUsers', label: 'Users & Roles', path: 'SettingsUsers' },
-      { id: 'SettingsHR', label: 'HR Settings', path: 'SettingsHR' },
-      { id: 'SettingsCommunication', label: 'Communication', path: 'SettingsCommunication' },
-      { id: 'SettingsIntegrations', label: 'Integrations', path: 'SettingsIntegrations' },
-      { id: 'SettingsSecurity', label: 'Security', path: 'SettingsSecurity' },
-      { id: 'SettingsSystem', label: 'System', path: 'SettingsSystem' }
+      { id: 'settings-company', label: 'Company Information', path: 'SettingsCompany' },
+      { id: 'settings-branding', label: 'Branding', path: 'SettingsBranding' },
+      { id: 'settings-organization', label: 'Organization', path: 'SettingsOrganization' },
+      { id: 'settings-users', label: 'Users & Roles', path: 'SettingsUsers' },
+      { id: 'settings-hr', label: 'HR Settings', path: 'SettingsHR' },
+      { id: 'settings-communication', label: 'Communication', path: 'SettingsCommunication' },
+      { id: 'settings-integrations', label: 'Integrations', path: 'SettingsIntegrations' },
+      { id: 'settings-security', label: 'Security', path: 'SettingsSecurity' },
+      { id: 'settings-system', label: 'System', path: 'SettingsSystem' }
     ]
-  }
+  },
+  { id: 'ai-assistant', label: 'AI Assistant', icon: Sparkles, path: 'AIAssistant' },
 ];
 
-export default function CustomDrawerContent(props) {
-  const [expandedGroups, setExpandedGroups] = useState(['organization', 'employees']);
+export default function CustomDrawerContent({ navigation, state }) {
   const { user, logout } = useAuth();
+  const insets = useSafeAreaInsets();
   
-  // Filter menu items based on role
-  const getFilteredMenu = () => {
-    // Normalize role string to handle "Super Admin", "SUPER_ADMIN", "Admin", etc.
-    const rawRole = user?.role || user?.role_name || '';
-    const role = rawRole.toUpperCase().replace(' ', '_');
-    
-    // For Super Admin and Admin, grant full access to all menus including Mark Attendance
-    if (role === 'SUPER_ADMIN' || role === 'ADMIN') {
-      return menuItems;
-    }
-    
-    // For Employees, and any other unrecognized roles (Default fallback)
-    return [
-      { id: 'EmployeeDashboard', label: 'Dashboard', icon: LayoutDashboard, path: 'EmployeeDashboard' },
-      {
-        id: 'employees', label: 'My Profile', icon: Users,
-        children: [
-          { id: 'EmployeeProfile', label: 'View Profile', path: 'EmployeeProfile' },
-          { id: 'EmployeeDocuments', label: 'My Documents', path: 'EmployeeDocuments' }
-        ]
-      },
-      {
-        id: 'attendance', label: 'My Attendance', icon: CalendarCheck,
-        children: [
-          { id: 'GpsAttendance', label: 'Mark Attendance', path: 'AttendanceMain' },
-          { id: 'Regularization', label: 'Request Regularization', path: 'Regularization' },
-          { id: 'Overtime', label: 'My Overtime', path: 'Overtime' }
-        ]
-      },
-      {
-        id: 'leave-management', label: 'My Leaves', icon: CalendarOff,
-        children: [
-          { id: 'LeaveDashboard', label: 'Leave Dashboard', path: 'LeaveMain' },
-          { id: 'LeaveBalance', label: 'Leave Balance', path: 'LeaveBalance' },
-          { id: 'HolidayList', label: 'Holiday List', path: 'HolidayList' }
-        ]
-      },
-      {
-        id: 'payroll', label: 'My Payroll', icon: DollarSign,
-        children: [
-          { id: 'SalaryStructure', label: 'Salary Structure', path: 'SalaryStructure' },
-          { id: 'GeneratePayslips', label: 'My Payslips', path: 'GeneratePayslips' },
-          { id: 'Reimbursements', label: 'Reimbursements', path: 'Reimbursements' },
-          { id: 'TaxManagement', label: 'Tax Management', path: 'TaxManagement' }
-        ]
-      },
-      {
-        id: 'expenses', label: 'My Expenses', icon: Receipt,
-        children: [
-          { id: 'ExpenseClaims', label: 'Expense Claims', path: 'ExpenseClaims' }
-        ]
-      },
-      {
-        id: 'projects', label: 'My Work', icon: FolderKanban,
-        children: [
-          { id: 'Tasks', label: 'My Tasks', path: 'Tasks' },
-          { id: 'Timesheets', label: 'Timesheets', path: 'Timesheets' }
-        ]
+  const [expandedGroups, setExpandedGroups] = useState([]);
+
+  const roleStr = String(user?.role || user?.type || '').toUpperCase();
+  const isEmployee = roleStr === 'EMPLOYEE' || roleStr === 'STAFF';
+  const isTeamLeader = roleStr === 'TEAM_LEADER' || roleStr === 'TEAM LEADER';
+  
+  const targetMenu = isEmployee ? employeeMenuItems : isTeamLeader ? teamLeaderMenuItems : menuItems;
+
+  const currentRouteName = state?.routeNames[state?.index] || '';
+
+  // Auto-expand group containing current route
+  useEffect(() => {
+    const matchingGroup = targetMenu.find(item => {
+      if (item.children) {
+        return item.children.some(child => child.path === currentRouteName);
       }
-    ].filter(Boolean); // removes undefined if not found
-  };
+      return false;
+    });
 
-  const filteredMenuItems = getFilteredMenu();
-
-  // Note: we're using current route name to handle active states
-  const currentRouteName = props.state.routes[props.state.index].name;
+    if (matchingGroup) {
+      setExpandedGroups([matchingGroup.id]);
+    }
+  }, [currentRouteName, targetMenu]);
 
   const toggleGroup = (groupId) => {
     setExpandedGroups(prev =>
-      prev.includes(groupId)
-        ? prev.filter(id => id !== groupId)
-        : [groupId] // Accordion mode: only one open at a time
+      prev.includes(groupId) ? prev.filter(id => id !== groupId) : [groupId] // collapse others or just toggle? web just toggles one: `prev.includes(groupId) ? [] : [groupId]`
     );
+  };
+
+  const handleNav = (path) => {
+    if (path) {
+      navigation.navigate(path);
+    }
   };
 
   const renderMenuItem = (item) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedGroups.includes(item.id);
-
     const isActive = item.path === currentRouteName || (hasChildren && item.children.some(child => child.path === currentRouteName));
+    const isAIAssistant = item.id === 'ai-assistant';
 
     if (hasChildren) {
       return (
-        <View key={item.id} style={styles.menuGroup}>
+        <View key={item.id}>
           <TouchableOpacity
-            style={[styles.menuItem, isActive && styles.menuItemActive]}
             onPress={() => toggleGroup(item.id)}
+            style={[
+              styles.menuItem,
+              isActive ? styles.menuItemActive : null
+            ]}
           >
-            <item.icon size={18} color={isActive ? '#ffffff' : '#94a3b8'} style={styles.menuIcon} />
-            <Text style={[styles.menuLabel, isActive && styles.menuLabelActive]}>{item.label}</Text>
-            {isExpanded ? (
-              <ChevronDown size={16} color={isActive ? '#ffffff' : '#94a3b8'} />
+            {item.icon ? (
+              <item.icon size={18} color={isActive ? '#FFFFFF' : '#94A3B8'} />
             ) : (
-              <ChevronRight size={16} color={isActive ? '#ffffff' : '#94a3b8'} />
+              <Activity size={18} color={isActive ? '#FFFFFF' : '#94A3B8'} />
+            )}
+            <Text style={[styles.menuItemText, isActive ? styles.menuItemTextActive : null]}>
+              {item.label}
+            </Text>
+            {isExpanded ? (
+              <ChevronDown size={16} color={isActive ? '#FFFFFF' : '#94A3B8'} />
+            ) : (
+              <ChevronRight size={16} color={isActive ? '#FFFFFF' : '#94A3B8'} />
             )}
           </TouchableOpacity>
           
           {isExpanded && (
-            <View style={styles.submenu}>
+            <View style={styles.subMenuContainer}>
               {item.children.map(child => {
-                const isChildActive = currentRouteName === child.path;
+                const isChildActive = child.path === currentRouteName;
                 return (
                   <TouchableOpacity
                     key={child.id}
-                    style={[styles.submenuItem, isChildActive && styles.submenuItemActive]}
-                    onPress={() => props.navigation.navigate(child.path)}
+                    onPress={() => handleNav(child.path)}
+                    style={[
+                      styles.subMenuItem,
+                      isChildActive ? styles.subMenuItemActive : null
+                    ]}
                   >
-                    <Text style={[styles.submenuLabel, isChildActive && styles.submenuLabelActive]}>
+                    <Text style={[
+                      styles.subMenuItemText,
+                      isChildActive ? styles.subMenuItemTextActive : null
+                    ]}>
                       {child.label}
                     </Text>
                   </TouchableOpacity>
@@ -338,261 +308,227 @@ export default function CustomDrawerContent(props) {
     return (
       <TouchableOpacity
         key={item.id}
-        style={[styles.menuItem, isActive && styles.menuItemActive]}
-        onPress={() => props.navigation.navigate(item.path)}
+        onPress={() => handleNav(item.path)}
+        style={[
+          styles.menuItem,
+          isActive
+            ? (isAIAssistant ? styles.aiMenuItemActive : styles.menuItemActive)
+            : null
+        ]}
       >
-        <item.icon size={18} color={isActive ? '#ffffff' : '#94a3b8'} style={styles.menuIcon} />
-        <Text style={[styles.menuLabel, isActive && styles.menuLabelActive]}>{item.label}</Text>
+        {item.icon ? (
+          <item.icon
+            size={18}
+            color={isActive ? '#FFFFFF' : (isAIAssistant ? '#8B5CF6' : '#94A3B8')}
+          />
+        ) : (
+          <Activity
+            size={18}
+            color={isActive ? '#FFFFFF' : (isAIAssistant ? '#8B5CF6' : '#94A3B8')}
+          />
+        )}
+        <Text style={[
+          styles.menuItemText,
+          isActive ? styles.menuItemTextActive : (isAIAssistant ? { color: '#8B5CF6', fontWeight: 'bold' } : null)
+        ]}>
+          {item.label}
+        </Text>
       </TouchableOpacity>
     );
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={{ flex: 1 }}>
-      {/* Header Logo */}
-      <View style={styles.header}>
-        <View style={styles.headerContent}>
-          <View style={styles.logoBox}>
-            <Image 
-              source={require('../../assets/logo.png')} 
-              style={{ width: '100%', height: '100%', borderRadius: 8 }} 
-              resizeMode="contain" 
-            />
-          </View>
-          <View>
-            <Text style={styles.brandTitle}>MADHURA HRMS</Text>
-            <Text style={styles.brandSubtitle}>HRMS</Text>
-          </View>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      {/* Brand Header */}
+      <View style={styles.brandHeader}>
+        <View style={styles.brandIconContainer}>
+           <LinearGradient 
+              colors={['#3B82F6', '#1D4ED8']} 
+              style={styles.brandIconGradient} 
+            >
+             <TrendingUp size={24} color="#FFFFFF" />
+           </LinearGradient>
+        </View>
+        <View>
+          <Text style={styles.brandTitle}>HAWKEYE NEST</Text>
+          <Text style={styles.brandSubtitle}>HRMS</Text>
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={styles.navScroll}>
-        <View style={styles.navContainer}>
-          {filteredMenuItems.map(item => renderMenuItem(item))}
-        </View>
+      {/* Navigation List */}
+      <ScrollView 
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
+        {targetMenu.map(item => renderMenuItem(item))}
       </ScrollView>
 
-      {/* Need Help Support Card */}
-      <View style={styles.supportBox}>
-        <View style={styles.supportInner}>
-          <View style={styles.supportHeader}>
-            <Text style={styles.supportTitle}>Need Help?</Text>
-            <View style={styles.supportIconBox}>
-              <Text style={{ fontSize: 12 }}>🎧</Text>
+      {/* User Profile Footer */}
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <View style={styles.profileContainer}>
+          <TouchableOpacity 
+            style={styles.profileInfo}
+            onPress={() => handleNav(isEmployee ? 'EmployeeProfile' : 'CompanyProfile')}
+          >
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+              </Text>
             </View>
-          </View>
-          <Text style={styles.supportText}>Our support team is ready to help you.</Text>
-          <TouchableOpacity style={styles.supportBtn}>
-            <Text style={styles.supportBtnText}>Contact Support</Text>
+            <View style={styles.profileTextContainer}>
+              <Text style={styles.profileName} numberOfLines={1}>{user?.name || 'User Name'}</Text>
+              <Text style={styles.profileRole} numberOfLines={1}>{user?.employeeId || user?.role || user?.type || 'User'}</Text>
+            </View>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={logout} style={styles.logoutBtn} hitSlop={{top: 10, bottom: 10, left: 10, right: 10}}>
+            <LogOut size={18} color="#94A3B8" />
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* User Profile */}
-      <View style={styles.footer}>
-        <View style={styles.profileBox}>
-          <View style={styles.profileAvatar}>
-            <Text style={styles.profileInitials}>
-              {user?.name ? user.name.substring(0, 2).toUpperCase() : 'SA'}
-            </Text>
-          </View>
-          <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user?.name || 'Super Admin'}</Text>
-            <Text style={styles.profileRole}>{user?.role?.replace('_', ' ') || 'Administrator'}</Text>
-          </View>
-          <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-            <LogOut size={16} color="#94a3b8" />
-          </TouchableOpacity>
-        </View>
-      </View>
-      </View>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F172A', // slate-900
+    backgroundColor: '#0F172A', // slate-900 matching web
   },
-  header: {
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#1E293B', // slate-800
-  },
-  headerContent: {
+  brandHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
   },
-  logoBox: {
+  brandIconContainer: {
+    marginRight: 12,
+  },
+  brandIconGradient: {
     width: 40,
     height: 40,
-    backgroundColor: '#2563EB', // blue-600 matches web logo bg
-    borderRadius: 8,
+    borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   brandTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#FFFFFF',
-    letterSpacing: 0.5,
+    letterSpacing: -0.5,
   },
   brandSubtitle: {
     fontSize: 10,
-    color: '#94A3B8', // slate-400
-    textTransform: 'uppercase',
+    color: '#93C5FD', // blue-300
+    fontWeight: 'bold',
     letterSpacing: 1.5,
+    marginTop: 2,
   },
-  navScroll: {
+  scrollView: {
     flex: 1,
   },
-  navContainer: {
+  scrollContent: {
     padding: 12,
-    gap: 4,
-  },
-  menuGroup: {
-    marginBottom: 4,
+    paddingBottom: 24,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderRadius: 8,
+    marginBottom: 4,
   },
   menuItemActive: {
     backgroundColor: '#2563EB', // blue-600
-    shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 3,
   },
-  menuIcon: {
-    marginRight: 12,
+  aiMenuItemActive: {
+    backgroundColor: '#7C3AED', // violet-600
   },
-  menuLabel: {
+  menuItemText: {
     flex: 1,
     fontSize: 14,
     fontWeight: '500',
-    color: '#94A3B8', // slate-400
+    color: '#CBD5E1', // slate-300
+    marginLeft: 12,
   },
-  menuLabelActive: {
+  menuItemTextActive: {
     color: '#FFFFFF',
-    fontWeight: '600',
   },
-  submenu: {
+  subMenuContainer: {
+    marginLeft: 16,
     marginTop: 2,
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  submenuItem: {
-    paddingVertical: 8,
-    paddingLeft: 44,
+  subMenuItem: {
+    paddingVertical: 10,
+    paddingLeft: 40,
     paddingRight: 16,
     borderRadius: 8,
-    marginBottom: 2,
   },
-  submenuItemActive: {
-    backgroundColor: '#2563EB', // blue-600
+  subMenuItemActive: {
+    backgroundColor: '#2563EB',
   },
-  submenuLabel: {
-    fontSize: 14,
+  subMenuItemText: {
+    fontSize: 13,
     color: '#94A3B8', // slate-400
   },
-  submenuLabelActive: {
+  subMenuItemTextActive: {
     color: '#FFFFFF',
     fontWeight: '500',
   },
-  supportBox: {
-    padding: 12,
-  },
-  supportInner: {
-    backgroundColor: '#1E293B', // slate-800
-    borderRadius: 12,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#334155', // slate-700
-  },
-  supportHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-  },
-  supportTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  supportIconBox: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  supportText: {
-    fontSize: 11,
-    color: '#94A3B8', // slate-400
-    marginBottom: 10,
-    lineHeight: 16,
-  },
-  supportBtn: {
-    width: '100%',
-    height: 32,
-    backgroundColor: '#2563EB', // blue-600
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  supportBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '600',
-  },
   footer: {
-    padding: 12,
+    paddingHorizontal: 16,
+    paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#1E293B', // slate-800
+    borderTopColor: 'rgba(255,255,255,0.05)',
   },
-  profileBox: {
+  profileContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1E293B', // slate-800
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 12,
     padding: 12,
-    borderRadius: 8,
-    gap: 12,
-  },
-  profileAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#334155', // slate-700
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  profileInitials: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
   },
   profileInfo: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(59,130,246,0.2)', // blue-500/20
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#60A5FA', // blue-400
+  },
+  profileTextContainer: {
+    flex: 1,
+    marginLeft: 12,
   },
   profileName: {
-    color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: '#F8FAFC',
   },
   profileRole: {
-    color: '#94A3B8', // slate-400
     fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 2,
   },
   logoutBtn: {
-    padding: 4,
+    padding: 8,
   }
 });

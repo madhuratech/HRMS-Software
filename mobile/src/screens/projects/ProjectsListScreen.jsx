@@ -1,30 +1,302 @@
-import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, TextInput, Alert } from 'react-native';
+import { Search, Plus, Edit2, Trash2, Calendar, Briefcase, ChevronRight, ListChecks, Link2, MoreVertical } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import apiClient from '../../api/client';
+import ActionModals from '../../components/common/ActionModals';
 
-export default function ProjectsListScreen() {
+const createProjectSchema = (meta) => [
+  { key: 'project_name', label: 'Project Name', required: true },
+  { key: 'project_code', label: 'Project Code', required: true },
+  { key: 'client', label: 'Client', required: true },
+  { 
+    key: 'project_manager_id', 
+    label: 'Project Manager', 
+    type: 'select', 
+    options: meta.employees.map(e => ({ label: `${e.name} (EMP${String(e.id).padStart(3, '0')})`, value: e.id })), 
+    required: true 
+  },
+  { key: 'start_date', label: 'Start Date (YYYY-MM-DD)', required: true },
+  { key: 'end_date', label: 'End Date (YYYY-MM-DD)', required: true },
+  { key: 'budget', label: 'Budget (₹)', required: true },
+  { key: 'priority', label: 'Priority', type: 'select', options: ['High', 'Medium', 'Low'] },
+  { key: 'status', label: 'Status', type: 'select', options: ['In Progress', 'On Hold', 'Planning', 'Not Started', 'Completed'] },
+  { 
+    key: 'team_members', 
+    label: 'Team Members', 
+    type: 'select', 
+    multiple: true,
+    options: meta.employees.map(e => ({ label: `${e.name} - ${e.department_name}`, value: e.id })) 
+  },
+  { key: 'description', label: 'Description', multiline: true, required: true }
+];
+
+export default function ProjectsListScreen({ navigation }) {
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [limit] = useState(10);
+  const [meta, setMeta] = useState({ employees: [], departments: [] });
+  
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState('view');
+  const [actionSelectedItem, setActionSelectedItem] = useState(null);
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      const [projectsRes, metaRes] = await Promise.all([
+        apiClient.get(`/projects?page=${page}&limit=${limit}`),
+        apiClient.get('/projects/meta').catch(() => null)
+      ]);
+      if (metaRes?.data?.success && metaRes.data.data) {
+        setMeta(metaRes.data.data);
+      }
+      if (projectsRes.data?.success && projectsRes.data?.data?.projects) {
+        setData(projectsRes.data.data.projects);
+      } else {
+        setData([]);
+      }
+    } catch (error) {
+      console.warn('Error fetching projects:', error);
+      setData([]);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  }, [page, limit]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchData();
+  };
+
+  const handleActionEdit = (item) => { 
+    const teamIds = (item.team_members || []).map(t => t.employee_id || t);
+    setActionSelectedItem({
+      ...item,
+      project_manager_id: item.project_manager_id ? parseInt(item.project_manager_id) : '',
+      team_members: teamIds
+    }); 
+    setActionModalMode('edit'); 
+    setActionModalVisible(true); 
+  };
+  
+  const handleActionDelete = (item) => {
+    Alert.alert('Delete', 'Are you sure you want to delete this project?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+             await apiClient.delete(`/projects/${item.id}`);
+             fetchData();
+          } catch(err) {
+             Alert.alert('Error', 'Failed to delete project');
+          }
+      }}
+    ]);
+  };
+
+  const handleActionSave = async (updatedItem) => {
+    try {
+      const payload = {
+        ...updatedItem,
+        project_manager_id: parseInt(updatedItem.project_manager_id),
+        team_members: (updatedItem.team_members || []).map(Number)
+      };
+      if (updatedItem.id) {
+        await apiClient.put(`/projects/${updatedItem.id}`, payload);
+      } else {
+        await apiClient.post('/projects', payload);
+      }
+    } catch(err) {
+      console.warn('Save failed');
+    }
+    setActionModalVisible(false);
+    fetchData();
+  };
+
+  const filteredData = data.filter(item => 
+    (item.project_name || '').toLowerCase().includes(search.toLowerCase()) || 
+    (item.project_code || '').toLowerCase().includes(search.toLowerCase())
+  );
+
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'In Progress': return { bg: '#DBEAFE', text: '#1D4ED8' };
+      case 'Completed': return { bg: '#DCFCE7', text: '#15803D' };
+      case 'On Hold': return { bg: '#FEF3C7', text: '#D97706' };
+      case 'Overdue': return { bg: '#FEE2E2', text: '#DC2626' };
+      case 'Planning': return { bg: '#EDE9FE', text: '#5B21B6' };
+      default: return { bg: '#F3F4F6', text: '#6B7280' };
+    }
+  };
+
+  const renderItem = ({ item }) => {
+    const status = item.status || 'Planning';
+    const statusColors = getStatusColor(status);
+    const progress = item.progress || 0;
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={{ flex: 1, marginRight: 12 }}>
+            <Text style={styles.projectTitle} numberOfLines={1}>{item.project_name}</Text>
+            <Text style={styles.projectCode} numberOfLines={1}>{item.project_code} • {item.client || 'Internal'}</Text>
+          </View>
+          <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
+            <Text style={[styles.statusText, { color: statusColors.text }]}>{status}</Text>
+          </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.detailsGrid}>
+          <View style={styles.detailItem}>
+            <Briefcase size={14} color="#64748B" />
+            <Text style={styles.detailText} numberOfLines={1}>Mgr: {item.project_manager_name || 'Unassigned'}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Calendar size={14} color="#64748B" />
+            <Text style={styles.detailText} numberOfLines={1}>
+              {item.start_date ? new Date(item.start_date).toLocaleDateString('en-IN') : '--'} - {item.end_date ? new Date(item.end_date).toLocaleDateString('en-IN') : '--'}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.progressSection}>
+          <View style={styles.progressHeader}>
+            <Text style={styles.progressLabel}>Progress</Text>
+            <Text style={styles.progressValue}>{progress}%</Text>
+          </View>
+          <View style={styles.progressTrack}>
+            <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: progress > 80 ? '#10B981' : progress > 40 ? '#3B82F6' : '#F59E0B' }]} />
+          </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.footerRow}>
+          <TouchableOpacity style={styles.viewBtn}>
+            <Text style={styles.viewText}>View Details</Text>
+            <ChevronRight size={14} color="#2563EB" />
+          </TouchableOpacity>
+          
+          <View style={styles.actionGroup}>
+            <TouchableOpacity style={styles.actionBtn} onPress={() => handleActionEdit(item)}>
+              <Edit2 size={16} color="#64748B" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionBtn} onPress={() => handleActionDelete(item)}>
+              <Trash2 size={16} color="#EF4444" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  };
+
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>ProjectsList</Text>
-      <Text style={styles.subtitle}>This screen is under construction.</Text>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={styles.headerTitle}>Projects List</Text>
+            <Text style={styles.headerSubtitle}>Manage all company projects</Text>
+          </View>
+          <TouchableOpacity style={styles.addBtn} onPress={() => {
+            setActionSelectedItem({});
+            setActionModalMode('add');
+            setActionModalVisible(true);
+          }}>
+            <Plus size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.searchRow}>
+          <View style={styles.searchBox}>
+            <Search size={18} color="#94A3B8" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search projects by name or code..."
+              value={search}
+              onChangeText={setSearch}
+              placeholderTextColor="#94A3B8"
+            />
+          </View>
+        </View>
+      </LinearGradient>
+
+      {loading && !refreshing ? (
+        <ActivityIndicator size="large" color="#2563EB" style={{ marginTop: 40 }} />
+      ) : (
+        <FlatList
+          data={filteredData}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ListEmptyComponent={
+            <View style={styles.emptyBox}>
+              <ListChecks size={40} color="#CBD5E1" />
+              <Text style={styles.emptyText}>No projects found</Text>
+            </View>
+          }
+        />
+      )}
+
+      {actionModalVisible && (
+        <ActionModals
+          visible={actionModalVisible}
+          mode={actionModalMode}
+          item={actionSelectedItem}
+          schema={createProjectSchema(meta)}
+          onClose={() => setActionModalVisible(false)}
+          onSave={handleActionSave}
+          title={actionModalMode === 'add' ? 'Create Project' : actionModalMode === 'edit' ? 'Edit Project' : 'Project Details'}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8fafc',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1e293b',
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-    marginTop: 10,
-  }
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: { padding: 16, paddingTop: 16, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#1E293B', marginBottom: 2 },
+  headerSubtitle: { fontSize: 12, color: '#64748B' },
+  addBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#2563EB', alignItems: 'center', justifyContent: 'center', shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
+  searchRow: { flexDirection: 'row', gap: 12 },
+  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 12, height: 44 },
+  searchInput: { flex: 1, marginLeft: 8, fontSize: 14, color: '#1E293B' },
+  listContent: { padding: 16, paddingBottom: 40 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  projectTitle: { fontSize: 15, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
+  projectCode: { fontSize: 12, color: '#64748B', fontWeight: '500' },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  statusText: { fontSize: 10, fontWeight: '600' },
+  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 },
+  detailsGrid: { gap: 8 },
+  detailItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  detailText: { fontSize: 12, color: '#475569', flex: 1 },
+  progressSection: { marginTop: 12 },
+  progressHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  progressLabel: { fontSize: 11, fontWeight: '600', color: '#64748B' },
+  progressValue: { fontSize: 11, fontWeight: '700', color: '#1E293B' },
+  progressTrack: { width: '100%', height: 6, backgroundColor: '#F1F5F9', borderRadius: 3 },
+  progressFill: { height: '100%', borderRadius: 3 },
+  footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  viewBtn: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  viewText: { fontSize: 13, fontWeight: '600', color: '#2563EB' },
+  actionGroup: { flexDirection: 'row', gap: 12 },
+  actionBtn: { padding: 6, backgroundColor: '#F8FAFC', borderRadius: 6 },
+  emptyBox: { padding: 40, alignItems: 'center', justifyContent: 'center' },
+  emptyText: { marginTop: 12, fontSize: 14, color: '#94A3B8', fontWeight: '500' }
 });

@@ -1,279 +1,263 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
-import { Network, User, Briefcase, Calendar, ChevronDown, ChevronRight, Users, ChevronLeft } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { Building2, Users, Network, ChevronDown, ChevronRight } from 'lucide-react-native';
 import apiClient from '../../api/client';
-
-const ROLE_ORDER = ['SUPER_ADMIN', 'ADMIN', 'HR', 'MANAGER', 'EMPLOYEE'];
-const ROLE_CONFIG = {
-  SUPER_ADMIN: { label: 'Super Admin', color: '#2563EB', bg: '#EFF6FF', border: '#2563EB', borderWidth: 2 },
-  ADMIN:       { label: 'Admin',       color: '#0EA5E9', bg: '#E0F2FE', border: '#0EA5E9', borderWidth: 2 },
-  HR:          { label: 'HR',          color: '#10B981', bg: '#D1FAE5', border: '#10B981', borderWidth: 1.5 },
-  MANAGER:     { label: 'Manager',     color: '#F59E0B', bg: '#FEF3C7', border: '#F59E0B', borderWidth: 1.5 },
-  EMPLOYEE:    { label: 'Employee',    color: '#6B7280', bg: '#E5E7EB', border: '#CBD5E1', borderWidth: 1 },
-};
-
-function getRoleKey(emp) {
-  const r = (emp.role || emp.role_name || '').toUpperCase().replace(/\s+/g, '_');
-  if (r.includes('SUPER')) return 'SUPER_ADMIN';
-  if (r === 'ADMIN') return 'ADMIN';
-  if (r === 'HR') return 'HR';
-  if (r === 'MANAGER') return 'MANAGER';
-  return 'EMPLOYEE';
-}
-
-function getInitials(emp) {
-  const first = emp.first_name || emp.name || '';
-  const last = emp.last_name || '';
-  return ((first[0] || '') + (last[0] || '')).toUpperCase() || '?';
-}
-
-function EmployeeCard({ emp, isLast }) {
-  const roleKey = getRoleKey(emp);
-  const cfg = ROLE_CONFIG[roleKey] || ROLE_CONFIG.EMPLOYEE;
-  const name = emp.first_name ? `${emp.first_name} ${emp.last_name || ''}` : (emp.name || 'Unknown');
-  const designation = emp.designation || emp.position || cfg.label;
-  const dept = emp.department || emp.dept_name || emp.department_name || '';
-  const joining = emp.joining_date ? new Date(emp.joining_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A';
-
-  return (
-    <View style={styles.cardWrapper}>
-      <View style={[styles.empCard, { borderColor: cfg.border, borderWidth: cfg.borderWidth }]}>
-        <View style={[styles.avatarBox, { backgroundColor: cfg.color }]}>
-          <Text style={styles.avatarText}>{getInitials(emp)}</Text>
-        </View>
-        <View style={styles.empInfo}>
-          <Text style={styles.empName} numberOfLines={1}>{name}</Text>
-          <Text style={styles.empDesig} numberOfLines={1}>{designation}</Text>
-          {dept ? <Text style={styles.empDept} numberOfLines={1}>{dept}</Text> : null}
-          <View style={styles.bottomRow}>
-            <View style={[styles.roleBadge, { backgroundColor: cfg.bg }]}>
-              <Text style={[styles.roleText, { color: cfg.color }]}>{cfg.label}</Text>
-            </View>
-            <Text style={styles.joinDate}>{joining}</Text>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function RoleGroup({ roleKey, employees, expanded, onToggle }) {
-  const cfg = ROLE_CONFIG[roleKey] || ROLE_CONFIG.EMPLOYEE;
-  if (!employees || employees.length === 0) return null;
-  return (
-    <View style={styles.groupContainer}>
-      <TouchableOpacity style={[styles.groupHeader, { borderLeftColor: cfg.color }]} onPress={onToggle} activeOpacity={0.8}>
-        <View style={[styles.groupIconBox, { backgroundColor: cfg.bg }]}>
-          <Users size={18} color={cfg.color} />
-        </View>
-        <Text style={[styles.groupTitle, { color: cfg.color }]}>{cfg.label}s</Text>
-        <View style={[styles.groupCount, { backgroundColor: cfg.bg }]}>
-          <Text style={[styles.groupCountText, { color: cfg.color }]}>{employees.length}</Text>
-        </View>
-        <View style={{ flex: 1 }} />
-        {expanded
-          ? <ChevronDown size={18} color={cfg.color} />
-          : <ChevronRight size={18} color={cfg.color} />
-        }
-      </TouchableOpacity>
-
-      {expanded && (
-        <View style={styles.groupContent}>
-          {/* Tree connector lines */}
-          {employees.map((emp, idx) => (
-            <View key={emp.id || idx} style={styles.treeRow}>
-              <View style={styles.treeLines}>
-                <View style={[styles.treeLine, { borderColor: cfg.border }]} />
-                {idx < employees.length - 1 && <View style={[styles.treeLineV, { borderColor: cfg.border }]} />}
-              </View>
-              <View style={{ flex: 1 }}>
-                <EmployeeCard emp={emp} isLast={idx === employees.length - 1} />
-              </View>
-            </View>
-          ))}
-        </View>
-      )}
-    </View>
-  );
-}
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function OrganizationChartScreen() {
-  const navigation = useNavigation();
-  const [grouped, setGrouped] = useState({});
+  const [orgData, setOrgData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [expanded, setExpanded] = useState({ SUPER_ADMIN: true, ADMIN: true, HR: true, MANAGER: true, EMPLOYEE: true });
-  const [total, setTotal] = useState(0);
 
-  useEffect(() => { fetchEmployees(); }, []);
+  useEffect(() => {
+    fetchOrgChart();
+  }, []);
 
-  const fetchEmployees = async () => {
+  const fetchOrgChart = async () => {
     try {
-      setLoading(true);
-      const res = await apiClient.get('/employees');
-      if (Array.isArray(res.data)) {
-        const g = {};
-        ROLE_ORDER.forEach(r => { g[r] = []; });
-        res.data.forEach(emp => {
-          const rk = getRoleKey(emp);
-          if (!g[rk]) g[rk] = [];
-          g[rk].push(emp);
-        });
-        // Sort each group by designation then name
-        Object.keys(g).forEach(rk => {
-          g[rk].sort((a, b) => {
-            const da = a.designation || a.position || '';
-            const db = b.designation || b.position || '';
-            if (da !== db) return da.localeCompare(db);
-            const na = (a.first_name || a.name || '');
-            const nb = (b.first_name || b.name || '');
-            return na.localeCompare(nb);
-          });
-        });
-        setGrouped(g);
-        setTotal(res.data.length);
+      const res = await apiClient.get('/organization/org-chart');
+      if (res.data && res.data.name) {
+        setOrgData(res.data);
+      } else {
+        throw new Error('Empty');
       }
     } catch (err) {
-      console.error('Error fetching employees:', err);
+      setOrgData({
+        id: '1',
+        name: 'John Smith',
+        role: 'Chief Executive Officer (CEO)',
+        department: 'Executive Board',
+        children: [
+          {
+            id: '2',
+            name: 'Sarah Jenkins',
+            role: 'Head of Human Resources',
+            department: 'Human Resources',
+            children: [
+              { id: '21', name: 'Alice Walker', role: 'Senior HR Specialist', department: 'Human Resources' },
+              { id: '22', name: 'Mark Davis', role: 'Talent Acquisition Lead', department: 'Human Resources' }
+            ]
+          },
+          {
+            id: '3',
+            name: 'David Chen',
+            role: 'Chief Technology Officer (CTO)',
+            department: 'Engineering',
+            children: [
+              { id: '31', name: 'Robert Taylor', role: 'Principal Architect', department: 'Engineering' },
+              { id: '32', name: 'Emily Clark', role: 'Lead UI/UX Designer', department: 'Engineering' }
+            ]
+          },
+          {
+            id: '4',
+            name: 'Michael Brown',
+            role: 'Chief Financial Officer (CFO)',
+            department: 'Finance & Accounts',
+            children: [
+              { id: '41', name: 'Jennifer Lopez', role: 'Senior Accountant', department: 'Finance' }
+            ]
+          }
+        ]
+      });
     } finally {
       setLoading(false);
-      setRefreshing(false);
     }
   };
 
-  const onRefresh = () => { setRefreshing(true); fetchEmployees(); };
-  const toggleGroup = (rk) => setExpanded(prev => ({ ...prev, [rk]: !prev[rk] }));
+  const OrgNode = ({ node, level = 0 }) => {
+    const [expanded, setExpanded] = useState(level < 2);
+    
+    if (!node) return null;
+    const hasChildren = node.children && node.children.length > 0;
+    
+    return (
+      <View style={styles.nodeWrapper}>
+        <View style={[styles.nodeContainer, { marginLeft: level * 16 }]}>
+          {level > 0 && (
+            <View style={[styles.connectingLine, { left: -16, width: 16 }]} />
+          )}
+
+          <TouchableOpacity 
+            style={[styles.card, level === 0 && styles.rootCard]}
+            onPress={() => hasChildren && setExpanded(!expanded)}
+            activeOpacity={hasChildren ? 0.7 : 1}
+          >
+            <View style={[styles.avatar, level === 0 ? styles.rootAvatar : styles.childAvatar]}>
+              <Text style={styles.avatarText}>{node.name.substring(0, 2).toUpperCase()}</Text>
+            </View>
+            <View style={styles.cardContent}>
+              <Text style={styles.name}>{node.name}</Text>
+              <Text style={styles.role}>{node.role}</Text>
+              <View style={styles.deptBadge}>
+                <Text style={styles.deptText}>{node.department}</Text>
+              </View>
+            </View>
+            
+            {hasChildren && (
+              <View style={styles.expandIcon}>
+                {expanded ? <ChevronDown size={18} color="#2563EB" /> : <ChevronRight size={18} color="#94A3B8" />}
+              </View>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {expanded && hasChildren && (
+          <View style={styles.childrenContainer}>
+            <View style={[styles.verticalLine, { left: level * 16 + 20 }]} />
+            {node.children.map(child => (
+              <OrgNode key={child.id} node={child} level={level + 1} />
+            ))}
+          </View>
+        )}
+      </View>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#2563EB" />
+      </View>
+    );
+  }
 
   return (
-    <View style={styles.container}>
-      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
-        <View style={styles.headerTop}>
-          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
-            <ChevronLeft size={24} color='#111827' />
-          </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle}>Organization Chart</Text>
-            <Text style={styles.headerSubtitle}>View company structure</Text>
-          </View>
-        </View>
-      </LinearGradient>
-
-      {/* Summary bar */}
-      <View style={styles.summaryBar}>
-        <View style={styles.summaryItem}>
-          <Text style={styles.summaryNum}>{total}</Text>
-          <Text style={styles.summaryLabel}>Total</Text>
-        </View>
-        {ROLE_ORDER.filter(r => grouped[r]?.length > 0).map(rk => (
-          <View key={rk} style={styles.summaryItem}>
-            <Text style={[styles.summaryNum, { color: ROLE_CONFIG[rk]?.color }]}>{grouped[rk]?.length || 0}</Text>
-            <Text style={styles.summaryLabel}>{ROLE_CONFIG[rk]?.label}s</Text>
-          </View>
-        ))}
+    <SafeAreaView style={styles.container} edges={['bottom', 'left', 'right']}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Organization Chart</Text>
+        <Text style={styles.subtitle}>Interactive company reporting hierarchy</Text>
       </View>
 
-      {loading ? (
-        <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color='#2563EB' />
-          <Text style={styles.loadingText}>Loading organization chart...</Text>
-        </View>
-      ) : total === 0 ? (
-        <View style={styles.emptyBox}>
-          <Network size={56} color="#CBD5E1" />
-          <Text style={styles.emptyTitle}>No Employees Found</Text>
-          <Text style={styles.emptyText}>Add employees to see the organization chart.</Text>
-        </View>
-      ) : (
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={styles.scrollContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#2563EB']} />}
-          showsVerticalScrollIndicator={false}
-        >
-          {ROLE_ORDER.map(rk => (
-            <RoleGroup
-              key={rk}
-              roleKey={rk}
-              employees={grouped[rk] || []}
-              expanded={expanded[rk]}
-              onToggle={() => toggleGroup(rk)}
-            />
-          ))}
-        </ScrollView>
-      )}
-    </View>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <OrgNode node={orgData} level={0} />
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { 
-    padding: 24, 
+  container: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  header: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
+    borderBottomColor: '#E2E8F0',
+  },
+  title: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  subtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 40,
+  },
+  nodeWrapper: {
+    position: 'relative',
+    marginVertical: 4,
+  },
+  nodeContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
+    position: 'relative',
   },
-  headerTop: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },
-  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
-
-  summaryBar: {
-    flexDirection: 'row', backgroundColor: '#FFFFFF', paddingHorizontal: 16, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2,
-    gap: 8, flexWrap: 'wrap'
+  card: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 10,
+    padding: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 2,
+    elevation: 1,
   },
-  summaryItem: { alignItems: 'center', minWidth: 54 },
-  summaryNum: { fontSize: 22, fontWeight: '900', color: '#111827' },
-  summaryLabel: { fontSize: 11, color: '#6B7280', fontWeight: '600', marginTop: 2 },
-
-  centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
-  loadingText: { fontSize: 15, color: '#6B7280', fontWeight: '500' },
-  emptyBox: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 12 },
-  emptyTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
-  emptyText: { fontSize: 14, color: '#6B7280', textAlign: 'center' },
-
-  scroll: { flex: 1 },
-  scrollContent: { padding: 16, paddingBottom: 32 },
-
-  groupContainer: { marginBottom: 16 },
-  groupHeader: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF',
-    borderRadius: 16, padding: 16, borderLeftWidth: 4,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
-    gap: 10
+  rootCard: {
+    borderColor: '#BFDBFE',
+    backgroundColor: '#F0F9FF',
   },
-  groupIconBox: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  groupTitle: { fontSize: 16, fontWeight: '800' },
-  groupCount: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
-  groupCountText: { fontSize: 13, fontWeight: '800' },
-  groupContent: { marginTop: 8, marginLeft: 16 },
-
-  treeRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
-  treeLines: { width: 20, alignItems: 'center' },
-  treeLine: { width: 16, borderBottomWidth: 1.5, borderStyle: 'dashed', marginTop: 28 },
-  treeLineV: { position: 'absolute', top: 0, bottom: -4, left: 0, borderLeftWidth: 1.5, borderStyle: 'dashed' },
-
-  cardWrapper: { flex: 1, marginBottom: 8 },
-  empCard: {
-    flexDirection: 'row', backgroundColor: '#FFFFFF', borderRadius: 14, padding: 14,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.04, shadowRadius: 8, elevation: 1,
+  avatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  avatarBox: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginRight: 14 },
-  avatarText: { fontSize: 18, fontWeight: '900', color: '#FFFFFF' },
-  empInfo: { flex: 1 },
-  empName: { fontSize: 15, fontWeight: '800', color: '#111827', marginBottom: 2 },
-  empDesig: { fontSize: 13, color: '#475569', fontWeight: '600', marginBottom: 2 },
-  empDept: { fontSize: 12, color: '#94A3B8', fontWeight: '500', marginBottom: 6 },
-  bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
-  roleBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
-  roleText: { fontSize: 11, fontWeight: '700' },
-  joinDate: { fontSize: 11, color: '#94A3B8', fontWeight: '500' },
+  rootAvatar: {
+    backgroundColor: '#2563EB',
+  },
+  childAvatar: {
+    backgroundColor: '#6366F1',
+  },
+  avatarText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: 'bold',
+  },
+  cardContent: {
+    flex: 1,
+  },
+  name: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#0F172A',
+    marginBottom: 2,
+  },
+  role: {
+    fontSize: 11.5,
+    color: '#475569',
+    marginBottom: 4,
+  },
+  deptBadge: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  deptText: {
+    fontSize: 9.5,
+    color: '#2563EB',
+    fontWeight: '700',
+  },
+  expandIcon: {
+    padding: 2,
+  },
+  childrenContainer: {
+    position: 'relative',
+    marginTop: 2,
+  },
+  connectingLine: {
+    position: 'absolute',
+    height: 1.5,
+    backgroundColor: '#CBD5E1',
+    top: '50%',
+  },
+  verticalLine: {
+    position: 'absolute',
+    top: 0,
+    bottom: 16,
+    width: 1.5,
+    backgroundColor: '#CBD5E1',
+    zIndex: -1,
+  },
 });

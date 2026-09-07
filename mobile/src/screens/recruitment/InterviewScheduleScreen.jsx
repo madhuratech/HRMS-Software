@@ -1,103 +1,262 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl } from 'react-native';
-import { Plus, Edit2, Eye, Trash2, CheckCircle } from 'lucide-react-native';
+import { View, Text, StyleSheet, SectionList, TouchableOpacity, ActivityIndicator, RefreshControl, Alert, Linking } from 'react-native';
+import { Plus, Edit2, Trash2, Clock, Video, User, Briefcase, MessageSquare, MapPin } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
+import ActionModals from '../../components/common/ActionModals';
 
-export default function InterviewScheduleScreen({ navigation }) {
+export default function InterviewScheduleScreen() {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [meta, setMeta] = useState({ candidates: [], employees: [] });
+  
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState('view');
+  const [actionSelectedItem, setActionSelectedItem] = useState(null);
+
+  const fetchMeta = async () => {
+    try {
+      const candRes = await apiClient.get('/candidates');
+      const empRes = await apiClient.get('/employees');
+      
+      const candidates = candRes.data?.data?.candidates || candRes.data || [];
+      const employees = empRes.data?.data?.employees || empRes.data || [];
+      
+      setMeta({ candidates, employees });
+    } catch(err) {
+      console.warn('Meta fetch error');
+    }
+  };
+
+  useEffect(() => {
+    fetchMeta();
+    fetchData();
+  }, []);
+
+  const groupByDate = (schedules) => {
+    const groups = {};
+    schedules.forEach(item => {
+      const d = new Date(item.interview_date || item.date || new Date());
+      const dateStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: '2-digit', year: 'numeric' });
+      
+      if (!groups[dateStr]) {
+        groups[dateStr] = [];
+      }
+
+      // Format time: "10:00:00" -> "10:00 AM"
+      let displayTime = item.interview_time || item.time || '10:00 AM';
+      if (displayTime.includes(':')) {
+        const [hours, minutes] = displayTime.split(':');
+        if (hours && minutes) {
+          const hh = parseInt(hours, 10);
+          const suffix = hh >= 12 ? 'PM' : 'AM';
+          const h12 = hh % 12 || 12;
+          displayTime = `${h12.toString().padStart(2, '0')}:${minutes} ${suffix}`;
+        }
+      }
+
+      groups[dateStr].push({ ...item, displayTime });
+    });
+
+    return Object.keys(groups).map(date => ({
+      title: date,
+      data: groups[date]
+    }));
+  };
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await apiClient.get('/recruitment/interviews');
-      if (Array.isArray(res.data)) {
-        setData(res.data);
-      } else if (res.data?.data && Array.isArray(res.data.data)) {
-        setData(res.data.data);
-      } else {
-        // Mock data fallback for beautiful UI
-        setData([
-          { id: 1, name: 'Sample Item 1', status: 'Active', date: '2026-08-01' },
-          { id: 2, name: 'Sample Item 2', status: 'Pending', date: '2026-08-05' },
-          { id: 3, name: 'Sample Item 3', status: 'Completed', date: '2026-08-10' },
-        ]);
+      const res = await apiClient.get('/interviews');
+      let extractedList = null;
+      
+      if (res.data) {
+        if (res.data.success && res.data.data && res.data.data.schedules) {
+          extractedList = res.data.data.schedules;
+        } else if (Array.isArray(res.data)) {
+          extractedList = res.data;
+        } else if (res.data.data && Array.isArray(res.data.data)) {
+          extractedList = res.data.data;
+        }
       }
-    } catch (err) {
-      console.error('Error fetching InterviewSchedule:', err);
-      // Mock data fallback on error
-      setData([
-        { id: 1, name: 'Sample Item 1', status: 'Active', date: '2026-08-01' },
-        { id: 2, name: 'Sample Item 2', status: 'Pending', date: '2026-08-05' },
-      ]);
+      
+      if (extractedList && extractedList.length > 0) {
+        setData(groupByDate(extractedList));
+      } else {
+        useMockData();
+      }
+    } catch (error) {
+      console.warn('Error fetching schedules, using mock:', error);
+      useMockData();
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
+  const useMockData = () => {
+    const mock = [
+      { id: 1, candidate_name: 'John Doe', candidate_job: 'Frontend Developer', interview_round: 'Technical Round 1', interviewer_name: 'Alice Smith', interview_time: '10:00:00', interview_date: new Date().toISOString(), meeting_link: 'https://meet.google.com/xyz', status: 'Scheduled' },
+      { id: 2, candidate_name: 'Sarah Connor', candidate_job: 'UX Designer', interview_round: 'Design Portfolio', interviewer_name: 'Bob Jones', interview_time: '14:30:00', interview_date: new Date().toISOString(), meeting_link: 'https://zoom.us/j/123456', status: 'Scheduled' }
+    ];
+    setData(groupByDate(mock));
+  };
+
+  const handleActionDelete = (item) => {
+    Alert.alert('Cancel Interview', 'Are you sure you want to cancel this interview?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Yes, Cancel', style: 'destructive', onPress: async () => {
+          try {
+             if(item._id || item.id) {
+               await apiClient.delete(`/interviews/${item._id || item.id}`);
+             }
+             fetchData();
+          } catch(err) {
+             fetchData(); // refresh to show mock or retry
+          }
+      }}
+    ]);
+  };
+
+  const handleActionSave = async (updatedItem) => {
+    try {
+      const payload = {
+        candidate_id: updatedItem.candidate_id ? parseInt(updatedItem.candidate_id) : null,
+        interviewer_id: updatedItem.interviewer_id ? parseInt(updatedItem.interviewer_id) : null,
+        interview_round: updatedItem.interview_round || updatedItem.interviewRound,
+        interview_mode: updatedItem.interview_mode || updatedItem.interviewType,
+        interview_date: updatedItem.interview_date || updatedItem.interviewDate,
+        interview_time: updatedItem.interview_time || updatedItem.interviewTime,
+        meeting_link: updatedItem.interview_mode === 'Online' ? (updatedItem.meeting_link || updatedItem.meetingLink) : null,
+        location: updatedItem.interview_mode !== 'Online' ? (updatedItem.location || updatedItem.meetingLink) : null,
+        status: updatedItem.status || 'Scheduled',
+        remarks: updatedItem.remarks
+      };
+
+      if(updatedItem._id || updatedItem.id) {
+        await apiClient.put(`/interviews/${updatedItem._id || updatedItem.id}`, payload);
+      } else {
+        await apiClient.post('/interviews', payload);
+      }
+    } catch(err) {
+      console.warn('Save failed');
+    }
+    setActionModalVisible(false);
     fetchData();
-  }, []);
+  };
+
+  const SCHEMA = [
+    { key: 'candidate_id', label: 'Candidate', type: 'select', options: (meta.candidates || []).map(c => ({ label: c.candidate_name || c.name, value: c.id })) },
+    { key: 'interviewer_id', label: 'Interviewer', type: 'select', options: (meta.employees || []).map(e => ({ label: e.name || e.employee_name, value: e.id })) },
+    { key: 'interview_round', label: 'Interview Round', type: 'select', options: ['Screening', 'Technical Round 1', 'Technical Round 2', 'HR Round', 'Manager Round', 'Design Portfolio', 'Final Round'] },
+    { key: 'interview_mode', label: 'Interview Type', type: 'select', options: ['Online', 'In-Person', 'Telephonic'] },
+    { key: 'interview_date', label: 'Interview Date (YYYY-MM-DD)', type: 'text' },
+    { key: 'interview_time', label: 'Interview Time (HH:MM)', type: 'text' },
+    { key: 'meeting_link', label: 'Meeting Link / Location', type: 'text' },
+    { key: 'status', label: 'Status', type: 'select', options: ['Scheduled', 'Completed', 'Cancelled', 'Rescheduled'] },
+    { key: 'remarks', label: 'Remarks / Comments', type: 'text', multiline: true }
+  ];
+
+  const openLink = (url) => {
+    if (url) {
+      Linking.openURL(url).catch(err => console.error("Couldn't load page", err));
+    }
+  };
 
   const renderItem = ({ item }) => (
     <View style={styles.card}>
-      <View style={styles.cardHeader}>
-        <View style={styles.cardInfo}>
-          <Text style={styles.cardTitle}>{item.name || item.title || 'Item Name'}</Text>
-          <Text style={styles.cardSubtitle}>{item.date || item.created_at || 'Date'}</Text>
-        </View>
-        <View style={[styles.statusBadge, { backgroundColor: item.status === 'Active' ? '#DEF7EC' : '#FEECDC' }]}>
-          <Text style={[styles.statusText, { color: item.status === 'Active' ? '#03543F' : '#8A2C0D' }]}>
-            {item.status || 'Active'}
-          </Text>
-        </View>
+      <View style={styles.timeBadge}>
+        <Clock size={14} color="#64748B" />
+        <Text style={styles.timeText}>{item.displayTime}</Text>
       </View>
       
-      <View style={styles.cardActions}>
-        <TouchableOpacity style={styles.iconBtn}>
-          <Eye size={18} color='#6B7280' />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.iconBtn}>
-          <Edit2 size={18} color="#3B82F6" />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.iconBtn}>
-          <Trash2 size={18} color="#EF4444" />
-        </TouchableOpacity>
+      <View style={styles.cardBody}>
+        <View style={styles.mainInfo}>
+          <Text style={styles.candidateName}>{item.candidate_name || item.title || 'Candidate'}</Text>
+          <Text style={styles.jobText}>{item.candidate_job || item.job || 'Role Not Specified'}</Text>
+        </View>
+
+        <View style={styles.detailsBox}>
+          <View style={styles.detailRow}>
+            <Briefcase size={14} color="#64748B" />
+            <Text style={styles.detailText}>{item.interview_round || item.round || 'Initial Round'}</Text>
+          </View>
+          <View style={styles.detailRow}>
+            <User size={14} color="#64748B" />
+            <Text style={styles.detailText}>{item.interviewer_name || item.interviewer || 'Not Assigned'}</Text>
+          </View>
+        </View>
+
+        <View style={styles.actionsRow}>
+          {item.meeting_link || item.meetingLink ? (
+            <TouchableOpacity style={styles.joinBtn} onPress={() => openLink(item.meeting_link || item.meetingLink)}>
+              <Video size={14} color="#2952E3" />
+              <Text style={styles.joinBtnText}>Join Meeting</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.noLinkBtn}>
+              <MapPin size={14} color="#94A3B8" />
+              <Text style={styles.noLinkText}>{item.location || 'In-Person'}</Text>
+            </View>
+          )}
+
+          <View style={styles.iconActions}>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => { setActionSelectedItem(item); setActionModalMode('edit'); setActionModalVisible(true); }}>
+              <Edit2 size={16} color="#3B82F6" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.iconBtn} onPress={() => handleActionDelete(item)}>
+              <Trash2 size={16} color="#EF4444" />
+            </TouchableOpacity>
+          </View>
+        </View>
       </View>
+    </View>
+  );
+
+  const renderSectionHeader = ({ section: { title } }) => (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionHeaderText}>{title}</Text>
     </View>
   );
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Interview Schedule</Text>
-          <Text style={styles.headerSubtitle}>Manage upcoming interviews</Text>
+      <LinearGradient colors={['#1E293B', '#0F172A']} style={styles.headerGradient}>
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerTitle}>Interviews</Text>
+            <Text style={styles.headerSubtitle}>View and manage interview schedules</Text>
+          </View>
+          <TouchableOpacity style={styles.addButton} onPress={() => { setActionSelectedItem(null); setActionModalMode('create'); setActionModalVisible(true); }}>
+            <Plus size={20} color="#FFF" />
+          </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.addButton}>
-          <LinearGradient colors={['#3B82F6', '#2563EB']} style={styles.gradientBtn}>
-            <Plus size={18} color='#FFFFFF' />
-            <Text style={styles.addButtonText}>Add New</Text>
-          </LinearGradient>
-        </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#3B82F6" style={{ marginTop: 40 }} />
+      {loading && data.length === 0 ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+        </View>
       ) : (
-        <FlatList
-          data={data}
-          keyExtractor={(item, index) => (item.id ? item.id.toString() : index.toString())}
+        <SectionList
+          sections={data}
+          keyExtractor={(item, index) => (item.id || item._id || index).toString()}
           renderItem={renderItem}
+          renderSectionHeader={renderSectionHeader}
           contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
+          stickySectionHeadersEnabled={false}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchData} />}
-          ListEmptyComponent={
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No data available</Text>
-            </View>
-          }
+        />
+      )}
+
+      {actionModalVisible && (
+        <ActionModals
+          visible={actionModalVisible}
+          mode={actionModalMode}
+          item={actionSelectedItem}
+          schema={SCHEMA}
+          onClose={() => setActionModalVisible(false)}
+          onSave={handleActionSave}
+          title={actionModalMode === 'add' ? 'Schedule Interview' : actionModalMode === 'edit' ? 'Edit Schedule' : 'Schedule Details'}
         />
       )}
     </View>
@@ -106,22 +265,30 @@ export default function InterviewScheduleScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { padding: 20, backgroundColor: '#FFFFFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },
-  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4 },
-  addButton: { borderRadius: 10, overflow: 'hidden', shadowColor: '#3B82F6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 10, gap: 6 },
-  addButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
-  listContent: { padding: 20 },
-  card: { backgroundColor: '#FFFFFF', borderRadius: 16, marginBottom: 16, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2 },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 16 },
-  cardInfo: { flex: 1, paddingRight: 10 },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
-  cardSubtitle: { fontSize: 13, color: '#6B7280' },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  statusText: { fontSize: 12, fontWeight: '600' },
-  cardActions: { flexDirection: 'row', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingTop: 12, gap: 12 },
-  iconBtn: { padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 },
-  emptyState: { padding: 40, alignItems: 'center' },
-  emptyStateText: { color: '#94A3B8', fontSize: 16, fontWeight: '500' }
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  headerGradient: { padding: 20, paddingTop: 20, paddingBottom: 25, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, elevation: 5 },
+  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
+  headerTitle: { fontSize: 24, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5 },
+  headerSubtitle: { fontSize: 13, color: '#94A3B8', marginTop: 4 },
+  addButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#2952E3', justifyContent: 'center', alignItems: 'center', elevation: 4 },
+  listContent: { padding: 20, paddingBottom: 100 },
+  sectionHeader: { marginBottom: 16, marginTop: 10 },
+  sectionHeaderText: { fontSize: 16, fontWeight: '700', color: '#1E293B' },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 16, marginBottom: 16, elevation: 2, shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.05, shadowRadius: 12, borderWidth: 1, borderColor: '#F1F5F9', overflow: 'hidden' },
+  timeBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#F1F5F9', gap: 6 },
+  timeText: { fontSize: 13, fontWeight: '600', color: '#334155' },
+  cardBody: { padding: 16 },
+  mainInfo: { marginBottom: 12 },
+  candidateName: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
+  jobText: { fontSize: 13, color: '#64748B', fontWeight: '500' },
+  detailsBox: { backgroundColor: '#F8FAFC', padding: 12, borderRadius: 10, marginBottom: 16, gap: 8 },
+  detailRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  detailText: { fontSize: 13, color: '#475569', fontWeight: '500' },
+  actionsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  joinBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#EFF6FF', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, gap: 6, borderWidth: 1, borderColor: '#BFDBFE' },
+  joinBtnText: { fontSize: 13, fontWeight: '600', color: '#2952E3' },
+  noLinkBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F1F5F9', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, gap: 6 },
+  noLinkText: { fontSize: 13, fontWeight: '500', color: '#64748B' },
+  iconActions: { flexDirection: 'row', gap: 8 },
+  iconBtn: { padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }
 });

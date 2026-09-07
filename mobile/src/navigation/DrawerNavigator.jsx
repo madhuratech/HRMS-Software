@@ -3,6 +3,7 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import { TouchableOpacity, View, Image, Text } from 'react-native';
 import { Menu, ArrowLeft } from 'lucide-react-native';
 import CustomDrawerContent from './CustomDrawerContent';
+import { useAuth } from '../context/AuthContext';
 
 // Existing Screens
 import DashboardMainWrapper from '../screens/dashboard/DashboardMain';
@@ -45,6 +46,14 @@ import InterviewScheduleScreen from '../screens/recruitment/InterviewScheduleScr
 import OfferLettersScreen from '../screens/recruitment/OfferLettersScreen';
 import HiringPipelineScreen from '../screens/recruitment/HiringPipelineScreen';
 
+// Phase 4.2: Onboarding Screens
+import NewJoinersScreen from '../screens/onboarding/NewJoinersScreen';
+import DocumentVerificationScreen from '../screens/onboarding/DocumentVerificationScreen';
+import AssetAllocationScreen from '../screens/onboarding/AssetAllocationScreen';
+import WelcomeKitScreen from '../screens/onboarding/WelcomeKitScreen';
+import OrientationScreen from '../screens/onboarding/OrientationScreen';
+import ProbationScreen from '../screens/onboarding/ProbationScreen';
+
 
 // Attendance Screens
 import DailyAttendanceScreen from '../screens/attendance/DailyAttendanceScreen';
@@ -69,6 +78,7 @@ import TeamsScreen from '../screens/organization/TeamsScreen';
 import ShiftManagementScreen from '../screens/organization/ShiftManagementScreen';
 import HolidayCalendarScreen from '../screens/organization/HolidayCalendarScreen';
 import OrganizationChartScreen from '../screens/organization/OrganizationChartScreen';
+import UserRolesScreen from '../screens/organization/UserRolesScreen';
 
 // Employee Screens
 import EmployeeDirectoryScreen from '../screens/employee/EmployeeDirectoryScreen';
@@ -85,12 +95,60 @@ import EmployeeDocumentsScreen from '../screens/employee/EmployeeDocumentsScreen
 import TaskBoardScreen from '../screens/tasks/TaskBoardScreen';
 import TaskDetailsScreen from '../screens/tasks/TaskDetailsScreen';
 import TimesheetsScreen from '../screens/projects/TimesheetsScreen';
+import ProjectDashboardScreen from '../screens/projects/ProjectDashboardScreen';
+import ProjectsListScreen from '../screens/projects/ProjectsListScreen';
+import SprintBoardScreen from '../screens/projects/SprintBoardScreen';
+import MilestonesScreen from '../screens/projects/MilestonesScreen';
+import TeamMembersScreen from '../screens/projects/TeamMembersScreen';
 
 // Sales
 import SalesEnquiriesScreen from '../screens/sales/SalesEnquiriesScreen';
 import SalesEntryScreen from '../screens/sales/SalesEntryScreen';
 import CustomerSalesDetailsScreen from '../screens/sales/CustomerSalesDetailsScreen';
 import FollowUpScreen from '../screens/sales/FollowUpScreen';
+
+
+// Phase 4 New Screens
+import HolidayListScreen from '../screens/leave/HolidayListScreen';
+import PayrollReportsScreen from '../screens/payroll/PayrollReportsScreen';
+
+// Documents
+import EmployeeDocumentsModuleScreen from '../screens/documents/EmployeeDocumentsModuleScreen';
+import CompanyDocumentsScreen from '../screens/documents/CompanyDocumentsScreen';
+import HRPoliciesScreen from '../screens/documents/HRPoliciesScreen';
+import TemplatesScreen from '../screens/documents/TemplatesScreen';
+import DigitalSignaturesScreen from '../screens/documents/DigitalSignaturesScreen';
+
+// Help Desk
+import HelpDeskDashboardScreen from '../screens/helpdesk/HelpDeskDashboardScreen';
+import TicketsScreen from '../screens/helpdesk/TicketsScreen';
+import CategoriesScreen from '../screens/helpdesk/CategoriesScreen';
+import PrioritiesScreen from '../screens/helpdesk/PrioritiesScreen';
+import KnowledgeBaseScreen from '../screens/helpdesk/KnowledgeBaseScreen';
+import HelpDeskReportsScreen from '../screens/helpdesk/HelpDeskReportsScreen';
+
+// Settings
+import SettingsCompanyScreen from '../screens/settings/SettingsCompanyScreen';
+import SettingsBrandingScreen from '../screens/settings/SettingsBrandingScreen';
+import SettingsOrganizationScreen from '../screens/settings/SettingsOrganizationScreen';
+import SettingsUsersScreen from '../screens/settings/SettingsUsersScreen';
+import SettingsHRScreen from '../screens/settings/SettingsHRScreen';
+import SettingsCommunicationScreen from '../screens/settings/SettingsCommunicationScreen';
+import SettingsIntegrationsScreen from '../screens/settings/SettingsIntegrationsScreen';
+import SettingsSecurityScreen from '../screens/settings/SettingsSecurityScreen';
+import SettingsSystemScreen from '../screens/settings/SettingsSystemScreen';
+
+// AI Assistant
+import AIAssistantScreen from '../screens/ai/AIAssistantScreen';
+
+// Reports
+import EmployeeReportsScreen from '../screens/reports/EmployeeReportsScreen';
+import AttendanceReportsModuleScreen from '../screens/reports/AttendanceReportsModuleScreen';
+import LeaveReportsScreen from '../screens/reports/LeaveReportsScreen';
+import PayrollReportsModuleScreen from '../screens/reports/PayrollReportsModuleScreen';
+import RecruitmentReportsScreen from '../screens/reports/RecruitmentReportsScreen';
+import PerformanceReportsScreen from '../screens/reports/PerformanceReportsScreen';
+import ProjectReportsScreen from '../screens/reports/ProjectReportsScreen';
 
 const Drawer = createDrawerNavigator();
 
@@ -113,50 +171,48 @@ const CustomHeader = ({ navigation, route, insets }) => {
   const isDashboard = route.name === 'DashboardMain' || route.name === 'EmployeeDashboard';
 
   return (
-    <View style={{ paddingTop: insets.top, backgroundColor: '#F8FAFC' }}>
-      {/* Main App Header */}
-      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', paddingHorizontal: 16, height: 56, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' }}>
+    <View style={{ paddingTop: insets.top, backgroundColor: '#FFFFFF' }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, height: 60, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' }}>
         <TouchableOpacity
           onPress={() => navigation.openDrawer()}
-          style={{ padding: 8, marginLeft: -8, marginRight: 8 }}
+          style={{ padding: 8, marginLeft: -8, marginRight: 16 }}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Menu size={24} color="#0F172A" />
         </TouchableOpacity>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View style={{ width: 32, height: 32, backgroundColor: '#FFF', borderRadius: 6, overflow: 'hidden' }}>
-            <Image 
-              source={require('../../assets/logo.png')} 
-              style={{ width: '100%', height: '100%' }} 
-              resizeMode="contain" 
-            />
+        
+        {isDashboard ? (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={{ width: 32, height: 32, backgroundColor: '#EFF6FF', borderRadius: 6, overflow: 'hidden', alignItems: 'center', justifyContent: 'center' }}>
+              <Image 
+                source={require('../../assets/logo.png')} 
+                style={{ width: 24, height: 24 }} 
+                resizeMode="contain" 
+              />
+            </View>
+            <View>
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A', letterSpacing: 0.5 }}>HAWKEYE NEST</Text>
+              <Text style={{ fontSize: 9, color: '#2563EB', fontWeight: '700', letterSpacing: 1.2 }}>HRMS</Text>
+            </View>
           </View>
-          <Text style={{ fontSize: 16, fontWeight: '800', color: '#0F172A', letterSpacing: 0.5 }}>MADHURA HRMS</Text>
-        </View>
-      </View>
-
-      {/* Inner Screen Header */}
-      {!isDashboard && !['SalesEnquiries', 'SalesEntry', 'CustomerSalesDetails', 'FollowUp', 'ExpenseClaims', 'ExpenseCategories', 'DailyAttendance', 'Regularization', 'Overtime', 'LeaveApplications', 'LeaveApproval', 'LeaveBalance', 'LeaveTypes', 'CompOff', 'ShiftRoster', 'CompanyProfile', 'Departments', 'Designations', 'Teams', 'ShiftManagement', 'HolidayCalendar', 'OrganizationChart', 'EmployeeDirectory', 'EmployeeList', 'AddEmployee', 'EmployeeProfile', 'EmploymentHistory', 'Promotions', 'Transfers', 'ExitManagement', 'EmployeeDocuments'].includes(route.name) && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', paddingHorizontal: 16, height: 60, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' }}>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('DashboardMain')}
-            style={{ padding: 8, marginLeft: -8, marginRight: 12 }}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-          >
-            <ArrowLeft size={24} color="#0F172A" />
-          </TouchableOpacity>
+        ) : (
           <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A' }}>{title}</Text>
-        </View>
-      )}
+        )}
+      </View>
     </View>
   );
 };
 
 export default function DrawerNavigator() {
   const insets = useSafeAreaInsets();
+  const { user } = useAuth();
+  const roleStr = String(user?.role || user?.type || '').toUpperCase();
+  const isEmployee = roleStr === 'EMPLOYEE' || roleStr === 'STAFF';
+  const isTeamLeader = roleStr === 'TEAM_LEADER' || roleStr === 'TEAM LEADER';
   
   return (
     <Drawer.Navigator
+      initialRouteName={isEmployee || isTeamLeader ? 'EmployeeDashboard' : 'DashboardMain'}
       drawerContent={(props) => <CustomDrawerContent {...props} />}
       screenOptions={({ navigation, route }) => ({
         drawerStyle: { width: 250 },
@@ -174,6 +230,7 @@ export default function DrawerNavigator() {
       <Drawer.Screen name="ShiftManagement" component={ShiftManagementScreen} />
       <Drawer.Screen name="HolidayCalendar" component={HolidayCalendarScreen} />
       <Drawer.Screen name="OrganizationChart" component={OrganizationChartScreen} />
+      <Drawer.Screen name="UserRoles" component={UserRolesScreen} />
 
       {/* Employees */}
       <Drawer.Screen name="EmployeeDirectory" component={EmployeeDirectoryScreen} />
@@ -202,7 +259,7 @@ export default function DrawerNavigator() {
       <Drawer.Screen name="LeaveBalance" component={LeaveBalanceScreen} />
       <Drawer.Screen name="LeaveTypes" component={LeaveTypesScreen} />
       <Drawer.Screen name="CompOff" component={CompOffScreen} />
-      <Drawer.Screen name="HolidayList" component={PlaceholderScreen} />
+      <Drawer.Screen name="HolidayList" component={HolidayListScreen} />
 
       {/* Payroll */}
       <Drawer.Screen name="SalaryStructure" component={SalaryStructureScreen} />
@@ -213,7 +270,7 @@ export default function DrawerNavigator() {
       <Drawer.Screen name="Reimbursements" component={ReimbursementsScreen} />
       <Drawer.Screen name="LoansAdvances" component={LoansAdvancesScreen} />
       <Drawer.Screen name="TaxManagement" component={TaxManagementScreen} />
-      <Drawer.Screen name="PayrollReports" component={PlaceholderScreen} />
+      <Drawer.Screen name="PayrollReports" component={PayrollReportsScreen} />
 
       {/* Recruitment */}
       <Drawer.Screen name="RecruitmentDashboard" component={RecruitmentDashboardScreen} />
@@ -227,12 +284,12 @@ export default function DrawerNavigator() {
       <Drawer.Screen name="Training" component={TrainingScreen} />
 
       {/* Onboarding */}
-      <Drawer.Screen name="NewJoiners" component={PlaceholderScreen} />
-      <Drawer.Screen name="DocumentVerification" component={PlaceholderScreen} />
-      <Drawer.Screen name="AssetAllocation" component={PlaceholderScreen} />
-      <Drawer.Screen name="WelcomeKit" component={PlaceholderScreen} />
-      <Drawer.Screen name="Orientation" component={PlaceholderScreen} />
-      <Drawer.Screen name="Probation" component={PlaceholderScreen} />
+      <Drawer.Screen name="NewJoiners" component={NewJoinersScreen} />
+      <Drawer.Screen name="DocumentVerification" component={DocumentVerificationScreen} />
+      <Drawer.Screen name="AssetAllocation" component={AssetAllocationScreen} />
+      <Drawer.Screen name="WelcomeKit" component={WelcomeKitScreen} />
+      <Drawer.Screen name="Orientation" component={OrientationScreen} />
+      <Drawer.Screen name="Probation" component={ProbationScreen} />
 
       {/* Performance */}
       <Drawer.Screen name="Goals" component={GoalsScreen} />
@@ -244,23 +301,23 @@ export default function DrawerNavigator() {
       <Drawer.Screen name="PromotionsPerformance" component={PromotionsScreen} />
 
       {/* Projects */}
-      <Drawer.Screen name="ProjectDashboard" component={PlaceholderScreen} />
-      <Drawer.Screen name="ProjectsList" component={PlaceholderScreen} />
+      <Drawer.Screen name="ProjectDashboard" component={ProjectDashboardScreen} />
+      <Drawer.Screen name="ProjectsList" component={ProjectsListScreen} />
       <Drawer.Screen name="Tasks" component={TaskBoardScreen} />
-      <Drawer.Screen name="SprintBoard" component={PlaceholderScreen} />
+      <Drawer.Screen name="SprintBoard" component={SprintBoardScreen} />
       <Drawer.Screen name="Timesheets" component={TimesheetsScreen} />
-      <Drawer.Screen name="Milestones" component={PlaceholderScreen} />
-      <Drawer.Screen name="TeamMembers" component={PlaceholderScreen} />
+      <Drawer.Screen name="Milestones" component={MilestonesScreen} />
+      <Drawer.Screen name="TeamMembers" component={TeamMembersScreen} />
 
       {/* Reports */}
       <Drawer.Screen name="AnalyticsReports" component={AnalyticsReportsScreen} />
-      <Drawer.Screen name="EmployeeReports" component={PlaceholderScreen} />
-      <Drawer.Screen name="AttendanceReportsModule" component={PlaceholderScreen} />
-      <Drawer.Screen name="LeaveReports" component={PlaceholderScreen} />
-      <Drawer.Screen name="PayrollReportsModule" component={PlaceholderScreen} />
-      <Drawer.Screen name="RecruitmentReports" component={PlaceholderScreen} />
-      <Drawer.Screen name="PerformanceReports" component={PlaceholderScreen} />
-      <Drawer.Screen name="ProjectReports" component={PlaceholderScreen} />
+      <Drawer.Screen name="EmployeeReports" component={EmployeeReportsScreen} />
+      <Drawer.Screen name="AttendanceReportsModule" component={AttendanceReportsModuleScreen} />
+      <Drawer.Screen name="LeaveReports" component={LeaveReportsScreen} />
+      <Drawer.Screen name="PayrollReportsModule" component={PayrollReportsModuleScreen} />
+      <Drawer.Screen name="RecruitmentReports" component={RecruitmentReportsScreen} />
+      <Drawer.Screen name="PerformanceReports" component={PerformanceReportsScreen} />
+      <Drawer.Screen name="ProjectReports" component={ProjectReportsScreen} />
 
       {/* Expenses */}
       <Drawer.Screen name="ExpenseClaims" component={ExpenseClaimsScreen} />
@@ -270,30 +327,33 @@ export default function DrawerNavigator() {
       <Drawer.Screen name="ExpenseReports" component={ExpenseReportsScreen} />
 
       {/* Documents */}
-      <Drawer.Screen name="EmployeeDocumentsModule" component={PlaceholderScreen} />
-      <Drawer.Screen name="CompanyDocuments" component={PlaceholderScreen} />
-      <Drawer.Screen name="HRPolicies" component={PlaceholderScreen} />
-      <Drawer.Screen name="Templates" component={PlaceholderScreen} />
-      <Drawer.Screen name="DigitalSignatures" component={PlaceholderScreen} />
+      <Drawer.Screen name="EmployeeDocumentsModule" component={EmployeeDocumentsModuleScreen} />
+      <Drawer.Screen name="CompanyDocuments" component={CompanyDocumentsScreen} />
+      <Drawer.Screen name="HRPolicies" component={HRPoliciesScreen} />
+      <Drawer.Screen name="Templates" component={TemplatesScreen} />
+      <Drawer.Screen name="DigitalSignatures" component={DigitalSignaturesScreen} />
 
       {/* Help Desk */}
-      <Drawer.Screen name="HelpDeskDashboard" component={PlaceholderScreen} />
-      <Drawer.Screen name="Tickets" component={PlaceholderScreen} />
-      <Drawer.Screen name="Categories" component={PlaceholderScreen} />
-      <Drawer.Screen name="Priorities" component={PlaceholderScreen} />
-      <Drawer.Screen name="KnowledgeBase" component={PlaceholderScreen} />
-      <Drawer.Screen name="HelpDeskReports" component={PlaceholderScreen} />
+      <Drawer.Screen name="HelpDeskDashboard" component={HelpDeskDashboardScreen} />
+      <Drawer.Screen name="Tickets" component={TicketsScreen} />
+      <Drawer.Screen name="Categories" component={CategoriesScreen} />
+      <Drawer.Screen name="Priorities" component={PrioritiesScreen} />
+      <Drawer.Screen name="KnowledgeBase" component={KnowledgeBaseScreen} />
+      <Drawer.Screen name="HelpDeskReports" component={HelpDeskReportsScreen} />
 
       {/* Settings */}
-      <Drawer.Screen name="SettingsCompany" component={PlaceholderScreen} />
-      <Drawer.Screen name="SettingsBranding" component={PlaceholderScreen} />
-      <Drawer.Screen name="SettingsOrganization" component={PlaceholderScreen} />
-      <Drawer.Screen name="SettingsUsers" component={PlaceholderScreen} />
-      <Drawer.Screen name="SettingsHR" component={PlaceholderScreen} />
-      <Drawer.Screen name="SettingsCommunication" component={PlaceholderScreen} />
-      <Drawer.Screen name="SettingsIntegrations" component={PlaceholderScreen} />
-      <Drawer.Screen name="SettingsSecurity" component={PlaceholderScreen} />
-      <Drawer.Screen name="SettingsSystem" component={PlaceholderScreen} />
+      <Drawer.Screen name="SettingsCompany" component={SettingsCompanyScreen} />
+      <Drawer.Screen name="SettingsBranding" component={SettingsBrandingScreen} />
+      <Drawer.Screen name="SettingsOrganization" component={SettingsOrganizationScreen} />
+      <Drawer.Screen name="SettingsUsers" component={SettingsUsersScreen} />
+      <Drawer.Screen name="SettingsHR" component={SettingsHRScreen} />
+      <Drawer.Screen name="SettingsCommunication" component={SettingsCommunicationScreen} />
+      <Drawer.Screen name="SettingsIntegrations" component={SettingsIntegrationsScreen} />
+      <Drawer.Screen name="SettingsSecurity" component={SettingsSecurityScreen} />
+      <Drawer.Screen name="SettingsSystem" component={SettingsSystemScreen} />
+      
+      {/* AI Assistant */}
+      <Drawer.Screen name="AIAssistant" component={AIAssistantScreen} />
       
       {/* Super Admin Missing Screens */}
       <Drawer.Screen name="TaskDetails" component={TaskDetailsScreen} />

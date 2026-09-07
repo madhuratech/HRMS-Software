@@ -1,236 +1,205 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator, Modal, Alert } from 'react-native';
-import { Search, Filter, Plus, X, Tag, ChevronLeft } from 'lucide-react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, TextInput, Alert } from 'react-native';
+import { Search, Plus, Edit2, Trash2, Folder, Layers, CheckCircle, XCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useNavigation } from '@react-navigation/native';
 import apiClient from '../../api/client';
-import { useAuth } from '../../context/AuthContext';
+import ActionModals from '../../components/common/ActionModals';
 
-export default function ExpenseCategoriesScreen() {
-  const navigation = useNavigation();
-  const { user } = useAuth();
-  const isSuperAdmin = user?.role?.toUpperCase() === 'SUPER ADMIN';
-  const isAdmin = user?.role?.toUpperCase() === 'ADMIN' || isSuperAdmin;
-  
-  const [categories, setCategories] = useState([]);
+export default function ExpenseCategoriesScreen({ navigation }) {
+  const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [modalVisible, setModalVisible] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState('');
+  
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState('view');
+  const [actionSelectedItem, setActionSelectedItem] = useState(null);
 
-  // Form State
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
-      const res = await apiClient.get('/expenses/categories');
-      if (res.data?.success) {
-        setCategories(res.data.data);
-      } else if (Array.isArray(res.data)) {
-        setCategories(res.data);
+      const res = await apiClient.get(`/expenses/categories`);
+      if (res.data?.success && Array.isArray(res.data?.data)) {
+        setData(res.data.data);
+      } else {
+        setData([]);
       }
-    } catch (err) {
-      console.error('Error fetching expense categories:', err);
+    } catch (error) {
+      console.warn('Error fetching expense categories:', error);
+      setData([]);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
+  }, []);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchData();
   };
 
-  const handleAddCategory = async () => {
-    if (!name.trim()) return;
+  const handleActionEdit = (item) => { setActionSelectedItem(item); setActionModalMode('edit'); setActionModalVisible(true); };
+  
+  const handleActionDelete = (item) => {
+    Alert.alert('Delete Category', `Are you sure you want to delete ${item.name}?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+             await apiClient.delete(`/expenses/categories/${item.id}`);
+             fetchData();
+          } catch(err) {
+             Alert.alert('Error', 'Failed to delete category');
+          }
+      }}
+    ]);
+  };
+
+  const handleActionSave = async (updatedItem) => {
     try {
-      setSubmitting(true);
-      await apiClient.post('/expenses/categories', { 
-        name,
-        description
-      });
-      setName('');
-      setDescription('');
-      setModalVisible(false);
-      fetchCategories();
-    } catch (err) {
-      console.error('Error adding category:', err);
-      Alert.alert('Error', 'Failed to add category.');
-    } finally {
-      setSubmitting(false);
+      if (updatedItem.id) {
+        await apiClient.put(`/expenses/categories/${updatedItem.id}`, updatedItem);
+      } else {
+        await apiClient.post('/expenses/categories', updatedItem);
+      }
+    } catch(err) {
+      console.warn('Save failed');
     }
+    setActionModalVisible(false);
+    fetchData();
   };
 
-  const filtered = categories.filter(c => 
-    c.name?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredData = data.filter(item => 
+    (item.name || '').toLowerCase().includes(search.toLowerCase()) || 
+    (item.description || '').toLowerCase().includes(search.toLowerCase())
   );
+
+  const renderItem = ({ item }) => {
+    const status = item.status || 'Active';
+    const isActive = status === 'Active';
+
+    return (
+      <View style={styles.card}>
+        <View style={styles.cardHeader}>
+          <View style={styles.iconContainer}>
+            <Folder size={20} color="#2563EB" />
+          </View>
+          <View style={{ flex: 1, marginLeft: 12 }}>
+            <Text style={styles.categoryName} numberOfLines={1}>{item.name}</Text>
+            <Text style={styles.categoryDesc} numberOfLines={2}>{item.description}</Text>
+          </View>
+        </View>
+
+        <View style={styles.divider} />
+
+        <View style={styles.footerRow}>
+          <View style={[styles.statusBadge, { backgroundColor: isActive ? '#DCFCE7' : '#FEE2E2' }]}>
+            {isActive ? <CheckCircle size={12} color="#15803D" /> : <XCircle size={12} color="#DC2626" />}
+            <Text style={[styles.statusText, { color: isActive ? '#15803D' : '#DC2626' }]}>{status}</Text>
+          </View>
+          
+          <View style={styles.actionGroup}>
+            <TouchableOpacity style={styles.actionBtn} onPress={() => handleActionEdit(item)}>
+              <Edit2 size={16} color="#64748B" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.actionBtn} onPress={() => handleActionDelete(item)}>
+              <Trash2 size={16} color="#EF4444" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
       <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
-            <ChevronLeft size={24} color='#111827' />
-          </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
+        <View style={styles.headerTop}>
+          <View>
             <Text style={styles.headerTitle}>Expense Categories</Text>
-            <Text style={styles.headerSubtitle}>Manage types of reimbursable expenses</Text>
+            <Text style={styles.headerSubtitle}>Manage company expense types</Text>
+          </View>
+          <TouchableOpacity style={styles.addBtn} onPress={() => {
+            setActionSelectedItem({});
+            setActionModalMode('add');
+            setActionModalVisible(true);
+          }}>
+            <Plus size={20} color="#FFFFFF" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.searchRow}>
+          <View style={styles.searchBox}>
+            <Search size={18} color="#94A3B8" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search categories..."
+              value={search}
+              onChangeText={setSearch}
+              placeholderTextColor="#94A3B8"
+            />
           </View>
         </View>
-        {isAdmin && (
-          <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
-            <LinearGradient colors={['#2563EB', '#2563EB']} style={styles.gradientBtn}>
-              <Plus size={18} color='#FFFFFF' />
-              <Text style={styles.addButtonText}>Add Category</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
       </LinearGradient>
 
-      <View style={styles.toolbar}>
-        <View style={styles.searchBox}>
-          <Search size={20} color='#6B7280' />
-          <TextInput 
-            style={styles.searchInput} 
-            placeholder="Search categories..." 
-            placeholderTextColor="#94A3B8"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-      </View>
-
-      {loading ? (
-        <View style={styles.centerBox}>
-          <ActivityIndicator size="large" color="#2563EB" />
-        </View>
+      {loading && !refreshing ? (
+        <ActivityIndicator size="large" color="#2563EB" style={{ marginTop: 40 }} />
       ) : (
-        <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-          {filtered.length === 0 ? (
+        <FlatList
+          data={filteredData}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+          ListEmptyComponent={
             <View style={styles.emptyBox}>
+              <Layers size={40} color="#CBD5E1" />
               <Text style={styles.emptyText}>No categories found</Text>
             </View>
-          ) : (
-            filtered.map((cat, i) => (
-              <View key={cat.id || i} style={styles.card}>
-                <View style={styles.cardTop}>
-                  <View style={styles.titleRow}>
-                    <View style={styles.iconBox}>
-                      <Tag size={20} color='#2563EB' />
-                    </View>
-                    <View>
-                      <Text style={styles.catName}>{cat.name}</Text>
-                      {cat.description ? (
-                        <Text style={styles.catDesc}>{cat.description}</Text>
-                      ) : null}
-                    </View>
-                  </View>
-                  <View style={[styles.statusBadge, { backgroundColor: cat.status === 'Active' ? '#ECFDF5' : '#FEF2F2' }]}>
-                    <Text style={[styles.statusText, { color: cat.status === 'Active' ? '#059669' : '#DC2626' }]}>
-                      {cat.status || 'Active'}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            ))
-          )}
-          <View style={{ height: 24 }} />
-        </ScrollView>
+          }
+        />
       )}
 
-      {/* Add Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Add Category</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color='#6B7280' />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalBody}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Category Name</Text>
-                <TextInput 
-                  style={styles.modalInput}
-                  placeholder="e.g. Travel"
-                  placeholderTextColor="#94A3B8"
-                  value={name}
-                  onChangeText={setName}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Description (Optional)</Text>
-                <TextInput 
-                  style={styles.modalInput}
-                  placeholder="e.g. Flight and train tickets"
-                  placeholderTextColor="#94A3B8"
-                  value={description}
-                  onChangeText={setDescription}
-                />
-              </View>
-
-              <TouchableOpacity 
-                style={[styles.submitButton, submitting && { opacity: 0.7 }]} 
-                onPress={handleAddCategory}
-                disabled={submitting}
-              >
-                <Text style={styles.submitButtonText}>{submitting ? 'Adding...' : 'Add Category'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {actionModalVisible && (
+        <ActionModals
+          visible={actionModalVisible}
+          mode={actionModalMode}
+          item={actionSelectedItem}
+          onClose={() => setActionModalVisible(false)}
+          onSave={handleActionSave}
+          title={actionModalMode === 'add' ? 'New Category' : actionModalMode === 'edit' ? 'Edit Category' : 'Details'}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { 
-    padding: 24, borderBottomWidth: 1, borderBottomColor: '#E5E7EB',
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2
-  },
-  headerTop: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '900', color: '#111827', letterSpacing: -1 },
-  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
-  addButton: { borderRadius: 20, overflow: 'hidden', shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  gradientBtn: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 6 },
-  addButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
-  toolbar: { flexDirection: 'row', padding: 24, gap: 12 },
-  searchBox: { 
-    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', 
-    borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, paddingHorizontal: 16, height: 52,
-    shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2
-  },
-  searchInput: { flex: 1, marginLeft: 10, fontSize: 16, color: '#1E293B', fontWeight: '500' },
-  centerBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyBox: { padding: 40, alignItems: 'center' },
-  emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
-  content: { paddingHorizontal: 24 },
-  card: { 
-    backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#E5E7EB',
-    shadowColor: '#111827', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.05, shadowRadius: 24, elevation: 4,
-  },
-  cardTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  iconBox: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
-  catName: { fontSize: 18, fontWeight: '800', color: '#111827' },
-  catDesc: { fontSize: 13, fontWeight: '500', color: '#6B7280', marginTop: 2 },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  statusText: { fontSize: 12, fontWeight: '700' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.6)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 50 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  modalTitle: { fontSize: 24, fontWeight: '800', color: '#111827' },
-  modalBody: { gap: 20 },
-  inputGroup: { gap: 8 },
-  inputLabel: { fontSize: 14, fontWeight: '700', color: '#475569' },
-  modalInput: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 14, padding: 16, fontSize: 16, color: '#1E293B', backgroundColor: '#F8FAFC' },
-  submitButton: { backgroundColor: '#2563EB', borderRadius: 14, padding: 18, alignItems: 'center', marginTop: 10, shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  header: { padding: 16, paddingTop: 16, borderBottomWidth: 1, borderBottomColor: '#E2E8F0' },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  headerTitle: { fontSize: 20, fontWeight: '700', color: '#1E293B', marginBottom: 2 },
+  headerSubtitle: { fontSize: 12, color: '#64748B' },
+  addBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#2563EB', alignItems: 'center', justifyContent: 'center', shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
+  searchRow: { flexDirection: 'row', gap: 12 },
+  searchBox: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 10, paddingHorizontal: 12, height: 44 },
+  searchInput: { flex: 1, marginLeft: 8, fontSize: 14, color: '#1E293B' },
+  listContent: { padding: 16, paddingBottom: 40 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 2 },
+  cardHeader: { flexDirection: 'row', alignItems: 'flex-start' },
+  iconContainer: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center' },
+  categoryName: { fontSize: 15, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
+  categoryDesc: { fontSize: 13, color: '#64748B', lineHeight: 18 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  statusText: { fontSize: 11, fontWeight: '600' },
+  divider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 12 },
+  footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  actionGroup: { flexDirection: 'row', gap: 12 },
+  actionBtn: { padding: 6, backgroundColor: '#F8FAFC', borderRadius: 6 },
+  emptyBox: { padding: 40, alignItems: 'center', justifyContent: 'center' },
+  emptyText: { marginTop: 12, fontSize: 14, color: '#94A3B8', fontWeight: '500' }
 });

@@ -1,21 +1,59 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Modal, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Modal, ScrollView, Alert } from 'react-native';
 import { Search, FileText, X, Download, Trash2, CheckCircle, Circle, Briefcase, GraduationCap, ChevronLeft, Plus } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import apiClient from '../../api/client';
+import ActionModals from '../../components/common/ActionModals';
 
 export default function EmployeeDocumentsScreen({ route }) {
+
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [modalMode, setModalMode] = useState('view');
+  const [selectedItem, setSelectedItem] = useState(null);
+
+  const handleView = (item) => { setSelectedItem(item); setModalMode('view'); setActionModalVisible(true); };
+  const handleEdit = (item) => { setSelectedItem(item); setModalMode('edit'); setActionModalVisible(true); };
+  const handleAdd = () => { setSelectedItem(null); setModalMode('add'); setActionModalVisible(true); };
+  
+  const handleActionDelete = (item) => {
+    Alert.alert('Delete', 'Are you sure you want to delete this item?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+            await apiClient.delete(`/employees/documents/${item.id || item._id}`);
+            if (typeof fetchDocuments === 'function') fetchDocuments();
+          } catch (err) { console.error('Delete error:', err); }
+      }}
+    ]);
+  };
+
+  const handleSave = async (formData) => {
+    try {
+      if (modalMode === 'add') {
+        const docT = formData.docType || 'Contract';
+        const docN = formData.docName;
+        if (!docN?.trim()) return;
+        await apiClient.post(`/employees/${empId}/documents`, { 
+          docType: docT, 
+          fileName: docN,
+          filePath: `/uploads/docs/${docN.replace(/\\s+/g, '_').toLowerCase()}.pdf`
+        });
+      } else {
+        if (formData.id || formData._id) {
+          await apiClient.put(`/placeholder/${formData.id || formData._id}`, formData);
+        }
+      }
+      setActionModalVisible(false);
+      if (typeof fetchDocuments === 'function') fetchDocuments();
+    } catch (err) { console.error('Update error:', err); }
+  };
+
   const navigation = useNavigation();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Modal State
-  const [modalVisible, setModalVisible] = useState(false);
-  const [docType, setDocType] = useState('Contract');
-  const [docName, setDocName] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('ALL'); // ALL, FRESHER, EXPERIENCED
 
   // Fallback to empId = 1 if none provided (e.g. general view vs profile view)
@@ -36,36 +74,6 @@ export default function EmployeeDocumentsScreen({ route }) {
       console.error('Error fetching documents:', err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleUploadDocument = async () => {
-    if (!docName.trim()) return;
-    try {
-      setSubmitting(true);
-      // Mocking file upload via JSON body for simplicity. In reality this would be FormData
-      await apiClient.post(`/employees/${empId}/documents`, { 
-        docType, 
-        fileName: docName,
-        filePath: `/uploads/docs/${docName.replace(/\s+/g, '_').toLowerCase()}.pdf`
-      });
-      setDocName('');
-      setDocType('Contract');
-      setModalVisible(false);
-      fetchDocuments();
-    } catch (err) {
-      console.error('Error uploading document:', err);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleDelete = async (docId) => {
-    try {
-      await apiClient.delete(`/employees/documents/${docId}`);
-      fetchDocuments();
-    } catch (err) {
-      console.error('Error deleting document:', err);
     }
   };
 
@@ -93,9 +101,9 @@ export default function EmployeeDocumentsScreen({ route }) {
           <TouchableOpacity 
             style={styles.uploadMiniBtn} 
             onPress={() => {
-              setDocType(item);
-              setDocName(`${item.replace(/\s+/g, '_')}`);
-              setModalVisible(true);
+              setSelectedItem({ docType: item, docName: item.replace(/\s+/g, '_') });
+              setModalMode('add');
+              setActionModalVisible(true);
             }}
           >
             <Text style={styles.uploadMiniBtnText}>Upload</Text>
@@ -124,7 +132,7 @@ export default function EmployeeDocumentsScreen({ route }) {
         <TouchableOpacity style={styles.actionBtn}>
           <Download size={20} color='#6B7280' />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.actionBtn} onPress={() => handleDelete(item.id)}>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => handleActionDelete(item)}>
           <Trash2 size={20} color="#EF4444" />
         </TouchableOpacity>
       </View>
@@ -142,7 +150,7 @@ export default function EmployeeDocumentsScreen({ route }) {
             <Text style={styles.pageTitle}>Documents</Text>
             <Text style={styles.pageSubtitle}>Manage employee documents</Text>
           </View>
-          <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
+          <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
             <LinearGradient colors={['#2563EB', '#3730A3']} style={styles.gradientBtn}>
               <Plus size={18} color='#FFFFFF' />
               <Text style={styles.addButtonText}>Upload</Text>
@@ -196,7 +204,7 @@ export default function EmployeeDocumentsScreen({ route }) {
       ) : activeTab === 'ALL' ? (
         <FlatList
           data={filtered}
-          keyExtractor={(item) => item.id.toString()}
+          keyExtractor={(item) => (item.id || item._id).toString()}
           renderItem={renderItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
@@ -222,51 +230,18 @@ export default function EmployeeDocumentsScreen({ route }) {
         </ScrollView>
       )}
 
-      {/* Add Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Upload Document</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color='#6B7280' />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalBody}>
-              <Text style={styles.inputLabel}>Document Type</Text>
-              <TextInput 
-                style={styles.modalInput}
-                placeholder="e.g. Contract, ID, Certificate"
-                placeholderTextColor="#94A3B8"
-                value={docType}
-                onChangeText={setDocType}
-              />
-              <Text style={styles.inputLabel}>Document Name</Text>
-              <TextInput 
-                style={styles.modalInput}
-                placeholder="e.g. Employment_Contract_2026"
-                placeholderTextColor="#94A3B8"
-                value={docName}
-                onChangeText={setDocName}
-              />
-
-              <View style={styles.uploadDropzone}>
-                <FileText size={32} color="#94A3B8" style={{ marginBottom: 10 }} />
-                <Text style={styles.dropzoneText}>Tap to select a file from device</Text>
-                <Text style={styles.dropzoneSubText}>PDF, JPG, PNG (Max 5MB)</Text>
-              </View>
-
-              <TouchableOpacity 
-                style={[styles.submitButton, submitting && { opacity: 0.7 }]} 
-                onPress={handleUploadDocument}
-                disabled={submitting}
-              >
-                <Text style={styles.submitButtonText}>{submitting ? 'Uploading...' : 'Upload Document'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <ActionModals 
+        visible={actionModalVisible}
+        mode={modalMode}
+        item={selectedItem}
+        schema={[
+          { key: 'docType', label: 'Document Type', type: 'select', options: ['Contract', 'ID', 'Certificate', 'Offer Letter', 'Payslips', '10th Marksheet', '12th Marksheet', 'Degree Certificate', 'Aadhaar Card', 'PAN Card', 'Relieving Letter', 'Experience Letter'] },
+          { key: 'docName', label: 'Document Name' },
+        ]}
+        title={modalMode === 'add' ? 'Upload Document' : modalMode === 'edit' ? 'Edit Document' : 'Document Details'}
+        onClose={() => setActionModalVisible(false)}
+        onSave={handleActionSave}
+      />
     </View>
   );
 }
@@ -341,18 +316,5 @@ const styles = StyleSheet.create({
   checklistText: { fontSize: 15, color: '#1E293B', fontWeight: '600' },
   checklistTextDone: { color: '#94A3B8', textDecorationLine: 'line-through' },
   uploadMiniBtn: { backgroundColor: '#EFF6FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
-  uploadMiniBtnText: { color: '#2563EB', fontSize: 12, fontWeight: '700' },
-
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  modalTitle: { fontSize: 22, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },
-  modalBody: { gap: 16 },
-  inputLabel: { fontSize: 14, fontWeight: '700', color: '#475569' },
-  modalInput: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, padding: 16, fontSize: 16, color: '#1E293B', backgroundColor: '#F8FAFC' },
-  uploadDropzone: { borderWidth: 2, borderColor: '#E2E8F0', borderStyle: 'dashed', borderRadius: 20, padding: 32, alignItems: 'center', backgroundColor: '#F8FAFC', marginVertical: 8 },
-  dropzoneText: { fontSize: 15, fontWeight: '700', color: '#475569', marginBottom: 4 },
-  dropzoneSubText: { fontSize: 13, color: '#94A3B8', fontWeight: '500' },
-  submitButton: { backgroundColor: '#2563EB', borderRadius: 16, padding: 18, alignItems: 'center', marginTop: 16, shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' }
+  uploadMiniBtnText: { color: '#2563EB', fontSize: 12, fontWeight: '700' }
 });

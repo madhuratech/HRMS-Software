@@ -1,167 +1,145 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl, Alert } from 'react-native';
+import { Plus, Edit2, Eye, Trash2, Search, Filter } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ChevronLeft, CalendarDays, MapPin, Search } from 'lucide-react-native';
-
-const holidayData = [
-  { id: '1', date: '01 Jan 2024', day: 'Mon', name: 'New Year', occasion: 'New Year Celebration', location: 'All', type: 'Gazetted' },
-  { id: '2', date: '26 Jan 2024', day: 'Fri', name: 'Republic Day', occasion: 'National Holiday', location: 'All', type: 'Gazetted' },
-  { id: '3', date: '08 Mar 2024', day: 'Fri', name: 'Mahashivratri', occasion: 'Hindu Festival', location: 'All', type: 'Optional' },
-  { id: '4', date: '29 Mar 2024', day: 'Fri', name: 'Good Friday', occasion: 'Christian Holiday', location: 'All', type: 'Optional' },
-  { id: '5', date: '11 Apr 2024', day: 'Thu', name: 'Eid ul-Fitr', occasion: 'Islamic Festival', location: 'All', type: 'Gazetted' },
-  { id: '6', date: '01 May 2024', day: 'Wed', name: 'Labour Day', occasion: 'International Workers Day', location: 'All', type: 'Gazetted' },
-  { id: '7', date: '15 Aug 2024', day: 'Thu', name: 'Independence Day', occasion: 'National Holiday', location: 'All', type: 'Gazetted' },
-  { id: '8', date: '02 Oct 2024', day: 'Wed', name: 'Gandhi Jayanti', occasion: 'National Holiday', location: 'All', type: 'Gazetted' },
-  { id: '9', date: '31 Oct 2024', day: 'Thu', name: 'Diwali', occasion: 'Hindu Festival', location: 'All', type: 'Optional' },
-  { id: '10', date: '25 Dec 2024', day: 'Wed', name: 'Christmas', occasion: 'Christian Festival', location: 'All', type: 'Optional' },
-];
+import apiClient from '../../api/client';
+import ActionModals from '../../components/common/ActionModals';
 
 export default function HolidayListScreen({ navigation }) {
-  const [selectedYear, setSelectedYear] = useState('2024');
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Action Modals State
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState('view');
+  const [actionSelectedItem, setActionSelectedItem] = useState(null);
 
-  const renderHoliday = ({ item }) => (
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      // Mocking fetch for this premium layout
+      setTimeout(() => {
+        setData([
+          { id: 1, title: 'Sample Item 1', status: 'Active', date: '2023-10-01' },
+          { id: 2, title: 'Sample Item 2', status: 'Pending', date: '2023-10-05' },
+          { id: 3, title: 'Sample Item 3', status: 'Completed', date: '2023-10-10' }
+        ]);
+        setLoading(false);
+      }, 800);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      setLoading(false);
+    }
+  };
+
+  const handleActionView = (item) => { setActionSelectedItem(item); setActionModalMode('view'); setActionModalVisible(true); };
+  const handleActionEdit = (item) => { setActionSelectedItem(item); setActionModalMode('edit'); setActionModalVisible(true); };
+  
+  const handleActionDelete = (item) => {
+    Alert.alert('Delete', 'Are you sure you want to delete this item?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => {
+          setData(data.filter(d => d.id !== item.id));
+      }}
+    ]);
+  };
+
+  const handleActionSave = async (updatedItem) => {
+    setActionModalVisible(false);
+    fetchData();
+  };
+
+  const renderItem = ({ item }) => (
     <View style={styles.card}>
       <View style={styles.cardHeader}>
-        <View style={styles.dateBox}>
-          <Text style={styles.dateMonth}>{item.date.split(' ')[1]}</Text>
-          <Text style={styles.dateDay}>{item.date.split(' ')[0]}</Text>
+        <View style={styles.iconContainer}>
+          <Text style={styles.iconText}>{item.title.substring(0,2).toUpperCase()}</Text>
         </View>
-        <View style={styles.holidayInfo}>
-          <Text style={styles.holidayName}>{item.name}</Text>
-          <Text style={styles.holidayOccasion}>{item.occasion}</Text>
-          <View style={styles.holidayMeta}>
-            <CalendarDays size={12} color="#64748b" style={{ marginRight: 4 }} />
-            <Text style={styles.metaText}>{item.day} • {item.type}</Text>
-            <MapPin size={12} color="#64748b" style={{ marginLeft: 12, marginRight: 4 }} />
-            <Text style={styles.metaText}>{item.location}</Text>
-          </View>
+        <View style={styles.cardInfo}>
+          <Text style={styles.cardTitle}>{item.title}</Text>
+          <Text style={styles.cardSubtitle}>{item.date}</Text>
         </View>
+        <View style={[styles.statusBadge, { backgroundColor: item.status === 'Active' ? '#DCFCE7' : '#FEF3C7' }]}>
+          <Text style={[styles.statusText, { color: item.status === 'Active' ? '#166534' : '#92400E' }]}>{item.status}</Text>
+        </View>
+      </View>
+      <View style={styles.cardActions}>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => handleActionView(item)}>
+          <Eye size={18} color="#64748B" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => handleActionEdit(item)}>
+          <Edit2 size={18} color="#3B82F6" />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.actionBtn} onPress={() => handleActionDelete(item)}>
+          <Trash2 size={18} color="#EF4444" />
+        </TouchableOpacity>
       </View>
     </View>
   );
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={{ marginRight: 16, padding: 4 }}>
-            <ChevronLeft size={24} color='#111827' />
+      <LinearGradient colors={['#1E293B', '#0F172A']} style={styles.headerGradient}>
+        <View style={styles.headerContent}>
+          <Text style={styles.headerTitle}>HolidayList</Text>
+          <TouchableOpacity style={styles.addButton} onPress={() => { setActionSelectedItem(null); setActionModalMode('create'); setActionModalVisible(true); }}>
+            <Plus size={20} color="#FFF" />
           </TouchableOpacity>
-          <View style={styles.headerTextContainer}>
-            <Text style={styles.headerTitle}>Holiday List</Text>
-            <Text style={styles.headerSubtitle}>Company holidays & observances</Text>
-          </View>
+        </View>
+        <View style={styles.searchContainer}>
+          <Search size={20} color="#94A3B8" />
+          <Text style={styles.searchPlaceholder}>Search in HolidayList...</Text>
         </View>
       </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        
-        {/* Upcoming Holidays Widget */}
-        <View style={[styles.widgetCard, { marginBottom: 24 }]}>
-          <Text style={styles.widgetTitle}>Upcoming Holidays</Text>
-          <View style={styles.upcomingItem}>
-            <View style={[styles.dateBox, { backgroundColor: '#ecfdf5' }]}>
-              <Text style={[styles.dateMonth, { color: '#10b981' }]}>AUG</Text>
-              <Text style={[styles.dateDay, { color: '#10b981' }]}>15</Text>
-            </View>
-            <View style={styles.holidayInfo}>
-              <Text style={styles.holidayName}>Independence Day</Text>
-              <Text style={styles.metaText}>Thursday • National Holiday</Text>
-            </View>
-          </View>
-          <View style={styles.upcomingItem}>
-            <View style={[styles.dateBox, { backgroundColor: '#f5f3ff' }]}>
-              <Text style={[styles.dateMonth, { color: '#8b5cf6' }]}>OCT</Text>
-              <Text style={[styles.dateDay, { color: '#8b5cf6' }]}>02</Text>
-            </View>
-            <View style={styles.holidayInfo}>
-              <Text style={styles.holidayName}>Gandhi Jayanti</Text>
-              <Text style={styles.metaText}>Wednesday • National Holiday</Text>
-            </View>
-          </View>
+      {loading ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color="#3B82F6" />
         </View>
+      ) : (
+        <FlatList
+          data={data}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchData} />}
+        />
+      )}
 
-        {/* Filters */}
-        <View style={styles.filtersRow}>
-          <Text style={styles.sectionTitle}>All Holidays</Text>
-          <View style={styles.yearBadge}>
-            <Text style={styles.yearText}>{selectedYear}</Text>
-          </View>
-        </View>
-
-        {/* Holiday List */}
-        <View style={styles.listContainer}>
-          {holidayData.map(item => (
-            <View key={item.id}>
-              {renderHoliday({ item })}
-            </View>
-          ))}
-        </View>
-
-      </ScrollView>
+      <ActionModals 
+        visible={actionModalVisible}
+        mode={actionModalMode}
+        item={actionSelectedItem}
+        onClose={() => setActionModalVisible(false)}
+        onSave={handleActionSave}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { 
-    padding: 20, 
-    paddingTop: 48,
-    paddingVertical: 16, 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    borderBottomWidth: 1, 
-    borderBottomColor: '#E5E7EB' 
-  },
-  headerTextContainer: { flex: 1 },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },
-  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
-  scrollContent: { padding: 16, paddingBottom: 40 },
-  
-  widgetCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  widgetTitle: { fontSize: 16, fontWeight: '700', color: '#1e293b', marginBottom: 16 },
-  upcomingItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  
-  filtersRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, paddingHorizontal: 4 },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#1e293b' },
-  yearBadge: { backgroundColor: '#E0E7FF', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  yearText: { color: '#4338CA', fontWeight: '600', fontSize: 12 },
-  
-  listContainer: { gap: 12 },
-  card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-  },
-  cardHeader: { flexDirection: 'row', alignItems: 'center' },
-  dateBox: {
-    width: 52,
-    height: 52,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  dateMonth: { fontSize: 11, fontWeight: '700', color: '#64748b', textTransform: 'uppercase' },
-  dateDay: { fontSize: 18, fontWeight: '800', color: '#1e293b' },
-  holidayInfo: { flex: 1 },
-  holidayName: { fontSize: 15, fontWeight: '700', color: '#1e293b', marginBottom: 2 },
-  holidayOccasion: { fontSize: 13, color: '#475569', marginBottom: 6 },
-  holidayMeta: { flexDirection: 'row', alignItems: 'center' },
-  metaText: { fontSize: 11, color: '#64748b', fontWeight: '500' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  headerGradient: { padding: 20, paddingTop: 20, paddingBottom: 25, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, elevation: 5, shadowColor: '#0F172A', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 10, zIndex: 10 },
+  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, marginTop: 10 },
+  headerTitle: { fontSize: 26, fontWeight: '800', color: '#FFFFFF', letterSpacing: 0.5 },
+  addButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.15)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 12, paddingHorizontal: 15, paddingVertical: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  searchPlaceholder: { color: '#94A3B8', fontSize: 16, marginLeft: 10, fontWeight: '500' },
+  listContent: { padding: 20, paddingTop: 30, paddingBottom: 100 },
+  card: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, marginBottom: 16, elevation: 2, shadowColor: '#64748B', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 8, borderWidth: 1, borderColor: '#F1F5F9' },
+  cardHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
+  iconContainer: { width: 48, height: 48, borderRadius: 12, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  iconText: { fontSize: 18, fontWeight: '700', color: '#3B82F6' },
+  cardInfo: { flex: 1 },
+  cardTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 4 },
+  cardSubtitle: { fontSize: 13, color: '#64748B', fontWeight: '500' },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
+  statusText: { fontSize: 12, fontWeight: '700' },
+  cardActions: { flexDirection: 'row', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: '#F1F5F9', paddingTop: 12, marginTop: 4 },
+  actionBtn: { padding: 8, marginLeft: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }
 });

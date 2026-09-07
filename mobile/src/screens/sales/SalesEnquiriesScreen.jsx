@@ -4,6 +4,15 @@ import { Search, Plus, Mail, Phone, ChevronRight, X, Building2, User, ChevronLef
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
 import { useAuth } from '../../context/AuthContext';
+import ActionModals from '../../components/common/ActionModals';
+
+const createEnquirySchema = () => [
+  { key: 'customer_name', label: 'Customer Name', required: true },
+  { key: 'contact_email', label: 'Email', keyboardType: 'email-address' },
+  { key: 'contact_phone', label: 'Phone', keyboardType: 'phone-pad' },
+  { key: 'enquiry_details', label: 'Requirements / Details', multiline: true, required: true },
+  { key: 'status', label: 'Status', type: 'select', options: ['new', 'contacted', 'qualified', 'proposal_sent', 'won', 'lost'] }
+];
 
 export default function SalesEnquiriesScreen({ navigation }) {
   const { user } = useAuth();
@@ -11,13 +20,9 @@ export default function SalesEnquiriesScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Modal State
-  const [modalVisible, setModalVisible] = useState(false);
-  const [newCustomerName, setNewCustomerName] = useState('');
-  const [newContactEmail, setNewContactEmail] = useState('');
-  const [newContactPhone, setNewContactPhone] = useState('');
-  const [newEnquiryDetails, setNewEnquiryDetails] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState('view');
+  const [actionSelectedItem, setActionSelectedItem] = useState(null);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
@@ -44,32 +49,21 @@ export default function SalesEnquiriesScreen({ navigation }) {
     }
   };
 
-  const handleAddEnquiry = async () => {
-    if (!newCustomerName.trim() || !newEnquiryDetails.trim()) {
-      Alert.alert('Required', 'Customer name and details are required.');
-      return;
-    }
+  const handleActionSave = async (updatedItem) => {
     try {
-      setSubmitting(true);
-      await apiClient.post('/sales/enquiries', { 
-        customer_name: newCustomerName, 
-        contact_email: newContactEmail,
-        contact_phone: newContactPhone,
-        enquiry_details: newEnquiryDetails,
-        status: 'new',
-        assigned_to: user?.id || 1
-      });
-      setNewCustomerName('');
-      setNewContactEmail('');
-      setNewContactPhone('');
-      setNewEnquiryDetails('');
-      setModalVisible(false);
+      if (updatedItem.id) {
+        await apiClient.put(`/sales/enquiries/${updatedItem.id}`, updatedItem);
+      } else {
+        await apiClient.post('/sales/enquiries', {
+          ...updatedItem,
+          assigned_to: user?.id || 1
+        });
+      }
+      setActionModalVisible(false);
       fetchEnquiries();
     } catch (err) {
-      console.error('Error adding enquiry:', err);
-      Alert.alert('Error', 'Failed to add enquiry.');
-    } finally {
-      setSubmitting(false);
+      console.error('Error saving enquiry:', err);
+      Alert.alert('Error', 'Failed to save enquiry.');
     }
   };
 
@@ -106,7 +100,11 @@ export default function SalesEnquiriesScreen({ navigation }) {
             <Text style={styles.headerSubtitle}>Manage and track incoming leads</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
+        <TouchableOpacity style={styles.addButton} onPress={() => {
+          setActionSelectedItem({ status: 'new' });
+          setActionModalMode('add');
+          setActionModalVisible(true);
+        }}>
           <LinearGradient colors={['#2563EB', '#2563EB']} style={styles.gradientBtn}>
             <Plus size={18} color='#FFFFFF' />
             <Text style={styles.addButtonText}>New Lead</Text>
@@ -177,79 +175,17 @@ export default function SalesEnquiriesScreen({ navigation }) {
         </ScrollView>
       )}
 
-      {/* Add Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>New Enquiry</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color='#6B7280' />
-              </TouchableOpacity>
-            </View>
-            <ScrollView style={styles.modalBody} showsVerticalScrollIndicator={false}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Customer Name</Text>
-                <TextInput 
-                  style={styles.modalInput}
-                  placeholder="e.g. Acme Corp"
-                  placeholderTextColor="#94A3B8"
-                  value={newCustomerName}
-                  onChangeText={setNewCustomerName}
-                />
-              </View>
-
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.inputLabel}>Email</Text>
-                  <TextInput 
-                    style={styles.modalInput}
-                    placeholder="john@example.com"
-                    placeholderTextColor="#94A3B8"
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    value={newContactEmail}
-                    onChangeText={setNewContactEmail}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Phone</Text>
-                <TextInput 
-                  style={styles.modalInput}
-                  placeholder="+1 234 567 890"
-                  placeholderTextColor="#94A3B8"
-                  keyboardType="phone-pad"
-                  value={newContactPhone}
-                  onChangeText={setNewContactPhone}
-                />
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.inputLabel}>Requirements / Details</Text>
-                <TextInput 
-                  style={[styles.modalInput, { height: 100, textAlignVertical: 'top' }]}
-                  placeholder="What are they looking for?"
-                  placeholderTextColor="#94A3B8"
-                  multiline
-                  value={newEnquiryDetails}
-                  onChangeText={setNewEnquiryDetails}
-                />
-              </View>
-
-              <TouchableOpacity 
-                style={[styles.submitButton, submitting && { opacity: 0.7 }]} 
-                onPress={handleAddEnquiry}
-                disabled={submitting}
-              >
-                <Text style={styles.submitButtonText}>{submitting ? 'Creating...' : 'Create Enquiry'}</Text>
-              </TouchableOpacity>
-              <View style={{ height: 20 }} />
-            </ScrollView>
-          </View>
-        </View>
-      </Modal>
+      {actionModalVisible && (
+        <ActionModals
+          visible={actionModalVisible}
+          mode={actionModalMode}
+          item={actionSelectedItem}
+          schema={createEnquirySchema()}
+          onClose={() => setActionModalVisible(false)}
+          onSave={handleActionSave}
+          title={actionModalMode === 'add' ? 'New Enquiry' : actionModalMode === 'edit' ? 'Edit Enquiry' : 'Enquiry Details'}
+        />
+      )}
     </View>
   );
 }

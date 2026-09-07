@@ -1,39 +1,38 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import { BarChart3, PieChart, TrendingUp, Users, DollarSign, CalendarCheck } from 'lucide-react-native';
+import { BarChart3, PieChart, TrendingUp, Users, DollarSign, CalendarCheck, FileText } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 export default function AnalyticsReportsScreen() {
+  const renderKpi = (label, value, Icon, color, bgColor) => (
+    <View style={styles.kpiCard}>
+      <View style={[styles.kpiIconBox, { backgroundColor: bgColor }]}>
+        <Icon size={20} color={color} />
+      </View>
+      <Text style={styles.kpiValue}>{value}</Text>
+      <Text style={styles.kpiLabel}>{label}</Text>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>Analytics</Text>
-          <Text style={styles.headerSubtitle}>Company overview & reports</Text>
+      <LinearGradient colors={['#1E293B', '#0F172A']} style={styles.headerGradient}>
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerTitle}>Analytics</Text>
+            <Text style={styles.headerSubtitle}>Company overview & reports</Text>
+          </View>
         </View>
-      </View>
+      </LinearGradient>
 
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.statsGrid}>
-          <View style={styles.statCard}>
-            <Users size={24} color="#3B82F6" />
-            <Text style={styles.statValue}>124</Text>
-            <Text style={styles.statLabel}>Total Employees</Text>
-          </View>
-          <View style={styles.statCard}>
-            <CalendarCheck size={24} color="#10B981" />
-            <Text style={styles.statValue}>98%</Text>
-            <Text style={styles.statLabel}>Attendance Rate</Text>
-          </View>
-          <View style={styles.statCard}>
-            <DollarSign size={24} color="#F59E0B" />
-            <Text style={styles.statValue}>$42k</Text>
-            <Text style={styles.statLabel}>Sales this Month</Text>
-          </View>
-          <View style={styles.statCard}>
-            <TrendingUp size={24} color="#8B5CF6" />
-            <Text style={styles.statValue}>+12%</Text>
-            <Text style={styles.statLabel}>Performance</Text>
-          </View>
+      <ScrollView contentContainerStyle={styles.content}>
+        <View style={styles.kpiRow}>
+          {renderKpi('Total Employees', '124', Users, '#3B82F6', '#EFF6FF')}
+          {renderKpi('Attendance Rate', '98%', CalendarCheck, '#10B981', '#D1FAE5')}
+        </View>
+        <View style={styles.kpiRow}>
+          {renderKpi('Sales this Month', '$42k', DollarSign, '#F59E0B', '#FEF3C7')}
+          {renderKpi('Performance', '+12%', TrendingUp, '#8B5CF6', '#EDE9FE')}
         </View>
 
         <Text style={styles.sectionTitle}>Available Reports</Text>
@@ -68,7 +67,6 @@ export default function AnalyticsReportsScreen() {
           </View>
         </TouchableOpacity>
 
-        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
@@ -76,23 +74,21 @@ export default function AnalyticsReportsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
-  header: { padding: 20, backgroundColor: '#FFFFFF', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },
-  headerSubtitle: { fontSize: 14, color: '#6B7280', marginTop: 4, fontWeight: '500' },
-  content: { padding: 20 },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 16, marginBottom: 24 },
-  statCard: { 
-    width: '47%', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16,
-    borderWidth: 1, borderColor: '#E5E7EB', shadowColor: '#111827', shadowOffset: { width: 0, height: 4 }, 
-    shadowOpacity: 0.03, shadowRadius: 8, elevation: 2,
-  },
-  statValue: { fontSize: 24, fontWeight: '800', color: '#111827', marginTop: 12, marginBottom: 4 },
-  statLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
-  sectionTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 16 },
-  reportItem: { 
-    flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, 
-    padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB' 
-  },
+  headerGradient: { padding: 20, paddingTop: 20, paddingBottom: 25, borderBottomLeftRadius: 30, borderBottomRightRadius: 30, elevation: 5 },
+  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  headerTitle: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
+  headerSubtitle: { fontSize: 13, color: '#94A3B8', marginTop: 4 },
+  
+  content: { padding: 16, paddingBottom: 60 },
+  kpiRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+  kpiCard: { flex: 0.48, backgroundColor: '#FFF', borderRadius: 12, padding: 16, borderWidth: 1, borderColor: '#E5E7EB', elevation: 1 },
+  kpiIconBox: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 12 },
+  kpiLabel: { fontSize: 12, color: '#6B7280', fontWeight: '500' },
+  kpiValue: { fontSize: 20, fontWeight: '800', color: '#111827', marginBottom: 4 },
+  
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#111827', marginTop: 12, marginBottom: 16 },
+  
+  reportItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB', elevation: 1 },
   iconBox: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
   reportInfo: { flex: 1 },
   reportTitle: { fontSize: 15, fontWeight: '700', color: '#111827', marginBottom: 4 },

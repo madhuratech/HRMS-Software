@@ -1,23 +1,69 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Modal, ToastAndroid, Platform } from 'react-native';
-import { Search, Plus, MapPin, X, ArrowRightLeft, ChevronLeft } from 'lucide-react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Modal, ToastAndroid, Platform, Alert } from 'react-native';
+import { Search, Plus, MapPin, X, ArrowRightLeft, ChevronLeft, Eye, Edit2, Trash2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import apiClient from '../../api/client';
+import ActionModals from '../../components/common/ActionModals';
 
 export default function TransfersScreen() {
+
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState('view');
+  const [actionSelectedItem, setActionSelectedItem] = useState(null);
+
+  const handleActionView = (item) => { setActionSelectedItem(item); setActionModalMode('view'); setActionModalVisible(true); };
+  const handleActionEdit = (item) => { setActionSelectedItem(item); setActionModalMode('edit'); setActionModalVisible(true); };
+  const handleActionAdd = () => { setActionSelectedItem(null); setActionModalMode('add'); setActionModalVisible(true); };
+  
+  const handleActionDelete = (item) => {
+    Alert.alert('Delete', 'Are you sure you want to delete this item?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+            await apiClient.delete(`/employees/transfers/${item.id || item._id}`);
+            if (typeof fetchData === 'function') fetchData();
+            if (typeof loadData === 'function') loadData();
+            if (typeof fetchDocuments === 'function') fetchDocuments();
+            if (typeof fetchAppraisals === 'function') fetchAppraisals();
+            if (typeof fetchProjects === 'function') fetchProjects();
+          } catch (err) { console.error('Delete error:', err); }
+      }}
+    ]);
+  };
+
+  const handleActionSave = async (updatedItem) => {
+    try {
+      if (actionModalMode === 'add') {
+        await apiClient.post('/employees/transfers', { 
+          employeeId: updatedItem.employeeId, 
+          transferType: updatedItem.transferType,
+          newValueName: updatedItem.newValue, 
+          effectiveDate: updatedItem.effectiveDate || new Date().toISOString().split('T')[0]
+        });
+        showToast('Transfer Requested Successfully!');
+      } else {
+        if (updatedItem.id || updatedItem._id) {
+          await apiClient.put(`/employees/transfers/${updatedItem.id || updatedItem._id}`, updatedItem);
+        }
+      }
+      setActionModalVisible(false);
+      if (typeof fetchData === 'function') fetchData();
+      if (typeof loadData === 'function') loadData();
+      if (typeof fetchDocuments === 'function') fetchDocuments();
+      if (typeof fetchAppraisals === 'function') fetchAppraisals();
+      if (typeof fetchProjects === 'function') fetchProjects();
+      fetchTransfers();
+    } catch (err) {
+      console.error('Update error:', err);
+      showToast('Failed to request transfer.');
+    }
+  };
+
   const [transfers, setTransfers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const navigation = useNavigation();
-
-  // Modal State
-  const [modalVisible, setModalVisible] = useState(false);
-  const [empId, setEmpId] = useState('');
-  const [transferType, setTransferType] = useState('Department'); // Branch, Department, Manager
-  const [newValue, setNewValue] = useState('');
-  const [effectiveDate, setEffectiveDate] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchTransfers();
@@ -42,32 +88,6 @@ export default function TransfersScreen() {
       ToastAndroid.show(message, ToastAndroid.SHORT);
     } else {
       alert(message);
-    }
-  };
-
-  const handleAddTransfer = async () => {
-    if (!empId.trim() || !newValue.trim()) return;
-    try {
-      setSubmitting(true);
-      await apiClient.post('/employees/transfers', { 
-        employeeId: empId, 
-        transferType,
-        newValueName: newValue, 
-        effectiveDate: effectiveDate || new Date().toISOString().split('T')[0]
-      });
-
-      showToast('Transfer Requested Successfully!');
-
-      setEmpId('');
-      setNewValue('');
-      setEffectiveDate('');
-      setModalVisible(false);
-      fetchTransfers();
-    } catch (err) {
-      console.error('Error adding transfer:', err);
-      showToast('Failed to request transfer.');
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -129,7 +149,20 @@ export default function TransfersScreen() {
           </TouchableOpacity>
         )}
       </View>
-    </View>
+    
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingTop: 12, marginTop: 12, gap: 12 }}>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionView(item)}>
+          <Eye size={18} color="#6B7280" />
+        </TouchableOpacity>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionEdit(item)}>
+          <Edit2 size={18} color="#3B82F6" />
+        </TouchableOpacity>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionDelete(item)}>
+          <Trash2 size={18} color="#EF4444" />
+        </TouchableOpacity>
+      </View>
+    
+</View>
   );
 
   return (
@@ -143,7 +176,7 @@ export default function TransfersScreen() {
             <Text style={styles.pageTitle}>Transfers</Text>
             <Text style={styles.pageSubtitle}>Manage employee transfers</Text>
           </View>
-          <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
+          <TouchableOpacity style={styles.addButton} onPress={handleActionAdd}>
             <LinearGradient colors={['#8B5CF6', '#7C3AED']} style={styles.gradientBtn}>
               <Plus size={18} color='#FFFFFF' />
               <Text style={styles.addButtonText}>Request</Text>
@@ -184,62 +217,20 @@ export default function TransfersScreen() {
         />
       )}
 
-      {/* Add Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Request Transfer</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color='#6B7280' />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalBody}>
-              <Text style={styles.inputLabel}>Employee ID</Text>
-              <TextInput 
-                style={styles.modalInput}
-                placeholder="e.g. 1"
-                placeholderTextColor="#94A3B8"
-                value={empId}
-                onChangeText={setEmpId}
-                keyboardType="numeric"
-              />
-              <Text style={styles.inputLabel}>Transfer Type (Department/Branch/Manager)</Text>
-              <TextInput 
-                style={styles.modalInput}
-                placeholder="Department"
-                placeholderTextColor="#94A3B8"
-                value={transferType}
-                onChangeText={setTransferType}
-              />
-              <Text style={styles.inputLabel}>New Value</Text>
-              <TextInput 
-                style={styles.modalInput}
-                placeholder="e.g. Marketing"
-                placeholderTextColor="#94A3B8"
-                value={newValue}
-                onChangeText={setNewValue}
-              />
-              <Text style={styles.inputLabel}>Effective Date</Text>
-              <TextInput 
-                style={styles.modalInput}
-                placeholder="YYYY-MM-DD"
-                placeholderTextColor="#94A3B8"
-                value={effectiveDate}
-                onChangeText={setEffectiveDate}
-              />
-
-              <TouchableOpacity 
-                style={[styles.submitButton, submitting && { opacity: 0.7 }]} 
-                onPress={handleAddTransfer}
-                disabled={submitting}
-              >
-                <Text style={styles.submitButtonText}>{submitting ? 'Submitting...' : 'Submit Request'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <ActionModals 
+        visible={actionModalVisible}
+        mode={actionModalMode}
+        item={actionSelectedItem}
+        schema={[
+          { key: 'employeeId', label: 'Employee ID', required: true, keyboardType: 'numeric' },
+          { key: 'transferType', label: 'Transfer Type', type: 'select', options: ['Department', 'Branch', 'Manager'], required: true },
+          { key: 'newValue', label: 'New Value (Department/Branch/Manager Name)', required: true },
+          { key: 'effectiveDate', label: 'Effective Date (YYYY-MM-DD)' }
+        ]}
+        title={actionModalMode === 'add' ? 'Request Transfer' : actionModalMode === 'edit' ? 'Edit Transfer' : 'Transfer Details'}
+        onClose={() => setActionModalVisible(false)}
+        onSave={handleActionSave}
+      />
     </View>
   );
 }
@@ -286,14 +277,4 @@ const styles = StyleSheet.create({
   reasonText: { fontSize: 15, color: '#1E293B', fontWeight: '600' },
   emptyBox: { padding: 40, alignItems: 'center' },
   emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
-
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  modalTitle: { fontSize: 22, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },
-  modalBody: { gap: 16 },
-  inputLabel: { fontSize: 14, fontWeight: '700', color: '#475569' },
-  modalInput: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, padding: 16, fontSize: 16, color: '#1E293B', backgroundColor: '#F8FAFC' },
-  submitButton: { backgroundColor: '#8B5CF6', borderRadius: 16, padding: 18, alignItems: 'center', marginTop: 16, shadowColor: '#8B5CF6', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' }
 });

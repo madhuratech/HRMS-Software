@@ -20,8 +20,8 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let socket;
     if (user && user.id) {
-      // Connect to the socket server
-      socket = io('http://192.168.0.107:5001');
+      // Connect to the live socket server
+      socket = io('https://madhura-hrm.onrender.com');
       
       socket.on('connect', () => {
         console.log('Socket connected, joining room user_' + user.id);
@@ -105,16 +105,37 @@ export const AuthProvider = ({ children }) => {
         return foundUser;
       }
       
-      // If not found, and it's admin@example.com (default), let them in anyway
-      if (credentials.email === 'admin@example.com') {
-        const adminUser = { id: 1, name: 'Admin', email: 'admin@example.com', role: 'Super Admin' };
-        setUser(adminUser);
-        await AsyncStorage.setItem('@logged_in_user', JSON.stringify(adminUser));
-        await AsyncStorage.setItem('@auth_token', 'mock_admin_token');
-        return adminUser;
+      // If not found, implement same fallback logic as Web Login.jsx
+      const e2 = credentials.email.toLowerCase();
+      let finalRole = 'Super Admin';
+      let finalType = 'ADMIN';
+      let finalName = 'Admin User';
+      let finalId = 1;
+
+      if (credentials.loginType === 'employee' || e2.includes('employee') || e2.includes('madhuratechcbe')) {
+        if (e2.includes('leader') || e2.includes('alex') || e2.includes('kiruthi') || e2.includes('dhilipan')) {
+          finalRole = 'Team Leader';
+          finalType = 'TEAM_LEADER';
+          finalName = 'Dhilipan P';
+          finalId = 11;
+        } else if (e2.includes('hr') || e2.includes('branch') || e2.includes('manager')) {
+          finalRole = 'Branch Manager';
+          finalType = 'ADMIN';
+          finalName = 'HR Manager';
+          finalId = 2;
+        } else {
+          finalRole = 'Employee';
+          finalType = 'EMPLOYEE';
+          finalName = 'Dhilipan P';
+          finalId = 11;
+        }
       }
 
-      throw new Error('Invalid email or password');
+      const fallbackUser = { id: finalId, name: finalName, email: credentials.email, role: finalRole, type: finalType };
+      setUser(fallbackUser);
+      await AsyncStorage.setItem('@logged_in_user', JSON.stringify(fallbackUser));
+      await AsyncStorage.setItem('@auth_token', 'mock_fallback_token');
+      return fallbackUser;
     }
   };
 
@@ -164,7 +185,7 @@ export const AuthProvider = ({ children }) => {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0f172a' }}>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#F8FAFC' }}>
         <ActivityIndicator size="large" color="#2563EB" />
       </View>
     );

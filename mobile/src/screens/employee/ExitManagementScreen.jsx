@@ -1,24 +1,67 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, ActivityIndicator, Modal } from 'react-native';
-import { Search, Plus, DoorOpen, X, AlertCircle, ChevronLeft } from 'lucide-react-native';
+import { Search, Plus, DoorOpen, X, AlertCircle, ChevronLeft, Eye, Edit2, Trash2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import apiClient from '../../api/client';
+import ActionModals from '../../components/common/ActionModals';
 
 export default function ExitManagementScreen() {
-  const navigation = useNavigation();
+
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState('view');
+  const [actionSelectedItem, setActionSelectedItem] = useState(null);
+
+  const handleActionView = (item) => { setActionSelectedItem(item); setActionModalMode('view'); setActionModalVisible(true); };
+  const handleActionEdit = (item) => { setActionSelectedItem(item); setActionModalMode('edit'); setActionModalVisible(true); };
+  const handleActionAdd = () => { setActionSelectedItem(null); setActionModalMode('add'); setActionModalVisible(true); };
+  
+  const handleActionDelete = (item) => {
+    Alert.alert('Delete', 'Are you sure you want to delete this item?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+            await apiClient.delete(`/employees/exits/${item.id || item._id}`);
+            if (typeof fetchData === 'function') fetchData();
+            if (typeof loadData === 'function') loadData();
+            if (typeof fetchDocuments === 'function') fetchDocuments();
+            if (typeof fetchAppraisals === 'function') fetchAppraisals();
+            if (typeof fetchProjects === 'function') fetchProjects();
+          } catch (err) { console.error('Delete error:', err); }
+      }}
+    ]);
+  };
+
+  const handleActionSave = async (updatedItem) => {
+    try {
+      if (actionModalMode === 'add') {
+        await apiClient.post('/employees/exits', { 
+          employeeId: updatedItem.employeeId, 
+          exitType: updatedItem.exitType,
+          noticeDate: updatedItem.noticeDate || new Date().toISOString().split('T')[0],
+          exitDate: updatedItem.exitDate,
+          reason: updatedItem.reason
+        });
+      } else {
+        if (updatedItem.id || updatedItem._id) {
+          await apiClient.put(`/employees/exits/${updatedItem.id || updatedItem._id}`, updatedItem);
+        }
+      }
+      setActionModalVisible(false);
+      if (typeof fetchData === 'function') fetchData();
+      if (typeof loadData === 'function') loadData();
+      if (typeof fetchDocuments === 'function') fetchDocuments();
+      if (typeof fetchAppraisals === 'function') fetchAppraisals();
+      if (typeof fetchProjects === 'function') fetchProjects();
+      fetchExits();
+    } catch (err) {
+      console.error('Update error:', err);
+    }
+  };
+
   const [exits, setExits] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Modal State
-  const [modalVisible, setModalVisible] = useState(false);
-  const [empId, setEmpId] = useState('');
-  const [exitType, setExitType] = useState('Resignation'); // Resignation, Termination
-  const [noticeDate, setNoticeDate] = useState('');
-  const [exitDate, setExitDate] = useState('');
-  const [reason, setReason] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchExits();
@@ -38,30 +81,7 @@ export default function ExitManagementScreen() {
     }
   };
 
-  const handleAddExit = async () => {
-    if (!empId.trim() || !exitDate.trim()) return;
-    try {
-      setSubmitting(true);
-      await apiClient.post('/employees/exits', { 
-        employeeId: empId, 
-        exitType,
-        noticeDate: noticeDate || new Date().toISOString().split('T')[0],
-        exitDate,
-        reason
-      });
-      setEmpId('');
-      setExitType('Resignation');
-      setNoticeDate('');
-      setExitDate('');
-      setReason('');
-      setModalVisible(false);
-      fetchExits();
-    } catch (err) {
-      console.error('Error adding exit record:', err);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+  const navigation = useNavigation();
 
   const handleSettle = async (exitId) => {
     try {
@@ -133,6 +153,19 @@ export default function ExitManagementScreen() {
           </TouchableOpacity>
         )}
       </View>
+    
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingTop: 12, marginTop: 12, gap: 12 }}>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionView(item)}>
+          <Eye size={18} color="#6B7280" />
+        </TouchableOpacity>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionEdit(item)}>
+          <Edit2 size={18} color="#3B82F6" />
+        </TouchableOpacity>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionDelete(item)}>
+          <Trash2 size={18} color="#EF4444" />
+        </TouchableOpacity>
+      </View>
+    
     </View>
   );
 
@@ -147,7 +180,7 @@ export default function ExitManagementScreen() {
             <Text style={styles.pageTitle}>Exit Records</Text>
             <Text style={styles.pageSubtitle}>Manage employee departures</Text>
           </View>
-          <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
+          <TouchableOpacity style={styles.addButton} onPress={handleActionAdd}>
             <LinearGradient colors={['#EF4444', '#B91C1C']} style={styles.gradientBtn}>
               <Plus size={20} color='#FFFFFF' />
               <Text style={styles.addButtonText}>New</Text>
@@ -188,63 +221,21 @@ export default function ExitManagementScreen() {
         />
       )}
 
-      {/* Add Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Initiate Exit</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color='#6B7280' />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalBody}>
-              <Text style={styles.inputLabel}>Employee ID</Text>
-              <TextInput 
-                style={styles.modalInput}
-                placeholder="e.g. 1"
-                placeholderTextColor="#94A3B8"
-                value={empId}
-                onChangeText={setEmpId}
-                keyboardType="numeric"
-              />
-              <Text style={styles.inputLabel}>Type (Resignation / Termination)</Text>
-              <TextInput 
-                style={styles.modalInput}
-                placeholder="Resignation"
-                placeholderTextColor="#94A3B8"
-                value={exitType}
-                onChangeText={setExitType}
-              />
-              <Text style={styles.inputLabel}>Exit Date (YYYY-MM-DD)</Text>
-              <TextInput 
-                style={styles.modalInput}
-                placeholder="2026-08-30"
-                placeholderTextColor="#94A3B8"
-                value={exitDate}
-                onChangeText={setExitDate}
-              />
-              <Text style={styles.inputLabel}>Reason (Optional)</Text>
-              <TextInput 
-                style={[styles.modalInput, { height: 80, textAlignVertical: 'top' }]}
-                placeholder="Brief reason for exit..."
-                placeholderTextColor="#94A3B8"
-                value={reason}
-                onChangeText={setReason}
-                multiline
-              />
-
-              <TouchableOpacity 
-                style={[styles.submitButton, submitting && { opacity: 0.7 }]} 
-                onPress={handleAddExit}
-                disabled={submitting}
-              >
-                <Text style={styles.submitButtonText}>{submitting ? 'Submitting...' : 'Submit Request'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <ActionModals 
+        visible={actionModalVisible}
+        mode={actionModalMode}
+        item={actionSelectedItem}
+        schema={[
+          { key: 'employeeId', label: 'Employee ID', required: true, keyboardType: 'numeric' },
+          { key: 'exitType', label: 'Type', type: 'select', options: ['Resignation', 'Termination', 'Retirement', 'Absconding'], required: true },
+          { key: 'noticeDate', label: 'Notice Date (YYYY-MM-DD)' },
+          { key: 'exitDate', label: 'Exit Date (YYYY-MM-DD)', required: true },
+          { key: 'reason', label: 'Reason (Optional)', multiline: true }
+        ]}
+        title={actionModalMode === 'add' ? 'Initiate Exit' : actionModalMode === 'edit' ? 'Edit Exit Record' : 'Exit Details'}
+        onClose={() => setActionModalVisible(false)}
+        onSave={handleActionSave}
+      />
     </View>
   );
 }
@@ -298,14 +289,4 @@ const styles = StyleSheet.create({
   reasonText: { fontSize: 14, color: '#475569', flex: 1, lineHeight: 20, fontWeight: '500' },
   emptyBox: { padding: 40, alignItems: 'center' },
   emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '600' },
-
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 32, paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
-  modalTitle: { fontSize: 22, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },
-  modalBody: { gap: 16 },
-  inputLabel: { fontSize: 14, fontWeight: '700', color: '#475569' },
-  modalInput: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 16, padding: 16, fontSize: 16, color: '#1E293B', backgroundColor: '#F8FAFC' },
-  submitButton: { backgroundColor: '#EF4444', borderRadius: 16, padding: 18, alignItems: 'center', marginTop: 16, shadowColor: '#EF4444', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' }
 });

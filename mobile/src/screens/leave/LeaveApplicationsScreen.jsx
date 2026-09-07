@@ -1,20 +1,62 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
-import { Calendar, Plus, X, Clock, CalendarDays, CheckCircle, ChevronLeft } from 'lucide-react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert } from 'react-native';
+import { Calendar, Plus, X, Clock, CalendarDays, CheckCircle, ChevronLeft, Eye, Edit2, Trash2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
+import ActionModals from '../../components/common/ActionModals';
 
-export default function LeaveApplicationsScreen({ navigation }) {
+export default function LeaveApplicationsScreen({ navigation, nested }) {
+
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState('view');
+  const [actionSelectedItem, setActionSelectedItem] = useState(null);
+
+  const getLeaveSchema = () => [
+    { key: 'employee_id', label: 'Employee ID', required: true, keyboardType: 'numeric' },
+    { key: 'leave_type_code', label: 'Leave Type Code', type: 'select', options: [{label: 'Sick Leave (SL)', value: 'SL'}, {label: 'Casual Leave (CL)', value: 'CL'}, {label: 'Paid Leave (PL)', value: 'PL'}], required: true },
+    { key: 'start_date', label: 'Start Date (YYYY-MM-DD)', required: true },
+    { key: 'end_date', label: 'End Date (YYYY-MM-DD)', required: true },
+    { key: 'reason', label: 'Reason', multiline: true }
+  ];
+
+  const handleActionView = (item) => { setActionSelectedItem(item); setActionModalMode('view'); setActionModalVisible(true); };
+  const handleActionEdit = (item) => { setActionSelectedItem(item); setActionModalMode('edit'); setActionModalVisible(true); };
+  
+  const handleActionDelete = (item) => {
+    Alert.alert('Delete', 'Are you sure you want to delete this item?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+            await apiClient.delete(`/leaves/applications/${item.id || item._id}`);
+            if (typeof fetchData === 'function') fetchData();
+            if (typeof loadData === 'function') loadData();
+            if (typeof fetchDocuments === 'function') fetchDocuments();
+            if (typeof fetchAppraisals === 'function') fetchAppraisals();
+            if (typeof fetchProjects === 'function') fetchProjects();
+          } catch (err) { console.error('Delete error:', err); }
+      }}
+    ]);
+  };
+
+  const handleActionSave = async (updatedItem) => {
+    try {
+      if (updatedItem.id || updatedItem._id) {
+        await apiClient.put(`/leaves/applications/${updatedItem.id || updatedItem._id}`, updatedItem);
+      } else {
+        await apiClient.post('/leaves/applications', updatedItem);
+      }
+      setActionModalVisible(false);
+      fetchApplications();
+      if (typeof fetchData === 'function') fetchData();
+      if (typeof loadData === 'function') loadData();
+      if (typeof fetchDocuments === 'function') fetchDocuments();
+      if (typeof fetchAppraisals === 'function') fetchAppraisals();
+      if (typeof fetchProjects === 'function') fetchProjects();
+    } catch (err) { console.error('Update error:', err); }
+  };
+
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  const [modalVisible, setModalVisible] = useState(false);
-  const [empId, setEmpId] = useState('');
-  const [leaveTypeCode, setLeaveTypeCode] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [reason, setReason] = useState('');
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     fetchApplications();
@@ -31,27 +73,6 @@ export default function LeaveApplicationsScreen({ navigation }) {
       console.error('Error fetching leaves:', err);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleApply = async () => {
-    if (!empId || !leaveTypeCode || !startDate || !endDate) return;
-    try {
-      setSubmitting(true);
-      await apiClient.post('/leaves/applications', {
-        employee_id: empId,
-        leave_type_code: leaveTypeCode,
-        start_date: startDate,
-        end_date: endDate,
-        reason: reason
-      });
-      setModalVisible(false);
-      setEmpId(''); setLeaveTypeCode(''); setStartDate(''); setEndDate(''); setReason('');
-      fetchApplications();
-    } catch (err) {
-      console.error('Error applying for leave', err);
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -94,22 +115,37 @@ export default function LeaveApplicationsScreen({ navigation }) {
           </View>
         )}
       </View>
-    </View>
+    
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingTop: 12, marginTop: 12, gap: 12 }}>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionView(item)}>
+          <Eye size={18} color="#6B7280" />
+        </TouchableOpacity>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionEdit(item)}>
+          <Edit2 size={18} color="#3B82F6" />
+        </TouchableOpacity>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionDelete(item)}>
+          <Trash2 size={18} color="#EF4444" />
+        </TouchableOpacity>
+      </View>
+    
+</View>
   );
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={styles.header}>
+      <LinearGradient colors={['#FFFFFF', '#F8FAFC']} style={[styles.header, nested && { paddingVertical: 12, paddingHorizontal: 16 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
-          <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
-            <ChevronLeft size={24} color='#111827' />
-          </TouchableOpacity>
+          {!nested && (
+            <TouchableOpacity onPress={() => navigation.navigate('DashboardMain')} style={{ marginRight: 16, padding: 4 }}>
+              <ChevronLeft size={24} color='#111827' />
+            </TouchableOpacity>
+          )}
           <View style={styles.headerTextContainer}>
             <Text style={styles.headerTitle}>Leave Applications</Text>
             <Text style={styles.headerSubtitle}>View and manage time off</Text>
           </View>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
+        <TouchableOpacity style={styles.addButton} onPress={() => { setActionSelectedItem({}); setActionModalMode('add'); setActionModalVisible(true); }}>
           <LinearGradient colors={['#3B82F6', '#2563EB']} style={styles.gradientBtn}>
             <Plus size={18} color='#FFFFFF' />
             <Text style={styles.addButtonText}>Apply</Text>
@@ -134,49 +170,21 @@ export default function LeaveApplicationsScreen({ navigation }) {
         />
       )}
 
-      {/* Apply Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Apply For Leave</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color='#6B7280' />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalBody}>
-              <Text style={styles.inputLabel}>Employee ID</Text>
-              <TextInput style={styles.modalInput} placeholder="Employee ID" value={empId} onChangeText={setEmpId} />
-              <Text style={styles.inputLabel}>Leave Type Code</Text>
-              <TextInput style={styles.modalInput} placeholder="e.g. CL, SL, PL" value={leaveTypeCode} onChangeText={setLeaveTypeCode} />
-
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>Start Date</Text>
-                  <TextInput style={styles.modalInput} placeholder="YYYY-MM-DD" value={startDate} onChangeText={setStartDate} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>End Date</Text>
-                  <TextInput style={styles.modalInput} placeholder="YYYY-MM-DD" value={endDate} onChangeText={setEndDate} />
-                </View>
-              </View>
-
-              <Text style={styles.inputLabel}>Reason</Text>
-              <TextInput style={[styles.modalInput, { height: 80, textAlignVertical: 'top' }]} placeholder="Sick, Vacation..." value={reason} onChangeText={setReason} multiline />
-
-              <TouchableOpacity style={[styles.submitButton, submitting && { opacity: 0.7 }]} onPress={handleApply} disabled={submitting}>
-                <Text style={styles.submitButtonText}>{submitting ? 'Submitting...' : 'Submit Application'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {actionModalVisible && (
+        <ActionModals 
+          visible={actionModalVisible}
+          mode={actionModalMode}
+          item={actionSelectedItem}
+          schema={getLeaveSchema()}
+          title={actionModalMode === 'add' ? 'Apply For Leave' : actionModalMode === 'edit' ? 'Edit Leave' : 'Leave Details'}
+          onClose={() => setActionModalVisible(false)}
+          onSave={handleActionSave}
+        />
+      )}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
   header: { padding: 20, paddingVertical: 16, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
   headerTextContainer: { flex: 1 },
   headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827', letterSpacing: -0.5 },

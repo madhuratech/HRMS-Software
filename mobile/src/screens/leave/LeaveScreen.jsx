@@ -4,10 +4,11 @@ import {
   Modal, TextInput, ActivityIndicator, Alert, ScrollView, RefreshControl
 } from 'react-native';
 import { Calendar } from 'react-native-calendars';
-import { Plus, X, CheckCircle, XCircle, Clock, CalendarDays, ChevronDown, FileText, User, AlertTriangle, Users, UserMinus, Percent } from 'lucide-react-native';
+import { Plus, X, CheckCircle, XCircle, Clock, CalendarDays, ChevronDown, FileText, User, AlertTriangle, Users, UserMinus, Percent, Eye, Edit2, Trash2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useAuth } from '../../context/AuthContext';
 import apiClient from '../../api/client';
+import ActionModals from '../../components/common/ActionModals';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 function getRoleKey(user) {
@@ -359,6 +360,44 @@ function LeaveCard({ item, canApprove, onApprove, onReject, currentUserRole }) {
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 export default function LeaveScreen() {
+
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState('view');
+  const [actionSelectedItem, setActionSelectedItem] = useState(null);
+
+  const handleActionView = (item) => { setActionSelectedItem(item); setActionModalMode('view'); setActionModalVisible(true); };
+  const handleActionEdit = (item) => { setActionSelectedItem(item); setActionModalMode('edit'); setActionModalVisible(true); };
+  
+  const handleActionDelete = (item) => {
+    Alert.alert('Delete', 'Are you sure you want to delete this item?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+            await apiClient.delete(`/leaves/applications/${item.id || item._id}`);
+            if (typeof fetchData === 'function') fetchData();
+            if (typeof loadData === 'function') loadData();
+            if (typeof fetchDocuments === 'function') fetchDocuments();
+            if (typeof fetchAppraisals === 'function') fetchAppraisals();
+            if (typeof fetchProjects === 'function') fetchProjects();
+          } catch (err) { console.error('Delete error:', err); }
+      }}
+    ]);
+  };
+
+  const handleActionSave = async (updatedItem) => {
+    try {
+      if (updatedItem.id || updatedItem._id) {
+        await apiClient.put(`/leaves/applications/${updatedItem.id || updatedItem._id}`, updatedItem);
+      }
+      setActionModalVisible(false);
+      if (typeof fetchData === 'function') fetchData();
+      if (typeof loadData === 'function') loadData();
+      if (typeof fetchDocuments === 'function') fetchDocuments();
+      if (typeof fetchAppraisals === 'function') fetchAppraisals();
+      if (typeof fetchProjects === 'function') fetchProjects();
+    } catch (err) { console.error('Update error:', err); }
+  };
+
   const { user } = useAuth();
   const roleKey = getRoleKey(user);
   const isSuperAdmin = roleKey === 'SUPER_ADMIN';

@@ -1,10 +1,60 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
-import { Clock, CheckCircle, XCircle, Search, Plus, X } from 'lucide-react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert } from 'react-native';
+import { Clock, CheckCircle, XCircle, Search, Plus, X, Eye, Edit2, Trash2 } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import apiClient from '../../api/client';
+import ActionModals from '../../components/common/ActionModals';
 
 export default function RegularizationScreen() {
+
+  const [actionModalVisible, setActionModalVisible] = useState(false);
+  const [actionModalMode, setActionModalMode] = useState('view');
+  const [actionSelectedItem, setActionSelectedItem] = useState(null);
+
+  const getRegSchema = () => [
+    { key: 'employeeId', label: 'Employee ID', required: true, keyboardType: 'numeric' },
+    { key: 'date', label: 'Date (YYYY-MM-DD)', required: true },
+    { key: 'requestedPunchIn', label: 'Punch In (HH:MM:SS)' },
+    { key: 'requestedPunchOut', label: 'Punch Out (HH:MM:SS)' },
+    { key: 'reason', label: 'Reason', multiline: true }
+  ];
+
+  const handleActionView = (item) => { setActionSelectedItem(item); setActionModalMode('view'); setActionModalVisible(true); };
+  const handleActionEdit = (item) => { setActionSelectedItem(item); setActionModalMode('edit'); setActionModalVisible(true); };
+  
+  const handleActionDelete = (item) => {
+    Alert.alert('Delete', 'Are you sure you want to delete this item?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: async () => {
+          try {
+            await apiClient.delete(`/attendance/regularization/${item.id || item._id}`);
+            if (typeof fetchData === 'function') fetchData();
+            if (typeof loadData === 'function') loadData();
+            if (typeof fetchDocuments === 'function') fetchDocuments();
+            if (typeof fetchAppraisals === 'function') fetchAppraisals();
+            if (typeof fetchProjects === 'function') fetchProjects();
+          } catch (err) { console.error('Delete error:', err); }
+      }}
+    ]);
+  };
+
+  const handleActionSave = async (updatedItem) => {
+    try {
+      if (updatedItem.id || updatedItem._id) {
+        await apiClient.put(`/attendance/regularization/${updatedItem.id || updatedItem._id}`, updatedItem);
+      } else {
+        await apiClient.post('/attendance/regularization', updatedItem);
+      }
+      setActionModalVisible(false);
+      fetchRequests();
+      if (typeof fetchData === 'function') fetchData();
+      if (typeof loadData === 'function') loadData();
+      if (typeof fetchDocuments === 'function') fetchDocuments();
+      if (typeof fetchAppraisals === 'function') fetchAppraisals();
+      if (typeof fetchProjects === 'function') fetchProjects();
+    } catch (err) { console.error('Update error:', err); }
+  };
+
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -121,7 +171,20 @@ export default function RegularizationScreen() {
           </TouchableOpacity>
         </View>
       )}
-    </View>
+    
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', borderTopWidth: 1, borderTopColor: '#E5E7EB', paddingTop: 12, marginTop: 12, gap: 12 }}>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionView(item)}>
+          <Eye size={18} color="#6B7280" />
+        </TouchableOpacity>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionEdit(item)}>
+          <Edit2 size={18} color="#3B82F6" />
+        </TouchableOpacity>
+        <TouchableOpacity style={{ padding: 8, backgroundColor: '#F8FAFC', borderRadius: 8 }} onPress={() => handleActionDelete(item)}>
+          <Trash2 size={18} color="#EF4444" />
+        </TouchableOpacity>
+      </View>
+    
+</View>
   );
 
   return (
@@ -131,7 +194,7 @@ export default function RegularizationScreen() {
           <Text style={styles.headerTitle}>Regularization</Text>
           <Text style={styles.headerSubtitle}>Fix missed punches</Text>
         </View>
-        <TouchableOpacity style={styles.addButton} onPress={() => setModalVisible(true)}>
+        <TouchableOpacity style={styles.addButton} onPress={() => { setActionSelectedItem({}); setActionModalMode('add'); setActionModalVisible(true); }}>
           <LinearGradient colors={['#3B82F6', '#2563EB']} style={styles.gradientBtn}>
             <Plus size={18} color='#FFFFFF' />
             <Text style={styles.addButtonText}>Request</Text>
@@ -156,41 +219,15 @@ export default function RegularizationScreen() {
         />
       )}
 
-      {/* Add Modal */}
-      <Modal visible={modalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Request Regularization</Text>
-              <TouchableOpacity onPress={() => setModalVisible(false)}>
-                <X size={24} color='#6B7280' />
-              </TouchableOpacity>
-            </View>
-            <View style={styles.modalBody}>
-              <Text style={styles.inputLabel}>Employee ID</Text>
-              <TextInput style={styles.modalInput} placeholder="e.g. 1" value={empId} onChangeText={setEmpId} keyboardType="numeric" />
-              <Text style={styles.inputLabel}>Date (YYYY-MM-DD)</Text>
-              <TextInput style={styles.modalInput} placeholder="2026-08-12" value={date} onChangeText={setDate} />
-              <View style={{ flexDirection: 'row', gap: 10 }}>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>Punch In</Text>
-                  <TextInput style={styles.modalInput} placeholder="09:00:00" value={punchIn} onChangeText={setPunchIn} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.inputLabel}>Punch Out</Text>
-                  <TextInput style={styles.modalInput} placeholder="18:00:00" value={punchOut} onChangeText={setPunchOut} />
-                </View>
-              </View>
-              <Text style={styles.inputLabel}>Reason</Text>
-              <TextInput style={[styles.modalInput, { height: 80, textAlignVertical: 'top' }]} placeholder="Forgot to punch in..." value={reason} onChangeText={setReason} multiline />
-              
-              <TouchableOpacity style={[styles.submitButton, submitting && { opacity: 0.7 }]} onPress={handleRequest} disabled={submitting}>
-                <Text style={styles.submitButtonText}>{submitting ? 'Submitting...' : 'Submit Request'}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      <ActionModals 
+        visible={actionModalVisible}
+        mode={actionModalMode}
+        item={actionSelectedItem}
+        schema={getRegSchema()}
+        title={actionModalMode === 'add' ? 'Request Regularization' : actionModalMode === 'edit' ? 'Edit Request' : 'Request Details'}
+        onClose={() => setActionModalVisible(false)}
+        onSave={handleActionSave}
+      />
     </View>
   );
 }
@@ -226,14 +263,5 @@ const styles = StyleSheet.create({
   rejectBtn: { backgroundColor: '#EF4444' },
   actionBtnText: { color: '#FFFFFF', fontWeight: '600', fontSize: 14 },
   emptyBox: { padding: 40, alignItems: 'center' },
-  emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '500' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  modalTitle: { fontSize: 20, fontWeight: '700', color: '#111827' },
-  modalBody: { gap: 16 },
-  inputLabel: { fontSize: 14, fontWeight: '600', color: '#475569' },
-  modalInput: { borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 14, fontSize: 16, color: '#1E293B', backgroundColor: '#F8FAFC' },
-  submitButton: { backgroundColor: '#3B82F6', borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 10 },
-  submitButtonText: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' }
+  emptyText: { color: '#94A3B8', fontSize: 16, fontWeight: '500' }
 });

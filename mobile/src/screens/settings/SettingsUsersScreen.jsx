@@ -1,120 +1,171 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl, Image } from 'react-native';
-import { Shield, Mail, Phone, MoreVertical, Plus, User, CheckCircle2, Search } from 'lucide-react-native';
-import { useAuth } from '../../context/AuthContext';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { Users, Shield, Plus, MoreVertical, RefreshCw } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import ActionModals from '../../components/common/ActionModals';
 
-export default function SettingsUsersScreen({ navigation }) {
-  const { getRegisteredUsers } = useAuth();
-  const [users, setUsers] = useState([]);
-  const [refreshing, setRefreshing] = useState(false);
+const USER_SCHEMA = [
+  { key: 'name', label: 'Full Name' },
+  { key: 'email', label: 'Email Address', keyboardType: 'email-address' },
+  { key: 'role', label: 'Role', type: 'select', options: ['Super Admin', 'HR Manager', 'Branch Manager', 'Employee'] },
+  { key: 'dept', label: 'Department', type: 'select', options: ['Engineering', 'Human Resources', 'Operations', 'Sales'] }
+];
 
-  const fetchUsers = async () => {
-    try {
-      const data = await getRegisteredUsers();
-      setUsers(data || []);
-    } catch (e) {
-      console.log('Error fetching users:', e);
+const USERS = [
+  { id: 1, name: 'Rahul Sharma', email: 'rahul.s@acme.com', role: 'Super Admin', dept: 'Engineering', status: 'Active' },
+  { id: 2, name: 'Priya Patel', email: 'priya.p@acme.com', role: 'HR Manager', dept: 'Human Resources', status: 'Active' },
+  { id: 3, name: 'Amit Kumar', email: 'amit.k@acme.com', role: 'Branch Manager', dept: 'Operations', status: 'Active' }
+];
+
+export default function SettingsUsersScreen() {
+  const [activeTab, setActiveTab] = useState('users');
+  const [usersList, setUsersList] = useState(USERS);
+  
+  // Modal states
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalMode, setModalMode] = useState('add');
+  const [selectedUser, setSelectedUser] = useState(null);
+
+  const handleAddUser = () => {
+    setModalMode('add');
+    setSelectedUser(null);
+    setModalVisible(true);
+  };
+
+  const handleEditUser = (user) => {
+    setModalMode('edit');
+    setSelectedUser(user);
+    setModalVisible(true);
+  };
+
+  const handleSave = (data) => {
+    if (modalMode === 'add') {
+      const newUser = { id: Date.now(), status: 'Active', ...data };
+      setUsersList([newUser, ...usersList]);
+    } else {
+      setUsersList(usersList.map(u => u.id === data.id ? data : u));
     }
+    setModalVisible(false);
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await fetchUsers();
-    setRefreshing(false);
-  };
+  const renderUser = ({ item }) => (
+    <View style={styles.userCard}>
+      <View style={styles.userInfoContainer}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{item.name.charAt(0)}</Text>
+        </View>
+        <View style={styles.userInfo}>
+          <Text style={styles.userName}>{item.name}</Text>
+          <Text style={styles.userEmail}>{item.email}</Text>
+        </View>
+      </View>
+      <View style={styles.userMeta}>
+        <Text style={styles.userRole}>{item.role}</Text>
+        <Text style={styles.userDept}>{item.dept}</Text>
+      </View>
+      <TouchableOpacity style={styles.moreBtn} onPress={() => handleEditUser(item)}>
+        <MoreVertical size={20} color="#94A3B8" />
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
-    <ScrollView 
-      style={styles.container} 
-      showsVerticalScrollIndicator={false}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor='#2563EB' />}
-    >
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>User Management</Text>
-          <Text style={styles.headerSubtitle}>Monitor and manage all registered accounts</Text>
+    <View style={styles.container}>
+      <LinearGradient colors={['#1E293B', '#0F172A']} style={styles.headerGradient}>
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerTitle}>User Roles & Permissions</Text>
+            <Text style={styles.headerSubtitle}>Manage roles, permissions, and users</Text>
+          </View>
+          <View style={styles.actionButtons}>
+            <TouchableOpacity style={styles.btnSecondary}>
+              <RefreshCw size={16} color="#475569" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.btnPrimary} onPress={handleAddUser}>
+              <Plus size={16} color="#FFF" />
+              <Text style={styles.btnPrimaryText}>Add User</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={() => navigation.navigate('Register')}>
-          <Plus size={20} color='#FFFFFF' />
-        </TouchableOpacity>
-      </View>
 
-      <View style={styles.searchContainer}>
-        <Search size={20} color="#94A3B8" />
-        <Text style={styles.searchText}>Search users by name or email...</Text>
-      </View>
-
-      <Text style={styles.sectionTitle}>Registered Accounts ({users.length})</Text>
-
-      {users.length === 0 ? (
-        <View style={styles.emptyState}>
-          <User size={48} color="#CBD5E1" />
-          <Text style={styles.emptyTitle}>No Users Found</Text>
-          <Text style={styles.emptyDesc}>No employees have registered yet. When they register, their accounts will appear here.</Text>
+        <View style={styles.tabsContainer}>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'permissions' && styles.activeTab]}
+            onPress={() => setActiveTab('permissions')}
+          >
+            <Shield size={16} color={activeTab === 'permissions' ? '#2563EB' : '#64748B'} />
+            <Text style={[styles.tabText, activeTab === 'permissions' && styles.activeTabText]}>Roles & Permissions</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tab, activeTab === 'users' && styles.activeTab]}
+            onPress={() => setActiveTab('users')}
+          >
+            <Users size={16} color={activeTab === 'users' ? '#2563EB' : '#64748B'} />
+            <Text style={[styles.tabText, activeTab === 'users' && styles.activeTabText]}>Users List</Text>
+          </TouchableOpacity>
         </View>
+      </LinearGradient>
+
+      {activeTab === 'users' ? (
+        <FlatList
+          data={usersList}
+          keyExtractor={(item) => item.id.toString()}
+          renderItem={renderUser}
+          contentContainerStyle={styles.listContent}
+        />
       ) : (
-        <View style={styles.usersList}>
-          {users.map((u, idx) => (
-            <View key={u.id || idx} style={styles.userCard}>
-              <View style={styles.userInfoRow}>
-                <View style={styles.avatarWrap}>
-                  <Text style={styles.avatarText}>{u.name ? u.name.substring(0, 2).toUpperCase() : 'U'}</Text>
-                </View>
-                <View style={styles.userDetails}>
-                  <Text style={styles.userName}>{u.name}</Text>
-                  <View style={styles.emailRow}>
-                    <Mail size={12} color='#6B7280' />
-                    <Text style={styles.userEmail}>{u.email}</Text>
-                  </View>
-                  <View style={styles.roleBadge}>
-                    <Shield size={12} color='#2563EB' />
-                    <Text style={styles.roleText}>{u.role || 'Employee'}</Text>
-                  </View>
-                </View>
-                <View style={styles.statusBox}>
-                  <View style={styles.activeDot} />
-                  <Text style={styles.statusText}>{u.status || 'Active'}</Text>
-                </View>
-              </View>
-            </View>
-          ))}
+        <View style={styles.emptyState}>
+          <Shield size={48} color="#CBD5E1" />
+          <Text style={styles.emptyStateTitle}>Roles Configuration</Text>
+          <Text style={styles.emptyStateText}>Roles management is configured via web dashboard.</Text>
         </View>
       )}
 
-      <View style={{ height: 40 }} />
-    </ScrollView>
+      <ActionModals 
+        visible={modalVisible}
+        mode={modalMode}
+        item={selectedUser}
+        schema={USER_SCHEMA}
+        title={modalMode === 'add' ? 'Add New User' : 'Edit User'}
+        onClose={() => setModalVisible(false)}
+        onSave={handleSave}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC', padding: 20 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24, marginTop: 8 },
-  headerTitle: { fontSize: 24, fontWeight: '800', color: '#111827', letterSpacing: -0.5, marginBottom: 4 },
-  headerSubtitle: { fontSize: 14, color: '#6B7280' },
-  addBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#2563EB', alignItems: 'center', justifyContent: 'center', shadowColor: '#2563EB', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8, elevation: 4 },
-  searchContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 24 },
-  searchText: { marginLeft: 12, fontSize: 15, color: '#94A3B8' },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1E293B', marginBottom: 16 },
-  emptyState: { alignItems: 'center', justifyContent: 'center', backgroundColor: '#FFFFFF', borderRadius: 16, padding: 40, borderWidth: 1, borderColor: '#E2E8F0', borderStyle: 'dashed' },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: '#1E293B', marginTop: 16, marginBottom: 8 },
-  emptyDesc: { fontSize: 14, color: '#6B7280', textAlign: 'center', lineHeight: 20 },
-  usersList: { gap: 12 },
-  userCard: { backgroundColor: '#FFFFFF', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#111827', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 6, elevation: 2 },
-  userInfoRow: { flexDirection: 'row', alignItems: 'center' },
-  avatarWrap: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#EFF6FF', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
-  avatarText: { fontSize: 16, fontWeight: '800', color: '#2563EB' },
-  userDetails: { flex: 1 },
-  userName: { fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 4 },
-  emailRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 6 },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  headerGradient: { paddingTop: 20, elevation: 5, backgroundColor: '#0F172A' },
+  headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 20 },
+  headerTitle: { fontSize: 22, fontWeight: '800', color: '#FFFFFF' },
+  headerSubtitle: { fontSize: 13, color: '#94A3B8', marginTop: 4 },
+  actionButtons: { flexDirection: 'row', gap: 10 },
+  btnSecondary: { padding: 10, backgroundColor: '#F1F5F9', borderRadius: 8 },
+  btnPrimary: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 8, backgroundColor: '#2952E3' },
+  btnPrimaryText: { color: '#FFF', fontSize: 13, fontWeight: '600' },
+  
+  tabsContainer: { flexDirection: 'row', backgroundColor: '#FFF', paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },
+  tab: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  activeTab: { borderBottomColor: '#2563EB' },
+  tabText: { fontSize: 14, fontWeight: '600', color: '#64748B' },
+  activeTabText: { color: '#2563EB' },
+
+  listContent: { padding: 16, paddingBottom: 60 },
+  userCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 12, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E5E7EB', elevation: 1 },
+  userInfoContainer: { flex: 1, flexDirection: 'row', alignItems: 'center' },
+  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#EFF6FF', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  avatarText: { fontSize: 16, fontWeight: '700', color: '#2563EB' },
+  userInfo: { flex: 1 },
+  userName: { fontSize: 15, fontWeight: '700', color: '#111827' },
   userEmail: { fontSize: 13, color: '#6B7280' },
-  roleBadge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#EFF6FF', alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
-  roleText: { fontSize: 11, fontWeight: '700', color: '#2563EB' },
-  statusBox: { alignItems: 'flex-end' },
-  activeDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#10B981', marginBottom: 4 },
-  statusText: { fontSize: 12, fontWeight: '600', color: '#10B981' }
+  
+  userMeta: { alignItems: 'flex-end', marginRight: 12 },
+  userRole: { fontSize: 13, fontWeight: '600', color: '#374151' },
+  userDept: { fontSize: 12, color: '#6B7280' },
+  moreBtn: { padding: 4 },
+
+  emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 40 },
+  emptyStateTitle: { fontSize: 18, fontWeight: '700', color: '#111827', marginTop: 16, marginBottom: 8 },
+  emptyStateText: { fontSize: 14, color: '#6B7280', textAlign: 'center' }
 });
