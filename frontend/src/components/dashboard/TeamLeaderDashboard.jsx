@@ -49,6 +49,10 @@ export function TeamLeaderDashboard() {
   const [teamAttendance, setTeamAttendance] = useState([]);
   const [teamTasks, setTeamTasks] = useState([]);
   const [nextHoliday, setNextHoliday] = useState(null);
+  
+  // Sales Tracking States
+  const [liveVisits, setLiveVisits] = useState([]);
+  const [completedVisits, setCompletedVisits] = useState([]);
 
   // Calculated Summary Metrics
   const [metrics, setMetrics] = useState({
@@ -173,6 +177,21 @@ export function TeamLeaderDashboard() {
         setTeamTasks(rawTasks);
       } catch (e) {
         console.error("Failed to load team tasks:", e);
+      }
+
+      // Fetch Sales Tracking Data if TL is in Sales/Marketing
+      const isSalesOrMarketing = (userObj?.department_name || userObj?.department || userObj?.dept_name || 'Engineering').toLowerCase().includes('sales') || 
+                                 (userObj?.department_name || userObj?.department || userObj?.dept_name || 'Engineering').toLowerCase().includes('marketing') || 
+                                 (userObj?.role === 'SALES_MANAGER');
+      
+      if (isSalesOrMarketing || true) { // Displaying for demo
+        try {
+          const visitsRes = await apiFetch('/client-visits/live');
+          if (visitsRes && visitsRes.success && visitsRes.data) {
+            setLiveVisits(visitsRes.data.activeVisits || []);
+            setCompletedVisits(visitsRes.data.completedVisits || []);
+          }
+        } catch(e) {}
       }
 
       // 6. Fetch Team Attendance Logs from Database
@@ -568,8 +587,50 @@ export function TeamLeaderDashboard() {
 
         </div>
 
-        {/* Right Column: Team Members Roster */}
+        {/* Right Column: Team Members Roster & Sales Tracking */}
         <div className="space-y-6">
+
+          {/* Sales Live Tracking Widget */}
+          <div style={cardStyle}>
+            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2"><Navigation size={16} className="text-blue-600"/> Live Sales Tracking</h3>
+                <p className="text-xs text-slate-500 font-medium mt-0.5">Active client visits in field</p>
+              </div>
+            </div>
+            {liveVisits.length === 0 ? (
+              <div className="p-4 text-center text-xs text-slate-400 font-medium bg-slate-50 rounded-lg">No active client visits right now.</div>
+            ) : (
+              <div className="space-y-3">
+                {liveVisits.map(v => (
+                  <div key={v.id} className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex justify-between items-center">
+                    <div>
+                      <div className="text-sm font-bold text-slate-900">{v.employee_name}</div>
+                      <div className="text-xs text-slate-600 font-medium mt-0.5">At: {v.client_name}</div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-2 py-0.5 rounded uppercase">Active</div>
+                      <div className="text-[10px] text-slate-500 mt-1">{new Date(v.check_in_time).toLocaleTimeString()}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {completedVisits.length > 0 && (
+              <div className="mt-4 pt-3 border-t border-slate-100">
+                <h4 className="text-xs font-bold text-slate-700 mb-2">Today's Completed Visits</h4>
+                <div className="space-y-2">
+                  {completedVisits.map(v => (
+                    <div key={v.id} className="flex justify-between items-center text-xs bg-slate-50 p-2 rounded-lg border border-slate-100">
+                      <span className="font-semibold text-slate-800">{v.employee_name} <span className="font-normal text-slate-500">({v.client_name})</span></span>
+                      <span className="font-bold text-blue-600">{v.distance_travelled} km</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
 
           <div style={cardStyle}>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">

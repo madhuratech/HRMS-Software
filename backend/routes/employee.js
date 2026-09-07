@@ -391,10 +391,10 @@ router.post("/", async (req, res) => {
   // Parse structured experience if not explicitly provided
   const parsedExp = EmployeeExperienceService.parseExperienceString(finalExperience);
   const finalExpType = experience_type || parsedExp.type || 'Fresher';
-  const finalTotYrs = total_experience_years !== undefined ? parseInt(total_experience_years, 10) : parsedExp.totalYears;
-  const finalTotMos = total_experience_months !== undefined ? parseInt(total_experience_months, 10) : parsedExp.totalMonths;
-  const finalRelYrs = relevant_experience_years !== undefined ? parseInt(relevant_experience_years, 10) : (parsedExp.relevantYears || finalTotYrs);
-  const finalRelMos = relevant_experience_months !== undefined ? parseInt(relevant_experience_months, 10) : (parsedExp.relevantMonths || finalTotMos);
+  const finalTotYrs = !isNaN(parseInt(total_experience_years, 10)) ? parseInt(total_experience_years, 10) : (parsedExp.totalYears || 0);
+  const finalTotMos = !isNaN(parseInt(total_experience_months, 10)) ? parseInt(total_experience_months, 10) : (parsedExp.totalMonths || 0);
+  const finalRelYrs = !isNaN(parseInt(relevant_experience_years, 10)) ? parseInt(relevant_experience_years, 10) : (parsedExp.relevantYears || finalTotYrs || 0);
+  const finalRelMos = !isNaN(parseInt(relevant_experience_months, 10)) ? parseInt(relevant_experience_months, 10) : (parsedExp.relevantMonths || finalTotMos || 0);
 
   if (!email || !email.trim()) {
     return res.status(400).json({ message: "Login email is required." });
@@ -438,19 +438,23 @@ router.post("/", async (req, res) => {
         (name, email, phone, dob, join_date, gender, employment_type, experience, experience_type, total_experience_years, total_experience_months, relevant_experience_years, relevant_experience_months, shift_type, salary, address, emergency_contact, bank_details, password_hash, branch_id, department_id, designation_id, manager_id, team_id)
         VALUES (
           ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-          (SELECT id FROM branches WHERE branch_name = ? LIMIT 1),
-          (SELECT id FROM departments WHERE dept_name = ? LIMIT 1),
-          (SELECT id FROM designations WHERE role_name = ? OR role_code = ? LIMIT 1),
-          (SELECT id FROM (SELECT id FROM employees WHERE name = ? LIMIT 1) as temp),
-          (SELECT id FROM teams WHERE name = ? LIMIT 1)
+          (SELECT IF(? REGEXP '^[0-9]+$', ?, (SELECT id FROM branches WHERE branch_name = ? LIMIT 1))),
+          (SELECT IF(? REGEXP '^[0-9]+$', ?, (SELECT id FROM departments WHERE dept_name = ? LIMIT 1))),
+          (SELECT IF(? REGEXP '^[0-9]+$', ?, (SELECT id FROM designations WHERE role_name = ? OR role_code = ? LIMIT 1))),
+          (SELECT IF(? REGEXP '^[0-9]+$', ?, (SELECT id FROM (SELECT id FROM employees WHERE name = ? LIMIT 1) as temp))),
+          (SELECT IF(? REGEXP '^[0-9]+$', ?, (SELECT id FROM teams WHERE name = ? LIMIT 1)))
         )
       `;
 
       db.query(
         insertEmpSql,
         [
-          cleanName, cleanEmail, phone, dob, joinDate, gender, employmentType || 'Full-time', finalExperience, finalExpType, finalTotYrs, finalTotMos, finalRelYrs, finalRelMos, finalShiftType, salary || 0, address, emergencyContact, bankDetails, password_hash,
-          branch, department, designation, designation, managerName, teamName
+          cleanName, cleanEmail, phone, dob || null, joinDate || null, gender, employmentType || 'Full-time', finalExperience, finalExpType, finalTotYrs, finalTotMos, finalRelYrs, finalRelMos, finalShiftType, salary || 0, address, emergencyContact, bankDetails, password_hash,
+          branch, branch, branch,
+          department, department, department,
+          designation, designation, designation, designation,
+          managerName, managerName, managerName,
+          teamName, teamName, teamName
         ],
         async (empErr, result) => {
           if (empErr) {

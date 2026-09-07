@@ -2,13 +2,14 @@ const express = require("express");
 const router = express.Router();
 const attendanceController = require("../controllers/attendanceController");
 const { authenticateJWT } = require("../middlewares/auth");
+const { requireSalesAndMarketing } = require("../middlewares/gpsAuth");
 
 // Standard attendance endpoints
 router.post("/punch", authenticateJWT, attendanceController.punch);
 router.get("/today-status", authenticateJWT, attendanceController.getTodayStatus);
 router.get("/recent/:employee_id", authenticateJWT, attendanceController.getRecent);
 router.get("/daily", authenticateJWT, attendanceController.getDailyStats);
-router.get("/gps-feed", authenticateJWT, attendanceController.getGPSFeed);
+router.get("/gps-feed", authenticateJWT, requireSalesAndMarketing, attendanceController.getGPSFeed);
 
 // Team Attendance Endpoint for Team Leader
 router.get("/team-attendance", authenticateJWT, (req, res) => {
@@ -94,9 +95,9 @@ router.delete("/punch-locations/:id", authenticateJWT, attendanceController.dele
 router.patch("/punch-locations/:id/status", authenticateJWT, attendanceController.togglePunchLocationStatus);
 
 // Reports & Export
-router.get("/reports", authenticateJWT, attendanceController.getGPSReport);
-router.get("/reports/pdf", authenticateJWT, attendanceController.exportGPSReportPDF);
-router.get("/reports/excel", authenticateJWT, attendanceController.exportGPSReportExcel);
+router.get("/reports", authenticateJWT, requireSalesAndMarketing, attendanceController.getGPSReport);
+router.get("/reports/pdf", authenticateJWT, requireSalesAndMarketing, attendanceController.exportGPSReportPDF);
+router.get("/reports/excel", authenticateJWT, requireSalesAndMarketing, attendanceController.exportGPSReportExcel);
 
 // Daily Attendance Record Management
 router.put("/records/:employeeId/:date", authenticateJWT, attendanceController.updateAttendanceRecord);

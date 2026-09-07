@@ -54,23 +54,26 @@ export default defineConfig({
     target: 'esnext',
     outDir: 'dist'
   },
+  optimizeDeps: {
+    exclude: ['maplibre-gl']
+  },
   server: {
     port: 3000,
     host: true,
     open: true,
     proxy: {
       '/app': {
-        target: 'http://127.0.0.1:5000',
+        target: 'http://127.0.0.1:5001',
         changeOrigin: true,
         secure: false
       },
       '/api': {
-        target: 'http://127.0.0.1:5000',
+        target: 'http://127.0.0.1:5001',
         changeOrigin: true,
         secure: false
       },
       '/uploads': {
-        target: 'http://127.0.0.1:5000',
+        target: 'http://127.0.0.1:5001',
         changeOrigin: true,
         secure: false
       }
