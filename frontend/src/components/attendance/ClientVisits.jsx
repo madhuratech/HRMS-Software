@@ -91,31 +91,41 @@ function injectStyles() {
   document.head.appendChild(s);
 }
 
-// MapLibre style with Google Maps tiles for perfect street/shop details
+// MapLibre style using 100% legal, free open-source providers
+// Official OpenStreetMap provides maximum detail for shops, streets, and areas
 const STREET_STYLE = {
   version: 8,
   sources: {
-    'gmap': {
+    'osm': {
       type: 'raster',
-      tiles: ['https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'],
+      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
       tileSize: 256,
-      attribution: 'Map data © Google'
+      attribution: '&copy; OpenStreetMap contributors'
     }
   },
-  layers: [{ id: 'gmap-tiles', type: 'raster', source: 'gmap' }]
+  layers: [{ id: 'osm-tiles', type: 'raster', source: 'osm' }]
 };
 
+// ESRI Satellite with OpenStreetMap overlay to show all roads and shops over satellite
 const SATELLITE_STYLE = {
   version: 8,
   sources: {
-    'ghyb': {
+    'esri-sat': {
       type: 'raster',
-      tiles: ['https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'],
+      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
       tileSize: 256,
-      attribution: 'Map data © Google'
+      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EAP, and the GIS User Community'
+    },
+    'osm-overlay': {
+      type: 'raster',
+      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tileSize: 256
     }
   },
-  layers: [{ id: 'ghyb-tiles', type: 'raster', source: 'ghyb' }]
+  layers: [
+    { id: 'esri-sat-tiles', type: 'raster', source: 'esri-sat' },
+    { id: 'osm-labels', type: 'raster', source: 'osm-overlay', paint: { 'raster-opacity': 0.45 } }
+  ]
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -439,6 +449,11 @@ const StartJourneyModal = ({ onStart, onClose }) => {
     if (!clientName.trim()) return alert('Please enter client name');
     setStarting(true);
     navigator.geolocation.getCurrentPosition(async pos => {
+      if (pos.coords.accuracy > 400) {
+        alert(`GPS signal is too weak (Accuracy: ${Math.round(pos.coords.accuracy)}m).\nPlease step outside or wait a moment before starting.`);
+        setStarting(false);
+        return;
+      }
       try {
         const res = await apiFetch('/client-visits/start-journey', {
           method: 'POST',
@@ -454,7 +469,7 @@ const StartJourneyModal = ({ onStart, onClose }) => {
         if (res.success) onStart();
         else { alert(res.message || 'Failed'); setStarting(false); }
       } catch (e) { alert(e.message); setStarting(false); }
-    }, err => { alert('GPS error: ' + err.message); setStarting(false); }, { enableHighAccuracy: true });
+    }, err => { alert('GPS error: ' + err.message); setStarting(false); }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
   };
 
   return (
@@ -665,12 +680,13 @@ export default function ClientVisits() {
     if (active.length > 0) {
       trackTimer.current = setInterval(() => {
         navigator.geolocation.getCurrentPosition(async pos => {
+          if (pos.coords.accuracy > 400) return; // Skip highly inaccurate background pings
           for (const v of active) {
             if (['Travelling','In Meeting','Returning'].includes(v.status)) {
               await apiFetch('/client-visits/track', { method:'POST', body:JSON.stringify({ visitId:v.id, lat:pos.coords.latitude, lng:pos.coords.longitude }) }).catch(()=>{});
             }
           }
-        }, () => {}, { enableHighAccuracy:true });
+        }, () => {}, { enableHighAccuracy:true, timeout: 10000, maximumAge: 0 });
       }, 45000);
     }
     return () => clearInterval(trackTimer.current);

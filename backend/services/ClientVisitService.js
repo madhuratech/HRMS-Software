@@ -15,7 +15,7 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
 }
 
 // Calculate real distance with noise filtering:
-// - Ignore jumps < 5 meters (GPS noise when stationary)
+// - Ignore jumps < 40 meters (GPS noise when stationary)
 // - Ignore jumps > 2 km per point (GPS glitch / teleport)
 function calcRealDistance(points) {
   let total = 0;
@@ -24,7 +24,7 @@ function calcRealDistance(points) {
       parseFloat(points[i-1].latitude), parseFloat(points[i-1].longitude),
       parseFloat(points[i].latitude),   parseFloat(points[i].longitude)
     );
-    if (d >= 0.005 && d < 2.0) { // between 5m and 2km per step
+    if (d >= 0.04 && d < 2.0) { // between 40m and 2km per step
       total += d;
     }
   }
@@ -180,8 +180,8 @@ class ClientVisitService {
         parseFloat(prev.latitude), parseFloat(prev.longitude),
         parseFloat(rawPoints[i].latitude), parseFloat(rawPoints[i].longitude)
       );
-      // Only include if moved between 5m and 2km from last kept point
-      if (d > 0.005 && d < 2.0) {
+      // Only include if moved between 40m and 2km from last kept point
+      if (d >= 0.04 && d < 2.0) {
         filteredPoints.push(rawPoints[i]);
       }
     }
