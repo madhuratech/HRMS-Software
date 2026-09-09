@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import Map, { Marker, Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import Map, { Marker, NavigationControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { apiFetch } from '../../lib/api';
 import { MapPin, Navigation, Camera, CheckCircle2, XCircle, Play, Map as MapIcon, Building, LogOut, Search, Loader2, Link } from 'lucide-react';
@@ -299,43 +299,11 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
             <Map
               {...viewState}
               onMove={evt => setViewState(evt.viewState)}
-              mapStyle={{ version: 8, sources: {}, layers: [] }} // Empty base style to fix production layer ordering
+              mapStyle={dynamicStyle}
               style={{ width:'100%', height:'100%' }}
             >
               <NavigationControl position="bottom-right" />
               
-              {/* Base Raster Maps (Declared first so they render underneath) */}
-              {mapStyle === 'street' ? (
-                <Source id="osm-base" type="raster" tiles={['https://tile.openstreetmap.org/{z}/{x}/{y}.png']} tileSize={256} attribution="&copy; OpenStreetMap contributors">
-                  <Layer id="osm-tiles" source="osm-base" type="raster" />
-                </Source>
-              ) : (
-                <>
-                  <Source id="esri-sat-base" type="raster" tiles={['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}']} tileSize={256} attribution="Tiles &copy; Esri">
-                    <Layer id="esri-sat-tiles" source="esri-sat-base" type="raster" />
-                  </Source>
-                  <Source id="osm-overlay-base" type="raster" tiles={['https://tile.openstreetmap.org/{z}/{x}/{y}.png']} tileSize={256}>
-                    <Layer id="osm-labels" source="osm-overlay-base" type="raster" paint={{ 'raster-opacity': 0.45 }} />
-                  </Source>
-                </>
-              )}
-              
-              {/* Planned OSRM route — shadow + orange main line */}
-              {routeGeoJSON && (
-                <Source type="geojson" data={routeGeoJSON} id="route-source">
-                  <Layer id="route-shadow-line" source="route-source" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': '#E2E8F0', 'line-width': 10 }} />
-                  <Layer id="route-main-line" source="route-source" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': '#F97316', 'line-width': 6 }} />
-                  <Layer id="route-dash-line" source="route-source" type="line" paint={{ 'line-color': '#fff', 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [2, 3] }} />
-                </Source>
-              )}
-
-              {/* Actual travelled path — blue solid */}
-              {travelGeoJSON && (
-                <Source type="geojson" data={travelGeoJSON} id="travel-source">
-                  <Layer id="travel-line" source="travel-source" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': '#2563EB', 'line-width': 4, 'line-opacity': 0.9 }} />
-                </Source>
-              )}
-
               {/* Office start marker */}
               {v?.office_lat && (
                 <Marker longitude={parseFloat(v.office_lng)} latitude={parseFloat(v.office_lat)} anchor="center">
