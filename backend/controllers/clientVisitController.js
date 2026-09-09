@@ -1,8 +1,23 @@
 const ClientVisitService = require('../services/ClientVisitService');
+const db = require('../config/database');
+const util = require('util');
+const query = util.promisify(db.query).bind(db);
 
 exports.startJourney = async (req, res) => {
   try {
-    const employeeId = req.user.employeeId || req.user.employee_id || (req.user.role === 'SUPER_ADMIN' ? 1 : req.user.id);
+    let employeeId = req.user.employeeId || req.user.employee_id;
+    
+    if (!employeeId && req.user.role === 'SUPER_ADMIN') {
+      const rows = await query('SELECT id FROM employees LIMIT 1');
+      if (rows && rows.length > 0) {
+        employeeId = rows[0].id;
+      } else {
+        return res.status(400).json({ success: false, message: "No employees found in the database. Please create at least one employee to test tracking." });
+      }
+    } else if (!employeeId) {
+      employeeId = req.user.id;
+    }
+
     const { clientName, lat, lng, clientAddress, destLat, destLng } = req.body;
     
     if (!clientName || !lat || !lng) {
