@@ -210,17 +210,14 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
       layers.push({ id: 'osm-labels', source: 'osm-overlay-base', type: 'raster', paint: { 'raster-opacity': 0.45 } });
     }
 
-    if (routeGeoJSON) {
-      sources['route-source'] = { type: 'geojson', data: routeGeoJSON };
-      layers.push({ id: 'route-shadow-line', source: 'route-source', type: 'line', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#E2E8F0', 'line-width': 10 } });
-      layers.push({ id: 'route-main-line', source: 'route-source', type: 'line', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#F97316', 'line-width': 6 } });
-      layers.push({ id: 'route-dash-line', source: 'route-source', type: 'line', paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [2, 3] } });
-    }
+    // Always define the sources and layers to prevent MapLibre style-diff dropping layers in production
+    sources['route-source'] = { type: 'geojson', data: routeGeoJSON || { type: 'FeatureCollection', features: [] } };
+    layers.push({ id: 'route-shadow-line', source: 'route-source', type: 'line', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#E2E8F0', 'line-width': 10 } });
+    layers.push({ id: 'route-main-line', source: 'route-source', type: 'line', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#F97316', 'line-width': 6 } });
+    layers.push({ id: 'route-dash-line', source: 'route-source', type: 'line', paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [2, 3] } });
 
-    if (travelGeoJSON) {
-      sources['travel-source'] = { type: 'geojson', data: travelGeoJSON };
-      layers.push({ id: 'travel-line', source: 'travel-source', type: 'line', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#2563EB', 'line-width': 4, 'line-opacity': 0.9 } });
-    }
+    sources['travel-source'] = { type: 'geojson', data: travelGeoJSON || { type: 'FeatureCollection', features: [] } };
+    layers.push({ id: 'travel-line', source: 'travel-source', type: 'line', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#2563EB', 'line-width': 4, 'line-opacity': 0.9 } });
 
     return { version: 8, sources, layers };
   }, [mapStyle, routeGeoJSON, travelGeoJSON]);
