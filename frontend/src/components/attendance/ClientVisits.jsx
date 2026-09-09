@@ -91,43 +91,6 @@ function injectStyles() {
   document.head.appendChild(s);
 }
 
-// MapLibre style using 100% legal, free open-source providers
-// Official OpenStreetMap provides maximum detail for shops, streets, and areas
-const STREET_STYLE = {
-  version: 8,
-  sources: {
-    'osm': {
-      type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-      tileSize: 256,
-      attribution: '&copy; OpenStreetMap contributors'
-    }
-  },
-  layers: [{ id: 'osm-tiles', type: 'raster', source: 'osm' }]
-};
-
-// ESRI Satellite with OpenStreetMap overlay to show all roads and shops over satellite
-const SATELLITE_STYLE = {
-  version: 8,
-  sources: {
-    'esri-sat': {
-      type: 'raster',
-      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
-      tileSize: 256,
-      attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EAP, and the GIS User Community'
-    },
-    'osm-overlay': {
-      type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-      tileSize: 256
-    }
-  },
-  layers: [
-    { id: 'esri-sat-tiles', type: 'raster', source: 'esri-sat' },
-    { id: 'osm-labels', type: 'raster', source: 'osm-overlay', paint: { 'raster-opacity': 0.45 } }
-  ]
-};
-
 // ═══════════════════════════════════════════════════════════════════════════
 // LIVE TRACKING MAP MODAL  (react-map-gl / MapLibre GL)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -336,10 +299,26 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
             <Map
               {...viewState}
               onMove={evt => setViewState(evt.viewState)}
-              mapStyle={activeStyle}
+              mapStyle={{ version: 8, sources: {}, layers: [] }} // Empty base style to fix production layer ordering
               style={{ width:'100%', height:'100%' }}
             >
               <NavigationControl position="bottom-right" />
+              
+              {/* Base Raster Maps (Declared first so they render underneath) */}
+              {mapStyle === 'street' ? (
+                <Source id="osm-base" type="raster" tiles={['https://tile.openstreetmap.org/{z}/{x}/{y}.png']} tileSize={256} attribution="&copy; OpenStreetMap contributors">
+                  <Layer id="osm-tiles" source="osm-base" type="raster" />
+                </Source>
+              ) : (
+                <>
+                  <Source id="esri-sat-base" type="raster" tiles={['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}']} tileSize={256} attribution="Tiles &copy; Esri">
+                    <Layer id="esri-sat-tiles" source="esri-sat-base" type="raster" />
+                  </Source>
+                  <Source id="osm-overlay-base" type="raster" tiles={['https://tile.openstreetmap.org/{z}/{x}/{y}.png']} tileSize={256}>
+                    <Layer id="osm-labels" source="osm-overlay-base" type="raster" paint={{ 'raster-opacity': 0.45 }} />
+                  </Source>
+                </>
+              )}
               
               {/* Planned OSRM route — shadow + orange main line */}
               {routeGeoJSON && (
