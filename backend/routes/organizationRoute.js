@@ -282,7 +282,17 @@ router.get("/profile", (req, res) => {
   const sql = "SELECT * FROM company_profile WHERE id = 1";
   db.query(sql, (err, rows) => {
     if (err) return res.status(500).json({ error: "Failed to fetch profile", details: err });
-    if (rows.length === 0) return res.status(404).json({ error: "Company profile not found" });
+    if (!rows || rows.length === 0) {
+      db.query("INSERT IGNORE INTO company_profile (id, company_name) VALUES (1, 'Hawkeye Nest Technologies Pvt Ltd')", () => {
+        db.query("SELECT * FROM company_profile WHERE id = 1", (err2, rows2) => {
+          if (rows2 && rows2.length > 0) {
+            return res.json(mapRowToProfile(rows2[0]));
+          }
+          return res.json(mapRowToProfile({}));
+        });
+      });
+      return;
+    }
     res.json(mapRowToProfile(rows[0]));
   });
 });

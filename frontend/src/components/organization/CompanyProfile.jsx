@@ -232,13 +232,24 @@ export function CompanyProfile() {
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
   const { addToast } = useToast();
-
   useEffect(() => {
     apiFetch("/organization/profile")
       .then(data => {
-        if (data) {
-          setProfile(data);
-          setTempProfile(JSON.parse(JSON.stringify(data)));
+        if (data && typeof data === 'object' && !data.error && data.general) {
+          const merged = {
+            general: { ...INITIAL_PROFILE.general, ...(data.general || {}) },
+            contact: { ...INITIAL_PROFILE.contact, ...(data.contact || {}) },
+            address: { ...INITIAL_PROFILE.address, ...(data.address || {}) },
+            business: { ...INITIAL_PROFILE.business, ...(data.business || {}) },
+            hrSettings: { ...INITIAL_PROFILE.hrSettings, ...(data.hrSettings || {}) },
+            payroll: { ...INITIAL_PROFILE.payroll, ...(data.payroll || {}) },
+            banking: { ...INITIAL_PROFILE.banking, ...(data.banking || {}) },
+            branding: { ...INITIAL_PROFILE.branding, ...(data.branding || {}) },
+            documents: { ...INITIAL_PROFILE.documents, ...(data.documents || {}) },
+            systemSettings: { ...INITIAL_PROFILE.systemSettings, ...(data.systemSettings || {}) }
+          };
+          setProfile(merged);
+          setTempProfile(JSON.parse(JSON.stringify(merged)));
         }
         setLoading(false);
       })
@@ -251,7 +262,7 @@ export function CompanyProfile() {
 
   const handleInputChange = (section, field, value) => {
     setTempProfile(prev => {
-      const updatedSection = { ...prev[section], [field]: value };
+      const updatedSection = { ...(prev?.[section] || {}), [field]: value };
       return { ...prev, [section]: updatedSection };
     });
   };
@@ -277,7 +288,7 @@ export function CompanyProfile() {
 
   const handleCancel = (section) => {
     setTempProfile(prev => {
-      return { ...prev, [section]: JSON.parse(JSON.stringify(profile[section])) };
+      return { ...prev, [section]: JSON.parse(JSON.stringify(profile?.[section] || INITIAL_PROFILE[section])) };
     });
     setIsEditing(false);
   };
@@ -306,13 +317,13 @@ export function CompanyProfile() {
       setTempProfile(prev => {
         return {
           ...prev,
-          documents: { ...prev.documents, [docKey]: newDoc }
+          documents: { ...(prev?.documents || {}), [docKey]: newDoc }
         };
       });
       setProfile(prev => {
         return {
           ...prev,
-          documents: { ...prev.documents, [docKey]: newDoc }
+          documents: { ...(prev?.documents || {}), [docKey]: newDoc }
         };
       });
       setShowSuccess(true);
@@ -323,13 +334,13 @@ export function CompanyProfile() {
     setTempProfile(prev => {
       return {
         ...prev,
-        documents: { ...prev.documents, [docKey]: null }
+        documents: { ...(prev?.documents || {}), [docKey]: null }
       };
     });
     setProfile(prev => {
       return {
         ...prev,
-        documents: { ...prev.documents, [docKey]: null }
+        documents: { ...(prev?.documents || {}), [docKey]: null }
       };
     });
     setShowSuccess(true);
@@ -337,11 +348,11 @@ export function CompanyProfile() {
 
   // Company Overview Cards
   const companyOverview = [
-    { label: 'Company Name', value: profile.general.companyName, subtext: profile.general.companyType, icon: Building2, colorClass: 'overview-icon-blue' },
-    { label: 'Employees', value: profile.general.numberOfEmployees, subtext: 'Total Employees', icon: Users, colorClass: 'overview-icon-green' },
-    { label: 'Working Days', value: profile.hrSettings.workingDays, subtext: 'Weekly Schedule', icon: Calendar, colorClass: 'overview-icon-orange' },
-    { label: 'Office Hours', value: profile.hrSettings.defaultShift, subtext: 'Standard Time', icon: Clock, colorClass: 'overview-icon-purple' },
-    { label: 'Currency', value: profile.systemSettings.currency, subtext: 'Corporate Base', icon: IndianRupee, colorClass: 'overview-icon-cyan' },
+    { label: 'Company Name', value: profile?.general?.companyName || '—', subtext: profile?.general?.companyType || '', icon: Building2, colorClass: 'overview-icon-blue' },
+    { label: 'Employees', value: profile?.general?.numberOfEmployees || '0', subtext: 'Total Employees', icon: Users, colorClass: 'overview-icon-green' },
+    { label: 'Working Days', value: profile?.hrSettings?.workingDays || '—', subtext: 'Weekly Schedule', icon: Calendar, colorClass: 'overview-icon-orange' },
+    { label: 'Office Hours', value: profile?.hrSettings?.defaultShift || '—', subtext: 'Standard Time', icon: Clock, colorClass: 'overview-icon-purple' },
+    { label: 'Currency', value: profile?.systemSettings?.currency || 'INR', subtext: 'Corporate Base', icon: IndianRupee, colorClass: 'overview-icon-cyan' },
   ];
 
   const handleDownloadPDF = () => {
@@ -365,7 +376,8 @@ export function CompanyProfile() {
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `${profile.general.companyName.replace(/\s+/g, '_')}_profile.pdf`;
+        const compName = (profile?.general?.companyName || 'company').replace(/\s+/g, '_');
+        a.download = `${compName}_profile.pdf`;
         document.body.appendChild(a);
         a.click();
         a.remove();
@@ -388,14 +400,14 @@ export function CompanyProfile() {
   };
 
   const getFormattedAddress = () => {
-    const { headOfficeAddress1, headOfficeAddress2, headOfficeCity, headOfficeState, headOfficeCountry } = profile.address;
+    const { headOfficeAddress1, headOfficeAddress2, headOfficeCity, headOfficeState, headOfficeCountry } = profile?.address || {};
     const parts = [
       headOfficeAddress1,
       headOfficeAddress2,
       headOfficeCity,
       headOfficeState,
       headOfficeCountry
-    ].filter(part => part && part.trim() !== '');
+    ].filter(part => part && String(part).trim() !== '');
 
     if (parts.length === 0) return '—';
     return parts.join(', ');
