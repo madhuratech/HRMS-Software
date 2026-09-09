@@ -90,7 +90,7 @@ export const ShiftManagement = () => {
           code: e.employee_code || e.employeeId || `EMP00${e.id || idx + 1}`
         })));
       }
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   const statistics = useMemo(() => {
@@ -140,28 +140,28 @@ export const ShiftManagement = () => {
     setShowAddModal(false);
   };
 
-  const handleOpenEdit = (item) => { 
-    setSelectedItem(item); 
+  const handleOpenEdit = (item) => {
+    setSelectedItem(item);
     const assigned = Array.isArray(item.assignedEmployees) ? item.assignedEmployees : (item.employees > 0 ? employeeList.slice(0, item.employees).map(e => e.id) : []);
     const days = Array.isArray(item.workingDays) && item.workingDays.length > 0 ? item.workingDays : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
     const initialDayOffLabels = item.dayOffLabels ? { ...defaultDayOffLabels, ...item.dayOffLabels } : { ...defaultDayOffLabels };
-    setFormData({ 
-      name: item.name, 
-      code: item.code, 
-      startTime: item.startTime, 
-      endTime: item.endTime, 
-      breakTime: item.breakTime, 
-      graceTime: item.graceTime, 
-      workingHours: item.workingHours, 
-      status: item.status, 
+    setFormData({
+      name: item.name,
+      code: item.code,
+      startTime: item.startTime,
+      endTime: item.endTime,
+      breakTime: item.breakTime,
+      graceTime: item.graceTime,
+      workingHours: item.workingHours,
+      status: item.status,
       description: item.description,
       assignedEmployees: assigned,
       workingDays: days,
       offLabel: item.offLabel || 'Weekly Off',
       dayOffLabels: initialDayOffLabels
-    }); 
+    });
     setShowEmpDropdown(false);
-    setShowEditModal(true); 
+    setShowEditModal(true);
   };
 
   const handleSaveEdit = async () => {
@@ -303,7 +303,7 @@ export const ShiftManagement = () => {
               <X size={16} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
             </button>
           </div>
-          
+
           <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto', flex: 1 }}>
             {/* Standard 2-Column Grid Fields */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full">
@@ -367,11 +367,10 @@ export const ShiftManagement = () => {
                         const updated = isSelected ? current.filter(d => d !== day) : [...current, day];
                         setFormData({ ...formData, workingDays: updated });
                       }}
-                      className={`px-4 py-2.5 rounded-xl text-xs font-semibold border transition-all ${
-                        isSelected
+                      className={`px-4 py-2.5 rounded-xl text-xs font-semibold border transition-all ${isSelected
                           ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
                           : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
-                      }`}
+                        }`}
                     >
                       {day}
                     </button>
@@ -424,7 +423,7 @@ export const ShiftManagement = () => {
                 </button>
               </div>
 
-              <div 
+              <div
                 onClick={() => setShowEmpDropdown(!showEmpDropdown)}
                 style={{
                   display: 'flex',
@@ -450,7 +449,7 @@ export const ShiftManagement = () => {
                     const emp = employeeList.find(e => e.id === empId);
                     if (!emp) return null;
                     return (
-                      <div 
+                      <div
                         key={empId}
                         style={{
                           display: 'inline-flex',
@@ -469,7 +468,7 @@ export const ShiftManagement = () => {
                           flexShrink: 0
                         }}
                       >
-                        <span 
+                        <span
                           style={{
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -480,8 +479,8 @@ export const ShiftManagement = () => {
                         >
                           {emp.name} — {emp.code}
                         </span>
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             const updated = (formData.assignedEmployees || []).filter(id => id !== empId);
@@ -511,7 +510,7 @@ export const ShiftManagement = () => {
 
               {/* Dropdown Employee List */}
               {showEmpDropdown && (
-                <div 
+                <div
                   style={{
                     marginTop: '8px',
                     padding: '8px',
@@ -624,29 +623,29 @@ export const ShiftManagement = () => {
 
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="relative flex-1 max-w-md">
+          <div className="relative flex-1">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" size={16} />
             <input
               type="text"
-              placeholder="Search Shift..."
+              placeholder="Search shifts by name or code..."
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               className="w-full h-10 pl-10 pr-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white hover:border-slate-300 transition-colors shadow-sm text-slate-900 placeholder:text-slate-400"
             />
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 flex-shrink-0">
             <AppDropdown
-                value={statusFilter}
-                onChange={v => { setStatusFilter(v); setCurrentPage(1); }}
-                options={[{value:'All',label:'Status: All'},{value:'Active',label:'Active'},{value:'Inactive',label:'Inactive'}]}
-                size="sm"
-              />
+              value={statusFilter}
+              onChange={v => { setStatusFilter(v); setCurrentPage(1); }}
+              options={[{ value: 'All', label: 'Status: All' }, { value: 'Active', label: 'Active' }, { value: 'Inactive', label: 'Inactive' }]}
+              size="sm"
+            />
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm font-medium">
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button className="px-3 py-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm font-medium">
             <Filter size={16} /> Filters
           </button>
           <button className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors">
@@ -659,23 +658,24 @@ export const ShiftManagement = () => {
               setCurrentPage(1);
             }}
             className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors"
+            title="Reset filters"
           >
             <RotateCw size={16} />
           </button>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-x-auto">
+      <div className="w-full bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-x-auto">
         {paginatedData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 px-6 sm:px-8 text-center">
-            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-              <Clock size={24} className="text-slate-400" />
+          <div className="flex flex-col items-center justify-center py-24 px-8 text-center">
+            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-5">
+              <Clock size={28} className="text-blue-500" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-700">No Shifts Found</h3>
-            <p className="text-sm text-slate-500 mt-1 max-w-sm">No shift schedules match your criteria. Create your first shift to get started.</p>
+            <h3 className="text-lg font-bold text-slate-800 mb-2">No Shifts Found</h3>
+            <p className="text-sm text-slate-500 max-w-xs mb-6">No work shifts have been created yet. Add a shift schedule to get started.</p>
             <button
               onClick={handleAdd}
-              className="mt-5 flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 shadow-sm transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 shadow-sm shadow-blue-200 transition-all"
             >
               <Plus size={16} /> Add Shift
             </button>
@@ -684,14 +684,14 @@ export const ShiftManagement = () => {
           <table className="w-full">
             <thead>
               <tr className="bg-[#F8FAFC]">
-                <th className="text-left py-4 px-6 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Shift</th>
-                <th className="text-left py-4 px-6 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Code</th>
-                <th className="text-left py-4 px-6 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Start Time</th>
-                <th className="text-left py-4 px-6 text-[13px] font-semibold text-[#475467] whitespace-nowrap">End Time</th>
-                <th className="text-left py-4 px-6 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Working Hours</th>
-                <th className="text-left py-4 px-6 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Employees</th>
-                <th className="text-left py-4 px-6 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Status</th>
-                <th className="text-left py-4 px-6 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Actions</th>
+                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Shift</th>
+                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Code</th>
+                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Start Time</th>
+                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">End Time</th>
+                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Working Hours</th>
+                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Employees</th>
+                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Status</th>
+                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -702,14 +702,14 @@ export const ShiftManagement = () => {
 
                 return (
                   <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50/30 transition-colors">
-                    <td className="py-4 px-6"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: styles.bg, color: styles.color }}><IconComp size={18} /></div><span className="font-semibold text-[#101828] text-sm whitespace-nowrap">{item.name}</span></div></td>
-                    <td className="py-4 px-6 text-slate-600 text-sm whitespace-nowrap">{item.code}</td>
-                    <td className="py-4 px-6 text-slate-600 text-sm whitespace-nowrap">{item.startTime}</td>
-                    <td className="py-4 px-6 text-slate-600 text-sm whitespace-nowrap">{item.endTime}</td>
-                    <td className="py-4 px-6 text-slate-600 text-sm whitespace-nowrap">{item.workingHours}</td>
-                    <td className="py-4 px-6 text-slate-600 text-sm whitespace-nowrap"><div className="flex items-center gap-1.5"><Users size={16} className="text-slate-400" /><span>{empCount}</span></div></td>
-                    <td className="py-4 px-6 whitespace-nowrap"><span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" style={item.status === 'Active' ? { backgroundColor: '#ECFDF5', color: '#047857' } : { backgroundColor: '#F3F4F6', color: '#4B5563' }}>{item.status}</span></td>
-                    <td className="py-4 px-6 whitespace-nowrap text-left">
+                    <td className="py-4 px-4"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: styles.bg, color: styles.color }}><IconComp size={18} /></div><span className="font-semibold text-[#101828] text-sm whitespace-nowrap">{item.name}</span></div></td>
+                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">{item.code}</td>
+                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">{item.startTime}</td>
+                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">{item.endTime}</td>
+                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">{item.workingHours}</td>
+                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap"><div className="flex items-center gap-1.5"><Users size={16} className="text-slate-400" /><span>{empCount}</span></div></td>
+                    <td className="py-4 px-4 whitespace-nowrap"><span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" style={item.status === 'Active' ? { backgroundColor: '#ECFDF5', color: '#047857' } : { backgroundColor: '#F3F4F6', color: '#4B5563' }}>{item.status}</span></td>
+                    <td className="py-4 px-4 whitespace-nowrap text-left">
                       <div className="flex items-center justify-start gap-2">
                         <button onClick={() => handleOpenView(item)} className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"><Eye size={16} /></button>
                         <button onClick={() => handleOpenEdit(item)} className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"><Edit2 size={16} /></button>
