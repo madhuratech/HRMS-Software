@@ -344,16 +344,16 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
               {/* Planned OSRM route — shadow + orange main line */}
               {routeGeoJSON && (
                 <Source type="geojson" data={routeGeoJSON} id="route-source">
-                  <Layer id="route-shadow-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': '#E2E8F0', 'line-width': 10 }} />
-                  <Layer id="route-main-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': '#F97316', 'line-width': 6 }} />
-                  <Layer id="route-dash-line" type="line" paint={{ 'line-color': '#fff', 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [2, 3] }} />
+                  <Layer id="route-shadow-line" source="route-source" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': '#E2E8F0', 'line-width': 10 }} />
+                  <Layer id="route-main-line" source="route-source" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': '#F97316', 'line-width': 6 }} />
+                  <Layer id="route-dash-line" source="route-source" type="line" paint={{ 'line-color': '#fff', 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [2, 3] }} />
                 </Source>
               )}
 
               {/* Actual travelled path — blue solid */}
               {travelGeoJSON && (
-                <Source type="geojson" data={travelGeoJSON}>
-                  <Layer id="travel-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': '#2563EB', 'line-width': 4, 'line-opacity': 0.9 }} />
+                <Source type="geojson" data={travelGeoJSON} id="travel-source">
+                  <Layer id="travel-line" source="travel-source" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': '#2563EB', 'line-width': 4, 'line-opacity': 0.9 }} />
                 </Source>
               )}
 
