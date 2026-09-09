@@ -196,6 +196,34 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
   const destLng = v?.client_dest_lng ? parseFloat(v.client_dest_lng) : (v?.check_in_lng ? parseFloat(v.check_in_lng) : null);
 
 
+  const dynamicStyle = useMemo(() => {
+    const sources = {};
+    const layers = [];
+
+    if (mapStyle === 'street') {
+      sources['osm-base'] = { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256, attribution: '© OpenStreetMap' };
+      layers.push({ id: 'osm-tiles', source: 'osm-base', type: 'raster' });
+    } else {
+      sources['esri-sat-base'] = { type: 'raster', tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'], tileSize: 256, attribution: '© Esri' };
+      layers.push({ id: 'esri-sat-tiles', source: 'esri-sat-base', type: 'raster' });
+      sources['osm-overlay-base'] = { type: 'raster', tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'], tileSize: 256 };
+      layers.push({ id: 'osm-labels', source: 'osm-overlay-base', type: 'raster', paint: { 'raster-opacity': 0.45 } });
+    }
+
+    if (routeGeoJSON) {
+      sources['route-source'] = { type: 'geojson', data: routeGeoJSON };
+      layers.push({ id: 'route-shadow-line', source: 'route-source', type: 'line', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#E2E8F0', 'line-width': 10 } });
+      layers.push({ id: 'route-main-line', source: 'route-source', type: 'line', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#F97316', 'line-width': 6 } });
+      layers.push({ id: 'route-dash-line', source: 'route-source', type: 'line', paint: { 'line-color': '#ffffff', 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [2, 3] } });
+    }
+
+    if (travelGeoJSON) {
+      sources['travel-source'] = { type: 'geojson', data: travelGeoJSON };
+      layers.push({ id: 'travel-line', source: 'travel-source', type: 'line', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#2563EB', 'line-width': 4, 'line-opacity': 0.9 } });
+    }
+
+    return { version: 8, sources, layers };
+  }, [mapStyle, routeGeoJSON, travelGeoJSON]);
 
   const steps = [
     { label: 'Journey Started', time: v?.start_journey_time, done: true, color: '#2563EB' },
