@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Map, { Marker, NavigationControl } from 'react-map-gl/maplibre';
+import maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+
+// Bypass Vercel SPA routing issues where maplibre-gl-worker.mjs 404s and returns text/html
+maplibregl.workerUrl = 'https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl-worker.js';
 import { apiFetch } from '../../lib/api';
 import { MapPin, Navigation, Camera, CheckCircle2, XCircle, Play, Map as MapIcon, Building, LogOut, Search, Loader2, Link } from 'lucide-react';
 
