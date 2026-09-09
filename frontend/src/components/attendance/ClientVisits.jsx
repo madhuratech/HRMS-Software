@@ -195,7 +195,7 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
   const destLat = v?.client_dest_lat ? parseFloat(v.client_dest_lat) : (v?.check_in_lat ? parseFloat(v.check_in_lat) : null);
   const destLng = v?.client_dest_lng ? parseFloat(v.client_dest_lng) : (v?.check_in_lng ? parseFloat(v.check_in_lng) : null);
 
-  const activeStyle = mapStyle === 'satellite' ? SATELLITE_STYLE : STREET_STYLE;
+
 
   const steps = [
     { label: 'Journey Started', time: v?.start_journey_time, done: true, color: '#2563EB' },
