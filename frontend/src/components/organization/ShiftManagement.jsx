@@ -667,24 +667,31 @@ export const ShiftManagement = () => {
 
       <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-x-auto">
         {paginatedData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4"><Clock size={24} className="text-slate-400" /></div>
+          <div className="flex flex-col items-center justify-center py-20 px-6 sm:px-8 text-center">
+            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4">
+              <Clock size={24} className="text-slate-400" />
+            </div>
             <h3 className="text-lg font-semibold text-slate-700">No Shifts Found</h3>
-            <p className="text-sm text-slate-500 mt-1">Create your first shift.</p>
-            <button onClick={handleAdd} className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"><Plus size={16} /> Add Shift</button>
+            <p className="text-sm text-slate-500 mt-1 max-w-sm">No shift schedules match your criteria. Create your first shift to get started.</p>
+            <button
+              onClick={handleAdd}
+              className="mt-5 flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 shadow-sm transition-colors"
+            >
+              <Plus size={16} /> Add Shift
+            </button>
           </div>
         ) : (
           <table className="w-full">
             <thead>
               <tr className="bg-[#F8FAFC]">
-                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Shift</th>
-                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Code</th>
-                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Start Time</th>
-                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">End Time</th>
-                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Working Hours</th>
-                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Employees</th>
-                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Status</th>
-                <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Actions</th>
+                <th className="text-left py-4 px-6 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Shift</th>
+                <th className="text-left py-4 px-6 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Code</th>
+                <th className="text-left py-4 px-6 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Start Time</th>
+                <th className="text-left py-4 px-6 text-[13px] font-semibold text-[#475467] whitespace-nowrap">End Time</th>
+                <th className="text-left py-4 px-6 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Working Hours</th>
+                <th className="text-left py-4 px-6 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Employees</th>
+                <th className="text-left py-4 px-6 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Status</th>
+                <th className="text-left py-4 px-6 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -695,14 +702,14 @@ export const ShiftManagement = () => {
 
                 return (
                   <tr key={item.id} className="border-b border-slate-100 hover:bg-slate-50/30 transition-colors">
-                    <td className="py-4 px-4"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: styles.bg, color: styles.color }}><IconComp size={18} /></div><span className="font-semibold text-[#101828] text-sm whitespace-nowrap">{item.name}</span></div></td>
-                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">{item.code}</td>
-                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">{item.startTime}</td>
-                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">{item.endTime}</td>
-                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">{item.workingHours}</td>
-                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap"><div className="flex items-center gap-1.5"><Users size={16} className="text-slate-400" /><span>{empCount}</span></div></td>
-                    <td className="py-4 px-4 whitespace-nowrap"><span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" style={item.status === 'Active' ? { backgroundColor: '#ECFDF5', color: '#047857' } : { backgroundColor: '#F3F4F6', color: '#4B5563' }}>{item.status}</span></td>
-                    <td className="py-4 px-4 whitespace-nowrap text-left">
+                    <td className="py-4 px-6"><div className="flex items-center gap-3"><div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: styles.bg, color: styles.color }}><IconComp size={18} /></div><span className="font-semibold text-[#101828] text-sm whitespace-nowrap">{item.name}</span></div></td>
+                    <td className="py-4 px-6 text-slate-600 text-sm whitespace-nowrap">{item.code}</td>
+                    <td className="py-4 px-6 text-slate-600 text-sm whitespace-nowrap">{item.startTime}</td>
+                    <td className="py-4 px-6 text-slate-600 text-sm whitespace-nowrap">{item.endTime}</td>
+                    <td className="py-4 px-6 text-slate-600 text-sm whitespace-nowrap">{item.workingHours}</td>
+                    <td className="py-4 px-6 text-slate-600 text-sm whitespace-nowrap"><div className="flex items-center gap-1.5"><Users size={16} className="text-slate-400" /><span>{empCount}</span></div></td>
+                    <td className="py-4 px-6 whitespace-nowrap"><span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold" style={item.status === 'Active' ? { backgroundColor: '#ECFDF5', color: '#047857' } : { backgroundColor: '#F3F4F6', color: '#4B5563' }}>{item.status}</span></td>
+                    <td className="py-4 px-6 whitespace-nowrap text-left">
                       <div className="flex items-center justify-start gap-2">
                         <button onClick={() => handleOpenView(item)} className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"><Eye size={16} /></button>
                         <button onClick={() => handleOpenEdit(item)} className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"><Edit2 size={16} /></button>
