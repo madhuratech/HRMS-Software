@@ -46,6 +46,12 @@ class ExpenseController {
     try {
       const userId = req.user?.id || 1;
       const result = await ExpenseService.createClaim(req.body, userId);
+      try {
+        const empId = req.user?.employeeId || req.user?.employee_id || userId;
+        const NotificationService = require('../services/NotificationService');
+        NotificationService.triggerExpenseSubmitted(result.id || 1, empId, req.body.title || req.body.description || 'Expense Claim', req.body.amount)
+          .catch(e => console.error("Expense notification error:", e));
+      } catch (e) { }
       return response(res, true, 201, 'Expense claim submitted successfully.', result);
     } catch (err) {
       return response(res, false, 500, 'Failed to submit expense claim.', null, err.message);
@@ -85,6 +91,11 @@ class ExpenseController {
       const userId = req.user?.id || 1;
       const { status } = req.body;
       await ExpenseService.approveClaim(req.params.id, status, userId);
+      try {
+        const NotificationService = require('../services/NotificationService');
+        NotificationService.triggerExpenseStatusUpdate(req.params.id, userId, 'Expense Claim', status)
+          .catch(e => console.error("Expense status notification error:", e));
+      } catch (e) { }
       return response(res, true, 200, `Expense claim ${status.toLowerCase()} successfully.`);
     } catch (err) {
       return response(res, false, 500, 'Failed to update claim status.', null, err.message);

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import Map, { Marker, Source, Layer } from 'react-map-gl/maplibre';
+import Map, { Marker, Source, Layer, NavigationControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { apiFetch } from '../../lib/api';
 import { MapPin, Navigation, Camera, CheckCircle2, XCircle, Play, Map as MapIcon, Building, LogOut, Search, Loader2, Link } from 'lucide-react';
@@ -7,14 +7,20 @@ import { MapPin, Navigation, Camera, CheckCircle2, XCircle, Play, Map as MapIcon
 // ─── Parse Google Maps URL to lat/lng ──────────────────────────────────────
 function parseGoogleMapsUrl(url) {
   if (!url) return null;
+  // Match all !3d and !4d pairs
+  const matches = [...url.matchAll(/!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/g)];
+  if (matches.length > 0) {
+    const lastMatch = matches[matches.length - 1];
+    return { lat: parseFloat(lastMatch[1]), lng: parseFloat(lastMatch[2]) };
+  }
   // Format: https://maps.google.com/?q=lat,lng
-  let m = url.match(/[?&]q=([−\-]?\d+\.?\d*),([−\-]?\d+\.?\d*)/);
+  let m = url.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
   if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
   // Format: https://www.google.com/maps/place/.../@lat,lng,zoom
-  m = url.match(/@([−\-]?\d+\.?\d*),([−\-]?\d+\.?\d*)/);
+  m = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
   if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
   // Format: maps.google.com/maps?ll=lat,lng
-  m = url.match(/[?&]ll=([−\-]?\d+\.?\d*),([−\-]?\d+\.?\d*)/);
+  m = url.match(/[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
   if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
   return null;
 }
@@ -85,39 +91,31 @@ function injectStyles() {
   document.head.appendChild(s);
 }
 
-// MapLibre style with both street and satellite layers via layer control
+// MapLibre style with Google Maps tiles for perfect street/shop details
 const STREET_STYLE = {
   version: 8,
   sources: {
-    'osm': {
+    'gmap': {
       type: 'raster',
-      tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
+      tiles: ['https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'],
       tileSize: 256,
-      attribution: '&copy; OpenStreetMap contributors'
+      attribution: 'Map data © Google'
     }
   },
-  layers: [{ id: 'osm-tiles', type: 'raster', source: 'osm' }]
+  layers: [{ id: 'gmap-tiles', type: 'raster', source: 'gmap' }]
 };
 
 const SATELLITE_STYLE = {
   version: 8,
   sources: {
-    'esri-sat': {
+    'ghyb': {
       type: 'raster',
-      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+      tiles: ['https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'],
       tileSize: 256,
-      attribution: 'Tiles &copy; Esri'
-    },
-    'esri-ref': {
-      type: 'raster',
-      tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],
-      tileSize: 256
+      attribution: 'Map data © Google'
     }
   },
-  layers: [
-    { id: 'esri-sat-tiles', type: 'raster', source: 'esri-sat' },
-    { id: 'esri-ref-tiles', type: 'raster', source: 'esri-ref' }
-  ]
+  layers: [{ id: 'ghyb-tiles', type: 'raster', source: 'ghyb' }]
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -128,8 +126,9 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
   const [routeInfo, setRouteInfo] = useState(null);
   const [bikePos, setBikePos] = useState(null);   // animated [lat, lng]
   const lastPt = useRef(null);
+  const hasFitBounds = useRef(false);
   const [mapStyle, setMapStyle] = useState('street');
-  const [viewState, setViewState] = useState({ longitude: 77.0, latitude: 11.0, zoom: 13 });
+  const [viewState, setViewState] = useState({ longitude: 77.0, latitude: 11.0, zoom: 13, pitch: 0, bearing: 0 });
 
   // OSRM planned route GeoJSON
   const [routeGeoJSON, setRouteGeoJSON] = useState(null);
@@ -180,16 +179,21 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
       }
       lastPt.current = last;
 
-      // Fit bounds
-      const allLngs = coords.map(c => c[0]);
-      const allLats = coords.map(c => c[1]);
-      if (visit.office_lat) { allLngs.push(parseFloat(visit.office_lng)); allLats.push(parseFloat(visit.office_lat)); }
-      if (destLng) { allLngs.push(destLng); allLats.push(destLat); }
-      setViewState(prev => ({ ...prev,
-        longitude: (Math.min(...allLngs) + Math.max(...allLngs)) / 2,
-        latitude: (Math.min(...allLats) + Math.max(...allLats)) / 2,
-        zoom: 13
-      }));
+      // Fit bounds only once
+      if (!hasFitBounds.current) {
+        const allLngs = coords.map(c => c[0]);
+        const allLats = coords.map(c => c[1]);
+        if (visit.office_lat) { allLngs.push(parseFloat(visit.office_lng)); allLats.push(parseFloat(visit.office_lat)); }
+        if (destLng) { allLngs.push(destLng); allLats.push(destLat); }
+        setViewState(prev => ({ ...prev,
+          longitude: (Math.min(...allLngs) + Math.max(...allLngs)) / 2,
+          latitude: (Math.min(...allLats) + Math.max(...allLats)) / 2,
+          zoom: 13,
+          pitch: prev.pitch,
+          bearing: prev.bearing
+        }));
+        hasFitBounds.current = true;
+      }
     } else {
       const startPt = points?.length === 1
         ? [parseFloat(points[0].latitude), parseFloat(points[0].longitude)]
@@ -197,7 +201,10 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
 
       if (startPt) {
         setBikePos(startPt);
-        setViewState(prev => ({ ...prev, longitude: startPt[1], latitude: startPt[0], zoom: 14 }));
+        if (!hasFitBounds.current) {
+          setViewState(prev => ({ ...prev, longitude: startPt[1], latitude: startPt[0], zoom: 14, pitch: prev.pitch, bearing: prev.bearing }));
+          hasFitBounds.current = true;
+        }
       }
     }
   }, []);
@@ -251,6 +258,11 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
                 <div style={{ fontSize:'13px', fontWeight:'600', color:'#64748B', marginTop:'2px' }}>{routeInfo.distance}km</div>
               </div>
             </>}
+            {/* 3D View Toggle */}
+            <button onClick={() => setViewState(p => ({ ...p, pitch: p.pitch === 0 ? 60 : 0 }))}
+              style={{ background: viewState.pitch > 0 ? '#10B981' : '#F8FAFC', color: viewState.pitch > 0 ? '#fff' : '#64748B', border:'1px solid #E2E8F0', borderRadius:'8px', padding:'5px 12px', fontSize:'12px', fontWeight:'700', cursor:'pointer', transition:'0.2s' }}>
+              3D
+            </button>
             {/* Map Style Toggle */}
             <div style={{ display:'flex', gap:'4px', background:'#F8FAFC', borderRadius:'8px', padding:'3px', border:'1px solid #E2E8F0' }}>
               {[['street','Street'],['satellite','Satellite']].map(([k, label]) => (
@@ -297,11 +309,14 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
               {[
                 [<span key="a" style={{ display:'inline-block', width:'18px', height:'4px', background:'#2563EB', verticalAlign:'middle', borderRadius:'2px' }} />, 'Actual path taken'],
                 [<span key="b" style={{ display:'inline-block', width:'18px', height:'4px', background:'#F97316', verticalAlign:'middle', borderRadius:'2px' }} />, 'Planned route (road)'],
-                ['🏠', 'Office (start)'],
-                ['🏢', 'Client (destination)'],
-                ['🏍️', 'Live position'],
+                [<div key="c" style={{ width:'12px', height:'12px', background:'#10B981', border:'2px solid #fff', borderRadius:'50%', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }} />, 'Office (start)'],
+                [<div key="d" style={{ width:'12px', height:'12px', background:'#EF4444', border:'2px solid #fff', borderRadius:'50%', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }} />, 'Client (destination)'],
+                [<div key="e" style={{ position:'relative', width:'14px', height:'14px' }}>
+                  <div style={{ position:'absolute', inset:'-3px', background:'rgba(37,99,235,0.3)', borderRadius:'50%' }} />
+                  <div style={{ width:'100%', height:'100%', background:'#2563EB', border:'2px solid #fff', borderRadius:'50%', boxShadow:'0 1px 3px rgba(0,0,0,0.3)', position:'relative', zIndex:2 }} />
+                </div>, 'Live position'],
               ].map(([icon, label], i) => (
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'5px' }}>{icon} {label}</div>
+                <div key={i} style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'6px' }}>{icon} {label}</div>
               ))}
             </div>
           </div>
@@ -314,11 +329,13 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
               mapStyle={activeStyle}
               style={{ width:'100%', height:'100%' }}
             >
+              <NavigationControl position="bottom-right" />
+              
               {/* Planned OSRM route — shadow + orange main line */}
               {routeGeoJSON && (
                 <Source type="geojson" data={routeGeoJSON} id="route-source">
-                  <Layer id="route-shadow-line" type="line" paint={{ 'line-color': '#E2E8F0', 'line-width': 10, 'line-cap': 'round', 'line-join': 'round' }} />
-                  <Layer id="route-main-line" type="line" paint={{ 'line-color': '#F97316', 'line-width': 6, 'line-cap': 'round', 'line-join': 'round' }} />
+                  <Layer id="route-shadow-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': '#E2E8F0', 'line-width': 10 }} />
+                  <Layer id="route-main-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': '#F97316', 'line-width': 6 }} />
                   <Layer id="route-dash-line" type="line" paint={{ 'line-color': '#fff', 'line-width': 2, 'line-opacity': 0.5, 'line-dasharray': [2, 3] }} />
                 </Source>
               )}
@@ -326,28 +343,31 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
               {/* Actual travelled path — blue solid */}
               {travelGeoJSON && (
                 <Source type="geojson" data={travelGeoJSON}>
-                  <Layer id="travel-line" type="line" paint={{ 'line-color': '#2563EB', 'line-width': 4, 'line-opacity': 0.9, 'line-cap': 'round' }} />
+                  <Layer id="travel-line" type="line" layout={{ 'line-cap': 'round', 'line-join': 'round' }} paint={{ 'line-color': '#2563EB', 'line-width': 4, 'line-opacity': 0.9 }} />
                 </Source>
               )}
 
               {/* Office start marker */}
               {v?.office_lat && (
                 <Marker longitude={parseFloat(v.office_lng)} latitude={parseFloat(v.office_lat)} anchor="center">
-                  <div style={{ width:'32px', height:'32px', background:'#fff', border:'2px solid #10B981', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.15)' }}>🏠</div>
+                  <div style={{ width:'16px', height:'16px', background:'#10B981', border:'2.5px solid #fff', borderRadius:'50%', boxShadow:'0 2px 6px rgba(0,0,0,0.3)' }} />
                 </Marker>
               )}
 
               {/* Destination marker */}
               {destLat && destLng && (
                 <Marker longitude={destLng} latitude={destLat} anchor="center">
-                  <div style={{ width:'32px', height:'32px', background:'#fff', border:'2px solid #EF4444', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', boxShadow:'0 2px 8px rgba(0,0,0,0.15)' }}>🏢</div>
+                  <div style={{ width:'16px', height:'16px', background:'#EF4444', border:'2.5px solid #fff', borderRadius:'50%', boxShadow:'0 2px 6px rgba(0,0,0,0.3)' }} />
                 </Marker>
               )}
 
-              {/* Animated bike marker */}
+              {/* Animated Live position dot */}
               {bikePos && (
                 <Marker longitude={bikePos[1]} latitude={bikePos[0]} anchor="center">
-                  <div style={{ width:'38px', height:'38px', background:'#fff', border:'2.5px solid #2563EB', borderRadius:'50%', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'20px', boxShadow:'0 3px 12px rgba(37,99,235,0.35)' }}>🏍️</div>
+                  <div style={{ position:'relative', width:'18px', height:'18px' }}>
+                    <div style={{ position:'absolute', inset:'-6px', background:'rgba(37,99,235,0.3)', borderRadius:'50%', animation:'livePulse 2s infinite' }} />
+                    <div style={{ width:'100%', height:'100%', background:'#2563EB', border:'3px solid #fff', borderRadius:'50%', boxShadow:'0 2px 6px rgba(0,0,0,0.3)', position:'relative', zIndex:2 }} />
+                  </div>
                 </Marker>
               )}
             </Map>
@@ -391,10 +411,28 @@ const StartJourneyModal = ({ onStart, onClose }) => {
     }, 500);
   };
 
-  const handleGmapsUrl = (url) => {
+  const handleGmapsUrl = async (url) => {
     setGmapsUrl(url); setSelectedDest(null);
-    const coords = parseGoogleMapsUrl(url);
-    if (coords) setSelectedDest({ lat: coords.lat, lng: coords.lng, address: `Google Maps location (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)})` });
+    if (!url || !url.startsWith('http')) return;
+    
+    let finalUrl = url;
+    if (url.includes('goo.gl')) {
+      setSearching(true);
+      try {
+        const res = await apiFetch('/client-visits/resolve-link', { method: 'POST', body: JSON.stringify({ url }) });
+        if (res.success && res.expandedUrl) {
+          finalUrl = res.expandedUrl;
+        }
+      } catch (e) {
+        console.error('Failed to resolve short link:', e);
+      }
+      setSearching(false);
+    }
+    
+    const coords = parseGoogleMapsUrl(finalUrl);
+    if (coords) {
+      setSelectedDest({ lat: coords.lat, lng: coords.lng, address: `Google Maps location (${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)})` });
+    }
   };
 
   const handleStart = () => {
@@ -474,8 +512,9 @@ const StartJourneyModal = ({ onStart, onClose }) => {
                 <input className="gps-input" value={gmapsUrl} onChange={e => handleGmapsUrl(e.target.value)}
                   placeholder="Paste Google Maps link here..." style={{ paddingLeft:'30px' }} />
               </div>
-              <div style={{ fontSize:'11px', color:'#94A3B8', marginTop:'5px' }}>
-                Right-click any location in Google Maps → "Share" → copy the link and paste here
+              <div style={{ fontSize:'11px', color:'#94A3B8', marginTop:'5px', lineHeight: '1.4' }}>
+                Right-click any location in Google Maps (web) → "Share" → copy the link and paste here.<br/>
+                <span style={{ color: '#10B981', fontWeight: '500' }}>Short links (maps.app.goo.gl) are automatically resolved!</span>
               </div>
             </div>
           )}
@@ -597,6 +636,11 @@ const PhotoModal = ({ action, visit, onSubmit, onClose }) => {
 // MAIN PAGE
 // ═══════════════════════════════════════════════════════════════════════════
 export default function ClientVisits() {
+  const authRaw = localStorage.getItem('hrms_auth');
+  let userRole = 'USER';
+  try { if (authRaw) userRole = JSON.parse(authRaw).role || 'USER'; } catch(e){}
+  const isAdmin = userRole === 'SUPER ADMIN' || userRole === 'SUPERADMIN' || userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+
   const [active, setActive] = useState([]);
   const [completed, setCompleted] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -639,6 +683,20 @@ export default function ClientVisits() {
       if (res.success) { alert(`Journey closed!\nDistance: ${res.data.distance} km`); fetchVisits(); }
       else alert(res.message);
     }, e => alert(e.message), { enableHighAccuracy:true });
+  };
+
+  const deleteJourney = async (visitId) => {
+    if (!confirm('Are you sure you want to delete this journey?')) return;
+    try {
+      const res = await apiFetch(`/client-visits/${visitId}`, { method: 'DELETE' });
+      if (res.success) {
+        fetchVisits();
+      } else {
+        alert(res.message || 'Failed to delete');
+      }
+    } catch (e) {
+      alert(e.message);
+    }
   };
 
   const stageBtn = {
@@ -692,9 +750,14 @@ export default function ClientVisits() {
                     <div style={{ fontWeight:'800', fontSize:'16px', color:'#0F172A' }}>{v.client_name}</div>
                     {v.employee_name && <div style={{ fontSize:'12px', color:'#64748B', marginTop:'2px' }}>👤 {v.employee_name}</div>}
                   </div>
-                  <span style={{ fontSize:'11px', fontWeight:'700', background:badge.bg, color:badge.text, padding:'4px 10px', borderRadius:'20px', whiteSpace:'nowrap' }}>
-                    {v.status}
-                  </span>
+                  <div style={{ display:'flex', alignItems:'center', gap: '8px' }}>
+                    <span style={{ fontSize:'11px', fontWeight:'700', background:badge.bg, color:badge.text, padding:'4px 10px', borderRadius:'20px', whiteSpace:'nowrap' }}>
+                      {v.status}
+                    </span>
+                    <button onClick={() => deleteJourney(v.id)} style={{ background:'none', border:'none', cursor:'pointer', padding:'2px', color:'#94A3B8' }} onMouseEnter={e => e.currentTarget.style.color='#EF4444'} onMouseLeave={e => e.currentTarget.style.color='#94A3B8'} title="Delete Journey">
+                      <XCircle size={16} />
+                    </button>
+                  </div>
                 </div>
 
                 <div style={{ display:'flex', flexDirection:'column', gap:'5px', marginBottom:'14px' }}>
@@ -705,9 +768,11 @@ export default function ClientVisits() {
                   {v.check_out_time && <div style={{ fontSize:'12px', color:'#64748B', display:'flex', gap:'6px', alignItems:'center' }}><LogOut size={11} color="#F59E0B" /> Meeting ended: {new Date(v.check_out_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})}</div>}
                 </div>
 
-                <button onClick={() => setLiveId(v.id)} style={{ width:'100%', padding:'9px', background:'#F0F6FF', color:'#2563EB', border:'1px solid #DBEAFE', borderRadius:'8px', cursor:'pointer', fontSize:'13px', fontWeight:'600', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', marginBottom:'10px' }}>
-                  <MapIcon size={14} /> Open Live Map
-                </button>
+                {isAdmin && (
+                  <button onClick={() => setLiveId(v.id)} style={{ width:'100%', padding:'9px', background:'#F0F6FF', color:'#2563EB', border:'1px solid #DBEAFE', borderRadius:'8px', cursor:'pointer', fontSize:'13px', fontWeight:'600', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', marginBottom:'10px' }}>
+                    <MapIcon size={14} /> Open Live Map
+                  </button>
+                )}
 
                 {btn && (
                   <button

@@ -138,3 +138,31 @@ exports.getLiveTrack = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+exports.deleteVisit = async (req, res) => {
+  try {
+    const { id } = req.params;
+    await ClientVisitService.deleteVisit(id);
+    res.json({ success: true, message: 'Visit deleted' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.resolveMapLink = async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ success: false, message: 'Missing URL' });
+    
+    // Follow redirect to get the long URL containing coordinates
+    const response = await fetch(url, { redirect: 'follow' });
+    const expandedUrl = response.url;
+    
+    res.json({ success: true, expandedUrl });
+  } catch (error) {
+    console.error('Error resolving map link:', error);
+    res.status(500).json({ success: false, message: 'Failed to resolve map link' });
+  }
+};
+

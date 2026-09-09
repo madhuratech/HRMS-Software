@@ -15,7 +15,7 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
 }
 
 // Calculate real distance with noise filtering:
-// - Ignore jumps < 10 meters (GPS noise when stationary)
+// - Ignore jumps < 5 meters (GPS noise when stationary)
 // - Ignore jumps > 2 km per point (GPS glitch / teleport)
 function calcRealDistance(points) {
   let total = 0;
@@ -24,7 +24,7 @@ function calcRealDistance(points) {
       parseFloat(points[i-1].latitude), parseFloat(points[i-1].longitude),
       parseFloat(points[i].latitude),   parseFloat(points[i].longitude)
     );
-    if (d > 0.01 && d < 2.0) { // between 10m and 2km per step
+    if (d >= 0.005 && d < 2.0) { // between 5m and 2km per step
       total += d;
     }
   }
@@ -195,6 +195,12 @@ class ClientVisitService {
       liveDistance: totalDistanceKm.toFixed(2),
       liveFee: currentFee.toFixed(2)
     };
+  }
+
+  static async deleteVisit(visitId) {
+    // Also delete associated location history to maintain referential integrity
+    await query(`DELETE FROM LocationHistory WHERE visit_id = ?`, [visitId]);
+    await query(`DELETE FROM client_visits WHERE id = ?`, [visitId]);
   }
 }
 

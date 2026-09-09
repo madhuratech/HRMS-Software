@@ -24,5 +24,7 @@ router.post('/reach-office', authenticateJWT, requireSalesAndMarketing, clientVi
 router.get('/active', authenticateJWT, requireSalesAndMarketing, clientVisitController.getActiveVisits);
 router.get('/live', authenticateJWT, requireSalesAndMarketing, clientVisitController.getLiveDashboard);
 router.get('/:id/track', authenticateJWT, requireSalesAndMarketing, clientVisitController.getLiveTrack);
+router.delete('/:id', authenticateJWT, requireSalesAndMarketing, clientVisitController.deleteVisit);
+router.post('/resolve-link', authenticateJWT, requireSalesAndMarketing, clientVisitController.resolveMapLink);
 
 module.exports = router;
