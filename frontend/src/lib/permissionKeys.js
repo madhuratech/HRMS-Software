@@ -27,6 +27,7 @@ export const PERMISSION_KEYS = {
   ATTENDANCE: {
     DAILY: { module: 'attendance', submodule: 'daily_attendance' },
     GPS: { module: 'attendance', submodule: 'gps_attendance' },
+    GPS_PUNCH: { module: 'attendance', submodule: 'gps_attendance' },
     REGULARIZATION: { module: 'attendance', submodule: 'regularization' },
     SHIFT_ROSTER: { module: 'attendance', submodule: 'shift_roster' },
     OVERTIME: { module: 'attendance', submodule: 'overtime' },

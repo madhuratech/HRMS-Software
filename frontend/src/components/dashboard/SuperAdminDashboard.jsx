@@ -12,80 +12,6 @@ import {
 import { apiFetch } from '../../lib/api';
 import { getAvatarUrl } from '../../lib/utils';
 
-// ── Team Performance Single Bar Chart Data (Achievement %) ──
-const TEAM_PERFORMANCE_DATA = [
-  { team: 'Customer Support', achievement: 82 },
-  { team: 'Website Development', achievement: 91 },
-  { team: 'Software Development', achievement: 95 },
-  { team: 'Sales', achievement: 87 },
-];
-
-// ── Attendance Status Donut Segments (83% Present) ──
-const DONUT_STATUS = [
-  { name: 'Present', value: 83, color: '#10B981' },
-  { name: 'Leave', value: 12, color: '#CBD5E1' },
-  { name: 'Absent', value: 5, color: '#EF4444' },
-];
-
-// ── Employee Performance Table Data ──
-const PERFORMANCE_EMPLOYEES = [
-  {
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80',
-    name: 'Aarav Patel',
-    dept: 'Engineering',
-    designation: 'Software Engineer',
-    score: '4.35',
-    goals: '88%',
-    stars: 4,
-    trend: '↑ 5.2%',
-    isUp: true,
-  },
-  {
-    avatar: 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&auto=format&fit=crop&q=80',
-    name: 'Priya Sharma',
-    dept: 'HR',
-    designation: 'HR Executive',
-    score: '4.12',
-    goals: '76%',
-    stars: 4,
-    trend: '↑ 3.1%',
-    isUp: true,
-  },
-  {
-    avatar: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&auto=format&fit=crop&q=80',
-    name: 'Rahul Kumar',
-    dept: 'Finance',
-    designation: 'Accountant',
-    score: '4.05',
-    goals: '82%',
-    stars: 4,
-    trend: '↑ 2.8%',
-    isUp: true,
-  },
-  {
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&auto=format&fit=crop&q=80',
-    name: 'Sneha Reddy',
-    dept: 'Marketing',
-    designation: 'UI/UX Designer',
-    score: '3.98',
-    goals: '70%',
-    stars: 3,
-    trend: '↓ 1.4%',
-    isUp: false,
-  },
-  {
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&auto=format&fit=crop&q=80',
-    name: 'Vikram Singh',
-    dept: 'Sales',
-    designation: 'Sales Executive',
-    score: '4.28',
-    goals: '90%',
-    stars: 4,
-    trend: '↑ 4.7%',
-    isUp: true,
-  },
-];
-
 // ── Clean KPI Card Component ──
 const KpiCard = ({ label, value, trend, trendLabel, iconBg, iconColor, iconSymbol }) => (
   <div style={{
@@ -272,20 +198,17 @@ export function SuperAdminDashboard() {
     }))
     : [];
 
-  // Dynamically build chart data from real department/team data from API
-  const rawDeptData = Array.isArray(stats?.departmentSummary) && stats.departmentSummary.length > 0
-    ? stats.departmentSummary
-    : null;
+  // Dynamically build chart data strictly from real team performance goal achievement from API
+  const rawPerfData = Array.isArray(stats?.teamPerformance) && stats.teamPerformance.length > 0
+    ? stats.teamPerformance
+    : (Array.isArray(stats?.departmentSummary) && stats.departmentSummary.length > 0 ? stats.departmentSummary : []);
 
-  const chartData = rawDeptData
-    ? (() => {
-        const maxEmp = Math.max(...rawDeptData.map(d => d.emp), 1);
-        return rawDeptData.map(d => ({
-          team: d.dept,
-          achievement: d.emp === 0 ? 0 : Math.min(100, Math.max(5, Math.round((d.emp / maxEmp) * 100)))
-        }));
-      })()
-    : TEAM_PERFORMANCE_DATA;
+  const chartData = rawPerfData.map(d => ({
+    team: d.team || d.dept,
+    achievement: typeof d.achievement !== 'undefined' && d.achievement !== null
+      ? Number(d.achievement) || 0
+      : 0
+  }));
 
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box', background: '#F8FAFC', minHeight: '100vh', padding: 0 }}>
@@ -482,7 +405,14 @@ export function SuperAdminDashboard() {
                 </tr>
               </thead>
               <tbody>
-                {perfList.map((row, idx) => (
+                {perfList.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} style={{ padding: '32px 20px', textAlign: 'center', color: '#94A3B8', fontSize: 13 }}>
+                      No employee performance records found in database.
+                    </td>
+                  </tr>
+                ) : (
+                  perfList.map((row, idx) => (
                   <tr key={idx} style={{ borderBottom: '1px solid #F1F5F9', height: 52 }} className="hover:bg-slate-50 transition-colors">
                     <td style={{ padding: '0 20px', fontSize: 13, color: '#111827', whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -517,7 +447,7 @@ export function SuperAdminDashboard() {
                       {row.trend}
                     </td>
                   </tr>
-                ))}
+                )))}
               </tbody>
             </table>
           </div>

@@ -71,7 +71,7 @@ export function resolveModuleKeys(modKey) {
 
   // Attendance module submodules
   if (['daily_attendance', 'dailyattendance'].includes(cleanKey)) return { moduleKey: 'attendance', submoduleKey: 'daily_attendance' };
-  if (['gps_attendance', 'gpsattendance'].includes(cleanKey)) return { moduleKey: 'attendance', submoduleKey: 'gps_attendance' };
+  if (['gps_attendance', 'gpsattendance', 'gps_attendance_punch', 'gpsattendancepunch', 'gps_punch', 'gpspunch', 'geo_attendance', 'geo_fencing', 'geofenced_punch', 'attendance_punch'].includes(cleanKey)) return { moduleKey: 'attendance', submoduleKey: 'gps_attendance' };
   if (['regularization'].includes(cleanKey)) return { moduleKey: 'attendance', submoduleKey: 'regularization' };
   if (['shift_roster', 'shiftroster'].includes(cleanKey)) return { moduleKey: 'attendance', submoduleKey: 'shift_roster' };
   if (['overtime'].includes(cleanKey)) return { moduleKey: 'attendance', submoduleKey: 'overtime' };
@@ -379,6 +379,13 @@ export function hasPermission(...args) {
       if (val !== undefined) return normalizeBoolean(val);
     }
 
+    // Check alias keys if applicable (e.g. gps_attendance <-> gps_attendance_punch)
+    const subAlias = subClean === 'gps_attendance' ? 'gps_attendance_punch' : (subClean === 'gps_attendance_punch' ? 'gps_attendance' : null);
+    if (subAlias && userPermissions[subAlias] !== undefined && userPermissions[subAlias] !== null) {
+      const val = extractVal(userPermissions[subAlias]);
+      if (val !== undefined) return normalizeBoolean(val);
+    }
+
     // Check combined key e.g. "projects:tasks" or "projects.tasks"
     if (modClean) {
       const colonKey = `${modClean}:${subClean}`;
@@ -386,14 +393,27 @@ export function hasPermission(...args) {
         const val = extractVal(userPermissions[colonKey]);
         if (val !== undefined) return normalizeBoolean(val);
       }
+      if (subAlias) {
+        const colonAliasKey = `${modClean}:${subAlias}`;
+        if (userPermissions[colonAliasKey] !== undefined && userPermissions[colonAliasKey] !== null) {
+          const val = extractVal(userPermissions[colonAliasKey]);
+          if (val !== undefined) return normalizeBoolean(val);
+        }
+      }
       const dotKey = `${modClean}.${subClean}`;
       if (userPermissions[dotKey] !== undefined && userPermissions[dotKey] !== null) {
         const val = extractVal(userPermissions[dotKey]);
         if (val !== undefined) return normalizeBoolean(val);
       }
-      if (userPermissions[modClean] && userPermissions[modClean].submodules && userPermissions[modClean].submodules[subClean]) {
-        const val = extractVal(userPermissions[modClean].submodules[subClean]);
-        if (val !== undefined) return normalizeBoolean(val);
+      if (userPermissions[modClean] && userPermissions[modClean].submodules) {
+        if (userPermissions[modClean].submodules[subClean]) {
+          const val = extractVal(userPermissions[modClean].submodules[subClean]);
+          if (val !== undefined) return normalizeBoolean(val);
+        }
+        if (subAlias && userPermissions[modClean].submodules[subAlias]) {
+          const val = extractVal(userPermissions[modClean].submodules[subAlias]);
+          if (val !== undefined) return normalizeBoolean(val);
+        }
       }
     }
     return false;

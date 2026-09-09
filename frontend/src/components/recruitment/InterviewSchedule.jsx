@@ -272,27 +272,27 @@ export default function InterviewSchedule() {
             <MessageSquare size={16} /> Interview Feedback
           </button>
           <button
-          disabled={!canCreate('interview_schedule')}
-          onClick={() => {
-            if (!checkActionPermission('interview_schedule', 'CREATE')) return;
-            setShowScheduleModal(true);
-          }}
-          style={{ 
-            padding: '10px 16px', 
-            borderRadius: '8px', 
-            border: 'none', 
-            background: canCreate('interview_schedule') ? '#2952E3' : '#94A3B8', 
-            color: '#FFF', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px', 
-            cursor: canCreate('interview_schedule') ? 'pointer' : 'not-allowed', 
-            fontSize: '14px', 
-            fontWeight: '500' 
-          }}
-        >
-          <Plus size={16} /> Schedule Interview
-        </button>
+            disabled={!canCreate('interview_schedule')}
+            onClick={() => {
+              if (!checkActionPermission('interview_schedule', 'CREATE')) return;
+              setShowScheduleModal(true);
+            }}
+            style={{ 
+              padding: '10px 16px', 
+              borderRadius: '8px', 
+              border: 'none', 
+              background: canCreate('interview_schedule') ? '#2952E3' : '#94A3B8', 
+              color: '#FFF', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              cursor: canCreate('interview_schedule') ? 'pointer' : 'not-allowed', 
+              fontSize: '14px', 
+              fontWeight: '500' 
+            }}
+          >
+            <Plus size={16} /> Schedule Interview
+          </button>
         </div>
       </div>
 
@@ -400,38 +400,50 @@ export default function InterviewSchedule() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Candidate <span className="text-red-500">*</span></label>
                   <AppDropdown
-                value={scheduleForm.candidate_id}
-                onChange={v => setScheduleForm({ ...scheduleForm, candidate_id: v })}
-                options={[{value:'',label:'Select Candidate'}]}
-                size="sm"
-              />
+                    value={scheduleForm.candidate_id}
+                    onChange={v => setScheduleForm({ ...scheduleForm, candidate_id: v })}
+                    options={[
+                      { value: '', label: 'Select Candidate' },
+                      ...candidates.map(c => ({
+                        value: String(c.id),
+                        label: `${c.full_name || c.name || `${c.first_name} ${c.last_name}`}${c.job_title || c.job_title_applied ? ` (${c.job_title || c.job_title_applied})` : ''}`
+                      }))
+                    ]}
+                    size="sm"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Interviewer <span className="text-red-500">*</span></label>
                   <AppDropdown
-                value={scheduleForm.interviewer_id}
-                onChange={v => setScheduleForm({ ...scheduleForm, interviewer_id: v })}
-                options={[{value:'',label:'Select Interviewer'}]}
-                size="sm"
-              />
+                    value={scheduleForm.interviewer_id}
+                    onChange={v => setScheduleForm({ ...scheduleForm, interviewer_id: v })}
+                    options={[
+                      { value: '', label: 'Select Interviewer' },
+                      ...employees.map(e => ({
+                        value: String(e.id),
+                        label: `${e.name}${e.employee_code || e.emp_id ? ` (${e.employee_code || e.emp_id})` : ` (EMP${String(e.id).padStart(4, '0')})`}${e.dept_name ? ` - ${e.dept_name}` : ''}`
+                      }))
+                    ]}
+                    size="sm"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Interview Type <span className="text-red-500">*</span></label>
                   <AppDropdown
-                value={scheduleForm.interviewType}
-                onChange={v => setScheduleForm({ ...scheduleForm, interviewType: v })}
-                options={[{value:'Online',label:'Online Video Call'},{value:'Offline',label:'In-person Office Visit'},{value:'Telephonic',label:'Phone Screening'}]}
-                size="sm"
-              />
+                    value={scheduleForm.interviewType}
+                    onChange={v => setScheduleForm({ ...scheduleForm, interviewType: v })}
+                    options={[{value:'Online',label:'Online Video Call'},{value:'Offline',label:'In-person Office Visit'},{value:'Telephonic',label:'Phone Screening'}]}
+                    size="sm"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Interview Round <span className="text-red-500">*</span></label>
                   <AppDropdown
-                value={scheduleForm.interviewRound}
-                onChange={v => setScheduleForm({ ...scheduleForm, interviewRound: v })}
-                options={[{value:'Technical Round',label:'Technical Round'},{value:'HR Round',label:'HR Round'},{value:'Manager Round',label:'Manager Round'},{value:'Final Round',label:'Final Round'}]}
-                size="sm"
-              />
+                    value={scheduleForm.interviewRound}
+                    onChange={v => setScheduleForm({ ...scheduleForm, interviewRound: v })}
+                    options={[{value:'Technical Round',label:'Technical Round'},{value:'HR Round',label:'HR Round'},{value:'Manager Round',label:'Manager Round'},{value:'Final Round',label:'Final Round'}]}
+                    size="sm"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Interview Date <span className="text-red-500">*</span></label>
@@ -448,11 +460,11 @@ export default function InterviewSchedule() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
                   <AppDropdown
-                value={scheduleForm.status}
-                onChange={v => setScheduleForm({ ...scheduleForm, status: v })}
-                options={[{value:'Scheduled',label:'Scheduled'},{value:'Completed',label:'Completed'},{value:'Cancelled',label:'Cancelled'},{value:'Rescheduled',label:'Rescheduled'}]}
-                size="sm"
-              />
+                    value={scheduleForm.status}
+                    onChange={v => setScheduleForm({ ...scheduleForm, status: v })}
+                    options={[{value:'Scheduled',label:'Scheduled'},{value:'Completed',label:'Completed'},{value:'Cancelled',label:'Cancelled'},{value:'Rescheduled',label:'Rescheduled'}]}
+                    size="sm"
+                  />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Remarks</label>
@@ -469,7 +481,6 @@ export default function InterviewSchedule() {
           </div>
         </>
       )}
-
 
       {/* Interview Feedback Modal (1100px Standard) */}
       {showFeedbackModal && (
@@ -524,29 +535,29 @@ export default function InterviewSchedule() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Rating <span className="text-red-500">*</span></label>
                   <AppDropdown
-                value={feedbackForm.rating}
-                onChange={v => setFeedbackForm({ ...feedbackForm, rating: v })}
-                options={[{value:'5',label:'5 - Excellent (Strong Hire)'},{value:'4',label:'4 - Good (Hire)'},{value:'3',label:'3 - Average (Hold)'},{value:'2',label:'2 - Below Average'},{value:'1',label:'1 - Poor (Reject)'}]}
-                size="sm"
-              />
+                    value={feedbackForm.rating}
+                    onChange={v => setFeedbackForm({ ...feedbackForm, rating: v })}
+                    options={[{value:'5',label:'5 - Excellent (Strong Hire)'},{value:'4',label:'4 - Good (Hire)'},{value:'3',label:'3 - Average (Hold)'},{value:'2',label:'2 - Below Average'},{value:'1',label:'1 - Poor (Reject)'}]}
+                    size="sm"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Recommendation</label>
                   <AppDropdown
-                value={feedbackForm.recommendation}
-                onChange={v => setFeedbackForm({ ...feedbackForm, recommendation: v })}
-                options={[{value:'Strong Hire',label:'Strong Hire'},{value:'Hire',label:'Hire'},{value:'Hold',label:'Hold'},{value:'Reject',label:'Reject'}]}
-                size="sm"
-              />
+                    value={feedbackForm.recommendation}
+                    onChange={v => setFeedbackForm({ ...feedbackForm, recommendation: v })}
+                    options={[{value:'Strong Hire',label:'Strong Hire'},{value:'Hire',label:'Hire'},{value:'Hold',label:'Hold'},{value:'Reject',label:'Reject'}]}
+                    size="sm"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
                   <AppDropdown
-                value={feedbackForm.status}
-                onChange={v => setFeedbackForm({ ...feedbackForm, status: v })}
-                options={[{value:'Completed',label:'Completed'},{value:'Draft',label:'Draft'}]}
-                size="sm"
-              />
+                    value={feedbackForm.status}
+                    onChange={v => setFeedbackForm({ ...feedbackForm, status: v })}
+                    options={[{value:'Completed',label:'Completed'},{value:'Draft',label:'Draft'}]}
+                    size="sm"
+                  />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Strengths</label>

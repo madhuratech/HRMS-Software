@@ -79,8 +79,23 @@ export function PermissionProvider({ children }) {
     refreshPermissions();
 
     const handlePermissionsUpdated = (e) => {
-      console.log('[PermissionContext] permissionsUpdated event triggered, refreshing...');
-      refreshPermissions();
+      console.log('[PermissionContext] permissionsUpdated event triggered, payload:', e.detail);
+      if (e.detail && e.detail.permissions) {
+        setPermissions(e.detail.permissions);
+        if (e.detail.roleKey) setUserRole(e.detail.roleKey);
+        setLoadingPermissions(false);
+      } else if (e.detail && e.detail.roleKey) {
+        refreshPermissions(e.detail.roleKey);
+      } else {
+        const storedAuth = localStorage.getItem('hrms_auth');
+        if (!storedAuth) {
+          setPermissions(null);
+          setUserRole('EMPLOYEE');
+          setLoadingPermissions(false);
+        } else {
+          refreshPermissions();
+        }
+      }
     };
 
     window.addEventListener('permissionsUpdated', handlePermissionsUpdated);

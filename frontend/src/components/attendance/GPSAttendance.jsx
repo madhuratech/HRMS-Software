@@ -7,6 +7,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import { usePermissions } from '../../context/PermissionContext';
 import { GeoPunch } from './GeoPunch';
 import { useNavigate } from 'react-router-dom';
 import EmployeeAvatar from '../employee/EmployeeAvatar';
@@ -60,17 +61,27 @@ function AutoFitBounds({ geofences, records }) {
 
 export default function GPSAttendance() {
   const navigate = useNavigate();
+  const getTodayDateStr = () => {
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(new Date());
+    } catch (e) {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+  };
+
   const [records, setRecords] = useState([]);
   const [geofences, setGeofences] = useState([]);
   const [kpis, setKpis] = useState({ totalCheckins: 0, onSite: 0, remote: 0, activeGeofences: 0 });
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedDate, setSelectedDate] = useState(getTodayDateStr());
   const [showPunchModal, setShowPunchModal] = useState(false);
   const [popupInfo, setPopupInfo] = useState(null);
 
   const auth = JSON.parse(localStorage.getItem('hrms_auth') || '{}');
+  const userRole = String(auth?.user?.role || auth?.role || '').toUpperCase();
   const departmentName = auth?.user?.department_name || auth?.user?.department || '';
-  const isSalesOrMarketing = departmentName === 'Sales & Marketing' || ['SUPER_ADMIN', 'ADMIN'].includes(String(auth?.user?.role || '').toUpperCase());
+  const isSalesOrMarketing = departmentName === 'Sales & Marketing' || ['SUPER_ADMIN', 'ADMIN', 'SUPERADMIN'].includes(userRole);
   const [activeTab, setActiveTab] = useState('gps');
 
   const [viewState, setViewState] = useState({ longitude: 76.9567, latitude: 11.0130, zoom: 12 });
@@ -88,7 +99,7 @@ export default function GPSAttendance() {
     setLoading(true);
     try {
       const data = await apiFetch(`/attendance/gps-feed?date=${selectedDate}`);
-      if (data.success) {
+      if (data && data.success) {
         setRecords(data.records || []);
         setGeofences(data.geofences || []);
         setKpis(data.kpis || { totalCheckins: 0, onSite: 0, remote: 0, activeGeofences: 0 });
@@ -101,6 +112,12 @@ export default function GPSAttendance() {
 
   useEffect(() => {
     loadFeed();
+
+    const handleAttendanceChange = () => {
+      loadFeed();
+    };
+    window.addEventListener('attendance-updated', handleAttendanceChange);
+    return () => window.removeEventListener('attendance-updated', handleAttendanceChange);
   }, [loadFeed]);
 
   // (activeTab switch no longer requires invalidateSize — react-map-gl handles this)
@@ -111,6 +128,10 @@ export default function GPSAttendance() {
     ? ((kpis.onSite / kpis.totalCheckins) * 100).toFixed(1)
     : 0;
 
+  const { canCreate } = usePermissions();
+  const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'SUPERADMIN'].includes(userRole);
+  const canPunch = isAdmin || (canCreate && canCreate('attendance', 'gps_attendance'));
+
   return (
     <div className="hrms-content">
       {/* Header */}
@@ -120,13 +141,15 @@ export default function GPSAttendance() {
           <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>Real-time spatial tracking & geofence validation for mobile check-ins</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button 
-            className="hrms-primary-btn"
-            onClick={() => setShowPunchModal(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#2563EB' }}
-          >
-            <Navigation size={16} /> Punch Attendance
-          </button>
+          {canPunch && (
+            <button 
+              className="hrms-primary-btn"
+              onClick={() => setShowPunchModal(true)}
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#2563EB' }}
+            >
+              <Navigation size={16} /> Punch Attendance
+            </button>
+          )}
           <button 
             className="hrms-secondary-btn"
             onClick={loadFeed}

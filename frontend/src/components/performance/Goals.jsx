@@ -40,6 +40,7 @@ export default function Goals() {
   const [formData, setFormData] = useState({
     title: '',
     department: '',
+    category: 'Individual',
     owner: '',
     targetDate: '',
     progress: '0',
@@ -64,15 +65,25 @@ export default function Goals() {
     try {
       const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
 
-      // Fetch branches (used as departments in employee records)
-      const deptRes = await fetch('/app/requirements/meta/all', { headers });
-      const deptData = await deptRes.json();
-      if (deptData && deptData.branches) {
-        setDepartments(deptData.branches); // branches serve as department grouping
+      // Fetch departments
+      try {
+        const deptRes = await fetch('/app/employees/lookup/departments', { headers });
+        const deptData = await deptRes.json();
+        if (Array.isArray(deptData) && deptData.length > 0) {
+          setDepartments(deptData);
+        } else {
+          const metaRes = await fetch('/app/requirements/meta/all', { headers });
+          const metaData = await metaRes.json();
+          if (metaData && (metaData.departments || metaData.branches)) {
+            setDepartments(metaData.departments || metaData.branches);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load departments:', e);
       }
 
-      // Fetch employees
-      const empRes = await fetch('/app/employees?status=Active', { headers });
+      // Fetch active employees
+      const empRes = await fetch('/app/employees?status=Active&limit=500', { headers });
       const empData = await empRes.json();
       if (Array.isArray(empData)) {
         setEmployees(empData);
@@ -149,9 +160,12 @@ export default function Goals() {
 
     setSubmitting(true);
     try {
+      const selectedEmp = employees.find(emp => String(emp.id) === String(formData.owner));
       const payload = {
         employee_id: parseInt(formData.owner),
+        department_id: selectedEmp?.department_id || selectedEmp?.branch_id || null,
         goal_title: formData.title.trim(),
+        goal_category: formData.category || 'Individual',
         target_date: formData.targetDate,
         completion_percentage: parseInt(formData.progress) || 0,
         status: formData.status,
@@ -170,7 +184,7 @@ export default function Goals() {
       if (resData.success) {
         addToast('Goal scheduled successfully!', 'success');
         setShowAddModal(false);
-        setFormData({ title: '', department: '', owner: '', targetDate: '', progress: '0', status: 'Not Started', description: '' });
+        setFormData({ title: '', department: '', category: 'Individual', owner: '', targetDate: '', progress: '0', status: 'Not Started', description: '' });
         fetchGoals();
         fetchDashboardStats();
       } else {
@@ -205,61 +219,181 @@ export default function Goals() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', fontFamily: '"Inter", sans-serif', paddingBottom: '24px' }}>
 
-      {/* Add Goal Modal (1100px Standard) */}
+      {/* Add Goal Modal */}
       {showAddModal && (
         <>
-          <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
-          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
-            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-[#0A1629]">Add Goal</h2>
-                <p className="text-sm text-slate-500 mt-1">Define strategic organizational or individual performance targets.</p>
+          <div onClick={() => setShowAddModal(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 1001, width: 560, maxWidth: '94vw', maxHeight: '90vh', background: '#FFF', borderRadius: 22, boxShadow: '0 32px 80px rgba(15,23,42,0.28)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+            {/* Modal Header */}
+            <div style={{ padding: '24px 28px 20px', background: 'linear-gradient(135deg,#1E40AF 0%,#1D4ED8 50%,#2563EB 100%)', position: 'relative', flexShrink: 0 }}>
+              <div style={{ position: 'absolute', top: -20, right: -20, width: 130, height: 130, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+              <div style={{ position: 'absolute', bottom: -14, left: 40, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Target size={22} color="#FFF" />
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: '#FFF', letterSpacing: '-0.3px' }}>Create Performance Goal</h2>
+                    <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'rgba(255,255,255,0.75)' }}>Define strategic organizational, departmental, or individual targets</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowAddModal(false)}
+                  style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.15)', color: '#FFF', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.28)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }}
+                ><X size={16} /></button>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <X size={20} className="text-slate-400" />
-              </button>
             </div>
-            <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+            {/* Modal Form */}
+            <form onSubmit={handleSave} style={{ padding: '24px 28px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+              {/* Goal Title */}
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                  Goal Title <span style={{ color: '#EF4444' }}>*</span>
+                </label>
+                <input
+                  type="text" required
+                  value={formData.title}
+                  onChange={e => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="e.g. Deliver Microservices Architecture & Improve Code Quality"
+                  style={{ width: '100%', height: 44, padding: '0 14px', border: '1.5px solid #E2E8F0', borderRadius: 11, fontSize: 13, color: '#1E293B', background: '#FAFBFC', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s, box-shadow 0.2s, background 0.15s', fontFamily: 'Inter, sans-serif' }}
+                  onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)'; e.target.style.background = '#FFF'; }}
+                  onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
+                />
+              </div>
+
+              {/* Row: Goal Owner + Category */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Goal Title <span className="text-red-500">*</span></label>
-                  <input type="text" required value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. Improve Product Quality & Test Coverage" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Goal Owner <span className="text-red-500">*</span></label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                    Goal Owner <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
                   <AppDropdown
-                value={formData.owner}
-                onChange={v => setFormData({ ...formData, owner: v })}
-                options={[{value:'',label:'Select Employee'}]}
-                size="sm"
-              />
+                    value={formData.owner}
+                    onChange={v => {
+                      const selectedEmp = employees.find(emp => String(emp.id) === String(v));
+                      setFormData({
+                        ...formData,
+                        owner: v,
+                        department: selectedEmp?.dept_name || selectedEmp?.department_id || formData.department
+                      });
+                    }}
+                    options={[
+                      { value: '', label: 'Select Employee Owner' },
+                      ...employees.map(e => ({
+                        value: String(e.id),
+                        label: `${e.name}${e.employee_code || e.emp_id ? ` (${e.employee_code || e.emp_id})` : ` (EMP${String(e.id).padStart(4, '0')})`}${e.dept_name ? ` - ${e.dept_name}` : ''}`
+                      }))
+                    ]}
+                    size="sm"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Target Completion Date <span className="text-red-500">*</span></label>
-                  <input type="date" required value={formData.targetDate} onChange={e => setFormData({ ...formData, targetDate: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Initial Progress (%)</label>
-                  <input type="number" min="0" max="100" value={formData.progress} onChange={e => setFormData({ ...formData, progress: e.target.value })} placeholder="0" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                    Goal Category <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
                   <AppDropdown
-                value={formData.status}
-                onChange={v => setFormData({ ...formData, status: v })}
-                options={[{value:'Not Started',label:'Not Started'},{value:'On Track',label:'On Track'},{value:'At Risk',label:'At Risk'},{value:'Completed',label:'Completed'}]}
-                size="sm"
-              />
-                </div>
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Goal Description</label>
-                  <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Detailed objectives, success metrics, and key results..." style={{ height: '80px' }} className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
+                    value={formData.category}
+                    onChange={v => setFormData({ ...formData, category: v })}
+                    options={[
+                      { value: 'Individual', label: '🎯 Individual Goal' },
+                      { value: 'Departmental', label: '🏢 Departmental Goal' },
+                      { value: 'Organizational', label: '🌐 Organizational Goal' }
+                    ]}
+                    size="sm"
+                  />
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50">
-                  {submitting ? 'Saving...' : 'Save Goal'}
+
+              {/* Row: Target Completion Date + Initial Progress */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                    Target Completion Date <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <input
+                    type="date" required
+                    value={formData.targetDate}
+                    onChange={e => setFormData({ ...formData, targetDate: e.target.value })}
+                    style={{ width: '100%', height: 44, padding: '0 14px', border: '1.5px solid #E2E8F0', borderRadius: 11, fontSize: 13, color: '#1E293B', background: '#FAFBFC', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s, box-shadow 0.2s, background 0.15s', fontFamily: 'Inter, sans-serif' }}
+                    onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)'; e.target.style.background = '#FFF'; }}
+                    onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                    Initial Progress (%)
+                  </label>
+                  <input
+                    type="number" min="0" max="100"
+                    value={formData.progress}
+                    onChange={e => setFormData({ ...formData, progress: e.target.value })}
+                    placeholder="0"
+                    style={{ width: '100%', height: 44, padding: '0 14px', border: '1.5px solid #E2E8F0', borderRadius: 11, fontSize: 13, color: '#1E293B', background: '#FAFBFC', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s, box-shadow 0.2s, background 0.15s', fontFamily: 'Inter, sans-serif' }}
+                    onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)'; e.target.style.background = '#FFF'; }}
+                    onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
+                  />
+                </div>
+              </div>
+
+              {/* Status */}
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                  Goal Status
+                </label>
+                <AppDropdown
+                  value={formData.status}
+                  onChange={v => setFormData({ ...formData, status: v })}
+                  options={[
+                    { value: 'Not Started', label: '⚪ Not Started' },
+                    { value: 'On Track', label: '🔵 On Track' },
+                    { value: 'At Risk', label: '🔴 At Risk' },
+                    { value: 'Completed', label: '🟢 Completed' }
+                  ]}
+                  size="sm"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                  Goal Description & Key Objectives <span style={{ color: '#94A3B8', fontWeight: 400 }}>(Optional)</span>
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Outline specific objectives, milestone targets, and key deliverables..."
+                  style={{ width: '100%', height: 88, padding: '12px 14px', border: '1.5px solid #E2E8F0', borderRadius: 11, fontSize: 13, color: '#1E293B', background: '#FAFBFC', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s, box-shadow 0.2s, background 0.15s', fontFamily: 'Inter, sans-serif', resize: 'none' }}
+                  onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)'; e.target.style.background = '#FFF'; }}
+                  onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
+                />
+              </div>
+
+              {/* Info Banner */}
+              <div style={{ background: 'linear-gradient(135deg,#EFF6FF,#DBEAFE)', borderRadius: 12, padding: '12px 16px', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#2563EB', flexShrink: 0, marginTop: 4 }} />
+                <span style={{ fontSize: 12.5, color: '#1E40AF', fontWeight: 500, lineHeight: 1.5 }}>
+                  This goal target will be tracked across KRAs and KPIs for periodic performance reviews and appraisals.
+                </span>
+              </div>
+
+              {/* Footer Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, paddingTop: 18, borderTop: '1.5px solid #F1F5F9', marginTop: 4 }}>
+                <button type="button" onClick={() => setShowAddModal(false)}
+                  style={{ height: 44, padding: '0 24px', border: '1.5px solid #E2E8F0', borderRadius: 11, fontSize: 13.5, fontWeight: 600, color: '#475569', background: '#FFF', cursor: 'pointer', transition: 'background 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#F8FAFC'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#FFF'; }}
+                >Cancel</button>
+                <button type="submit" disabled={submitting}
+                  style={{ height: 44, padding: '0 24px', background: 'linear-gradient(135deg,#2563EB,#1D4ED8)', color: '#FFF', border: 'none', borderRadius: 11, fontSize: 13.5, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(37,99,235,0.35)', display: 'flex', alignItems: 'center', gap: 8, transition: 'transform 0.15s, box-shadow 0.15s', opacity: submitting ? 0.6 : 1 }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(37,99,235,0.45)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(37,99,235,0.35)'; }}
+                >
+                  <Plus size={15} /> {submitting ? 'Saving Goal...' : 'Save Goal Target'}
                 </button>
               </div>
             </form>
@@ -268,18 +402,26 @@ export default function Goals() {
       )}
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Goals</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Set, track and achieve organizational and individual goals</p>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827', whiteSpace: 'nowrap' }}>Goals</h1>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>Set, track and achieve organizational and individual goals</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <AppDropdown
-                value={filterDept}
-                onChange={v => setFilterDept(v)}
-                options={[{value:'All Departments',label:'All Departments'}]}
-                size="sm"
-              />
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ minWidth: '180px' }}>
+            <AppDropdown
+              value={filterDept}
+              onChange={v => setFilterDept(v)}
+              options={[
+                { value: 'All Departments', label: 'All Departments' },
+                ...departments.map(d => ({
+                  value: String(d.id || d.branch_name || d.dept_name || d.name),
+                  label: d.dept_name || d.branch_name || d.name
+                }))
+              ]}
+              size="sm"
+            />
+          </div>
           <button 
             disabled={!canCreate('goals')}
             onClick={() => {
@@ -299,7 +441,9 @@ export default function Goals() {
               gap: '8px', 
               cursor: canCreate('goals') ? 'pointer' : 'not-allowed', 
               fontSize: '14px', 
-              fontWeight: '500' 
+              fontWeight: '500',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
             <Plus size={16} /> Add Goal
@@ -319,9 +463,9 @@ export default function Goals() {
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: kpi.bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {kpi.icon}
             </div>
-            <div>
-              <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '500', marginBottom: '4px' }}>{kpi.title}</div>
-              <div style={{ fontSize: '24px', color: '#1E293B', fontWeight: '700' }}>{kpi.value}</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '500', marginBottom: '4px', whiteSpace: 'nowrap' }}>{kpi.title}</div>
+              <div style={{ fontSize: '24px', color: '#1E293B', fontWeight: '700', whiteSpace: 'nowrap' }}>{kpi.value}</div>
             </div>
           </div>
         ))}
@@ -332,8 +476,8 @@ export default function Goals() {
 
         {/* Left Table */}
         <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Goal Tracker</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B', whiteSpace: 'nowrap' }}>Goal Tracker</h3>
             <input
               type="text"
               placeholder="Search..."
@@ -345,40 +489,41 @@ export default function Goals() {
 
           <div style={{ overflowX: 'auto' }}>
             {loading ? (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>Loading goals...</div>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748B', whiteSpace: 'nowrap' }}>Loading goals...</div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', whiteSpace: 'nowrap' }}>
                 <thead>
                   <tr style={{ background: '#F8FAFC' }}>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Goal Title</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Goal Owner</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Department</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Target Date</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Progress</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Status</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Goal Title</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Goal Owner</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Department</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Target Date</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center', whiteSpace: 'nowrap' }}>Progress</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center', whiteSpace: 'nowrap' }}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {goalsList.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No goals defined</td>
+                      <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#64748B', whiteSpace: 'nowrap' }}>No goals defined</td>
                     </tr>
                   ) : (
                     goalsList.map((row, idx) => {
                       const tgtDate = row.target_date ? new Date(row.target_date).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
                       return (
                         <tr key={row.id} style={{ borderBottom: idx === goalsList.length - 1 ? 'none' : '1px solid #F8FAFC' }}>
-                          <td style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#1E293B' }}>{row.goal_title}</td>
-                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.employee_name}</td>
-                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.department_name}</td>
-                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{tgtDate}</td>
-                          <td style={{ padding: '16px 24px', textAlign: 'center' }}>
-                            <span style={{ fontSize: '12px', fontWeight: '600', color: '#2563EB' }}>{row.completion_percentage}%</span>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#1E293B', whiteSpace: 'nowrap' }}>{row.goal_title}</td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.employee_name}</td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.department_name}</td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{tgtDate}</td>
+                          <td style={{ padding: '16px 24px', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <span style={{ fontSize: '12px', fontWeight: '600', color: '#2563EB', whiteSpace: 'nowrap' }}>{row.completion_percentage}%</span>
                           </td>
-                          <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                          <td style={{ padding: '16px 24px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                             <span style={{
                               padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600',
-                              backgroundColor: getStatusStyle(row.status).bg, color: getStatusStyle(row.status).color
+                              backgroundColor: getStatusStyle(row.status).bg, color: getStatusStyle(row.status).color,
+                              whiteSpace: 'nowrap', display: 'inline-block'
                             }}>
                               {row.status}
                             </span>

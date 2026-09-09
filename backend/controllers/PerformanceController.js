@@ -114,7 +114,11 @@ const KpiController = {
   async list(req, res) {
     try {
       const pagination = getPagination(req);
-      const filters = { search: req.query.search || '', department_id: req.query.department_id || null };
+      const filters = {
+        search: req.query.search || '',
+        department_id: req.query.department_id || null,
+        kra_id: req.query.kra_id || null
+      };
       const result = await KpiService.list(filters, pagination);
       return response(res, true, 200, 'KPIs list retrieved successfully', {
         kpis: result.rows,
@@ -176,7 +180,11 @@ const KraController = {
   async list(req, res) {
     try {
       const pagination = getPagination(req);
-      const filters = { search: req.query.search || '', department_id: req.query.department_id || null };
+      const filters = {
+        search: req.query.search || '',
+        department_id: req.query.department_id || null,
+        goal_id: req.query.goal_id || null
+      };
       const result = await KraService.list(filters, pagination);
       return response(res, true, 200, 'KRAs list retrieved successfully', {
         kras: result.rows,
@@ -268,7 +276,7 @@ const ReviewController = {
       const result = await ReviewService.create(req.body, userId);
       return response(res, true, 201, 'Review created successfully.', result);
     } catch (e) {
-      return response(res, false, 500, 'Failed to create review', null, e.message);
+      return response(res, false, 400, e.message || 'Failed to create review', null, e.message);
     }
   },
   async update(req, res) {
@@ -277,7 +285,7 @@ const ReviewController = {
       await ReviewService.update(req.params.id, req.body, userId);
       return response(res, true, 200, 'Review updated successfully.');
     } catch (e) {
-      return response(res, false, 500, 'Failed to update review', null, e.message);
+      return response(res, false, 400, e.message || 'Failed to update review', null, e.message);
     }
   },
   async delete(req, res) {
@@ -300,7 +308,12 @@ const ReviewController = {
   async list(req, res) {
     try {
       const pagination = getPagination(req);
-      const filters = { search: req.query.search || '', department_id: req.query.department_id || null };
+      const filters = {
+        search: req.query.search || '',
+        department_id: req.query.department_id || null,
+        employee_id: req.query.employee_id || null,
+        goal_id: req.query.goal_id || null
+      };
       const result = await ReviewService.list(filters, pagination);
       return response(res, true, 200, 'Reviews list retrieved successfully', {
         reviews: result.rows,
@@ -310,6 +323,24 @@ const ReviewController = {
       });
     } catch (e) {
       return response(res, false, 500, 'Failed to retrieve reviews list', null, e.message);
+    }
+  },
+  async getEmployeeTree(req, res) {
+    try {
+      const { employeeId } = req.params;
+      const goalId = req.query.goal_id || null;
+      const result = await ReviewService.getEmployeePerformanceTree(employeeId, goalId);
+      return response(res, true, 200, 'Employee performance hierarchy retrieved successfully', result);
+    } catch (e) {
+      return response(res, false, 500, 'Failed to retrieve performance hierarchy', null, e.message);
+    }
+  },
+  async calculatePreview(req, res) {
+    try {
+      const result = await ReviewService.calculatePreview(req.body);
+      return response(res, true, 200, 'Performance preview calculated successfully', result);
+    } catch (e) {
+      return response(res, false, 500, 'Failed to calculate performance preview', null, e.message);
     }
   },
   async getDashboard(req, res) {

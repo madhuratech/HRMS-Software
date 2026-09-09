@@ -29,7 +29,8 @@ exports.getStats = async (req, res) => {
       upcomingHolidays,
       upcomingBirthdays,
       performanceEmployees,
-      recentLeaves
+      recentLeaves,
+      teamPerformance
     ] = await Promise.all([
       query("SELECT COUNT(*) as count FROM employees WHERE status = 'Active'"),
       query("SELECT COUNT(*) as count FROM departments"),
@@ -88,7 +89,24 @@ exports.getStats = async (req, res) => {
         LEFT JOIN departments d ON e.department_id = d.id
         JOIN leave_types lt ON la.leave_type_id = lt.id
         WHERE la.status = 'Approved' AND ? BETWEEN la.start_date AND la.end_date
-      `, [today])
+      `, [today]),
+      query(`
+        SELECT 
+          d.id,
+          d.dept_name as team,
+          d.dept_name as dept,
+          (SELECT COUNT(*) FROM employees e WHERE e.department_id = d.id AND e.status = 'Active') as total_employees,
+          (SELECT COUNT(*) FROM goals g WHERE (g.department_id = d.id OR g.employee_id IN (SELECT e2.id FROM employees e2 WHERE e2.department_id = d.id AND e2.status = 'Active')) AND g.status != 'Cancelled') as total_goals,
+          COALESCE(
+            (SELECT ROUND(AVG(COALESCE(g.completion_percentage, g.progress, 0))) 
+             FROM goals g 
+             WHERE (g.department_id = d.id OR g.employee_id IN (SELECT e2.id FROM employees e2 WHERE e2.department_id = d.id AND e2.status = 'Active')) 
+               AND g.status != 'Cancelled'),
+            0
+          ) as achievement
+        FROM departments d
+        ORDER BY d.id ASC
+      `)
     ]);
 
     return res.status(200).json({
@@ -102,6 +120,7 @@ exports.getStats = async (req, res) => {
       totalClients: totalClientsRow[0]?.count || 0,
       totalRevenue: totalRevenueRow[0]?.count || 0,
       departmentSummary,
+      teamPerformance,
       recentActivity,
       upcomingHolidays,
       upcomingBirthdays,

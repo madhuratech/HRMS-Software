@@ -1,16 +1,21 @@
 const validateKpi = (data) => {
   const errors = [];
-  if (!data.kpi_name) errors.push('KPI Name is required');
-  if (!data.department_id || isNaN(data.department_id)) errors.push('Department is required');
-  if (!data.target_value) errors.push('Target Value is required');
+  if (!data.kpi_name && !data.title) errors.push('KPI Name is required');
+  if (data.target_value === undefined || data.target_value === null || data.target_value === '') {
+    errors.push('Target Value is required');
+  }
   return { error: errors.length > 0 ? { details: errors.map(m => ({ message: m })) } : null };
 };
 
 const validateKra = (data) => {
   const errors = [];
-  if (!data.kra_title) errors.push('KRA Title is required');
-  if (!data.department_id || isNaN(data.department_id)) errors.push('Department is required');
-  if (!data.role_id) errors.push('Role is required');
+  if (!data.kra_title && !data.title) errors.push('KRA Title is required');
+  if (data.weightage !== undefined && data.weightage !== null && data.weightage !== '') {
+    const w = Number(data.weightage);
+    if (isNaN(w) || w < 0 || w > 100) {
+      errors.push('Weightage must be a number between 0 and 100');
+    }
+  }
   return { error: errors.length > 0 ? { details: errors.map(m => ({ message: m })) } : null };
 };
 

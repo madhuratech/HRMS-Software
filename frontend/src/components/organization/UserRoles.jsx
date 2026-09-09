@@ -80,7 +80,7 @@ export function UserRoles() {
     ],
     attendance: [
       { key: 'daily_attendance', label: 'Daily Attendance' },
-      { key: 'gps_attendance', label: 'GPS Attendance' },
+      { key: 'gps_attendance', label: 'GPS Attendance Punch' },
       { key: 'regularization', label: 'Regularization' },
       { key: 'shift_roster', label: 'Shift Roster' },
       { key: 'overtime', label: 'Overtime' },

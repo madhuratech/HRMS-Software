@@ -5,11 +5,12 @@ class KraService {
     const kraTitle = data.kra_title || data.title || 'Key Result Area';
     const sql = `
       INSERT INTO kras (
-        kra_title, title, department_id, role_id, weightage, status, description, created_by, updated_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        goal_id, kra_title, title, department_id, role_id, weightage, status, description, created_by, updated_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
-      kraTitle, kraTitle, data.department_id || null, data.role_id || 'All Roles', data.weightage || null,
+      data.goal_id || null, kraTitle, kraTitle, data.department_id || null, data.role_id || 'All Roles',
+      data.weightage !== undefined && data.weightage !== null && data.weightage !== '' ? Number(data.weightage) : null,
       data.status || 'Active', data.description || null, userId, userId
     ];
     await Performance.beginTransaction();
@@ -27,12 +28,13 @@ class KraService {
     const kraTitle = data.kra_title || data.title || 'Key Result Area';
     const sql = `
       UPDATE kras SET
-        kra_title = ?, title = ?, department_id = ?, role_id = ?, weightage = ?,
+        goal_id = ?, kra_title = ?, title = ?, department_id = ?, role_id = ?, weightage = ?,
         status = ?, description = ?, updated_by = ?
       WHERE id = ?
     `;
     const params = [
-      kraTitle, kraTitle, data.department_id || null, data.role_id || 'All Roles', data.weightage || null,
+      data.goal_id || null, kraTitle, kraTitle, data.department_id || null, data.role_id || 'All Roles',
+      data.weightage !== undefined && data.weightage !== null && data.weightage !== '' ? Number(data.weightage) : null,
       data.status, data.description || null, userId, id
     ];
     await Performance.beginTransaction();
@@ -61,6 +63,8 @@ class KraService {
   static async getById(id) {
     const rows = await Performance.query(
       `SELECT k.id,
+              k.goal_id,
+              COALESCE(g.goal_title, g.title, 'General Goal') as goal_title,
               COALESCE(k.kra_title, k.title, 'Key Result Area') as kra_title,
               COALESCE(k.title, k.kra_title, 'Key Result Area') as title,
               k.department_id,
@@ -71,6 +75,7 @@ class KraService {
               COALESCE(k.status, 'Active') as status,
               k.created_at
        FROM kras k
+       LEFT JOIN goals g ON k.goal_id = g.id
        LEFT JOIN departments d ON k.department_id = d.id
        WHERE k.id = ?`,
       [id]
@@ -78,9 +83,11 @@ class KraService {
     return rows[0] || null;
   }
 
-  static async list(filters, pagination) {
+  static async list(filters = {}, pagination = null) {
     let sql = `
       SELECT k.id,
+             k.goal_id,
+             COALESCE(g.goal_title, g.title, 'General Goal') as goal_title,
              COALESCE(k.kra_title, k.title, 'Key Result Area') as kra_title,
              COALESCE(k.title, k.kra_title, 'Key Result Area') as title,
              k.department_id,
@@ -91,19 +98,24 @@ class KraService {
              COALESCE(k.status, 'Active') as status,
              k.created_at
       FROM kras k
+      LEFT JOIN goals g ON k.goal_id = g.id
       LEFT JOIN departments d ON k.department_id = d.id
       WHERE 1=1
     `;
     const params = [];
 
     if (filters.search) {
-      sql += ` AND (k.kra_title LIKE ? OR k.title LIKE ? OR k.role_id LIKE ? OR k.status LIKE ?)`;
+      sql += ` AND (k.kra_title LIKE ? OR k.title LIKE ? OR k.role_id LIKE ? OR k.status LIKE ? OR g.goal_title LIKE ?)`;
       const term = `%${filters.search}%`;
-      params.push(term, term, term, term);
+      params.push(term, term, term, term, term);
     }
     if (filters.department_id) {
       sql += ` AND k.department_id = ?`;
       params.push(filters.department_id);
+    }
+    if (filters.goal_id) {
+      sql += ` AND k.goal_id = ?`;
+      params.push(filters.goal_id);
     }
 
     sql += ` ORDER BY k.created_at DESC`;
@@ -118,16 +130,22 @@ class KraService {
     let countSql = `
       SELECT COUNT(*) as count
       FROM kras k
+      LEFT JOIN goals g ON k.goal_id = g.id
       WHERE 1=1
     `;
     const countParams = [];
     if (filters.search) {
-      countSql += ` AND (k.kra_title LIKE ? OR k.role_id LIKE ? OR k.status LIKE ?)`;
-      countParams.push(term, term, term);
+      const term = `%${filters.search}%`;
+      countSql += ` AND (k.kra_title LIKE ? OR k.title LIKE ? OR k.role_id LIKE ? OR k.status LIKE ? OR g.goal_title LIKE ?)`;
+      countParams.push(term, term, term, term, term);
     }
     if (filters.department_id) {
       countSql += ` AND k.department_id = ?`;
       countParams.push(filters.department_id);
+    }
+    if (filters.goal_id) {
+      countSql += ` AND k.goal_id = ?`;
+      countParams.push(filters.goal_id);
     }
 
     const totalRes = await Performance.query(countSql, countParams);

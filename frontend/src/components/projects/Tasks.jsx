@@ -164,12 +164,12 @@ export default function Tasks() {
   return (
     <div style={{ fontFamily: "'Inter',-apple-system,sans-serif", width: '100%', boxSizing: 'border-box' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14, marginBottom: 20 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Tasks</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Build and manage project tasks</p>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827', whiteSpace: 'nowrap' }}>Tasks</h1>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>Build and manage project tasks and assignees</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 0 }}>
           <CustomSelect
             options={[{ value: '', label: 'All Projects' }, ...meta.projects.map(p => ({ value: p.id, label: p.name, sublabel: p.project_code }))]}
             value={projectFilter}
@@ -187,8 +187,26 @@ export default function Tasks() {
             style={{ width: 150 }}
           />
           {hasPermission(null, null, 'projects', 'tasks', 'create') && (
-            <button onClick={openAdd} style={{ height: 44, padding: '0 16px', background: '#2563EB', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-              <Plus size={16} /> Add Task
+            <button 
+              onClick={openAdd} 
+              style={{ 
+                height: 38, 
+                padding: '0 18px', 
+                background: '#2563EB', 
+                border: 'none', 
+                borderRadius: 8, 
+                fontSize: 13, 
+                fontWeight: 600, 
+                color: '#fff', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 6,
+                whiteSpace: 'nowrap',
+                flexShrink: 0
+              }}
+            >
+              <Plus size={15} /> Add Task
             </button>
           )}
         </div>
@@ -204,14 +222,14 @@ export default function Tasks() {
       </div>
 
       {/* Table */}
-      <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB', boxShadow: '0 2px 8px rgba(15,23,42,.05)', overflow: 'visible' }}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ position: 'relative', flex: 1, maxWidth: 280 }}>
+      <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB', boxShadow: '0 2px 8px rgba(15,23,42,.05)', overflow: 'hidden' }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div style={{ position: 'relative', flex: 1, maxWidth: 280, minWidth: 200 }}>
             <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', pointerEvents: 'none' }} />
-            <input placeholder="Search tasks..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%', height: 42, paddingLeft: 30, paddingRight: 12, border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 13, outline: 'none' }} />
+            <input placeholder="Search tasks..." value={search} onChange={e => setSearch(e.target.value)} style={{ width: '100%', height: 38, paddingLeft: 30, paddingRight: 12, border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, outline: 'none', background: '#fff', boxSizing: 'border-box' }} />
           </div>
           <CustomSelect
-            options={[{ value: '', label: 'All Assignees' }, ...meta.employees.map(e => ({ value: e.id, label: e.name, sublabel: e.department_name }))]}
+            options={[{ value: '', label: 'All Assignees' }, ...meta.employees.map(emp => ({ value: emp.id, label: emp.name, sublabel: emp.department_name }))]}
             value={assigneeFilter}
             onChange={val => setAssigneeFilter(val)}
             placeholder="All Assignees"
@@ -219,15 +237,15 @@ export default function Tasks() {
             style={{ width: 180 }}
           />
         </div>
-        <div style={{ overflowX: 'visible' }}>
-          {loading && <div style={{ padding: 20, textAlign: 'center', fontSize: 13, color: '#6B7280' }}>Loading tasks...</div>}
-          {!loading && taskList.length === 0 && <div style={{ padding: 20, textAlign: 'center', fontSize: 13, color: '#6B7280' }}>No tasks found.</div>}
+        <div style={{ overflowX: 'auto' }}>
+          {loading && <div style={{ padding: 20, textAlign: 'center', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>Loading tasks...</div>}
+          {!loading && taskList.length === 0 && <div style={{ padding: 20, textAlign: 'center', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>No tasks found.</div>}
           {!loading && taskList.length > 0 && (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
                   {['Task Name', 'Project', 'Assigned To', 'Due Date', 'Priority', 'Status', 'Actions'].map(h => (
-                    <th key={h} style={{ padding: '11px 16px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: '#6B7280', whiteSpace: 'nowrap', background: '#FAFAFA' }}>{h}</th>
+                    <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#6B7280', whiteSpace: 'nowrap', background: '#FAFAFA' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -235,18 +253,18 @@ export default function Tasks() {
                 {taskList.map((t, i) => {
                   const av = AVATAR[i % AVATAR.length];
                   return (
-                    <tr key={t.id} style={{ height: 54, borderBottom: '1px solid #F3F4F6' }}>
-                      <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827' }}>{t.title}</td>
-                      <td style={{ padding: '0 16px', fontSize: 13, color: '#374151' }}>{t.project_name}</td>
-                      <td style={{ padding: '0 16px' }}>
+                    <tr key={t.id} style={{ height: 56, borderBottom: '1px solid #F3F4F6' }}>
+                      <td style={{ padding: '0 14px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>{t.title}</td>
+                      <td style={{ padding: '0 14px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{t.project_name}</td>
+                      <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ width: 26, height: 26, borderRadius: '50%', background: av.bg, color: av.c, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>{getInitials(t.assignee_name)}</div>
-                          <span style={{ fontSize: 13, color: '#374151' }}>{t.assignee_name}</span>
+                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: av.bg, color: av.c, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>{getInitials(t.assignee_name)}</div>
+                          <span style={{ fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{t.assignee_name}</span>
                         </div>
                       </td>
-                      <td style={{ padding: '0 16px', fontSize: 13, color: '#374151' }}>{formatDate(t.due_date)}</td>
-                      <td style={{ padding: '0 16px' }}>{pill(t.priority, PRIORITY_S)}</td>
-                      <td style={{ padding: '0 16px' }}>
+                      <td style={{ padding: '0 14px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{formatDate(t.due_date)}</td>
+                      <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>{pill(t.priority, PRIORITY_S)}</td>
+                      <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>
                         <CustomSelect
                           options={TASK_STATUSES}
                           value={t.status}
@@ -255,14 +273,14 @@ export default function Tasks() {
                           style={{ width: 130 }}
                         />
                       </td>
-                      <td style={{ padding: '0 16px' }}>
+                      <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>
                         {!isEmployeeRole ? (
                           <div style={{ display: 'flex', gap: 4 }}>
-                            <button style={{ width: 26, height: 26, borderRadius: 5, border: 'none', background: 'transparent', color: '#2563EB', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} onClick={() => openEdit(t)}><Edit2 size={12} /></button>
-                            <button style={{ width: 26, height: 26, borderRadius: 5, border: 'none', background: 'transparent', color: '#94A3B8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} onClick={() => handleDelete(t)}><Trash2 size={12} /></button>
+                            <button style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', color: '#2563EB', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} onClick={() => openEdit(t)}><Edit2 size={13} /></button>
+                            <button style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', color: '#94A3B8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} onClick={() => handleDelete(t)}><Trash2 size={13} /></button>
                           </div>
                         ) : (
-                          <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600 }}>Status Only</span>
+                          <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, whiteSpace: 'nowrap' }}>Status Only</span>
                         )}
                       </td>
                     </tr>
@@ -272,7 +290,7 @@ export default function Tasks() {
             </table>
           )}
         </div>
-        <div style={{ padding: '12px 20px', borderTop: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '12px 20px', borderTop: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between', whiteSpace: 'nowrap' }}>
           <span style={{ fontSize: 13, color: '#6B7280' }}>Showing {startIndex} to {endIndex} of {total} entries</span>
           <div style={{ display: 'flex', gap: 4 }}>
             {[null, ...buildPages(page, totalPages), null].map((pg, i) => {
@@ -287,178 +305,294 @@ export default function Tasks() {
       {/* Modal */}
       {showAddModal && (editingId ? hasPermission(null, null, 'projects', 'tasks', 'edit') : hasPermission(null, null, 'projects', 'tasks', 'create')) && (
         <>
-          <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
-          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh', overflow: 'visible' }}>
-            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-[#0A1629]">{editingId ? 'Edit Task' : 'Add Task'}</h2>
-                <p className="text-sm text-slate-500 mt-1">Assign a task to a project team member.</p>
+          <div 
+            onClick={() => setShowAddModal(false)} 
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.55)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+              zIndex: 1000,
+              animation: 'fadeIn 0.2s ease-out'
+            }} 
+          />
+          <div 
+            className="modal-centered-content" 
+            style={{ 
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '880px', 
+              maxWidth: '94vw', 
+              maxHeight: '90vh', 
+              background: '#ffffff',
+              borderRadius: '22px',
+              boxShadow: '0 32px 80px rgba(15, 23, 42, 0.28)',
+              zIndex: 1001,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              fontFamily: "'Inter', -apple-system, sans-serif"
+            }}
+          >
+            {/* Modal Header: Royal Blue Gradient */}
+            <div style={{
+              padding: '24px 28px 22px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)',
+              color: '#ffffff',
+              position: 'relative',
+              overflow: 'hidden',
+              flexShrink: 0
+            }}>
+              {/* Ambient Background Circles */}
+              <div style={{ position: 'absolute', top: -35, right: 60, width: 150, height: 150, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', bottom: -45, right: 180, width: 110, height: 110, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, position: 'relative', zIndex: 1 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 13, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFF' }}>
+                  <Edit2 size={22} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '18px', fontWeight: '700', margin: 0, letterSpacing: '-0.01em', color: '#ffffff' }}>
+                    {editingId ? 'Edit Task Details' : 'Create New Task'}
+                  </h2>
+                  <p style={{ fontSize: '12.5px', color: 'rgba(255, 255, 255, 0.85)', margin: '3px 0 0 0' }}>
+                    Assign task parameters, assignees, priorities and target milestones
+                  </p>
+                </div>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors"><X size={20} className="text-slate-400" /></button>
+              <button 
+                type="button"
+                onClick={() => setShowAddModal(false)} 
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  borderRadius: '10px',
+                  width: '34px',
+                  height: '34px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  zIndex: 1,
+                  transition: 'background 0.15s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.28)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
+              >
+                <X size={17} />
+              </button>
             </div>
-            <form onSubmit={handleSave} noValidate className="p-6 overflow-y-auto flex-1 space-y-6" style={{ overflowY: 'auto' }}>
-              <style>{`
-                .task-modal-input {
-                  width: 100%;
-                  height: 48px;
-                  padding: 0 16px;
-                  border: 1px solid #E2E8F0;
-                  border-radius: 12px;
-                  font-size: 14px;
-                  color: #0F172A;
-                  background-color: #FFFFFF;
-                  outline: none !important;
-                  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-                  box-sizing: border-box;
-                }
-                .task-modal-input:focus {
-                  border-color: #2563EB !important;
-                  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.20) !important;
-                  outline: none !important;
-                }
-                .task-modal-input-error {
-                  border-color: #EF4444 !important;
-                }
-                .task-modal-textarea {
-                  width: 100%;
-                  padding: 14px 16px;
-                  border: 1px solid #E2E8F0;
-                  border-radius: 12px;
-                  font-size: 14px;
-                  color: #0F172A;
-                  background-color: #FFFFFF;
-                  outline: none !important;
-                  resize: none;
-                  transition: border-color 0.15s ease, box-shadow 0.15s ease;
-                  box-sizing: border-box;
-                }
-                .task-modal-textarea:focus {
-                  border-color: #2563EB !important;
-                  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.20) !important;
-                  outline: none !important;
-                }
-              `}</style>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6" style={{ overflow: 'visible' }}>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Task Name <span className="text-red-500">*</span></label>
-                  <input
-                    type="text"
-                    value={formData.title}
-                    onChange={e => {
-                      setFormData({ ...formData, title: e.target.value });
-                      if (formErrors.title) setFormErrors(prev => ({ ...prev, title: false }));
-                    }}
-                    placeholder="e.g. Design Landing Page"
-                    className={`task-modal-input ${formErrors.title ? 'task-modal-input-error' : ''}`}
-                  />
-                  {formErrors.title && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#EF4444' }}>Please enter task name</p>}
+
+            <form onSubmit={handleSave} noValidate style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', flex: 1, padding: '28px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '22px' }}>
+                
+                {/* SECTION 1: Task Assignment */}
+                <div style={{ background: '#F8FAFC', padding: '20px', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '16px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#1D4ED8', background: '#EFF6FF', padding: '3px 10px', borderRadius: '20px', border: '1px solid #BFDBFE' }}>SECTION 1</span>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Task & Project Information</span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                        Task Name <span style={{ color: '#EF4444' }}>*</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.title}
+                        onChange={e => {
+                          setFormData({ ...formData, title: e.target.value });
+                          if (formErrors.title) setFormErrors(prev => ({ ...prev, title: false }));
+                        }}
+                        placeholder="e.g. Design Landing Page"
+                        style={{ width: '100%', height: '42px', padding: '0 14px', border: formErrors.title ? '1.5px solid #EF4444' : '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '13.5px', color: '#1E293B', background: '#FFFFFF', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxSizing: 'border-box' }}
+                        onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                        onBlur={e => { e.target.style.borderColor = formErrors.title ? '#EF4444' : '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
+                      />
+                      {formErrors.title && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Please enter task name</p>}
+                    </div>
+
+                    <div>
+                      <CustomSelect
+                        label="Project"
+                        required
+                        options={meta.projects.map(p => ({ value: p.id, label: p.name, sublabel: p.project_code }))}
+                        value={formData.project_id}
+                        onChange={val => {
+                          setFormData(prev => ({ ...prev, project_id: val }));
+                          if (formErrors.project_id) setFormErrors(prev => ({ ...prev, project_id: false }));
+                        }}
+                        placeholder="Select Project"
+                        error={formErrors.project_id}
+                      />
+                      {formErrors.project_id && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Please select a project</p>}
+                    </div>
+
+                    <div>
+                      <CustomSelect
+                        label="Assigned To"
+                        required
+                        options={meta.employees.map(emp => ({
+                          value: emp.id,
+                          label: `${emp.name} (EMP${String(emp.id).padStart(3, '0')})`,
+                          sublabel: emp.department_name
+                        }))}
+                        value={formData.assignee_id}
+                        onChange={val => {
+                          setFormData(prev => ({ ...prev, assignee_id: val }));
+                          if (formErrors.assignee_id) setFormErrors(prev => ({ ...prev, assignee_id: false }));
+                        }}
+                        placeholder="Select Employee"
+                        error={formErrors.assignee_id}
+                      />
+                      {formErrors.assignee_id && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Please select an employee</p>}
+                    </div>
+                  </div>
                 </div>
 
-                <div style={{ overflow: 'visible' }}>
-                  <CustomSelect
-                    label="Project"
-                    required
-                    options={meta.projects.map(p => ({ value: p.id, label: p.name, sublabel: p.project_code }))}
-                    value={formData.project_id}
-                    onChange={val => {
-                      setFormData(prev => ({ ...prev, project_id: val }));
-                      if (formErrors.project_id) setFormErrors(prev => ({ ...prev, project_id: false }));
-                    }}
-                    placeholder="Select Project"
-                    error={formErrors.project_id}
-                  />
-                  {formErrors.project_id && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#EF4444' }}>Please select a project</p>}
+                {/* SECTION 2: Timeline & Status */}
+                <div style={{ background: '#F8FAFC', padding: '20px', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '16px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#1D4ED8', background: '#EFF6FF', padding: '3px 10px', borderRadius: '20px', border: '1px solid #BFDBFE' }}>SECTION 2</span>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Timeline, Priority & Status</span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                        Start Date <span style={{ color: '#EF4444' }}>*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.start_date}
+                        onChange={e => {
+                          setFormData({ ...formData, start_date: e.target.value });
+                          if (formErrors.start_date) setFormErrors(prev => ({ ...prev, start_date: false }));
+                        }}
+                        style={{ width: '100%', height: '42px', padding: '0 12px', border: formErrors.start_date ? '1.5px solid #EF4444' : '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '13px', color: '#1E293B', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                        onBlur={e => { e.target.style.borderColor = formErrors.start_date ? '#EF4444' : '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
+                      />
+                      {formErrors.start_date && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Please select start date</p>}
+                    </div>
+
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                        Due Date <span style={{ color: '#EF4444' }}>*</span>
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.due_date}
+                        onChange={e => {
+                          setFormData({ ...formData, due_date: e.target.value });
+                          if (formErrors.due_date) setFormErrors(prev => ({ ...prev, due_date: false }));
+                        }}
+                        style={{ width: '100%', height: '42px', padding: '0 12px', border: formErrors.due_date ? '1.5px solid #EF4444' : '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '13px', color: '#1E293B', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                        onBlur={e => { e.target.style.borderColor = formErrors.due_date ? '#EF4444' : '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
+                      />
+                      {formErrors.due_date && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Please select due date</p>}
+                    </div>
+
+                    <div>
+                      <CustomSelect
+                        label="Priority"
+                        options={['High', 'Medium', 'Low']}
+                        value={formData.priority}
+                        onChange={val => setFormData(prev => ({ ...prev, priority: val }))}
+                        placeholder="Select Priority"
+                        searchable={false}
+                      />
+                    </div>
+
+                    <div>
+                      <CustomSelect
+                        label="Status"
+                        options={TASK_STATUSES}
+                        value={formData.status}
+                        onChange={val => setFormData(prev => ({ ...prev, status: val }))}
+                        placeholder="Select Status"
+                        searchable={false}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                      Description & Acceptance Criteria <span style={{ color: '#EF4444' }}>*</span>
+                    </label>
+                    <textarea
+                      value={formData.description}
+                      onChange={e => {
+                        setFormData({ ...formData, description: e.target.value });
+                        if (formErrors.description) setFormErrors(prev => ({ ...prev, description: false }));
+                      }}
+                      placeholder="Enter detailed task instructions and acceptance criteria..."
+                      style={{ width: '100%', height: '64px', minHeight: '64px', maxHeight: '120px', padding: '10px 14px', border: formErrors.description ? '1.5px solid #EF4444' : '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '13px', color: '#1E293B', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
+                      onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                      onBlur={e => { e.target.style.borderColor = formErrors.description ? '#EF4444' : '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
+                    />
+                    {formErrors.description && <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#EF4444' }}>Please enter task description</p>}
+                  </div>
                 </div>
 
-                <div style={{ overflow: 'visible' }}>
-                  <CustomSelect
-                    label="Assigned To"
-                    required
-                    options={meta.employees.map(emp => ({
-                      value: emp.id,
-                      label: `${emp.name} (EMP${String(emp.id).padStart(3, '0')})`,
-                      sublabel: emp.department_name
-                    }))}
-                    value={formData.assignee_id}
-                    onChange={val => {
-                      setFormData(prev => ({ ...prev, assignee_id: val }));
-                      if (formErrors.assignee_id) setFormErrors(prev => ({ ...prev, assignee_id: false }));
-                    }}
-                    placeholder="Select Employee"
-                    error={formErrors.assignee_id}
-                  />
-                  {formErrors.assignee_id && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#EF4444' }}>Please select an employee</p>}
-                </div>
-
-                <div>
-                  <CustomSelect
-                    label="Priority"
-                    options={['High', 'Medium', 'Low']}
-                    value={formData.priority}
-                    onChange={val => setFormData(prev => ({ ...prev, priority: val }))}
-                    placeholder="Select Priority"
-                    searchable={false}
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Start Date <span className="text-red-500">*</span></label>
-                  <input
-                    type="date"
-                    value={formData.start_date}
-                    onChange={e => {
-                      setFormData({ ...formData, start_date: e.target.value });
-                      if (formErrors.start_date) setFormErrors(prev => ({ ...prev, start_date: false }));
-                    }}
-                    className={`task-modal-input ${formErrors.start_date ? 'task-modal-input-error' : ''}`}
-                  />
-                  {formErrors.start_date && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#EF4444' }}>Please select start date</p>}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Due Date <span className="text-red-500">*</span></label>
-                  <input
-                    type="date"
-                    value={formData.due_date}
-                    onChange={e => {
-                      setFormData({ ...formData, due_date: e.target.value });
-                      if (formErrors.due_date) setFormErrors(prev => ({ ...prev, due_date: false }));
-                    }}
-                    className={`task-modal-input ${formErrors.due_date ? 'task-modal-input-error' : ''}`}
-                  />
-                  {formErrors.due_date && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#EF4444' }}>Please select due date</p>}
-                </div>
-
-                <div>
-                  <CustomSelect
-                    label="Status"
-                    options={TASK_STATUSES}
-                    value={formData.status}
-                    onChange={val => setFormData(prev => ({ ...prev, status: val }))}
-                    placeholder="Select Status"
-                    searchable={false}
-                  />
-                </div>
-
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Description <span className="text-red-500">*</span></label>
-                  <textarea
-                    value={formData.description}
-                    onChange={e => {
-                      setFormData({ ...formData, description: e.target.value });
-                      if (formErrors.description) setFormErrors(prev => ({ ...prev, description: false }));
-                    }}
-                    placeholder="Enter detailed task instructions and acceptance criteria..."
-                    style={{ height: '90px' }}
-                    className={`task-modal-textarea ${formErrors.description ? 'task-modal-input-error' : ''}`}
-                  />
-                  {formErrors.description && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#EF4444' }}>Please enter task description</p>}
-                </div>
               </div>
 
-              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50">{submitting ? 'Saving...' : 'Save Task'}</button>
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', borderTop: '1px solid #F1F5F9', paddingTop: '20px' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setShowAddModal(false)} 
+                  style={{
+                    height: '44px',
+                    padding: '0 24px',
+                    border: '1.5px solid #E2E8F0',
+                    borderRadius: '11px',
+                    fontSize: '13.5px',
+                    fontWeight: '600',
+                    color: '#475569',
+                    background: '#FFFFFF',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.borderColor = '#CBD5E1'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.borderColor = '#E2E8F0'; }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={submitting} 
+                  style={{
+                    height: '44px',
+                    padding: '0 28px',
+                    border: 'none',
+                    borderRadius: '11px',
+                    fontSize: '13.5px',
+                    fontWeight: '700',
+                    color: '#FFFFFF',
+                    background: submitting ? '#93C5FD' : 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                    cursor: submitting ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+                    transition: 'transform 0.15s, box-shadow 0.15s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseEnter={e => { if(!submitting) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(37, 99, 235, 0.45)'; } }}
+                  onMouseLeave={e => { if(!submitting) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(37, 99, 235, 0.35)'; } }}
+                >
+                  <Plus size={15} /> {submitting ? 'Saving Task...' : (editingId ? 'Save Changes' : 'Create Task')}
+                </button>
               </div>
             </form>
           </div>

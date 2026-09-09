@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import AppDropdown from '../ui/AppDropdown';
-import { ChevronDown, Plus, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { ChevronDown, Plus, ChevronLeft, ChevronRight, X, Award } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { useToast } from '../ui/Toast';
 import { canCreate, canApprove, checkActionPermission } from '../../lib/permissions';
@@ -220,7 +220,7 @@ export default function Promotions() {
       case 'Approved': return { bg: '#DCFCE7', color: '#15803D' };
       case 'Pending': return { bg: '#FEF3C7', color: '#D97706' };
       case 'Rejected': return { bg: '#FEE2E2', color: '#DC2626' };
-      default: return { bg: '#F3F4F6', color: '#6B7280' };
+    default: return { bg: '#F3F4F6', color: '#6B7280' };
     }
   };
 
@@ -239,60 +239,150 @@ export default function Promotions() {
       {/* Add Promotion Modal */}
       {showAddModal && (
         <>
-          <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
-          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
-            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-[#0A1629]">Add Promotion Recommendation</h2>
-                <p className="text-sm text-slate-500 mt-1">Submit career progression and role advancement proposals.</p>
-              </div>
-              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <X size={20} className="text-slate-400" />
-              </button>
-            </div>
-            <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Employee <span className="text-red-500">*</span></label>
-                  <AppDropdown
-                value={formData.employee}
-                onChange={v => setFormData({ ...formData, employee: v })}
-                options={[{value:'',label:'Select Employee'}]}
-                size="sm"
-              />
-                </div>
-                {selectedEmployee && (
-                  <div className="col-span-1 sm:col-span-2 grid grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600">
-                    <div><strong>Current Department:</strong> {formData.department}</div>
-                    <div><strong>Current Role:</strong> {formData.currentRole}</div>
+          <div onClick={() => setShowAddModal(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 1001, width: 560, maxWidth: '94vw', maxHeight: '90vh', background: '#FFF', borderRadius: 22, boxShadow: '0 32px 80px rgba(15,23,42,0.28)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+            {/* Modal Header */}
+            <div style={{ padding: '24px 28px 20px', background: 'linear-gradient(135deg,#1E40AF 0%,#1D4ED8 50%,#2563EB 100%)', position: 'relative', flexShrink: 0 }}>
+              <div style={{ position: 'absolute', top: -20, right: -20, width: 130, height: 130, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+              <div style={{ position: 'absolute', bottom: -14, left: 40, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Award size={22} color="#FFF" />
                   </div>
-                )}
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: '#FFF', letterSpacing: '-0.3px' }}>Add Promotion Recommendation</h2>
+                    <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'rgba(255,255,255,0.75)' }}>Submit career progression, role elevation, and designation changes</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowAddModal(false)}
+                  style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.15)', color: '#FFF', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.28)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }}
+                ><X size={16} /></button>
+              </div>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSave} style={{ padding: '24px 28px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+              {/* Employee */}
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                  Employee <span style={{ color: '#EF4444' }}>*</span>
+                </label>
+                <AppDropdown
+                  value={formData.employee}
+                  onChange={v => setFormData({ ...formData, employee: v })}
+                  options={[
+                    { value: '', label: 'Select Employee' },
+                    ...employees.map(e => ({
+                      value: String(e.id),
+                      label: `👤 ${e.name}${e.employee_code || e.emp_id ? ` (${e.employee_code || e.emp_id})` : ` (EMP${String(e.id).padStart(4, '0')})`}${e.dept_name ? ` - ${e.dept_name}` : ''}`
+                    }))
+                  ]}
+                  size="sm"
+                />
+              </div>
+
+              {selectedEmployee && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, padding: '12px 14px', background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: 12 }}>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#64748B', display: 'block', textTransform: 'uppercase' }}>Current Dept</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1E293B' }}>{formData.department}</span>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: '#64748B', display: 'block', textTransform: 'uppercase' }}>Current Role</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#1E293B' }}>{formData.currentRole}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Proposed Role */}
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                  Proposed Role / Designation <span style={{ color: '#EF4444' }}>*</span>
+                </label>
+                <input
+                  type="text" required
+                  value={formData.proposedRole}
+                  onChange={e => setFormData({ ...formData, proposedRole: e.target.value })}
+                  placeholder="e.g. Lead Full Stack Engineer / Senior Manager"
+                  style={{ width: '100%', height: 44, padding: '0 14px', border: '1.5px solid #E2E8F0', borderRadius: 11, fontSize: 13, color: '#1E293B', background: '#FAFBFC', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s, box-shadow 0.2s, background 0.15s', fontFamily: 'Inter, sans-serif' }}
+                  onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)'; e.target.style.background = '#FFF'; }}
+                  onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
+                />
+              </div>
+
+              {/* Row: Effective Date + Status */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Proposed Role / Designation <span className="text-red-500">*</span></label>
-                  <input type="text" required value={formData.proposedRole} onChange={e => setFormData({ ...formData, proposedRole: e.target.value })} placeholder="e.g. Lead Engineer" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                    Effective Date <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <input
+                    type="date" required
+                    value={formData.effectiveDate}
+                    onChange={e => setFormData({ ...formData, effectiveDate: e.target.value })}
+                    style={{ width: '100%', height: 44, padding: '0 14px', border: '1.5px solid #E2E8F0', borderRadius: 11, fontSize: 13, color: '#1E293B', background: '#FAFBFC', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s, box-shadow 0.2s, background 0.15s', fontFamily: 'Inter, sans-serif' }}
+                    onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)'; e.target.style.background = '#FFF'; }}
+                    onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Effective Date <span className="text-red-500">*</span></label>
-                  <input type="date" required value={formData.effectiveDate} onChange={e => setFormData({ ...formData, effectiveDate: e.target.value })} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                    Approval Status
+                  </label>
                   <AppDropdown
-                value={formData.status}
-                onChange={v => setFormData({ ...formData, status: v })}
-                options={[{value:'Pending',label:'Pending'},{value:'Approved',label:'Approved'},{value:'Rejected',label:'Rejected'}]}
-                size="sm"
-              />
-                </div>
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Justification Remarks</label>
-                  <textarea value={formData.justification} onChange={e => setFormData({ ...formData, justification: e.target.value })} placeholder="Key justification, reasons for role promotions..." style={{ height: '80px' }} className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
+                    value={formData.status}
+                    onChange={v => setFormData({ ...formData, status: v })}
+                    options={[
+                      { value: 'Pending', label: '🟡 Pending' },
+                      { value: 'Approved', label: '🟢 Approved' },
+                      { value: 'Rejected', label: '🔴 Rejected' }
+                    ]}
+                    size="sm"
+                  />
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50">
-                  {submitting ? 'Saving...' : 'Save Promotion'}
+
+              {/* Justification */}
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                  Promotion Justification & Business Case <span style={{ color: '#94A3B8', fontWeight: 400 }}>(Optional)</span>
+                </label>
+                <textarea
+                  value={formData.justification}
+                  onChange={e => setFormData({ ...formData, justification: e.target.value })}
+                  placeholder="Outline demonstrated competencies, leadership contributions, and justification for promotion..."
+                  style={{ width: '100%', height: 88, padding: '12px 14px', border: '1.5px solid #E2E8F0', borderRadius: 11, fontSize: 13, color: '#1E293B', background: '#FAFBFC', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s, box-shadow 0.2s, background 0.15s', fontFamily: 'Inter, sans-serif', resize: 'none' }}
+                  onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)'; e.target.style.background = '#FFF'; }}
+                  onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
+                />
+              </div>
+
+              {/* Info Banner */}
+              <div style={{ background: 'linear-gradient(135deg,#EFF6FF,#DBEAFE)', borderRadius: 12, padding: '12px 16px', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#2563EB', flexShrink: 0, marginTop: 4 }} />
+                <span style={{ fontSize: 12.5, color: '#1E40AF', fontWeight: 500, lineHeight: 1.5 }}>
+                  Approving a promotion recommendation automatically updates the employee's official designation and role record.
+                </span>
+              </div>
+
+              {/* Footer Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, paddingTop: 18, borderTop: '1.5px solid #F1F5F9', marginTop: 4 }}>
+                <button type="button" onClick={() => setShowAddModal(false)}
+                  style={{ height: 44, padding: '0 24px', border: '1.5px solid #E2E8F0', borderRadius: 11, fontSize: 13.5, fontWeight: 600, color: '#475569', background: '#FFF', cursor: 'pointer', transition: 'background 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#F8FAFC'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#FFF'; }}
+                >Cancel</button>
+                <button type="submit" disabled={submitting}
+                  style={{ height: 44, padding: '0 24px', background: 'linear-gradient(135deg,#2563EB,#1D4ED8)', color: '#FFF', border: 'none', borderRadius: 11, fontSize: 13.5, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(37,99,235,0.35)', display: 'flex', alignItems: 'center', gap: 8, transition: 'transform 0.15s, box-shadow 0.15s', opacity: submitting ? 0.6 : 1 }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(37,99,235,0.45)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(37,99,235,0.35)'; }}
+                >
+                  <Plus size={15} /> {submitting ? 'Submitting...' : 'Submit Promotion'}
                 </button>
               </div>
             </form>
@@ -301,12 +391,12 @@ export default function Promotions() {
       )}
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Promotions</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Track and manage career promotion recommendations</p>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827', whiteSpace: 'nowrap' }}>Promotions</h1>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>Track and manage career promotion recommendations</p>
         </div>
-        <div>
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
           <button 
             disabled={!canCreate('promotions')}
             onClick={() => {
@@ -326,7 +416,9 @@ export default function Promotions() {
               gap: '8px', 
               cursor: canCreate('promotions') ? 'pointer' : 'not-allowed', 
               fontSize: '14px', 
-              fontWeight: '500' 
+              fontWeight: '500',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
             <Plus size={16} /> Add Promotion
@@ -346,9 +438,9 @@ export default function Promotions() {
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: kpi.bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {kpi.icon}
             </div>
-            <div>
-              <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '500', marginBottom: '4px' }}>{kpi.title}</div>
-              <div style={{ fontSize: '24px', color: '#1E293B', fontWeight: '700' }}>{kpi.value}</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '500', marginBottom: '4px', whiteSpace: 'nowrap' }}>{kpi.title}</div>
+              <div style={{ fontSize: '24px', color: '#1E293B', fontWeight: '700', whiteSpace: 'nowrap' }}>{kpi.value}</div>
             </div>
           </div>
         ))}
@@ -359,8 +451,8 @@ export default function Promotions() {
 
         {/* Table */}
         <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Promotion Proposals</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B', whiteSpace: 'nowrap' }}>Promotion Proposals</h3>
             <input
               type="text"
               placeholder="Search..."
@@ -372,23 +464,23 @@ export default function Promotions() {
 
           <div style={{ overflowX: 'auto' }}>
             {loading ? (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>Loading promotions...</div>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748B', whiteSpace: 'nowrap' }}>Loading promotions...</div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', whiteSpace: 'nowrap' }}>
                 <thead>
                   <tr style={{ background: '#F8FAFC' }}>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Employee</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Current Designation</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Promoted Role</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Effective Date</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Status</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Actions</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Employee</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Current Designation</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Promoted Role</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Effective Date</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center', whiteSpace: 'nowrap' }}>Status</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center', whiteSpace: 'nowrap' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {promotionsList.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No promotion proposals found</td>
+                      <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#64748B', whiteSpace: 'nowrap' }}>No promotion proposals found</td>
                     </tr>
                   ) : (
                     promotionsList.map((row, idx) => {
@@ -400,25 +492,26 @@ export default function Promotions() {
                               <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600', color: '#475569' }}>
                                 {row.employee_name ? row.employee_name.split(' ').map(n => n[0]).join('') : 'PR'}
                               </div>
-                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#1E293B' }}>{row.employee_name}</div>
+                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#1E293B', whiteSpace: 'nowrap' }}>{row.employee_name}</div>
                             </div>
                           </td>
-                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.current_designation}</td>
-                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#1E293B', fontWeight: '500' }}>{row.promoted_designation}</td>
-                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{effDateStr}</td>
-                          <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.current_designation}</td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#1E293B', fontWeight: '500', whiteSpace: 'nowrap' }}>{row.promoted_designation}</td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{effDateStr}</td>
+                          <td style={{ padding: '16px 24px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                             <span style={{
                               padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600',
-                              backgroundColor: getStatusStyle(row.status).bg, color: getStatusStyle(row.status).color
+                              backgroundColor: getStatusStyle(row.status).bg, color: getStatusStyle(row.status).color,
+                              whiteSpace: 'nowrap', display: 'inline-block'
                             }}>
                               {row.status}
                             </span>
                           </td>
-                          <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                          <td style={{ padding: '16px 24px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                             {row.status === 'Pending' && (
                               <button
                                 onClick={() => handleApprove(row.id)}
-                                style={{ background: '#ECFDF5', border: '1px solid #10B981', color: '#10B981', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', cursor: 'pointer' }}
+                                style={{ background: '#ECFDF5', border: '1px solid #10B981', color: '#10B981', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600', cursor: 'pointer', whiteSpace: 'nowrap' }}
                               >
                                 Approve
                               </button>

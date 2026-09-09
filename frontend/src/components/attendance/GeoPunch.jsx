@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { MapPin, Clock, Camera, CheckCircle, AlertTriangle, Loader2, Navigation, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { MapPin, Clock, Camera, CheckCircle, AlertTriangle, Loader2, Navigation, ArrowRight, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { apiFetch } from '../../lib/api';
 
 export function GeoPunch() {
   const [status, setStatus] = useState('idle'); // 'idle', 'locating', 'success', 'error'
+  const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [coords, setCoords] = useState(null);
   const [errorMessage, setErrorMessage] = useState('');
   const [successInfo, setSuccessInfo] = useState(null);
@@ -19,60 +21,77 @@ export function GeoPunch() {
     return () => clearInterval(timer);
   }, []);
 
-  const fetchRecent = async () => {
+  const fetchRecent = useCallback(async () => {
     try {
-      const auth = localStorage.getItem('hrms_auth');
-      let userId = 11;
-      if (auth) {
-        try {
-          const parsed = JSON.parse(auth);
-          const userObj = parsed.user || parsed;
-          if (userObj && userObj.id) userId = userObj.id;
-        } catch (e) {}
-      }
-      const data = await apiFetch(`/attendance/recent/${userId}`);
+      const data = await apiFetch('/attendance/recent');
       if (Array.isArray(data)) {
         setRecent(data);
+      } else if (data && Array.isArray(data.sessions)) {
+        setRecent(data.sessions);
       }
     } catch (e) {
       console.error("Failed to fetch recent attendance logs", e);
     }
-  };
+  }, []);
 
-  const fetchTodayStatus = async () => {
+  const fetchTodayStatus = useCallback(async () => {
     try {
+      setFetchError(false);
       const data = await apiFetch('/attendance/today-status');
       if (data && data.success) {
-        setTodayRecord(data);
+        setTodayRecord(data.attendance || data);
+      } else {
+        setTodayRecord({ status: 'NOT_PUNCHED' });
       }
     } catch (e) {
       console.error("Failed to fetch today status", e);
+      setFetchError(true);
     }
-  };
-
-  useEffect(() => {
-    fetchTodayStatus();
-    fetchRecent();
   }, []);
 
-  // Update working hours elapsed timer for PUNCHED_IN employees
-  useEffect(() => {
-    if (todayRecord?.status !== 'PUNCHED_IN' || !todayRecord?.checkInTimeRaw) return;
+  const loadInitialData = useCallback(async () => {
+    setLoading(true);
+    setFetchError(false);
+    try {
+      await Promise.all([fetchTodayStatus(), fetchRecent()]);
+    } catch (e) {
+      console.error("Error loading attendance initial data", e);
+      setFetchError(true);
+    } finally {
+      setLoading(false);
+    }
+  }, [fetchTodayStatus, fetchRecent]);
 
-    const interval = setInterval(() => {
+  useEffect(() => {
+    loadInitialData();
+
+    // Listen to cross-component attendance updates
+    const handleAttendanceChange = () => {
+      fetchTodayStatus();
+      fetchRecent();
+    };
+    window.addEventListener('attendance-updated', handleAttendanceChange);
+    return () => window.removeEventListener('attendance-updated', handleAttendanceChange);
+  }, [loadInitialData, fetchTodayStatus, fetchRecent]);
+
+  // Update live working hours elapsed timer for PUNCHED_IN employees
+  useEffect(() => {
+    if (todayRecord?.status !== 'PUNCHED_IN' || !todayRecord?.checkInTimeRaw) {
+      return;
+    }
+
+    const updateTimer = () => {
       const start = new Date(todayRecord.checkInTimeRaw);
       const now = new Date();
-      const diffMs = now - start;
-      if (diffMs < 0) {
-        setElapsed('00:00:00');
-        return;
-      }
+      const diffMs = Math.max(0, now - start);
       const hrs = String(Math.floor(diffMs / 3600000)).padStart(2, '0');
       const mins = String(Math.floor((diffMs % 3600000) / 60000)).padStart(2, '0');
       const secs = String(Math.floor((diffMs % 60000) / 1000)).padStart(2, '0');
       setElapsed(`${hrs}:${mins}:${secs}`);
-    }, 1000);
+    };
 
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
     return () => clearInterval(interval);
   }, [todayRecord]);
 
@@ -111,7 +130,15 @@ export function GeoPunch() {
             })
           });
 
-          if (res.success) {
+          if (res && res.success) {
+            const att = res.attendance || res.todayRecord || {
+              status: type === 'IN' ? 'PUNCHED_IN' : 'PUNCHED_OUT',
+              punchInTime: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
+              locationName: res.locationName || 'HQ Office Geofence',
+              workingHours: type === 'OUT' ? 'Calculated' : '00h 00m'
+            };
+
+            setTodayRecord(att);
             setSuccessInfo({
               time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }),
               lat,
@@ -121,16 +148,15 @@ export function GeoPunch() {
               type
             });
             setStatus('success');
-            window.dispatchEvent(new CustomEvent('attendance-updated', { detail: { type } }));
-            await fetchTodayStatus();
-            await fetchRecent();
+            window.dispatchEvent(new CustomEvent('attendance-updated', { detail: { type, attendance: att } }));
+            fetchRecent();
           } else {
-            setErrorMessage(res.message || "You are outside the permitted office location.");
+            setErrorMessage(res?.message || res?.error || "You are outside the permitted office location.");
             setStatus('error');
           }
         } catch (err) {
-          console.error(err);
-          setErrorMessage(err.message || "Error submitting punch request. Please check your network connection.");
+          console.error("Punch request error:", err);
+          setErrorMessage(err.message || "Error submitting punch request. Please check your connection.");
           setStatus('error');
         }
       },
@@ -188,30 +214,76 @@ export function GeoPunch() {
 
           {/* Top Status Pill */}
           <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'center' }}>
-            <span style={{
-              background: todayRecord?.status === 'PUNCHED_IN' ? '#10B981' : todayRecord?.status === 'PUNCHED_OUT' ? '#3B82F6' : 'rgba(255,255,255,0.2)',
-              color: '#FFFFFF',
-              padding: '4px 14px',
-              borderRadius: '999px',
-              fontSize: '11px',
-              fontWeight: '700',
-              letterSpacing: '0.05em',
-              backdropFilter: 'blur(4px)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}>
-              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#FFFFFF' }} className="animate-ping" />
-              {todayRecord?.status === 'PUNCHED_IN' ? 'ACTIVE SHIFT' : todayRecord?.status === 'PUNCHED_OUT' ? 'COMPLETED FOR TODAY' : 'READY TO CHECK IN'}
-            </span>
+            {loading ? (
+              <span style={{
+                background: 'rgba(255,255,255,0.2)',
+                color: '#FFFFFF',
+                padding: '4px 14px',
+                borderRadius: '999px',
+                fontSize: '11px',
+                fontWeight: '700',
+                letterSpacing: '0.05em',
+                backdropFilter: 'blur(4px)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <Loader2 size={12} className="animate-spin" /> CHECKING ATTENDANCE...
+              </span>
+            ) : (
+              <span style={{
+                background: todayRecord?.status === 'PUNCHED_IN' ? '#10B981' : todayRecord?.status === 'PUNCHED_OUT' ? '#3B82F6' : 'rgba(255,255,255,0.2)',
+                color: '#FFFFFF',
+                padding: '4px 14px',
+                borderRadius: '999px',
+                fontSize: '11px',
+                fontWeight: '700',
+                letterSpacing: '0.05em',
+                backdropFilter: 'blur(4px)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px'
+              }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#FFFFFF' }} className="animate-ping" />
+                {todayRecord?.status === 'PUNCHED_IN' ? 'CHECKED IN' : todayRecord?.status === 'PUNCHED_OUT' ? 'CHECKED OUT' : 'READY TO CHECK IN'}
+              </span>
+            )}
           </div>
         </div>
 
         {/* Card Body */}
         <div style={{ padding: '24px' }}>
 
-          {/* Idle State: Not Punched Yet */}
-          {status === 'idle' && (todayRecord?.status === 'NOT_PUNCHED' || !todayRecord?.status) && (
+          {/* Loading Initial State */}
+          {loading && (
+            <div className="text-center py-10 space-y-3">
+              <Loader2 className="animate-spin text-blue-600 mx-auto" size={36} />
+              <div className="text-sm font-semibold text-slate-700">Loading attendance status...</div>
+              <p className="text-xs text-slate-400">Verifying today's punch records from database.</p>
+            </div>
+          )}
+
+          {/* Fetch Error State */}
+          {!loading && fetchError && (
+            <div className="text-center py-8 space-y-3">
+              <div style={{ width: '56px', height: '56px', background: '#FEF2F2', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', border: '3px solid #FEE2E2' }}>
+                <AlertTriangle className="text-rose-600" size={26} />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-800">Unable to load today's attendance</h4>
+                <p className="text-xs text-slate-500 mt-1">Please check your network connection and retry.</p>
+              </div>
+              <button
+                onClick={loadInitialData}
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition-colors shadow-sm"
+              >
+                <RefreshCw size={13} /> Retry
+              </button>
+            </div>
+          )}
+
+          {/* Idle State: Not Punched Yet (Ready to Check In) */}
+          {!loading && !fetchError && status === 'idle' && (todayRecord?.status === 'NOT_PUNCHED' || !todayRecord?.status) && (
             <div className="text-center space-y-4">
               <div style={{ width: '72px', height: '72px', background: '#EFF6FF', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', border: '4px solid #DBEAFE' }}>
                 <MapPin className="text-blue-600" size={32} />
@@ -246,13 +318,13 @@ export function GeoPunch() {
                 onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
                 onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
               >
-                <Camera size={18} /> Punch IN Now
+                <Camera size={18} /> PUNCH IN NOW
               </button>
             </div>
           )}
 
-          {/* Idle State: Currently Punched In -> Ready for Punch Out */}
-          {status === 'idle' && todayRecord?.status === 'PUNCHED_IN' && (
+          {/* Idle State: Currently Punched In -> Active Shift (Punch Out Now) */}
+          {!loading && !fetchError && status === 'idle' && todayRecord?.status === 'PUNCHED_IN' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
               {/* Shift Stats Card */}
@@ -262,26 +334,28 @@ export function GeoPunch() {
                 borderRadius: '14px',
                 overflow: 'hidden',
               }}>
-                {/* Row: Punch In Time */}
+                {/* Row: Check In Time */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #E2E8F0' }}>
-                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Punch In Time</span>
-                  <strong style={{ fontSize: '13px', color: '#0F172A', fontWeight: '700' }}>{todayRecord.punchInTime || '09:12 AM'}</strong>
+                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Check In Time</span>
+                  <strong style={{ fontSize: '13px', color: '#0F172A', fontWeight: '700' }}>{todayRecord.punchInTime || '09:15 AM'}</strong>
                 </div>
-                {/* Row: Working Hours */}
+                {/* Row: Working Hours (Live) */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #E2E8F0', background: '#EFF6FF' }}>
                   <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Working Hours</span>
                   <strong style={{ fontSize: '15px', color: '#2563EB', fontWeight: '800', fontFamily: 'monospace', letterSpacing: '0.05em' }}>{elapsed}</strong>
                 </div>
-                {/* Row: Geofence Location */}
+                {/* Row: Location */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #E2E8F0' }}>
-                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Geofence Location</span>
-                  <strong style={{ fontSize: '13px', color: '#0F172A', fontWeight: '600', maxWidth: '180px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{todayRecord.locationName || 'HQ Office'}</strong>
+                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Location</span>
+                  <strong style={{ fontSize: '13px', color: '#0F172A', fontWeight: '600', maxWidth: '200px', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {todayRecord.locationName || 'Verified / Geo-fenced'}
+                  </strong>
                 </div>
                 {/* Row: Status */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px' }}>
                   <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Status</span>
                   <span style={{ padding: '3px 10px', background: '#DCFCE7', color: '#15803D', fontSize: '11px', fontWeight: '700', borderRadius: '20px', letterSpacing: '0.03em' }}>
-                    {todayRecord.statusLabel || 'PUNCHED IN'}
+                    {todayRecord.statusLabel || 'Checked In'}
                   </span>
                 </div>
               </div>
@@ -313,13 +387,13 @@ export function GeoPunch() {
                 onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
                 onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
               >
-                <Camera size={18} /> Punch OUT Now
+                <Camera size={18} /> PUNCH OUT NOW
               </button>
             </div>
           )}
 
-          {/* Idle State: Punched Out Completed */}
-          {status === 'idle' && todayRecord?.status === 'PUNCHED_OUT' && (
+          {/* Idle State: Punched Out Completed (Checked Out) */}
+          {!loading && !fetchError && status === 'idle' && todayRecord?.status === 'PUNCHED_OUT' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
 
               {/* Check icon + title */}
@@ -328,18 +402,19 @@ export function GeoPunch() {
                   <CheckCircle className="text-emerald-600" size={28} />
                 </div>
                 <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#0F172A', margin: 0 }}>Attendance Completed</h3>
+                <p style={{ fontSize: '12px', color: '#64748B', marginTop: '2px' }}>You have completed your shift for today.</p>
               </div>
 
               {/* Stats rows */}
               <div style={{ background: '#F8FAFC', border: '1.5px solid #E2E8F0', borderRadius: '14px', overflow: 'hidden' }}>
                 {/* Punch In */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #E2E8F0' }}>
-                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Punch In</span>
+                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Check In</span>
                   <strong style={{ fontSize: '13px', color: '#0F172A', fontWeight: '700' }}>{todayRecord.punchInTime}</strong>
                 </div>
                 {/* Punch Out */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid #E2E8F0' }}>
-                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Punch Out</span>
+                  <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '500' }}>Check Out</span>
                   <strong style={{ fontSize: '13px', color: '#0F172A', fontWeight: '700' }}>{todayRecord.punchOutTime}</strong>
                 </div>
                 {/* Working Hours */}
@@ -427,55 +502,98 @@ export function GeoPunch() {
         padding: '20px',
         boxShadow: '0 4px 12px rgba(15,23,42,0.03)'
       }}>
-        <h4 style={{ fontSize: '11px', fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px' }}>Recent Punch Logs</h4>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '192px', overflowY: 'auto' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <h4 style={{ fontSize: '11px', fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.08em', margin: 0 }}>
+            Recent Punch Logs
+          </h4>
+          <span style={{ fontSize: '11px', color: '#64748B', fontWeight: '600' }}>
+            {recent.length} {recent.length === 1 ? 'Record' : 'Records'}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', maxHeight: '240px', overflowY: 'auto' }}>
           {recent.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '16px 0', fontSize: '12px', color: '#94A3B8' }}>No recent punch activity.</div>
+            <div style={{ textAlign: 'center', padding: '20px 0', fontSize: '12px', color: '#94A3B8' }}>
+              No recent punch activity.
+            </div>
           ) : (
-            recent.map((item, idx) => (
-              <div key={idx} style={{
-                padding: '12px 14px',
-                borderRadius: '12px',
-                background: '#F8FAFC',
-                border: '1px solid #E2E8F0',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                  <div style={{
-                    width: '34px',
-                    height: '34px',
-                    borderRadius: '8px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontWeight: '700',
-                    fontSize: '11px',
-                    flexShrink: 0,
-                    background: item.punch_type === 'IN' ? '#DCFCE7' : '#DBEAFE',
-                    color: item.punch_type === 'IN' ? '#15803D' : '#1D4ED8',
-                  }}>
-                    {item.punch_type}
-                  </div>
-                  <div>
-                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B', display: 'block' }}>Punch {item.punch_type}</span>
-                    <span style={{ fontSize: '11px', color: '#94A3B8' }}>{new Date(item.punch_time).toLocaleString()}</span>
-                  </div>
-                </div>
-                <span style={{
-                  padding: '3px 10px',
-                  borderRadius: '20px',
-                  fontSize: '10px',
-                  fontWeight: '700',
-                  background: '#DCFCE7',
-                  color: '#15803D',
-                  whiteSpace: 'nowrap',
+            recent.map((item, idx) => {
+              const isToday = item.date === 'Today' || item.isToday;
+              const hasCheckOut = item.checkOut && item.checkOut !== '--';
+              const statusText = item.status || (hasCheckOut ? 'Completed' : 'Checked In');
+              const isPunchedInActive = statusText === 'Checked In' || (!hasCheckOut && item.checkIn && item.checkIn !== '--');
+
+              return (
+                <div key={item.id || idx} style={{
+                  padding: '12px 14px',
+                  borderRadius: '12px',
+                  background: isToday ? '#F0FDF4' : '#F8FAFC',
+                  border: isToday ? '1px solid #BBF7D0' : '1px solid #E2E8F0',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px'
                 }}>
-                  Recorded
-                </span>
-              </div>
-            ))
+                  {/* Top Header: Date + Status Badge */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{
+                        fontSize: '12px',
+                        fontWeight: '700',
+                        color: isToday ? '#15803D' : '#1E293B'
+                      }}>
+                        {item.date || (item.punch_time ? new Date(item.punch_time).toLocaleDateString('en-US', { day: '2-digit', month: 'short' }) : 'Session')}
+                      </span>
+                      {isToday && (
+                        <span style={{ fontSize: '9px', fontWeight: '800', background: '#DCFCE7', color: '#166534', padding: '1px 6px', borderRadius: '4px' }}>
+                          TODAY
+                        </span>
+                      )}
+                    </div>
+                    <span style={{
+                      padding: '2px 8px',
+                      borderRadius: '20px',
+                      fontSize: '10px',
+                      fontWeight: '700',
+                      background: isPunchedInActive ? '#DCFCE7' : '#DBEAFE',
+                      color: isPunchedInActive ? '#15803D' : '#1D4ED8',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {statusText}
+                    </span>
+                  </div>
+
+                  {/* Punch Details Grid */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px', fontSize: '11px', background: '#FFFFFF', padding: '8px 10px', borderRadius: '8px', border: '1px solid #F1F5F9' }}>
+                    <div>
+                      <span style={{ color: '#94A3B8', display: 'block', fontSize: '10px', fontWeight: '600' }}>Check In</span>
+                      <strong style={{ color: '#0F172A', fontWeight: '700' }}>
+                        {item.checkIn || (item.punch_type === 'IN' ? new Date(item.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--')}
+                      </strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#94A3B8', display: 'block', fontSize: '10px', fontWeight: '600' }}>Check Out</span>
+                      <strong style={{ color: '#0F172A', fontWeight: '700' }}>
+                        {item.checkOut || (item.punch_type === 'OUT' ? new Date(item.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--')}
+                      </strong>
+                    </div>
+                    <div>
+                      <span style={{ color: '#94A3B8', display: 'block', fontSize: '10px', fontWeight: '600' }}>Hours</span>
+                      <strong style={{ color: '#2563EB', fontWeight: '700' }}>
+                        {item.workingHours || '--'}
+                      </strong>
+                    </div>
+                  </div>
+
+                  {/* Location info if available */}
+                  {item.location && (
+                    <div style={{ fontSize: '10px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <MapPin size={11} className="text-slate-400" />
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.location}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })
           )}
         </div>
       </div>

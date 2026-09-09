@@ -272,19 +272,37 @@ function App() {
     } else {
       localStorage.removeItem('hrms_permissions');
     }
+
+    // Reset browser route to root/dashboard for the new user session
+    try {
+      window.history.pushState(null, '', '/');
+    } catch (e) {}
+
     window.dispatchEvent(new CustomEvent('permissionsUpdated', { detail: { roleKey: finalRole, permissions: incomingPerms } }));
   };
 
   const handleLogout = () => {
     setIsLoggedIn(false);
+    setUserRole('SUPER_ADMIN');
     setUserName('');
     setAuthView('login');
-    // Clear persisted auth and permissions on explicit logout
+
+    // Clear all persisted user-specific auth, role, and permission storage
     localStorage.removeItem('hrms_auth');
     localStorage.removeItem('userRole');
     localStorage.removeItem('userName');
     localStorage.removeItem('hrms_permissions');
-    window.dispatchEvent(new CustomEvent('permissionsUpdated'));
+    localStorage.removeItem('selectedEmployeeId');
+    localStorage.removeItem('activeModule');
+    localStorage.removeItem('selectedMenu');
+    localStorage.removeItem('expandedMenus');
+
+    // Reset URL history to root so no protected routes leak to next user
+    try {
+      window.history.pushState(null, '', '/');
+    } catch (e) {}
+
+    window.dispatchEvent(new CustomEvent('permissionsUpdated', { detail: null }));
   };
 
   // Show a full-screen loading spinner while restoring auth state
@@ -440,6 +458,8 @@ function App() {
             {/* Attendance Routes */}
             <Route path="/attendance/daily" element={<PermissionGuard moduleKey="attendance" submoduleKey="daily_attendance"><DailyAttendance /></PermissionGuard>} />
             <Route path="/attendance/gps" element={<PermissionGuard moduleKey="attendance" submoduleKey="gps_attendance"><GPSAttendance /></PermissionGuard>} />
+            <Route path="/attendance/gps-punch" element={<PermissionGuard moduleKey="attendance" submoduleKey="gps_attendance"><GPSAttendance /></PermissionGuard>} />
+            <Route path="/attendance/punch" element={<PermissionGuard moduleKey="attendance" submoduleKey="gps_attendance"><GPSAttendance /></PermissionGuard>} />
             <Route path="/attendance/regularization" element={<PermissionGuard moduleKey="attendance" submoduleKey="regularization"><Regularization /></PermissionGuard>} />
             <Route path="/attendance/shift-roster" element={<PermissionGuard moduleKey="attendance" submoduleKey="shift_roster"><ShiftRoster /></PermissionGuard>} />
             <Route path="/attendance/overtime" element={<PermissionGuard moduleKey="attendance" submoduleKey="overtime"><Overtime /></PermissionGuard>} />

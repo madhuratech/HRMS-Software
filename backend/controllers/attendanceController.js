@@ -8,14 +8,18 @@ const DataScopeService = require("../services/DataScopeService");
 // Original endpoint for backward compatibility, updated to use GPS geofence validation
 exports.punch = async (req, res) => {
   try {
-    let employeeId = req.headers['x-employee-id'] || req.body.employee_id || (req.user && req.user.id) || 11;
-    if (typeof employeeId === 'string' && !isNaN(parseInt(employeeId))) {
-      employeeId = parseInt(employeeId);
+    let rawEmpId = req.headers['x-employee-id'] || req.body.employee_id || (req.user && (req.user.employeeId || req.user.employee_id || req.user.userId || req.user.id));
+    const userEmail = req.user && req.user.email;
+    const employeeId = await GPSAttendanceService.resolveEmployeeId(rawEmpId, userEmail);
+
+    if (!employeeId) {
+      return res.status(400).json({ success: false, message: "Could not identify valid employee profile for the current user." });
     }
+
     const { punch_type, latitude, longitude, device_info, browser, ip_address } = req.body;
 
-    if (!employeeId || !punch_type || latitude === undefined || longitude === undefined) {
-      return res.status(400).json({ success: false, message: "Missing required fields (employee_id/token, punch_type, latitude, longitude)" });
+    if (!punch_type || latitude === undefined || longitude === undefined) {
+      return res.status(400).json({ success: false, message: "Missing required fields (punch_type, latitude, longitude)" });
     }
 
     const punchData = {
@@ -24,7 +28,8 @@ exports.punch = async (req, res) => {
       longitude,
       deviceInfo: device_info || req.headers['user-agent'] || 'Unknown',
       browser: browser || 'Unknown',
-      ipAddress: ip_address || req.ip || 'Unknown'
+      ipAddress: ip_address || req.ip || 'Unknown',
+      userEmail: userEmail
     };
 
     const result = await GPSAttendanceService.validateAndRecordPunch(employeeId, punchData);
@@ -35,21 +40,111 @@ exports.punch = async (req, res) => {
   }
 };
 
-exports.getRecent = (req, res) => {
-  const { employee_id } = req.params;
+exports.getRecent = async (req, res) => {
+  try {
+    let rawEmpId = req.params?.employee_id || req.query?.employee_id || req.headers?.['x-employee-id'] || (req.user && (req.user.employeeId || req.user.employee_id || req.user.userId || req.user.id));
+    const userEmail = req.user && req.user.email;
+    const validEmpId = await GPSAttendanceService.resolveEmployeeId(rawEmpId, userEmail);
 
-  const sql = `
-    SELECT punch_type, punch_time
-    FROM attendance
-    WHERE employee_id = ?
-    ORDER BY punch_time DESC
-    LIMIT 5
-  `;
+    if (!validEmpId) {
+      return res.json([]);
+    }
 
-  db.query(sql, [employee_id], (err, results) => {
-    if (err) return res.status(500).json({ message: "Fetch failed" });
-    res.json(results);
-  });
+    const todayStr = GPSAttendanceService.getLocalDateStr();
+
+    // 1. Fetch GPSAttendance sessions
+    const sessions = await new Promise((resolve) => {
+      const sql = `
+        SELECT 
+          id,
+          employee_id,
+          punch_date,
+          check_in_time,
+          check_out_time,
+          working_hours,
+          status,
+          punch_in_location,
+          punch_out_location,
+          late_entry,
+          early_exit
+        FROM GPSAttendance
+        WHERE employee_id = ?
+        ORDER BY punch_date DESC, check_in_time DESC
+        LIMIT 10
+      `;
+      db.query(sql, [validEmpId], (err, rows) => {
+        if (err) return resolve([]);
+        resolve(rows || []);
+      });
+    });
+
+    // 2. Fetch raw attendance punches
+    const rawPunches = await new Promise((resolve) => {
+      const sql = `
+        SELECT id, employee_id, punch_type, punch_time, latitude, longitude
+        FROM attendance
+        WHERE employee_id = ?
+        ORDER BY punch_time DESC
+        LIMIT 15
+      `;
+      db.query(sql, [validEmpId], (err, rows) => {
+        if (err) return resolve([]);
+        resolve(rows || []);
+      });
+    });
+
+    // Format rich session list
+    const formattedSessions = sessions.map(s => {
+      let dateLabel = 'Past Day';
+      if (s.punch_date) {
+        const pDateStr = GPSAttendanceService.getLocalDateStr(s.punch_date);
+        if (pDateStr === todayStr) {
+          dateLabel = 'Today';
+        } else {
+          dateLabel = new Date(s.punch_date).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+      }
+
+      const inTime = s.check_in_time 
+        ? new Date(s.check_in_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }) 
+        : '--';
+      const outTime = s.check_out_time 
+        ? new Date(s.check_out_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }) 
+        : '--';
+
+      let statusBadge = s.status || (s.check_out_time ? 'Completed' : 'Checked In');
+      if (s.check_in_time && !s.check_out_time) {
+        statusBadge = 'Checked In';
+      }
+
+      let workingHoursDisplay = s.working_hours || '--';
+      if (s.check_in_time && !s.check_out_time) {
+        const diffMs = Math.max(0, new Date() - new Date(s.check_in_time));
+        const hrs = Math.floor(diffMs / (1000 * 60 * 60));
+        const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        workingHoursDisplay = `${String(hrs).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m`;
+      }
+
+      return {
+        id: s.id,
+        date: dateLabel,
+        dateRaw: s.punch_date || s.check_in_time,
+        checkIn: inTime,
+        checkOut: outTime,
+        workingHours: workingHoursDisplay,
+        location: s.punch_in_location || 'Office / Geo-fenced',
+        status: statusBadge,
+        isToday: dateLabel === 'Today',
+        punch_type: s.check_out_time ? 'OUT' : 'IN',
+        punch_time: s.check_out_time || s.check_in_time
+      };
+    });
+
+    return res.status(200).json(formattedSessions);
+  } catch (error) {
+    console.error("Fetch recent failed:", error);
+    return res.status(500).json({ message: "Fetch failed", error: error.message });
+  }
 };
 
 exports.getDailyStats = async (req, res) => {
@@ -368,12 +463,26 @@ exports.exportGPSReportExcel = async (req, res) => {
 
 exports.getTodayStatus = async (req, res) => {
   try {
-    const employeeId = req.query.employee_id || (req.user && req.user.id) || 1;
-    const todayStr = new Date().toISOString().split('T')[0];
+    let rawEmpId = req.params?.employee_id || req.query?.employee_id || req.headers?.['x-employee-id'] || (req.user && (req.user.employeeId || req.user.employee_id || req.user.userId || req.user.id));
+    const userEmail = req.user && req.user.email;
+    const validEmpId = await GPSAttendanceService.resolveEmployeeId(rawEmpId, userEmail);
+
+    if (!validEmpId) {
+      return res.status(200).json({ success: true, status: 'NOT_PUNCHED', statusLabel: 'Ready to Check In', attendance: null });
+    }
+
+    const todayStr = GPSAttendanceService.getLocalDateStr();
+    const now = new Date();
 
     // 1. Query GPSAttendance table
     let gpsRows = await new Promise((resolve, reject) => {
-      db.query("SELECT * FROM GPSAttendance WHERE employee_id = ? AND punch_date = ?", [employeeId, todayStr], (err, rows) => {
+      const sql = `
+        SELECT * FROM GPSAttendance 
+        WHERE employee_id = ? 
+          AND (punch_date = ? OR DATE(check_in_time) = ? OR punch_date = CURDATE() OR DATE(check_in_time) = CURDATE())
+        ORDER BY id DESC LIMIT 1
+      `;
+      db.query(sql, [validEmpId, todayStr, todayStr], (err, rows) => {
         if (err) return reject(err);
         resolve(rows || []);
       });
@@ -381,26 +490,70 @@ exports.getTodayStatus = async (req, res) => {
 
     if (gpsRows.length > 0) {
       const rec = gpsRows[0];
+      const inTimeStr = rec.check_in_time 
+        ? new Date(rec.check_in_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }) 
+        : null;
+      const outTimeStr = rec.check_out_time 
+        ? new Date(rec.check_out_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }) 
+        : null;
+
       if (rec.check_in_time && !rec.check_out_time) {
-        const fmtTime = new Date(rec.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        const checkInDate = new Date(rec.check_in_time);
+        const diffMs = Math.max(0, now - checkInDate);
+        const hrs = Math.floor(diffMs / (1000 * 60 * 60));
+        const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        const workingHoursElapsed = `${String(hrs).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m`;
+
+        const payload = {
+          id: rec.id,
+          employee_id: validEmpId,
+          status: 'PUNCHED_IN',
+          statusLabel: rec.status || 'Present',
+          punchInTime: inTimeStr,
+          punchOutTime: null,
+          checkInTimeRaw: rec.check_in_time,
+          checkOutTimeRaw: null,
+          workingHours: workingHoursElapsed,
+          locationName: rec.punch_in_location || 'Office / Geo-fenced',
+          latitude: rec.latitude_in,
+          longitude: rec.longitude_in,
+          location_verified: true
+        };
+
         return res.status(200).json({
           success: true,
-          status: 'PUNCHED_IN',
-          punchInTime: fmtTime,
-          checkInTimeRaw: rec.check_in_time,
-          workingHours: 'In Progress',
-          statusLabel: rec.status || 'Present'
+          ...payload,
+          attendance: payload
         });
       } else if (rec.check_in_time && rec.check_out_time) {
-        const inTime = new Date(rec.check_in_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-        const outTime = new Date(rec.check_out_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        let calcHours = rec.working_hours;
+        if (!calcHours || calcHours === '0h 0m' || calcHours.includes('undefined')) {
+          const diffMs = Math.max(0, new Date(rec.check_out_time) - new Date(rec.check_in_time));
+          const hrs = Math.floor(diffMs / (1000 * 60 * 60));
+          const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+          calcHours = `${String(hrs).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m`;
+        }
+
+        const payload = {
+          id: rec.id,
+          employee_id: validEmpId,
+          status: 'PUNCHED_OUT',
+          statusLabel: rec.status || 'Completed',
+          punchInTime: inTimeStr,
+          punchOutTime: outTimeStr,
+          checkInTimeRaw: rec.check_in_time,
+          checkOutTimeRaw: rec.check_out_time,
+          workingHours: calcHours,
+          locationName: rec.punch_out_location || rec.punch_in_location || 'Office / Geo-fenced',
+          latitude: rec.latitude_out || rec.latitude_in,
+          longitude: rec.longitude_out || rec.longitude_in,
+          location_verified: true
+        };
+
         return res.status(200).json({
           success: true,
-          status: 'PUNCHED_OUT',
-          punchInTime: inTime,
-          punchOutTime: outTime,
-          workingHours: rec.working_hours || '8h 00m',
-          statusLabel: rec.status || 'Completed'
+          ...payload,
+          attendance: payload
         });
       }
     }
@@ -408,12 +561,12 @@ exports.getTodayStatus = async (req, res) => {
     // 2. Query attendance table
     let attRows = await new Promise((resolve, reject) => {
       const sql = `
-        SELECT punch_type, punch_time 
+        SELECT punch_type, punch_time, latitude, longitude
         FROM attendance 
-        WHERE employee_id = ? AND DATE(punch_time) = ?
+        WHERE employee_id = ? AND (DATE(punch_time) = ? OR DATE(punch_time) = CURDATE())
         ORDER BY punch_time ASC
       `;
-      db.query(sql, [employeeId, todayStr], (err, rows) => {
+      db.query(sql, [validEmpId, todayStr], (err, rows) => {
         if (err) return reject(err);
         resolve(rows || []);
       });
@@ -424,72 +577,72 @@ exports.getTodayStatus = async (req, res) => {
       const outPunch = attRows.filter(r => r.punch_type === 'OUT').pop();
 
       if (inPunch && !outPunch) {
-        const fmtTime = new Date(inPunch.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        const inTimeStr = new Date(inPunch.punch_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+        const checkInDate = new Date(inPunch.punch_time);
+        const diffMs = Math.max(0, now - checkInDate);
+        const hrs = Math.floor(diffMs / (1000 * 60 * 60));
+        const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        const workingHoursElapsed = `${String(hrs).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m`;
+
+        const payload = {
+          id: inPunch.id || 0,
+          employee_id: validEmpId,
+          status: 'PUNCHED_IN',
+          statusLabel: 'Present',
+          punchInTime: inTimeStr,
+          punchOutTime: null,
+          checkInTimeRaw: inPunch.punch_time,
+          checkOutTimeRaw: null,
+          workingHours: workingHoursElapsed,
+          locationName: 'Office / Geo-fenced',
+          latitude: inPunch.latitude,
+          longitude: inPunch.longitude,
+          location_verified: true
+        };
+
         return res.status(200).json({
           success: true,
-          status: 'PUNCHED_IN',
-          punchInTime: fmtTime,
-          checkInTimeRaw: inPunch.punch_time,
-          workingHours: 'In Progress',
-          statusLabel: 'Present'
+          ...payload,
+          attendance: payload
         });
       } else if (inPunch && outPunch) {
-        const inTime = new Date(inPunch.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-        const outTime = new Date(outPunch.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+        const inTimeStr = new Date(inPunch.punch_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+        const outTimeStr = new Date(outPunch.punch_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+        const diffMs = Math.max(0, new Date(outPunch.punch_time) - new Date(inPunch.punch_time));
+        const hrs = Math.floor(diffMs / (1000 * 60 * 60));
+        const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+        const calcHours = `${String(hrs).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m`;
+
+        const payload = {
+          id: outPunch.id || 0,
+          employee_id: validEmpId,
+          status: 'PUNCHED_OUT',
+          statusLabel: 'Completed',
+          punchInTime: inTimeStr,
+          punchOutTime: outTimeStr,
+          checkInTimeRaw: inPunch.punch_time,
+          checkOutTimeRaw: outPunch.punch_time,
+          workingHours: calcHours,
+          locationName: 'Office / Geo-fenced',
+          latitude: outPunch.latitude,
+          longitude: outPunch.longitude,
+          location_verified: true
+        };
+
         return res.status(200).json({
           success: true,
-          status: 'PUNCHED_OUT',
-          punchInTime: inTime,
-          punchOutTime: outTime,
-          workingHours: 'Completed',
-          statusLabel: 'Completed'
+          ...payload,
+          attendance: payload
         });
       }
     }
 
-    // 3. Fallback: Query GPSAttendanceLogs table
-    let logRows = await new Promise((resolve, reject) => {
-      const sql = `
-        SELECT punch_type, punch_time, status
-        FROM GPSAttendanceLogs
-        WHERE employee_id = ? AND DATE(punch_time) = ? AND status = 'Success'
-        ORDER BY punch_time ASC
-      `;
-      db.query(sql, [employeeId, todayStr], (err, rows) => {
-        if (err) return resolve([]);
-        resolve(rows || []);
-      });
+    return res.status(200).json({
+      success: true,
+      status: 'NOT_PUNCHED',
+      statusLabel: 'Ready to Check In',
+      attendance: null
     });
-
-    if (logRows.length > 0) {
-      const inLog = logRows.find(r => r.punch_type === 'IN');
-      const outLog = logRows.filter(r => r.punch_type === 'OUT').pop();
-
-      if (inLog && !outLog) {
-        const fmtTime = new Date(inLog.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-        return res.status(200).json({
-          success: true,
-          status: 'PUNCHED_IN',
-          punchInTime: fmtTime,
-          checkInTimeRaw: inLog.punch_time,
-          workingHours: 'In Progress',
-          statusLabel: 'Present'
-        });
-      } else if (inLog && outLog) {
-        const inTime = new Date(inLog.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-        const outTime = new Date(outLog.punch_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
-        return res.status(200).json({
-          success: true,
-          status: 'PUNCHED_OUT',
-          punchInTime: inTime,
-          punchOutTime: outTime,
-          workingHours: 'Completed',
-          statusLabel: 'Completed'
-        });
-      }
-    }
-
-    return res.status(200).json({ success: true, status: 'NOT_PUNCHED' });
   } catch (error) {
     console.error("Failed to get today status:", error);
     return res.status(500).json({ success: false, message: "Internal server error fetching today's status" });

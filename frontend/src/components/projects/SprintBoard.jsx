@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import AppDropdown from '../ui/AppDropdown';
-import { Plus, X, Pencil, Trash2 } from 'lucide-react';
+import { Plus, X, Pencil, Trash2, Zap, Layers, Calendar, CheckSquare, Clock } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { apiFetch, formatDate, getInitials } from '../../lib/api';
 import { guardCreateAction, requireActionPermission, hasPermission } from '../../lib/permissions';
@@ -37,9 +37,6 @@ const KanbanCard = ({ card, onEdit, onDelete }) => (
     </div>
   </div>
 );
-
-const inputStyle = { width: '100%', height: 42, padding: '0 12px', border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 14, color: '#111827', outline: 'none', boxSizing: 'border-box', background: '#fff' };
-const labelStyle = { display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 };
 
 const COLUMN_STATUS = { backlog: 'Backlog', todo: 'To Do', inprogress: 'In Progress', testing: 'Testing', done: 'Done' };
 const DEFAULT_COLUMNS = [
@@ -278,58 +275,213 @@ export default function SprintBoard() {
       {/* ── CREATE/EDIT SPRINT MODAL ── */}
       {showSprintModal && (
         <>
-          <div style={{ position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.45)', zIndex:1000 }} onClick={() => setShowSprintModal(false)} />
-          <div style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:600, maxWidth:'92vw', maxHeight:'90vh', background:'#fff', borderRadius:16, zIndex:1001, display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 24px 64px rgba(0,0,0,0.18)' }}>
-            <div style={{ padding:'24px 32px', borderBottom:'1px solid #E5E7EB', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-              <div>
-                <h2 style={{ margin:0, fontSize:20, fontWeight:700, color:'#0A1629' }}>{editingSprintId ? 'Edit Sprint' : 'Create Sprint'}</h2>
-                <p style={{ margin:'4px 0 0', fontSize:13, color:'#64748B' }}>Define a new sprint for your project team.</p>
-              </div>
-              <button onClick={() => setShowSprintModal(false)} style={{ width:36, height:36, borderRadius:8, border:'none', background:'#F1F5F9', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><X size={18} color="#64748B" /></button>
-            </div>
-            <div style={{ flex:1, overflowY:'auto', padding:'28px 32px' }}>
-              <form id="sprintForm" onSubmit={handleCreateSprint}>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:20 }}>
-                  <div>
-                    <label style={labelStyle}>Sprint Name <span style={{ color:'#EF4444' }}>*</span></label>
-                    <input style={inputStyle} placeholder="e.g. Sprint 14" value={sprintForm.name} onChange={e => setSprintForm(p=>({...p,name:e.target.value}))} required />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Project</label>
-                    <AppDropdown
-                      value={sprintForm.project_id}
-                      onChange={v => setSprintForm(p => ({ ...p, project_id: v }))}
-                      options={[{ value: '', label: 'Select Project' }, ...(projects || []).map(p => ({ value: p.id, label: p.project_name || p.name }))]}
-                      size="sm"
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Start Date</label>
-                    <input type="date" style={inputStyle} value={sprintForm.startDate} onChange={e => setSprintForm(p=>({...p,startDate:e.target.value}))} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>End Date</label>
-                    <input type="date" style={inputStyle} value={sprintForm.endDate} onChange={e => setSprintForm(p=>({...p,endDate:e.target.value}))} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Status</label>
-                    <AppDropdown
-                      value={sprintForm.status}
-                      onChange={v => setSprintForm(p => ({ ...p, status: v }))}
-                      options={[{ value: 'Planning', label: 'Planning' }, { value: 'Active', label: 'Active' }, { value: 'Completed', label: 'Completed' }]}
-                      size="sm"
-                    />
-                  </div>
+          <div 
+            onClick={() => setShowSprintModal(false)} 
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.55)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+              zIndex: 1000,
+              animation: 'fadeIn 0.2s ease-out'
+            }} 
+          />
+          <div 
+            className="modal-centered-content" 
+            style={{ 
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '680px', 
+              maxWidth: '92vw', 
+              maxHeight: '90vh', 
+              background: '#ffffff',
+              borderRadius: '22px',
+              boxShadow: '0 32px 80px rgba(15, 23, 42, 0.28)',
+              zIndex: 1001,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              fontFamily: "'Inter', -apple-system, sans-serif"
+            }}
+          >
+            {/* Modal Header: Royal Blue Gradient */}
+            <div style={{
+              padding: '24px 28px 22px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)',
+              color: '#ffffff',
+              position: 'relative',
+              overflow: 'hidden',
+              flexShrink: 0
+            }}>
+              <div style={{ position: 'absolute', top: -35, right: 60, width: 150, height: 150, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', bottom: -45, right: 180, width: 110, height: 110, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, position: 'relative', zIndex: 1 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 13, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFF' }}>
+                  <Zap size={22} />
                 </div>
                 <div>
-                  <label style={labelStyle}>Sprint Goal</label>
-                  <textarea style={{ ...inputStyle, height:90, padding:'10px 12px', resize:'vertical' }} placeholder="Describe the goal of this sprint..." value={sprintForm.goal} onChange={e => setSprintForm(p=>({...p,goal:e.target.value}))} />
+                  <h2 style={{ fontSize: '18px', fontWeight: '700', margin: 0, letterSpacing: '-0.01em', color: '#ffffff' }}>
+                    {editingSprintId ? 'Edit Sprint' : 'Create New Sprint'}
+                  </h2>
+                  <p style={{ fontSize: '12.5px', color: 'rgba(255, 255, 255, 0.85)', margin: '3px 0 0 0' }}>
+                    Define sprint cycle, project scope, timeline and sprint goal
+                  </p>
+                </div>
+              </div>
+              <button 
+                type="button"
+                onClick={() => setShowSprintModal(false)} 
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  borderRadius: '10px',
+                  width: '34px',
+                  height: '34px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  zIndex: 1,
+                  transition: 'background 0.15s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.28)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
+              >
+                <X size={17} />
+              </button>
+            </div>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
+              <form id="sprintForm" onSubmit={handleCreateSprint}>
+                <div style={{ background: '#F8FAFC', padding: '20px', borderRadius: '16px', border: '1px solid #E2E8F0', marginBottom: '18px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '16px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#1D4ED8', background: '#EFF6FF', padding: '3px 10px', borderRadius: '20px', border: '1px solid #BFDBFE' }}>SECTION 1</span>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Sprint Configuration</span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                        Sprint Name <span style={{ color: '#EF4444' }}>*</span>
+                      </label>
+                      <input 
+                        type="text" 
+                        placeholder="e.g. Sprint 14" 
+                        value={sprintForm.name} 
+                        onChange={e => setSprintForm(p=>({...p,name:e.target.value}))} 
+                        required 
+                        style={{ width: '100%', height: '42px', padding: '0 14px', border: '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '13.5px', color: '#1E293B', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                        onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>Project</label>
+                      <AppDropdown
+                        value={sprintForm.project_id}
+                        onChange={v => setSprintForm(p => ({ ...p, project_id: v }))}
+                        options={[{ value: '', label: 'Select Project' }, ...(projects || []).map(p => ({ value: String(p.id), label: p.project_name || p.name }))]}
+                        size="md"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>Start Date</label>
+                      <input 
+                        type="date" 
+                        value={sprintForm.startDate} 
+                        onChange={e => setSprintForm(p=>({...p,startDate:e.target.value}))} 
+                        style={{ width: '100%', height: '42px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '13px', color: '#1E293B', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                        onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>End Date</label>
+                      <input 
+                        type="date" 
+                        value={sprintForm.endDate} 
+                        onChange={e => setSprintForm(p=>({...p,endDate:e.target.value}))} 
+                        style={{ width: '100%', height: '42px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '13px', color: '#1E293B', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                        onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
+                      />
+                    </div>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>Sprint Status</label>
+                      <AppDropdown
+                        value={sprintForm.status}
+                        onChange={v => setSprintForm(p => ({ ...p, status: v }))}
+                        options={[{ value: 'Planning', label: 'Planning' }, { value: 'Active', label: 'Active' }, { value: 'Completed', label: 'Completed' }]}
+                        size="md"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>Sprint Goal</label>
+                    <textarea 
+                      placeholder="Describe key deliverable targets for this sprint..." 
+                      value={sprintForm.goal} 
+                      onChange={e => setSprintForm(p=>({...p,goal:e.target.value}))} 
+                      style={{ width: '100%', height: '70px', minHeight: '60px', maxHeight: '120px', padding: '10px 14px', border: '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '13px', color: '#1E293B', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
+                      onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                      onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
+                    />
+                  </div>
                 </div>
               </form>
             </div>
-            <div style={{ padding:'20px 32px', borderTop:'1px solid #E5E7EB', display:'flex', justifyContent:'flex-end', gap:12, flexShrink:0 }}>
-              <button type="button" onClick={() => setShowSprintModal(false)} style={{ height:42, padding:'0 24px', border:'1px solid #E5E7EB', borderRadius:8, fontSize:14, fontWeight:600, color:'#374151', background:'#fff', cursor:'pointer' }}>Cancel</button>
-              <button type="submit" form="sprintForm" style={{ height:42, padding:'0 28px', background:'#2563EB', border:'none', borderRadius:8, fontSize:14, fontWeight:600, color:'#fff', cursor:'pointer' }}>{editingSprintId ? 'Save Sprint' : 'Create Sprint'}</button>
+
+            {/* Action Buttons */}
+            <div style={{ padding: '18px 28px', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'flex-end', gap: 12, flexShrink: 0 }}>
+              <button 
+                type="button" 
+                onClick={() => setShowSprintModal(false)} 
+                style={{
+                  height: '42px',
+                  padding: '0 22px',
+                  border: '1.5px solid #E2E8F0',
+                  borderRadius: '10px',
+                  fontSize: '13.5px',
+                  fontWeight: '600',
+                  color: '#475569',
+                  background: '#FFFFFF',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s'
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                form="sprintForm" 
+                style={{
+                  height: '42px',
+                  padding: '0 26px',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '13.5px',
+                  fontWeight: '700',
+                  color: '#FFFFFF',
+                  background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Plus size={15} /> {editingSprintId ? 'Save Sprint' : 'Create Sprint'}
+              </button>
             </div>
           </div>
         </>
@@ -338,105 +490,246 @@ export default function SprintBoard() {
       {/* ── ADD TASK MODAL ── */}
       {showTaskModal && (
         <>
-          <div style={{ position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(0,0,0,0.45)', zIndex:1000 }} onClick={() => setShowTaskModal(false)} />
-          <div style={{ position:'fixed', top:'50%', left:'50%', transform:'translate(-50%,-50%)', width:600, maxWidth:'92vw', maxHeight:'90vh', background:'#fff', borderRadius:16, zIndex:1001, display:'flex', flexDirection:'column', overflow:'hidden', boxShadow:'0 24px 64px rgba(0,0,0,0.18)' }}>
-            <div style={{ padding:'24px 32px', borderBottom:'1px solid #E5E7EB', display:'flex', alignItems:'center', justifyContent:'space-between', flexShrink:0 }}>
-              <div>
-                <h2 style={{ margin:0, fontSize:20, fontWeight:700, color:'#0A1629' }}>{editingTaskId ? 'Edit Task' : 'Add Task'}</h2>
-                <p style={{ margin:'4px 0 0', fontSize:13, color:'#64748B' }}>Add a new task to the <strong>{board.columns.find(c=>c.id===taskColumn)?.label}</strong> column.</p>
+          <div 
+            onClick={() => setShowTaskModal(false)} 
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(15, 23, 42, 0.55)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
+              zIndex: 1000,
+              animation: 'fadeIn 0.2s ease-out'
+            }} 
+          />
+          <div 
+            className="modal-centered-content" 
+            style={{ 
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '680px', 
+              maxWidth: '92vw', 
+              maxHeight: '90vh', 
+              background: '#ffffff',
+              borderRadius: '22px',
+              boxShadow: '0 32px 80px rgba(15, 23, 42, 0.28)',
+              zIndex: 1001,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              fontFamily: "'Inter', -apple-system, sans-serif"
+            }}
+          >
+            {/* Modal Header: Royal Blue Gradient */}
+            <div style={{
+              padding: '24px 28px 22px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)',
+              color: '#ffffff',
+              position: 'relative',
+              overflow: 'hidden',
+              flexShrink: 0
+            }}>
+              <div style={{ position: 'absolute', top: -35, right: 60, width: 150, height: 150, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', bottom: -45, right: 180, width: 110, height: 110, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, position: 'relative', zIndex: 1 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 13, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFF' }}>
+                  <CheckSquare size={22} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '18px', fontWeight: '700', margin: 0, letterSpacing: '-0.01em', color: '#ffffff' }}>
+                    {editingTaskId ? 'Edit Sprint Task' : 'Add Sprint Task'}
+                  </h2>
+                  <p style={{ fontSize: '12.5px', color: 'rgba(255, 255, 255, 0.85)', margin: '3px 0 0 0' }}>
+                    Add to column: <strong>{board.columns.find(c=>c.id===taskColumn)?.label}</strong>
+                  </p>
+                </div>
               </div>
-              <button onClick={() => setShowTaskModal(false)} style={{ width:36, height:36, borderRadius:8, border:'none', background:'#F1F5F9', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}><X size={18} color="#64748B" /></button>
+              <button 
+                type="button"
+                onClick={() => setShowTaskModal(false)} 
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  borderRadius: '10px',
+                  width: '34px',
+                  height: '34px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  position: 'relative',
+                  zIndex: 1,
+                  transition: 'background 0.15s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.28)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
+              >
+                <X size={17} />
+              </button>
             </div>
-            <div style={{ flex:1, overflowY:'auto', padding:'28px 32px' }}>
+
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
               <form id="taskForm" onSubmit={handleCreateTask}>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:20, marginBottom:20 }}>
-                  <div style={{ gridColumn:'1 / -1' }}>
-                    <label style={labelStyle}>Task Title <span style={{ color:'#EF4444' }}>*</span></label>
-                    <input style={inputStyle} placeholder="Enter task title" value={taskForm.title} onChange={e => setTaskForm(p=>({...p,title:e.target.value}))} required />
+                <div style={{ background: '#F8FAFC', padding: '20px', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '16px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#1D4ED8', background: '#EFF6FF', padding: '3px 10px', borderRadius: '20px', border: '1px solid #BFDBFE' }}>SECTION 1</span>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Task Attributes</span>
                   </div>
-                  <div>
-                    <label style={labelStyle}>Project <span style={{ color:'#EF4444' }}>*</span></label>
-                    <AppDropdown
-                      value={taskForm.project_id}
-                      onChange={v => setTaskForm(p => ({ ...p, project_id: v }))}
-                      options={[{ value: '', label: 'Select Project' }, ...(projects || []).map(p => ({ value: p.id, label: p.project_name || p.name }))]}
-                      size="sm"
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Assignee</label>
-                    <AppDropdown
-                      value={taskForm.assignee_id}
-                      onChange={v => setTaskForm(p => ({ ...p, assignee_id: v }))}
-                      options={[{ value: '', label: 'Unassigned' }, ...(employees || []).map(e => ({ value: e.id, label: e.name }))]}
-                      size="sm"
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Priority</label>
-                    <AppDropdown
-                      value={taskForm.priority}
-                      onChange={v => setTaskForm(p => ({ ...p, priority: v }))}
-                      options={[{ value: 'High', label: 'High' }, { value: 'Medium', label: 'Medium' }, { value: 'Low', label: 'Low' }]}
-                      size="sm"
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Label</label>
-                    <AppDropdown
-                      value={taskForm.label}
-                      onChange={v => setTaskForm(p => ({ ...p, label: v }))}
-                      options={Object.keys(LABEL_COLOR).map(l => ({ value: l, label: l }))}
-                      size="sm"
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Due Date</label>
-                    <input type="date" style={inputStyle} value={taskForm.due} onChange={e => setTaskForm(p=>({...p,due:e.target.value}))} />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Column</label>
-                    <AppDropdown
-                      value={taskColumn}
-                      onChange={v => setTaskColumn(v)}
-                      options={(board?.columns || []).map(c => ({ value: c.id, label: c.label }))}
-                      size="sm"
-                    />
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                        Task Title <span style={{ color: '#EF4444' }}>*</span>
+                      </label>
+                      <input 
+                        placeholder="Enter task title" 
+                        value={taskForm.title} 
+                        onChange={e => setTaskForm(p=>({...p,title:e.target.value}))} 
+                        required 
+                        style={{ width: '100%', height: '42px', padding: '0 14px', border: '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '13.5px', color: '#1E293B', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                        onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                        Project <span style={{ color: '#EF4444' }}>*</span>
+                      </label>
+                      <AppDropdown
+                        value={taskForm.project_id}
+                        onChange={v => setTaskForm(p => ({ ...p, project_id: v }))}
+                        options={[{ value: '', label: 'Select Project' }, ...(projects || []).map(p => ({ value: String(p.id), label: p.project_name || p.name }))]}
+                        size="md"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>Assignee</label>
+                      <AppDropdown
+                        value={taskForm.assignee_id}
+                        onChange={v => setTaskForm(p => ({ ...p, assignee_id: v }))}
+                        options={[{ value: '', label: 'Unassigned' }, ...(employees || []).map(e => ({ value: String(e.id), label: e.name }))]}
+                        size="md"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>Priority</label>
+                      <AppDropdown
+                        value={taskForm.priority}
+                        onChange={v => setTaskForm(p => ({ ...p, priority: v }))}
+                        options={[{ value: 'High', label: '🔴 High' }, { value: 'Medium', label: '🟡 Medium' }, { value: 'Low', label: '🟢 Low' }]}
+                        size="md"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>Label</label>
+                      <AppDropdown
+                        value={taskForm.label}
+                        onChange={v => setTaskForm(p => ({ ...p, label: v }))}
+                        options={Object.keys(LABEL_COLOR).map(l => ({ value: l, label: l }))}
+                        size="md"
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>Due Date</label>
+                      <input 
+                        type="date" 
+                        value={taskForm.due} 
+                        onChange={e => setTaskForm(p=>({...p,due:e.target.value}))} 
+                        style={{ width: '100%', height: '42px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '13px', color: '#1E293B', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                        onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>Board Column</label>
+                      <AppDropdown
+                        value={taskColumn}
+                        onChange={v => setTaskColumn(v)}
+                        options={(board?.columns || []).map(c => ({ value: c.id, label: c.label }))}
+                        size="md"
+                      />
+                    </div>
                   </div>
                 </div>
               </form>
             </div>
-            <div style={{ padding:'20px 32px', borderTop:'1px solid #E5E7EB', display:'flex', justifyContent:'flex-end', gap:12, flexShrink:0 }}>
-              <button type="button" onClick={() => setShowTaskModal(false)} style={{ height:42, padding:'0 24px', border:'1px solid #E5E7EB', borderRadius:8, fontSize:14, fontWeight:600, color:'#374151', background:'#fff', cursor:'pointer' }}>Cancel</button>
-              <button type="submit" form="taskForm" style={{ height:42, padding:'0 28px', background:'#2563EB', border:'none', borderRadius:8, fontSize:14, fontWeight:600, color:'#fff', cursor:'pointer' }}>{editingTaskId ? 'Save Task' : 'Add Task'}</button>
+
+            {/* Action Buttons */}
+            <div style={{ padding: '18px 28px', borderTop: '1px solid #F1F5F9', display: 'flex', justifyContent: 'flex-end', gap: 12, flexShrink: 0 }}>
+              <button 
+                type="button" 
+                onClick={() => setShowTaskModal(false)} 
+                style={{
+                  height: '42px',
+                  padding: '0 22px',
+                  border: '1.5px solid #E2E8F0',
+                  borderRadius: '10px',
+                  fontSize: '13.5px',
+                  fontWeight: '600',
+                  color: '#475569',
+                  background: '#FFFFFF',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s'
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                type="submit" 
+                form="taskForm" 
+                style={{
+                  height: '42px',
+                  padding: '0 26px',
+                  border: 'none',
+                  borderRadius: '10px',
+                  fontSize: '13.5px',
+                  fontWeight: '700',
+                  color: '#FFFFFF',
+                  background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <Plus size={15} /> {editingTaskId ? 'Save Task' : 'Add Task'}
+              </button>
             </div>
           </div>
         </>
       )}
 
       {/* Header */}
-      <div style={{ display:'flex', alignItems:'flex-start', justifyContent:'space-between', flexWrap:'wrap', gap:12, marginBottom:20 }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', flexWrap:'wrap', gap:14, marginBottom:20 }}>
         <div>
-          <h1 style={{ margin:0, fontSize:22, fontWeight:700, color:'#111827' }}>Sprint Board</h1>
-          <p style={{ margin:'4px 0 0', fontSize:13, color:'#6B7280' }}>{subtitle}{sprint && board.progress ? ` · ${board.progress.pct}% done` : ''}</p>
+          <h1 style={{ margin:0, fontSize:22, fontWeight:700, color:'#111827', whiteSpace:'nowrap' }}>Sprint Board</h1>
+          <p style={{ margin:'4px 0 0', fontSize:13, color:'#6B7280', whiteSpace:'nowrap' }}>{subtitle}{sprint && board.progress ? ` · ${board.progress.pct}% done` : ''}</p>
         </div>
-        <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, flexWrap:'wrap', flexShrink:0 }}>
           {sprint && (
             <>
               {hasPermission(null, null, 'projects', 'sprint_board', 'edit') && (
-                <button onClick={openEditSprint} style={{ height:38, padding:'0 14px', background:'#fff', border:'1px solid #E5E7EB', borderRadius:8, fontSize:13, color:'#374151', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Pencil size={14} /> Edit</button>
+                <button onClick={openEditSprint} style={{ height:38, padding:'0 16px', background:'#fff', border:'1px solid #E5E7EB', borderRadius:8, fontSize:13, fontWeight:600, color:'#374151', cursor:'pointer', display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap', flexShrink:0 }}><Pencil size={14} /> Edit Sprint</button>
               )}
               {hasPermission(null, null, 'projects', 'sprint_board', 'delete') && (
-                <button onClick={handleDeleteSprint} style={{ height:38, padding:'0 14px', background:'#fff', border:'1px solid #FECACA', borderRadius:8, fontSize:13, color:'#DC2626', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Trash2 size={14} /> Delete</button>
+                <button onClick={handleDeleteSprint} style={{ height:38, padding:'0 16px', background:'#fff', border:'1px solid #FECACA', borderRadius:8, fontSize:13, fontWeight:600, color:'#DC2626', cursor:'pointer', display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap', flexShrink:0 }}><Trash2 size={14} /> Delete Sprint</button>
               )}
             </>
           )}
           {hasPermission(null, null, 'projects', 'sprint_board', 'create') && (
-            <button onClick={openCreateSprint} style={{ height:38, padding:'0 16px', background:'#2563EB', border:'none', borderRadius:8, fontSize:13, fontWeight:600, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:6 }}><Plus size={14} /> Create Sprint</button>
+            <button onClick={openCreateSprint} style={{ height:38, padding:'0 18px', background:'#2563EB', border:'none', borderRadius:8, fontSize:13, fontWeight:600, color:'#fff', cursor:'pointer', display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap', flexShrink:0 }}><Plus size={15} /> Create Sprint</button>
           )}
         </div>
       </div>
-      {loading && <div style={{ padding:20, textAlign:'center', fontSize:13, color:'#6B7280' }}>Loading sprint board...</div>}
+      {loading && <div style={{ padding:20, textAlign:'center', fontSize:13, color:'#6B7280', whiteSpace:'nowrap' }}>Loading sprint board...</div>}
 
       <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:16, overflowX:'auto' }}>
         {board.columns.map(col => {
@@ -446,14 +739,14 @@ export default function SprintBoard() {
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'10px 14px', background:col.bg, borderRadius:'10px 10px 0 0', border:'1px solid #E5E7EB', borderBottom:'none' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                   <span style={{ width:8, height:8, borderRadius:'50%', background:col.color }} />
-                  <span style={{ fontSize:13, fontWeight:600, color:'#111827' }}>{col.label}</span>
+                  <span style={{ fontSize:13, fontWeight:600, color:'#111827', whiteSpace:'nowrap' }}>{col.label}</span>
                 </div>
                 <span style={{ width:20, height:20, borderRadius:'50%', background:'#fff', border:'1px solid #E5E7EB', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:600, color:col.color }}>{colCards.length}</span>
               </div>
               <div style={{ background:'#F8FAFC', border:'1px solid #E5E7EB', borderTop:'none', borderRadius:'0 0 10px 10px', padding:'10px 10px', display:'flex', flexDirection:'column', gap:10, minHeight:300 }}>
-                {colCards.length === 0 && <div style={{ fontSize:11, color:'#9CA3AF', textAlign:'center', padding:'8px 0' }}>No tasks</div>}
+                {colCards.length === 0 && <div style={{ fontSize:11, color:'#9CA3AF', textAlign:'center', padding:'8px 0', whiteSpace:'nowrap' }}>No tasks</div>}
                 {colCards.map((c,i) => <KanbanCard key={i} card={c} onEdit={openEditTask} onDelete={handleDeleteTask} />)}
-                <button onClick={() => openAddTask(col.id)} style={{ marginTop:4, width:'100%', height:32, borderRadius:8, border:'1px dashed #D1D5DB', background:'transparent', color:'#9CA3AF', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:4 }} onMouseEnter={e=>{e.currentTarget.style.background='#fff';e.currentTarget.style.color='#2563EB';}} onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='#9CA3AF';}}><Plus size={12}/> Add Task</button>
+                <button onClick={() => openAddTask(col.id)} style={{ marginTop:4, width:'100%', height:32, borderRadius:8, border:'1px dashed #D1D5DB', background:'transparent', color:'#9CA3AF', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:4, whiteSpace:'nowrap' }} onMouseEnter={e=>{e.currentTarget.style.background='#fff';e.currentTarget.style.color='#2563EB';}} onMouseLeave={e=>{e.currentTarget.style.background='transparent';e.currentTarget.style.color='#9CA3AF';}}><Plus size={12}/> Add Task</button>
               </div>
             </div>
           );

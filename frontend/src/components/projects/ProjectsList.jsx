@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import AppDropdown from '../ui/AppDropdown';
-import { Search, Plus, Edit2, Link2, ChevronLeft, ChevronRight, ChevronDown, X, Trash2 } from 'lucide-react';
+import { Search, Plus, Edit2, Link2, ChevronLeft, ChevronRight, ChevronDown, X, Trash2, Briefcase, Layers, Users, Calendar, DollarSign, Tag, Clock } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { apiFetch, formatDate, getInitials } from '../../lib/api';
 import { guardCreateAction, requireActionPermission, hasPermission } from '../../lib/permissions';
@@ -259,36 +259,68 @@ export default function Projects() {
 
   return (
     <div style={{ fontFamily: "'Inter',-apple-system,sans-serif", width: '100%', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 14, marginBottom: 20 }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Projects</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Manage and track all projects</p>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827', whiteSpace: 'nowrap' }}>Projects</h1>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>Manage and track all organizational projects</p>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <div style={{ position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', flexShrink: 0 }}>
+          <div style={{ minWidth: 140 }}>
             <AppDropdown
-                value={statusFilter}
-                onChange={v => setStatusFilter(v)}
-                options={[{value:'',label:'All Status'}]}
-                size="sm"
-              />
-            <ChevronDown size={13} color="#9CA3AF" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
+              value={statusFilter}
+              onChange={v => setStatusFilter(v)}
+              options={[
+                { value: '', label: 'All Status' },
+                { value: 'In Progress', label: 'In Progress' },
+                { value: 'Completed', label: 'Completed' },
+                { value: 'On Hold', label: 'On Hold' },
+                { value: 'Planning', label: 'Planning' },
+                { value: 'Not Started', label: 'Not Started' },
+                { value: 'Overdue', label: 'Overdue' }
+              ]}
+              size="sm"
+            />
+          </div>
+          <div style={{ minWidth: 160 }}>
+            <AppDropdown
+              value={deptFilter}
+              onChange={v => setDeptFilter(v)}
+              options={[
+                { value: '', label: 'All Departments' },
+                ...meta.departments.map(d => ({
+                  value: String(d.id),
+                  label: d.dept_name || d.name || d.branch_name
+                }))
+              ]}
+              size="sm"
+            />
           </div>
           <div style={{ position: 'relative' }}>
-            <AppDropdown
-                value={deptFilter}
-                onChange={v => setDeptFilter(v)}
-                options={[{value:'',label:'All Departments'}]}
-                size="sm"
-              />
-            <ChevronDown size={13} color="#9CA3AF" style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-          </div>
-          <div style={{ position: 'relative' }}>
-            <Search size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', pointerEvents: 'none' }} />
-            <input placeholder="Search projects..." value={search} onChange={e => setSearch(e.target.value)} style={{ height: 38, paddingLeft: 30, paddingRight: 12, border: '1px solid #E5E7EB', borderRadius: 8, fontSize: 13, outline: 'none', background: '#fff', width: 180 }} />
+            <Search size={14} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF', pointerEvents: 'none' }} />
+            <input placeholder="Search projects..." value={search} onChange={e => setSearch(e.target.value)} style={{ height: 38, paddingLeft: 32, paddingRight: 12, border: '1px solid #E2E8F0', borderRadius: 8, fontSize: 13, outline: 'none', background: '#fff', width: 180 }} />
           </div>
           {hasPermission(null, null, 'projects', 'projects_list', 'create') && (
-            <button onClick={openAdd} style={{ height: 38, padding: '0 16px', background: '#2563EB', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}><Plus size={14} /> Add Project</button>
+            <button 
+              onClick={openAdd} 
+              style={{ 
+                height: 38, 
+                padding: '0 18px', 
+                background: '#2563EB', 
+                border: 'none', 
+                borderRadius: 8, 
+                fontSize: 13, 
+                fontWeight: 600, 
+                color: '#fff', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 6,
+                whiteSpace: 'nowrap',
+                flexShrink: 0
+              }}
+            >
+              <Plus size={15} /> Add Project
+            </button>
           )}
         </div>
       </div>
@@ -303,14 +335,14 @@ export default function Projects() {
       {!accessDenied && (
         <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB', boxShadow: '0 2px 8px rgba(15,23,42,.05)', overflow: 'hidden' }}>
           <div style={{ overflowX: 'auto' }}>
-            {loading && <div style={{ padding: 20, textAlign: 'center', fontSize: 13, color: '#6B7280' }}>Loading projects...</div>}
-            {!loading && projectsList.length === 0 && <div style={{ padding: 20, textAlign: 'center', fontSize: 13, color: '#6B7280' }}>No projects found.</div>}
+            {loading && <div style={{ padding: 20, textAlign: 'center', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>Loading projects...</div>}
+            {!loading && projectsList.length === 0 && <div style={{ padding: 20, textAlign: 'center', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>No projects found.</div>}
             {!loading && projectsList.length > 0 && (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #E5E7EB' }}>
                     {['Project Name', 'Project Code', 'Project Manager', 'Department', 'Start Date', 'End Date', 'Progress', 'Status', 'Priority', 'Actions'].map(h => (
-                      <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, fontWeight: 500, color: '#6B7280', whiteSpace: 'nowrap', background: '#FAFAFA' }}>{h}</th>
+                      <th key={h} style={{ padding: '12px 14px', textAlign: 'left', fontSize: 12, fontWeight: 600, color: '#6B7280', whiteSpace: 'nowrap', background: '#FAFAFA' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -319,18 +351,18 @@ export default function Projects() {
                     const av = AVATAR[i % AVATAR.length];
                     return (
                       <tr key={r.id} style={{ height: 56, borderBottom: '1px solid #F3F4F6' }}>
-                        <td style={{ padding: '0 14px', fontSize: 13, fontWeight: 600, color: '#111827' }}>{r.project_name}</td>
-                        <td style={{ padding: '0 14px', fontSize: 12, fontWeight: 600, color: '#6B7280', fontFamily: 'monospace' }}>{r.project_code}</td>
-                        <td style={{ padding: '0 14px' }}>
+                        <td style={{ padding: '0 14px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>{r.project_name}</td>
+                        <td style={{ padding: '0 14px', fontSize: 12, fontWeight: 600, color: '#6B7280', fontFamily: 'monospace', whiteSpace: 'nowrap' }}>{r.project_code}</td>
+                        <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <div style={{ width: 28, height: 28, borderRadius: '50%', background: av.bg, color: av.c, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 700, flexShrink: 0 }}>{getInitials(r.project_manager_name)}</div>
                             <span style={{ fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.project_manager_name}</span>
                           </div>
                         </td>
-                        <td style={{ padding: '0 14px', fontSize: 13, color: '#374151' }}>{r.department_name}</td>
+                        <td style={{ padding: '0 14px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{r.department_name}</td>
                         <td style={{ padding: '0 14px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{formatDate(r.start_date)}</td>
                         <td style={{ padding: '0 14px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{formatDate(r.end_date)}</td>
-                        <td style={{ padding: '0 14px' }}>
+                        <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 100 }}>
                             <div style={{ flex: 1, height: 5, borderRadius: 999, background: '#E5E7EB', overflow: 'hidden' }}>
                               <div style={{ height: '100%', width: loaded ? `${r.pct}%` : '0%', background: r.pct === 100 ? '#10B981' : r.status === 'Overdue' ? '#EF4444' : '#2563EB', borderRadius: 999, transition: 'width 900ms ease' }} />
@@ -338,9 +370,9 @@ export default function Projects() {
                             <span style={{ fontSize: 11, fontWeight: 600, color: '#374151', minWidth: 28 }}>{r.pct || 0}%</span>
                           </div>
                         </td>
-                        <td style={{ padding: '0 14px' }}>{pill(r.status, STATUS_S)}</td>
-                        <td style={{ padding: '0 14px' }}>{pill(r.priority, PRIORITY_S)}</td>
-                        <td style={{ padding: '0 14px' }}>
+                        <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>{pill(r.status, STATUS_S)}</td>
+                        <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>{pill(r.priority, PRIORITY_S)}</td>
+                        <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'flex', gap: 4 }}>
                             <button style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', color: '#2563EB', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} onClick={() => openEdit(r)}><Edit2 size={13} /></button>
                             <button style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', color: '#94A3B8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} onClick={() => handleDelete(r)}><Trash2 size={13} /></button>
@@ -353,7 +385,7 @@ export default function Projects() {
               </table>
             )}
           </div>
-          <div style={{ padding: '12px 20px', borderTop: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ padding: '12px 20px', borderTop: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between', whiteSpace: 'nowrap' }}>
             <span style={{ fontSize: 13, color: '#6B7280' }}>Showing {startIndex} to {endIndex} of {total} entries</span>
             <div style={{ display: 'flex', gap: 4 }}>
               {[null, ...buildPages(page, totalPages), null].map((pg, i) => {
@@ -373,82 +405,99 @@ export default function Projects() {
             style={{
               position: 'fixed',
               inset: 0,
-              background: 'rgba(15, 23, 42, 0.6)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
+              background: 'rgba(15, 23, 42, 0.55)',
+              backdropFilter: 'blur(6px)',
+              WebkitBackdropFilter: 'blur(6px)',
               zIndex: 1000,
               animation: 'fadeIn 0.2s ease-out'
             }} 
           />
-          <div style={{
-            position: 'fixed',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            width: '900px',
-            maxWidth: '92vw',
-            maxHeight: '90vh',
-            background: '#ffffff',
-            borderRadius: '24px',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05)',
-            zIndex: 1001,
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden',
-            fontFamily: 'system-ui, -apple-system, sans-serif'
-          }}>
-            {/* Modal Header */}
+          <div 
+            className="modal-centered-content"
+            style={{
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              width: '880px',
+              maxWidth: '94vw',
+              maxHeight: '90vh',
+              background: '#ffffff',
+              borderRadius: '22px',
+              boxShadow: '0 32px 80px rgba(15, 23, 42, 0.28)',
+              zIndex: 1001,
+              display: 'flex',
+              flexDirection: 'column',
+              overflow: 'hidden',
+              fontFamily: "'Inter', -apple-system, sans-serif"
+            }}
+          >
+            {/* Modal Header: Royal Blue Gradient */}
             <div style={{
-              padding: '24px 32px',
-              borderBottom: '1px solid #E2E8F0',
+              padding: '24px 28px 22px',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
-              color: '#ffffff'
+              background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)',
+              color: '#ffffff',
+              position: 'relative',
+              overflow: 'hidden'
             }}>
-              <div>
-                <h2 style={{ fontSize: '20px', fontWeight: '700', margin: 0, letterSpacing: '-0.025em' }}>
-                  {editingId ? 'Edit Project Details' : 'Create New Project'}
-                </h2>
-                <p style={{ fontSize: '13px', color: '#94A3B8', margin: '4px 0 0 0' }}>
-                  Set up your project details, assign a project manager and select team members.
-                </p>
+              {/* Ambient Background Circles */}
+              <div style={{ position: 'absolute', top: -35, right: 60, width: 150, height: 150, borderRadius: '50%', background: 'rgba(255,255,255,0.08)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', bottom: -45, right: 180, width: 110, height: 110, borderRadius: '50%', background: 'rgba(255,255,255,0.05)', pointerEvents: 'none' }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, position: 'relative', zIndex: 1 }}>
+                <div style={{ width: 44, height: 44, borderRadius: 13, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#FFF' }}>
+                  <Briefcase size={22} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '18px', fontWeight: '700', margin: 0, letterSpacing: '-0.01em', color: '#ffffff' }}>
+                    {editingId ? 'Edit Project Details' : 'Create New Project'}
+                  </h2>
+                  <p style={{ fontSize: '12.5px', color: 'rgba(255, 255, 255, 0.85)', margin: '3px 0 0 0' }}>
+                    Set up project details, assign a project manager and allocate team members
+                  </p>
+                </div>
               </div>
               <button 
+                type="button"
                 onClick={() => setShowAddModal(false)}
                 style={{
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  border: 'none',
-                  borderRadius: '50%',
-                  width: '36px',
-                  height: '36px',
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  borderRadius: '10px',
+                  width: '34px',
+                  height: '34px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   color: '#ffffff',
                   cursor: 'pointer',
-                  transition: 'background 0.2s'
+                  position: 'relative',
+                  zIndex: 1,
+                  transition: 'background 0.15s'
                 }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.28)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
               >
-                <X size={18} />
+                <X size={17} />
               </button>
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', flex: 1, padding: '32px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', flex: 1, padding: '28px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                 
                 {/* Basic Details Section */}
-                <div>
-                  <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#1E293B', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 16px 0', borderBottom: '1px solid #F1F5F9', paddingBottom: '8px' }}>
-                    1. Basic Information
-                  </h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                <div style={{ background: '#F8FAFC', padding: '20px', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '16px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#1D4ED8', background: '#EFF6FF', padding: '3px 10px', borderRadius: '20px', border: '1px solid #BFDBFE' }}>SECTION 1</span>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Basic Information</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
                         Project Name <span style={{ color: '#EF4444' }}>*</span>
                       </label>
                       <input 
@@ -457,13 +506,13 @@ export default function Projects() {
                         value={formData.project_name} 
                         onChange={e => setFormData({ ...formData, project_name: e.target.value })} 
                         placeholder="e.g. HRM Enterprise Software" 
-                        style={{ width: '100%', height: '44px', padding: '0 16px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '14px', color: '#1E293B', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
-                        onFocus={e => e.target.style.borderColor = '#3B82F6'}
-                        onBlur={e => e.target.style.borderColor = '#CBD5E1'}
+                        style={{ width: '100%', height: '42px', padding: '0 14px', border: '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '13.5px', color: '#1E293B', background: '#FFFFFF', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxSizing: 'border-box' }}
+                        onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                        onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
                         Project Code <span style={{ color: '#EF4444' }}>*</span>
                       </label>
                       <input 
@@ -472,13 +521,13 @@ export default function Projects() {
                         value={formData.project_code} 
                         onChange={e => setFormData({ ...formData, project_code: e.target.value })} 
                         placeholder="e.g. PRJ-009" 
-                        style={{ width: '100%', height: '44px', padding: '0 16px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '14px', color: '#1E293B', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
-                        onFocus={e => e.target.style.borderColor = '#3B82F6'}
-                        onBlur={e => e.target.style.borderColor = '#CBD5E1'}
+                        style={{ width: '100%', height: '42px', padding: '0 14px', border: '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '13.5px', color: '#1E293B', background: '#FFFFFF', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxSizing: 'border-box' }}
+                        onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                        onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
                         Client <span style={{ color: '#EF4444' }}>*</span>
                       </label>
                       {activeClients && activeClients.length > 0 ? (
@@ -509,9 +558,9 @@ export default function Projects() {
                             value={formData.client} 
                             onChange={e => setFormData({ ...formData, client: e.target.value, client_id: '' })} 
                             placeholder="Or type client name manually" 
-                            style={{ width: '100%', height: '38px', padding: '0 14px', border: '1.5px solid #CBD5E1', borderRadius: '10px', fontSize: '13px', color: '#1E293B', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
-                            onFocus={e => e.target.style.borderColor = '#3B82F6'}
-                            onBlur={e => e.target.style.borderColor = '#CBD5E1'}
+                            style={{ width: '100%', height: '36px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '8px', fontSize: '12.5px', color: '#1E293B', background: '#FFFFFF', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxSizing: 'border-box' }}
+                            onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                            onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
                           />
                         </div>
                       ) : (
@@ -521,9 +570,9 @@ export default function Projects() {
                           value={formData.client} 
                           onChange={e => setFormData({ ...formData, client: e.target.value })} 
                           placeholder="e.g. Acme Corporation" 
-                          style={{ width: '100%', height: '44px', padding: '0 16px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '14px', color: '#1E293B', outline: 'none', transition: 'border-color 0.2s', boxSizing: 'border-box' }}
-                          onFocus={e => e.target.style.borderColor = '#3B82F6'}
-                          onBlur={e => e.target.style.borderColor = '#CBD5E1'}
+                          style={{ width: '100%', height: '42px', padding: '0 14px', border: '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '13.5px', color: '#1E293B', background: '#FFFFFF', outline: 'none', transition: 'border-color 0.2s, box-shadow 0.2s', boxSizing: 'border-box' }}
+                          onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                          onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
                         />
                       )}
                     </div>
@@ -531,56 +580,60 @@ export default function Projects() {
                 </div>
 
                 {/* Team Allocation Section */}
-                <div>
-                  <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#1E293B', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 16px 0', borderBottom: '1px solid #F1F5F9', paddingBottom: '8px' }}>
-                    2. Team Allocation & Role Assignment
-                  </h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                <div style={{ background: '#F8FAFC', padding: '20px', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '16px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#1D4ED8', background: '#EFF6FF', padding: '3px 10px', borderRadius: '20px', border: '1px solid #BFDBFE' }}>SECTION 2</span>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Team Allocation & Role Assignment</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
                     
                     {/* Project Manager Selection */}
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
                         Project Manager / Team Leader <span style={{ color: '#EF4444' }}>*</span>
                       </label>
-                      <div style={{ position: 'relative' }}>
-                        <AppDropdown
-                value={formData.project_manager_id}
-                onChange={v => setFormData({ ...formData, project_manager_id: v })}
-                options={[{value:'',label:'Select Project Manager'}]}
-                size="sm"
-              />
-                        <ChevronDown size={16} style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748B' }} />
-                      </div>
+                      <AppDropdown
+                        value={formData.project_manager_id ? String(formData.project_manager_id) : ''}
+                        onChange={v => setFormData({ ...formData, project_manager_id: v })}
+                        options={[
+                          { value: '', label: 'Select Project Manager / Team Leader' },
+                          ...managerOptions.map(m => ({
+                            value: String(m.id),
+                            label: `${m.name} (${m.designation_name || m.role_name || 'Team Leader'})`
+                          }))
+                        ]}
+                        size="md"
+                      />
                       
                       {selectedManager && (
-                        <div style={{ marginTop: '12px', padding: '12px 16px', background: '#F8FAFC', borderRadius: '12px', border: '1px dashed #E2E8F0', display: 'flex', gap: '20px', fontSize: '12px', color: '#64748B' }}>
+                        <div style={{ marginTop: '12px', padding: '12px 14px', background: '#FFFFFF', borderRadius: '10px', border: '1px solid #BFDBFE', display: 'flex', gap: '16px', fontSize: '12px', color: '#1E40AF' }}>
                           <div><strong>Department:</strong> {selectedManager.department_name || 'General'}</div>
                           <div><strong>Designation:</strong> {selectedManager.designation_name || 'Team Leader'}</div>
                         </div>
                       )}
                     </div>
 
-                    {/* Custom Team Members Checklist (Avoiding congested dropdowns) */}
+                    {/* Custom Team Members Checklist */}
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>
-                        Team Members {selectedManager && <span style={{ fontSize: '11px', color: '#2563EB', fontWeight: 'normal' }}>(Filtered for {selectedManager.name}'s department/team)</span>}
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                        Team Members {selectedManager && <span style={{ fontSize: '11.5px', color: '#2563EB', fontWeight: '600' }}>({selectedManager.name}'s Department/Team)</span>}
                       </label>
                       
                       <div style={{
-                        border: '1.5px solid #CBD5E1',
-                        borderRadius: '12px',
-                        background: '#ffffff',
+                        border: '1.5px solid #E2E8F0',
+                        borderRadius: '10px',
+                        background: '#FFFFFF',
                         maxHeight: '180px',
                         overflowY: 'auto',
-                        padding: '8px',
+                        padding: '6px',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: '4px',
                         boxSizing: 'border-box'
                       }}>
                         {teamMembersOptions.length === 0 ? (
-                          <div style={{ padding: '24px', textAlign: 'center', fontSize: '13px', color: '#94A3B8' }}>
-                            {selectedManager ? 'No members found under this manager\'s team.' : 'Select a Project Manager to view eligible team members.'}
+                          <div style={{ padding: '24px', textAlign: 'center', fontSize: '12.5px', color: '#94A3B8' }}>
+                            {selectedManager ? 'No additional members found under this manager\'s team.' : 'Select a Project Manager to view eligible team members.'}
                           </div>
                         ) : (
                           teamMembersOptions.map(emp => {
@@ -591,12 +644,13 @@ export default function Projects() {
                                 style={{
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '12px',
-                                  padding: '10px 12px',
+                                  gap: '10px',
+                                  padding: '8px 10px',
                                   borderRadius: '8px',
                                   background: isChecked ? '#EFF6FF' : 'transparent',
+                                  border: isChecked ? '1px solid #BFDBFE' : '1px solid transparent',
                                   cursor: 'pointer',
-                                  transition: 'background 0.2s',
+                                  transition: 'background 0.15s, border-color 0.15s',
                                   userSelect: 'none'
                                 }}
                                 onMouseEnter={e => { if (!isChecked) e.currentTarget.style.background = '#F8FAFC'; }}
@@ -622,7 +676,7 @@ export default function Projects() {
                                     cursor: 'pointer'
                                   }}
                                 />
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
                                   <span style={{ fontSize: '13px', fontWeight: '600', color: '#1E293B' }}>{emp.name}</span>
                                   <span style={{ fontSize: '11px', color: '#64748B' }}>{emp.designation_name || 'Staff Member'}</span>
                                 </div>
@@ -637,13 +691,14 @@ export default function Projects() {
                 </div>
 
                 {/* Scheduling & Budget Section */}
-                <div>
-                  <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#1E293B', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 16px 0', borderBottom: '1px solid #F1F5F9', paddingBottom: '8px' }}>
-                    3. Schedule, Budget & Status
-                  </h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px' }}>
+                <div style={{ background: '#F8FAFC', padding: '20px', borderRadius: '16px', border: '1px solid #E2E8F0' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '16px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: '700', color: '#1D4ED8', background: '#EFF6FF', padding: '3px 10px', borderRadius: '20px', border: '1px solid #BFDBFE' }}>SECTION 3</span>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Schedule, Budget & Scope</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '14px', marginBottom: '16px' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
                         Start Date <span style={{ color: '#EF4444' }}>*</span>
                       </label>
                       <input 
@@ -651,11 +706,13 @@ export default function Projects() {
                         required 
                         value={formData.start_date} 
                         onChange={e => setFormData({ ...formData, start_date: e.target.value })} 
-                        style={{ width: '100%', height: '44px', padding: '0 12px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '14px', color: '#1E293B', outline: 'none', boxSizing: 'border-box' }}
+                        style={{ width: '100%', height: '42px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '13px', color: '#1E293B', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                        onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
                         End Date <span style={{ color: '#EF4444' }}>*</span>
                       </label>
                       <input 
@@ -663,11 +720,13 @@ export default function Projects() {
                         required 
                         value={formData.end_date} 
                         onChange={e => setFormData({ ...formData, end_date: e.target.value })} 
-                        style={{ width: '100%', height: '44px', padding: '0 12px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '14px', color: '#1E293B', outline: 'none', boxSizing: 'border-box' }}
+                        style={{ width: '100%', height: '42px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '13px', color: '#1E293B', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                        onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
                         Budget (₹) <span style={{ color: '#EF4444' }}>*</span>
                       </label>
                       <input 
@@ -676,42 +735,38 @@ export default function Projects() {
                         value={formData.budget} 
                         onChange={e => setFormData({ ...formData, budget: e.target.value })} 
                         placeholder="e.g. 25,00,000" 
-                        style={{ width: '100%', height: '44px', padding: '0 16px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '14px', color: '#1E293B', outline: 'none', boxSizing: 'border-box' }}
+                        style={{ width: '100%', height: '42px', padding: '0 14px', border: '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '13.5px', color: '#1E293B', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box' }}
+                        onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                        onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
                       />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
                         Priority
                       </label>
-                      <div style={{ position: 'relative' }}>
-                        <AppDropdown
-                value={formData.priority}
-                onChange={v => setFormData({ ...formData, priority: v })}
-                options={[{value:'High',label:'🔴 High'},{value:'Medium',label:'🟡 Medium'},{value:'Low',label:'🟢 Low'}]}
-                size="sm"
-              />
-                        <ChevronDown size={16} style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748B' }} />
-                      </div>
+                      <AppDropdown
+                        value={formData.priority}
+                        onChange={v => setFormData({ ...formData, priority: v })}
+                        options={[{value:'High',label:'🔴 High'},{value:'Medium',label:'🟡 Medium'},{value:'Low',label:'🟢 Low'}]}
+                        size="md"
+                      />
                     </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '20px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px' }}>
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
                         Status
                       </label>
-                      <div style={{ position: 'relative' }}>
-                        <AppDropdown
-                value={formData.status}
-                onChange={v => setFormData({ ...formData, status: v })}
-                options={[{value:'In Progress',label:'In Progress'},{value:'On Hold',label:'On Hold'},{value:'Planning',label:'Planning'},{value:'Not Started',label:'Not Started'},{value:'Completed',label:'Completed'}]}
-                size="sm"
-              />
-                        <ChevronDown size={16} style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#64748B' }} />
-                      </div>
+                      <AppDropdown
+                        value={formData.status}
+                        onChange={v => setFormData({ ...formData, status: v })}
+                        options={[{value:'In Progress',label:'In Progress'},{value:'On Hold',label:'On Hold'},{value:'Planning',label:'Planning'},{value:'Not Started',label:'Not Started'},{value:'Completed',label:'Completed'}]}
+                        size="md"
+                      />
                     </div>
                     <div>
-                      <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#475569', marginBottom: '8px' }}>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
                         Description <span style={{ color: '#EF4444' }}>*</span>
                       </label>
                       <textarea 
@@ -719,9 +774,9 @@ export default function Projects() {
                         value={formData.description} 
                         onChange={e => setFormData({ ...formData, description: e.target.value })} 
                         placeholder="Define project objectives and technical scope..." 
-                        style={{ width: '100%', height: '44px', minHeight: '44px', maxHeight: '120px', padding: '10px 16px', border: '1.5px solid #CBD5E1', borderRadius: '12px', fontSize: '14px', color: '#1E293B', outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
-                        onFocus={e => e.target.style.borderColor = '#3B82F6'}
-                        onBlur={e => e.target.style.borderColor = '#CBD5E1'}
+                        style={{ width: '100%', height: '42px', minHeight: '42px', maxHeight: '120px', padding: '10px 14px', border: '1.5px solid #E2E8F0', borderRadius: '10px', fontSize: '13px', color: '#1E293B', background: '#FFFFFF', outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }}
+                        onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37, 99, 235, 0.12)'; }}
+                        onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; }}
                       />
                     </div>
                   </div>
@@ -730,7 +785,7 @@ export default function Projects() {
               </div>
 
               {/* Action Buttons */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', marginTop: '32px', borderTop: '1px solid #F1F5F9', paddingTop: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', borderTop: '1px solid #F1F5F9', paddingTop: '20px' }}>
                 <button 
                   type="button" 
                   onClick={() => setShowAddModal(false)} 
@@ -738,16 +793,16 @@ export default function Projects() {
                     height: '44px',
                     padding: '0 24px',
                     border: '1.5px solid #E2E8F0',
-                    borderRadius: '12px',
-                    fontSize: '14px',
+                    borderRadius: '11px',
+                    fontSize: '13.5px',
                     fontWeight: '600',
                     color: '#475569',
-                    background: '#ffffff',
+                    background: '#FFFFFF',
                     cursor: 'pointer',
-                    transition: 'all 0.2s'
+                    transition: 'all 0.15s'
                   }}
                   onMouseEnter={e => { e.currentTarget.style.background = '#F8FAFC'; e.currentTarget.style.borderColor = '#CBD5E1'; }}
-                  onMouseLeave={e => { e.currentTarget.style.background = '#ffffff'; e.currentTarget.style.borderColor = '#E2E8F0'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.borderColor = '#E2E8F0'; }}
                 >
                   Cancel
                 </button>
@@ -758,19 +813,22 @@ export default function Projects() {
                     height: '44px',
                     padding: '0 28px',
                     border: 'none',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    color: '#ffffff',
-                    background: submitting ? '#93C5FD' : '#2563EB',
+                    borderRadius: '11px',
+                    fontSize: '13.5px',
+                    fontWeight: '700',
+                    color: '#FFFFFF',
+                    background: submitting ? '#93C5FD' : 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
                     cursor: submitting ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.2)',
-                    transition: 'background 0.2s'
+                    boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+                    transition: 'transform 0.15s, box-shadow 0.15s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
                   }}
-                  onMouseEnter={e => { if(!submitting) e.currentTarget.style.background = '#1D4ED8'; }}
-                  onMouseLeave={e => { if(!submitting) e.currentTarget.style.background = '#2563EB'; }}
+                  onMouseEnter={e => { if(!submitting) { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(37, 99, 235, 0.45)'; } }}
+                  onMouseLeave={e => { if(!submitting) { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(37, 99, 235, 0.35)'; } }}
                 >
-                  {submitting ? 'Saving...' : (editingId ? 'Save Changes' : 'Create Project')}
+                  <Plus size={15} /> {submitting ? 'Saving Project...' : (editingId ? 'Save Changes' : 'Create Project')}
                 </button>
               </div>
             </form>

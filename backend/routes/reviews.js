@@ -7,6 +7,8 @@ const { validateReview } = require('../validators/performanceValidators');
 
 router.get('/', authenticateJWT, checkPermission('performance', 'reviews', 'view'), ReviewController.list);
 router.get('/dashboard', authenticateJWT, checkPermission('performance', 'reviews', 'view'), ReviewController.getDashboard);
+router.get('/employee-tree/:employeeId', authenticateJWT, checkPermission('performance', 'reviews', 'view'), ReviewController.getEmployeeTree);
+router.post('/calculate-preview', authenticateJWT, checkPermission('performance', 'reviews', 'view'), ReviewController.calculatePreview);
 router.get('/:id', authenticateJWT, checkPermission('performance', 'reviews', 'view'), ReviewController.getById);
 
 router.post('/', authenticateJWT, checkPermission('performance', 'reviews', 'create'), validationMiddleware(validateReview), ReviewController.create);

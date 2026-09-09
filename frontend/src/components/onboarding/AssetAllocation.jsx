@@ -240,16 +240,22 @@ export default function AssetAllocation() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Employee <span className="text-red-500">*</span></label>
                   <AppDropdown
-                value={formData.employee_id}
-                onChange={v => setFormData({ ...formData, employee_id: v })}
-                options={[{value:'',label:'Select Employee'}]}
-                size="sm"
-              />
+                    value={formData.employee_id}
+                    onChange={v => setFormData({ ...formData, employee_id: v })}
+                    options={[
+                      { value: '', label: 'Select Employee' },
+                      ...employees.map(e => ({
+                        value: String(e.id),
+                        label: `${e.name}${e.employee_code || e.emp_id ? ` (${e.employee_code || e.emp_id})` : ` (EMP${String(e.id).padStart(4, '0')})`}${e.dept_name ? ` - ${e.dept_name}` : ''}`
+                      }))
+                    ]}
+                    size="sm"
+                  />
                 </div>
 
                 {selectedEmployee && (
                   <div className="col-span-1 sm:col-span-2 grid grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600">
-                    <div><strong>Department:</strong> {selectedEmployee.branch_name}</div>
+                    <div><strong>Department:</strong> {selectedEmployee.branch_name || selectedEmployee.dept_name}</div>
                     <div><strong>Designation:</strong> {selectedEmployee.role_name}</div>
                   </div>
                 )}
@@ -257,11 +263,17 @@ export default function AssetAllocation() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Asset <span className="text-red-500">*</span></label>
                   <AppDropdown
-                value={formData.asset_id}
-                onChange={v => setFormData({ ...formData, asset_id: v })}
-                options={[{value:'',label:'Select Available Asset'}]}
-                size="sm"
-              />
+                    value={formData.asset_id}
+                    onChange={v => setFormData({ ...formData, asset_id: v })}
+                    options={[
+                      { value: '', label: 'Select Available Asset' },
+                      ...availableAssets.map(a => ({
+                        value: String(a.id),
+                        label: `${a.asset_name || a.name || a.asset_type} (${a.serial_number || a.asset_code || `AST${a.id}`})`
+                      }))
+                    ]}
+                    size="sm"
+                  />
                 </div>
 
                 {selectedAsset && (
@@ -282,11 +294,11 @@ export default function AssetAllocation() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
                   <AppDropdown
-                value={formData.status}
-                onChange={v => setFormData({ ...formData, status: v })}
-                options={[{value:'Allocated',label:'Allocated'},{value:'Pending',label:'Pending'}]}
-                size="sm"
-              />
+                    value={formData.status}
+                    onChange={v => setFormData({ ...formData, status: v })}
+                    options={[{value:'Allocated',label:'Allocated'},{value:'Pending',label:'Pending'}]}
+                    size="sm"
+                  />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Description / Notes</label>

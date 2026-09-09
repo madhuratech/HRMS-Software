@@ -263,11 +263,17 @@ export default function Probation() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Employee <span className="text-red-500">*</span></label>
                   <AppDropdown
-                value={formData.employee_id}
-                onChange={v => setFormData({ ...formData, employee_id: v })}
-                options={[{value:'',label:'Select Employee'}]}
-                size="sm"
-              />
+                    value={formData.employee_id}
+                    onChange={v => setFormData({ ...formData, employee_id: v })}
+                    options={[
+                      { value: '', label: 'Select Employee' },
+                      ...employees.map(e => ({
+                        value: String(e.id),
+                        label: `${e.name}${e.employee_code || e.emp_id ? ` (${e.employee_code || e.emp_id})` : ` (EMP${String(e.id).padStart(4, '0')})`}${e.dept_name ? ` - ${e.dept_name}` : ''}`
+                      }))
+                    ]}
+                    size="sm"
+                  />
                 </div>
 
                 {selectedEmployee && (

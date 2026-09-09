@@ -211,6 +211,8 @@ export function Header({ title, userRole, currentView }) {
       'employees-documents': ['Employees', 'Employee Documents'],
       'attendance': ['Attendance'],
       'attendance-daily': ['Attendance', 'Daily Attendance'],
+      'attendance-gps': ['Attendance', 'GPS Attendance Punch'],
+      'attendance-gps-punch': ['Attendance', 'GPS Attendance Punch'],
       'attendance-biometric': ['Attendance', 'Biometric Attendance'],
       'attendance-regularization': ['Attendance', 'Regularization'],
       'attendance-shift-roster': ['Attendance', 'Shift Roster'],

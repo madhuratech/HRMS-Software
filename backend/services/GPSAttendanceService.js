@@ -27,18 +27,43 @@ class GPSAttendanceService {
     return R * c; // in meters
   }
 
+  static getLocalDateStr(date = new Date()) {
+    try {
+      return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' }).format(date);
+    } catch (e) {
+      const d = new Date(date);
+      const year = d.getFullYear();
+      const month = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+  }
+
   static async resolveEmployeeId(employeeId, userEmail = null) {
     try {
       if (employeeId) {
+        // 1. Direct match against employees table id
         const rows = await query("SELECT id FROM employees WHERE id = ?", [employeeId]);
         if (rows && rows.length > 0) return rows[0].id;
+
+        // 2. If employeeId is a user table ID, resolve to employees table id via users.employee_id or users.email
+        const userRows = await query("SELECT employee_id, email FROM users WHERE id = ?", [employeeId]);
+        if (userRows && userRows.length > 0) {
+          if (userRows[0].employee_id) {
+            const empFromUser = await query("SELECT id FROM employees WHERE id = ?", [userRows[0].employee_id]);
+            if (empFromUser && empFromUser.length > 0) return empFromUser[0].id;
+          }
+          if (userRows[0].email) {
+            const empFromEmail = await query("SELECT id FROM employees WHERE email = ?", [userRows[0].email]);
+            if (empFromEmail && empFromEmail.length > 0) return empFromEmail[0].id;
+          }
+        }
       }
+      // 3. Resolve by user email
       if (userEmail) {
         const rows = await query("SELECT id FROM employees WHERE email = ?", [userEmail]);
         if (rows && rows.length > 0) return rows[0].id;
       }
-      const rows = await query("SELECT id FROM employees ORDER BY id ASC LIMIT 1");
-      if (rows && rows.length > 0) return rows[0].id;
     } catch (err) {
       console.error("Error resolving employee_id:", err.message);
     }
@@ -80,30 +105,41 @@ class GPSAttendanceService {
     }
 
     // GPS Validation: Permitted radius check
-    const insideRadius = minDistance <= nearestLocation.radius ? 'Yes' : 'No';
+    const insideRadius = minDistance <= (nearestLocation.radius || 300) ? 'Yes' : 'No';
 
     if (insideRadius === 'No') {
       await this.logPunchAttempt(employeeId, punchType, lat, lng, nearestLocation.name, minDistance, 'No', deviceInfo, browser, ipAddress, 'Failed', 'Outside allowed geofence radius.');
-      throw new Error("You are outside the permitted office location.");
+      throw new Error(`You are outside the permitted office location (${nearestLocation.name}). Distance: ${minDistance.toFixed(0)}m (Max allowed: ${nearestLocation.radius || 300}m).`);
     }
 
-    const punchDate = new Date().toISOString().split('T')[0];
     const timestamp = new Date();
+    const punchDate = this.getLocalDateStr(timestamp);
 
     // Log successful punch attempt
     await this.logPunchAttempt(employeeId, punchType, lat, lng, nearestLocation.name, minDistance, 'Yes', deviceInfo, browser, ipAddress, 'Success', null);
 
     // Fetch today's record for this employee
-    const existing = await query("SELECT * FROM GPSAttendance WHERE employee_id = ? AND punch_date = ?", [employeeId, punchDate]);
+    const existing = await query(
+      "SELECT * FROM GPSAttendance WHERE employee_id = ? AND (punch_date = ? OR DATE(check_in_time) = ? OR punch_date = CURDATE() OR DATE(check_in_time) = CURDATE()) ORDER BY id DESC LIMIT 1",
+      [employeeId, punchDate, punchDate]
+    );
 
     // Shift settings
     const SHIFT_START = "09:30:00";
     const SHIFT_END = "18:30:00";
-    const nowTimeStr = timestamp.toTimeString().split(' ')[0]; // "HH:MM:SS"
+    let nowTimeStr = '09:00:00';
+    try {
+      nowTimeStr = timestamp.toLocaleTimeString('en-GB', { timeZone: 'Asia/Kolkata', hour12: false });
+    } catch (e) {
+      nowTimeStr = timestamp.toTimeString().split(' ')[0];
+    }
+
+    let recordId = null;
+    let attendancePayload = null;
 
     if (punchType === 'IN') {
       if (existing.length > 0 && existing[0].check_in_time) {
-        throw new Error("You have already checked in for today.");
+        throw new Error("You are already punched in for today.");
       }
 
       // Check if late entry
@@ -115,7 +151,7 @@ class GPSAttendanceService {
           INSERT INTO GPSAttendance (employee_id, punch_date, check_in_time, latitude_in, longitude_in, punch_in_location, status, late_entry)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        await query(sqlInsert, [
+        const insertRes = await query(sqlInsert, [
           employeeId,
           punchDate,
           timestamp,
@@ -125,11 +161,13 @@ class GPSAttendanceService {
           status,
           isLate ? 1 : 0
         ]);
+        recordId = insertRes.insertId;
       } else {
+        recordId = existing[0].id;
         const sqlUpdate = `
           UPDATE GPSAttendance
           SET check_in_time = ?, latitude_in = ?, longitude_in = ?, punch_in_location = ?, status = ?, late_entry = ?
-          WHERE employee_id = ? AND punch_date = ?
+          WHERE id = ?
         `;
         await query(sqlUpdate, [
           timestamp,
@@ -138,26 +176,44 @@ class GPSAttendanceService {
           nearestLocation.name,
           status,
           isLate ? 1 : 0,
-          employeeId,
-          punchDate
+          recordId
         ]);
       }
+
+      const fmtInTime = timestamp.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+
+      attendancePayload = {
+        id: recordId,
+        employee_id: employeeId,
+        status: 'PUNCHED_IN',
+        statusLabel: status,
+        punchInTime: fmtInTime,
+        checkInTimeRaw: timestamp,
+        punchOutTime: null,
+        checkOutTimeRaw: null,
+        workingHours: '00h 00m',
+        locationName: nearestLocation.name,
+        distance: minDistance.toFixed(2),
+        latitude: lat,
+        longitude: lng,
+        location_verified: true
+      };
     } else if (punchType === 'OUT') {
       // Punch OUT
-      // CASE 6: Employee cannot Punch Out before Punch In
       if (existing.length === 0 || !existing[0].check_in_time) {
-        throw new Error("You must check in first before checking out.");
+        throw new Error("You must punch in first before punching out.");
       }
 
-      // Employee cannot Punch Out twice
       if (existing[0].check_out_time) {
         throw new Error("You have already checked out for today.");
       }
 
+      recordId = existing[0].id;
       const checkInTime = new Date(existing[0].check_in_time);
-      const diffMs = timestamp - checkInTime;
-      const diffHours = (diffMs / (1000 * 60 * 60)).toFixed(2);
-      const workingHours = `${diffHours} hrs`;
+      const diffMs = Math.max(0, timestamp - checkInTime);
+      const hrs = Math.floor(diffMs / (1000 * 60 * 60));
+      const mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+      const workingHours = `${String(hrs).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m`;
 
       // Check if early exit
       const isEarly = nowTimeStr < SHIFT_END;
@@ -166,7 +222,7 @@ class GPSAttendanceService {
       const sqlUpdate = `
         UPDATE GPSAttendance
         SET check_out_time = ?, latitude_out = ?, longitude_out = ?, punch_out_location = ?, working_hours = ?, status = ?, early_exit = ?
-        WHERE employee_id = ? AND punch_date = ?
+        WHERE id = ?
       `;
       await query(sqlUpdate, [
         timestamp,
@@ -176,9 +232,28 @@ class GPSAttendanceService {
         workingHours,
         status,
         isEarly ? 1 : 0,
-        employeeId,
-        punchDate
+        recordId
       ]);
+
+      const fmtInTime = new Date(existing[0].check_in_time).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+      const fmtOutTime = timestamp.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true });
+
+      attendancePayload = {
+        id: recordId,
+        employee_id: employeeId,
+        status: 'PUNCHED_OUT',
+        statusLabel: status,
+        punchInTime: fmtInTime,
+        punchOutTime: fmtOutTime,
+        checkInTimeRaw: existing[0].check_in_time,
+        checkOutTimeRaw: timestamp,
+        workingHours: workingHours,
+        locationName: nearestLocation.name,
+        distance: minDistance.toFixed(2),
+        latitude: lat,
+        longitude: lng,
+        location_verified: true
+      };
     }
 
     // Sync to original log table for backward compatibility
@@ -194,9 +269,12 @@ class GPSAttendanceService {
 
     return {
       success: true,
+      message: punchType === 'IN' ? 'Punch in successful' : 'Punch out successful',
       locationName: nearestLocation.name,
       distance: minDistance.toFixed(2),
-      punchType
+      punchType,
+      attendance: attendancePayload,
+      todayRecord: attendancePayload
     };
   }
 
@@ -224,10 +302,10 @@ class GPSAttendanceService {
   }
 
   static async getGPSDashboardStats(targetDate, allowedEmployeeIds = null) {
-    const date = targetDate || new Date().toISOString().split('T')[0];
+    const date = targetDate || this.getLocalDateStr();
 
     let empScopeClause = '';
-    let empScopeParams = [date];
+    let empScopeParams = [date, date];
     let feedParams = [date, date];
 
     if (Array.isArray(allowedEmployeeIds)) {
@@ -238,9 +316,9 @@ class GPSAttendanceService {
           geofences: []
         };
       }
-      empScopeClause = ' AND employee_id IN (?) ';
-      empScopeParams = [date, allowedEmployeeIds];
-      feedParams = [date, date, allowedEmployeeIds];
+      empScopeClause = ' AND g.employee_id IN (?) ';
+      empScopeParams.push(allowedEmployeeIds);
+      feedParams.push(allowedEmployeeIds);
     }
 
     const statsRow = await query(`
@@ -250,16 +328,16 @@ class GPSAttendanceService {
         0 as remote_checkins
       FROM GPSAttendance g
       JOIN employees e ON e.id = g.employee_id
-      JOIN departments d ON e.department_id = d.id
-      WHERE g.punch_date = ? AND d.dept_name = 'Sales & Marketing' ${empScopeClause.replace(/employee_id/g, 'g.employee_id')}
+      LEFT JOIN departments d ON e.department_id = d.id
+      WHERE (g.punch_date = ? OR DATE(g.check_in_time) = ?) ${empScopeClause}
     `, empScopeParams);
 
     const geofenceCountRow = await query(`SELECT COUNT(*) as active_geofences FROM GeofenceLocations WHERE status = 'Active'`);
 
-    const totalCheckins = statsRow[0].total_checkins || 0;
-    const onSite = statsRow[0].onsite_checkins || 0;
-    const remote = statsRow[0].remote_checkins || 0;
-    const activeGeofences = geofenceCountRow[0].active_geofences || 0;
+    const totalCheckins = (statsRow && statsRow[0] && statsRow[0].total_checkins) || 0;
+    const onSite = (statsRow && statsRow[0] && statsRow[0].onsite_checkins) || 0;
+    const remote = (statsRow && statsRow[0] && statsRow[0].remote_checkins) || 0;
+    const activeGeofences = (geofenceCountRow && geofenceCountRow[0] && geofenceCountRow[0].active_geofences) || 0;
 
     const geofenceZones = await query(`
       SELECT 
@@ -271,15 +349,14 @@ class GPSAttendanceService {
         (
           SELECT COUNT(DISTINCT g.employee_id)
           FROM GPSAttendance g
-          JOIN employees e ON e.id = g.employee_id
-          JOIN departments d ON e.department_id = d.id
-          WHERE g.punch_date = ? AND d.dept_name = 'Sales & Marketing' AND (g.punch_in_location = GeofenceLocations.name OR g.punch_out_location = GeofenceLocations.name)
+          WHERE (g.punch_date = ? OR DATE(g.check_in_time) = ?)
+            AND (g.punch_in_location = GeofenceLocations.name OR g.punch_out_location = GeofenceLocations.name)
         ) as activeStaff
       FROM GeofenceLocations
       WHERE status = 'Active'
-    `, [date]);
+    `, [date, date]);
 
-    let feedWhere = " WHERE (g.punch_date = ? OR DATE(g.check_in_time) = ?) AND d.dept_name = 'Sales & Marketing' ";
+    let feedWhere = " WHERE (g.punch_date = ? OR DATE(g.check_in_time) = ?) ";
     if (Array.isArray(allowedEmployeeIds)) {
       feedWhere += ' AND g.employee_id IN (?) ';
     }
@@ -290,7 +367,7 @@ class GPSAttendanceService {
         e.name,
         e.profile_photo as avatar,
         d.dept_name as dept,
-        COALESCE(g.punch_out_location, g.punch_in_location) as location,
+        COALESCE(g.punch_out_location, g.punch_in_location, 'Main Headquarters - Coimbatore') as location,
         COALESCE(g.latitude_out, g.latitude_in) as lat,
         COALESCE(g.longitude_out, g.longitude_in) as lng,
         g.check_in_time,
@@ -306,13 +383,13 @@ class GPSAttendanceService {
     const rows = await query(sqlFeed, feedParams);
 
     const records = rows.map(r => {
-      const fmt = t => t ? new Date(t).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }) : '--';
+      const fmt = t => t ? new Date(t).toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour: '2-digit', minute: '2-digit', hour12: true }) : '--';
       const lat = r.lat ? parseFloat(r.lat).toFixed(4) : null;
       const lng = r.lng ? parseFloat(r.lng).toFixed(4) : null;
       return {
         employee_id: r.employee_id,
         name: r.name,
-        dept: r.dept || 'Engineering',
+        dept: r.dept || 'General',
         avatar: r.avatar ? `/${r.avatar}` : null,
         location: r.location || 'Main Headquarters - Coimbatore',
         checkIn: fmt(r.check_in_time),
@@ -382,8 +459,8 @@ class GPSAttendanceService {
         l.ip_address
       FROM AttendanceLogs l
       JOIN employees e ON e.id = l.employee_id
-      JOIN departments d ON e.department_id = d.id
-      ${where} AND d.dept_name = 'Sales & Marketing'
+      LEFT JOIN departments d ON e.department_id = d.id
+      ${where}
       ORDER BY l.punch_time DESC
     `;
     return await query(sql, params);

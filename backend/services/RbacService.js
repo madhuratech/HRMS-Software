@@ -45,7 +45,7 @@ const MODULE_STRUCTURE = [
     category: 'Time Management',
     submodules: [
       { key: 'daily_attendance', label: 'Daily Attendance' },
-      { key: 'gps_attendance', label: 'GPS Attendance' },
+      { key: 'gps_attendance', label: 'GPS Attendance Punch' },
       { key: 'regularization', label: 'Regularization' },
       { key: 'shift_roster', label: 'Shift Roster' },
       { key: 'overtime', label: 'Overtime' },
@@ -587,8 +587,16 @@ class RbacService {
     matrix.forEach(m => {
       const subMap = {};
       (m.submodules || []).forEach(s => {
-        subMap[s.submodule_key] = { view: s.can_view, create: s.can_create, edit: s.can_edit, delete: s.can_delete };
-        permObj[s.submodule_key] = { view: s.can_view, create: s.can_create, edit: s.can_edit, delete: s.can_delete };
+        const pData = { view: s.can_view, create: s.can_create, edit: s.can_edit, delete: s.can_delete };
+        subMap[s.submodule_key] = pData;
+        permObj[s.submodule_key] = pData;
+        if (s.submodule_key === 'gps_attendance') {
+          subMap['gps_attendance_punch'] = pData;
+          permObj['gps_attendance_punch'] = pData;
+        } else if (s.submodule_key === 'gps_attendance_punch') {
+          subMap['gps_attendance'] = pData;
+          permObj['gps_attendance'] = pData;
+        }
       });
       const modPerm = { view: m.can_view, create: m.can_create, edit: m.can_edit, delete: m.can_delete, submodules: subMap };
       permObj[m.module_key] = modPerm;

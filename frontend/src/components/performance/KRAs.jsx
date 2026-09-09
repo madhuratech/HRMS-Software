@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import AppDropdown from '../ui/AppDropdown';
-import { ChevronDown, Plus, ChevronLeft, ChevronRight, X, CheckCircle } from 'lucide-react';
+import { ChevronDown, Plus, ChevronLeft, ChevronRight, X, CheckCircle, Layers } from 'lucide-react';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Label } from 'recharts';
 import { useToast } from '../ui/Toast';
 import { canCreate, checkActionPermission } from '../../lib/permissions';
@@ -9,6 +9,7 @@ export default function KRAs() {
   const { addToast } = useToast();
   const [kraList, setKraList] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [goals, setGoals] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -34,6 +35,7 @@ export default function KRAs() {
   });
 
   const [formData, setFormData] = useState({
+    goal_id: '',
     title: '',
     department: '',
     role: '',
@@ -58,10 +60,31 @@ export default function KRAs() {
   const fetchMeta = async () => {
     try {
       const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
-      const deptRes = await fetch('/app/requirements/meta/all', { headers });
-      const deptData = await deptRes.json();
-      if (deptData && deptData.departments) {
-        setDepartments(deptData.departments);
+      try {
+        const deptRes = await fetch('/app/employees/lookup/departments', { headers });
+        const deptData = await deptRes.json();
+        if (Array.isArray(deptData) && deptData.length > 0) {
+          setDepartments(deptData);
+        } else {
+          const metaRes = await fetch('/app/requirements/meta/all', { headers });
+          const metaData = await metaRes.json();
+          if (metaData && (metaData.departments || metaData.branches)) {
+            setDepartments(metaData.departments || metaData.branches);
+          }
+        }
+      } catch (e) {
+        console.error('Failed to load departments:', e);
+      }
+
+      // Fetch goals
+      try {
+        const goalRes = await fetch('/app/goals?limit=200', { headers });
+        const goalData = await goalRes.json();
+        if (goalData && goalData.success && goalData.data && Array.isArray(goalData.data.goals)) {
+          setGoals(goalData.data.goals);
+        }
+      } catch (e) {
+        console.error('Failed to load goals:', e);
       }
     } catch (err) {
       console.error('Failed to load KRAs metadata:', err);
@@ -128,21 +151,31 @@ export default function KRAs() {
     if (!checkActionPermission('kras', 'CREATE')) {
       return;
     }
-    if (!formData.title || !formData.department || !formData.role) {
-      addToast('Please fill in all required fields.', 'error');
+    if (!formData.title || !formData.role) {
+      addToast('Please fill in all required fields (KRA Title, Role).', 'error');
       return;
+    }
+
+    if (formData.weightage !== '') {
+      const numW = Number(formData.weightage);
+      if (isNaN(numW) || numW < 0 || numW > 100) {
+        addToast('Weightage must be a number between 0% and 100%.', 'error');
+        return;
+      }
     }
 
     setSubmitting(true);
     try {
-      const parsedDept = parseInt(formData.department, 10) || 1;
+      const parsedDept = formData.department ? parseInt(formData.department, 10) : null;
+      const parsedGoal = formData.goal_id ? parseInt(formData.goal_id, 10) : null;
 
       const payload = {
+        goal_id: parsedGoal,
         kra_title: formData.title.trim(),
         title: formData.title.trim(),
         department_id: parsedDept,
         role_id: formData.role.trim(),
-        weightage: formData.weightage ? formData.weightage.trim() : '',
+        weightage: formData.weightage !== '' ? Number(formData.weightage) : null,
         status: formData.status || 'Active',
         description: formData.description ? formData.description.trim() : ''
       };
@@ -159,7 +192,7 @@ export default function KRAs() {
       if (resData.success) {
         addToast('KRA created successfully!', 'success');
         setShowAddModal(false);
-        setFormData({ title: '', department: '', role: '', weightage: '', status: 'Active', description: '' });
+        setFormData({ goal_id: '', title: '', department: '', role: '', weightage: '', status: 'Active', description: '' });
         fetchKras();
         fetchDashboardStats();
       } else {
@@ -193,58 +226,179 @@ export default function KRAs() {
       {/* Add KRA Modal */}
       {showAddModal && (
         <>
-          <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
-          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
-            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-[#0A1629]">Add KRA Target</h2>
-                <p className="text-sm text-slate-500 mt-1">Define key result areas and roles assignments.</p>
+          <div onClick={() => setShowAddModal(false)} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(15,23,42,0.55)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }} />
+          <div style={{ position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', zIndex: 1001, width: 560, maxWidth: '94vw', maxHeight: '90vh', background: '#FFF', borderRadius: 22, boxShadow: '0 32px 80px rgba(15,23,42,0.28)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+
+            {/* Modal Header */}
+            <div style={{ padding: '24px 28px 20px', background: 'linear-gradient(135deg,#1E40AF 0%,#1D4ED8 50%,#2563EB 100%)', position: 'relative', flexShrink: 0 }}>
+              <div style={{ position: 'absolute', top: -20, right: -20, width: 130, height: 130, borderRadius: '50%', background: 'rgba(255,255,255,0.08)' }} />
+              <div style={{ position: 'absolute', bottom: -14, left: 40, width: 80, height: 80, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', position: 'relative', zIndex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 14, background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Layers size={22} color="#FFF" />
+                  </div>
+                  <div>
+                    <h2 style={{ margin: 0, fontSize: 19, fontWeight: 800, color: '#FFF', letterSpacing: '-0.3px' }}>Add Key Result Area (KRA)</h2>
+                    <p style={{ margin: '3px 0 0', fontSize: 12.5, color: 'rgba(255,255,255,0.75)' }}>Define core performance domains and assigned weightages</p>
+                  </div>
+                </div>
+                <button onClick={() => setShowAddModal(false)}
+                  style={{ width: 34, height: 34, borderRadius: 9, border: '1px solid rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.15)', color: '#FFF', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.28)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.15)'; }}
+                ><X size={16} /></button>
               </div>
-              <button onClick={() => setShowAddModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <X size={20} className="text-slate-400" />
-              </button>
             </div>
-            <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+
+            {/* Modal Form */}
+            <form onSubmit={handleSave} style={{ padding: '24px 28px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 18 }}>
+
+              {/* Parent Goal */}
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                  Parent Goal <span style={{ color: '#94A3B8', fontWeight: 400 }}>(Optional)</span>
+                </label>
+                <AppDropdown
+                  value={formData.goal_id}
+                  onChange={v => {
+                    const selGoal = goals.find(g => String(g.id) === String(v));
+                    setFormData({
+                      ...formData,
+                      goal_id: v,
+                      department: selGoal?.department_id ? String(selGoal.department_id) : formData.department
+                    });
+                  }}
+                  options={[
+                    { value: '', label: 'General / Departmental KRA (No Direct Goal)' },
+                    ...goals.map(g => ({
+                      value: String(g.id),
+                      label: `🎯 ${g.goal_title || g.title}${g.employee_name ? ` (${g.employee_name})` : ''}`
+                    }))
+                  ]}
+                  size="sm"
+                />
+              </div>
+
+              {/* KRA Title */}
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                  KRA Title <span style={{ color: '#EF4444' }}>*</span>
+                </label>
+                <input
+                  type="text" required
+                  value={formData.title}
+                  onChange={e => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="e.g. Core System Architecture & Backend Stability"
+                  style={{ width: '100%', height: 44, padding: '0 14px', border: '1.5px solid #E2E8F0', borderRadius: 11, fontSize: 13, color: '#1E293B', background: '#FAFBFC', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s, box-shadow 0.2s, background 0.15s', fontFamily: 'Inter, sans-serif' }}
+                  onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)'; e.target.style.background = '#FFF'; }}
+                  onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
+                />
+              </div>
+
+              {/* Row: Department + Role */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">KRA Title <span className="text-red-500">*</span></label>
-                  <input type="text" required value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. Optimize CI/CD Pipelines" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Department <span className="text-red-500">*</span></label>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                    Department
+                  </label>
                   <AppDropdown
-                value={formData.department}
-                onChange={v => setFormData({ ...formData, department: v })}
-                options={[{value:'',label:'Select Department'}]}
-                size="sm"
-              />
+                    value={formData.department}
+                    onChange={v => setFormData({ ...formData, department: v })}
+                    options={[
+                      { value: '', label: 'All Departments' },
+                      ...departments.map(d => ({
+                        value: String(d.id || d.branch_name || d.dept_name || d.name),
+                        label: d.dept_name || d.branch_name || d.name
+                      }))
+                    ]}
+                    size="sm"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">KRA Role / Designation <span className="text-red-500">*</span></label>
-                  <input type="text" required value={formData.role} onChange={e => setFormData({ ...formData, role: e.target.value })} placeholder="e.g. Software Engineer" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Weightage</label>
-                  <input type="text" value={formData.weightage} onChange={e => setFormData({ ...formData, weightage: e.target.value })} placeholder="e.g. 20%" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <AppDropdown
-                value={formData.status}
-                onChange={v => setFormData({ ...formData, status: v })}
-                options={[{value:'Active',label:'Active'},{value:'Inactive',label:'Inactive'}]}
-                size="sm"
-              />
-                </div>
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Description</label>
-                  <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Role responsibilities and key goals..." style={{ height: '80px' }} className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                    Role / Designation <span style={{ color: '#EF4444' }}>*</span>
+                  </label>
+                  <input
+                    type="text" required
+                    value={formData.role}
+                    onChange={e => setFormData({ ...formData, role: e.target.value })}
+                    placeholder="e.g. Senior Software Engineer"
+                    style={{ width: '100%', height: 44, padding: '0 14px', border: '1.5px solid #E2E8F0', borderRadius: 11, fontSize: 13, color: '#1E293B', background: '#FAFBFC', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s, box-shadow 0.2s, background 0.15s', fontFamily: 'Inter, sans-serif' }}
+                    onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)'; e.target.style.background = '#FFF'; }}
+                    onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
+                  />
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-                <button type="submit" disabled={submitting} className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50">
-                  {submitting ? 'Saving...' : 'Save KRA'}
+
+              {/* Row: Weightage + Status */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                    KRA Weightage (%)
+                  </label>
+                  <input
+                    type="number" min="0" max="100"
+                    value={formData.weightage}
+                    onChange={e => setFormData({ ...formData, weightage: e.target.value })}
+                    placeholder="e.g. 40"
+                    style={{ width: '100%', height: 44, padding: '0 14px', border: '1.5px solid #E2E8F0', borderRadius: 11, fontSize: 13, color: '#1E293B', background: '#FAFBFC', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s, box-shadow 0.2s, background 0.15s', fontFamily: 'Inter, sans-serif' }}
+                    onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)'; e.target.style.background = '#FFF'; }}
+                    onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                    Status
+                  </label>
+                  <AppDropdown
+                    value={formData.status}
+                    onChange={v => setFormData({ ...formData, status: v })}
+                    options={[
+                      { value: 'Active', label: '🟢 Active' },
+                      { value: 'Inactive', label: '⚪ Inactive' }
+                    ]}
+                    size="sm"
+                  />
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label style={{ display: 'block', fontSize: 12, fontWeight: 700, color: '#374151', marginBottom: 7, letterSpacing: '0.2px' }}>
+                  Description & Scope <span style={{ color: '#94A3B8', fontWeight: 400 }}>(Optional)</span>
+                </label>
+                <textarea
+                  value={formData.description}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Outline key outcomes, responsibilities, and success expectations..."
+                  style={{ width: '100%', height: 88, padding: '12px 14px', border: '1.5px solid #E2E8F0', borderRadius: 11, fontSize: 13, color: '#1E293B', background: '#FAFBFC', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s, box-shadow 0.2s, background 0.15s', fontFamily: 'Inter, sans-serif', resize: 'none' }}
+                  onFocus={e => { e.target.style.borderColor = '#2563EB'; e.target.style.boxShadow = '0 0 0 3px rgba(37,99,235,0.12)'; e.target.style.background = '#FFF'; }}
+                  onBlur={e => { e.target.style.borderColor = '#E2E8F0'; e.target.style.boxShadow = 'none'; e.target.style.background = '#FAFBFC'; }}
+                />
+              </div>
+
+              {/* Info Banner */}
+              <div style={{ background: 'linear-gradient(135deg,#EFF6FF,#DBEAFE)', borderRadius: 12, padding: '12px 16px', border: '1px solid #BFDBFE', display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#2563EB', flexShrink: 0, marginTop: 4 }} />
+                <span style={{ fontSize: 12.5, color: '#1E40AF', fontWeight: 500, lineHeight: 1.5 }}>
+                  KRAs aggregate underlying KPI metrics and contribute to total performance weightage calculation.
+                </span>
+              </div>
+
+              {/* Footer Buttons */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, paddingTop: 18, borderTop: '1.5px solid #F1F5F9', marginTop: 4 }}>
+                <button type="button" onClick={() => setShowAddModal(false)}
+                  style={{ height: 44, padding: '0 24px', border: '1.5px solid #E2E8F0', borderRadius: 11, fontSize: 13.5, fontWeight: 600, color: '#475569', background: '#FFF', cursor: 'pointer', transition: 'background 0.15s' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = '#F8FAFC'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = '#FFF'; }}
+                >Cancel</button>
+                <button type="submit" disabled={submitting}
+                  style={{ height: 44, padding: '0 24px', background: 'linear-gradient(135deg,#2563EB,#1D4ED8)', color: '#FFF', border: 'none', borderRadius: 11, fontSize: 13.5, fontWeight: 700, cursor: 'pointer', boxShadow: '0 4px 14px rgba(37,99,235,0.35)', display: 'flex', alignItems: 'center', gap: 8, transition: 'transform 0.15s, box-shadow 0.15s', opacity: submitting ? 0.6 : 1 }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(37,99,235,0.45)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = '0 4px 14px rgba(37,99,235,0.35)'; }}
+                >
+                  <Plus size={15} /> {submitting ? 'Saving KRA...' : 'Save KRA Target'}
                 </button>
               </div>
             </form>
@@ -253,18 +407,26 @@ export default function KRAs() {
       )}
 
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827' }}>Key Result Areas (KRAs)</h1>
-          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Configure department job roles performance areas</p>
+          <h1 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: '#111827', whiteSpace: 'nowrap' }}>Key Result Areas (KRAs)</h1>
+          <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>Define and align Key Result Areas to organizational goals</p>
         </div>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <AppDropdown
-                value={filterDept}
-                onChange={v => setFilterDept(v)}
-                options={[{value:'All Departments',label:'All Departments'}]}
-                size="sm"
-              />
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
+          <div style={{ minWidth: '180px' }}>
+            <AppDropdown
+              value={filterDept}
+              onChange={v => setFilterDept(v)}
+              options={[
+                { value: 'All Departments', label: 'All Departments' },
+                ...departments.map(d => ({
+                  value: String(d.id || d.branch_name || d.dept_name || d.name),
+                  label: d.dept_name || d.branch_name || d.name
+                }))
+              ]}
+              size="sm"
+            />
+          </div>
           <button 
             disabled={!canCreate('kras')}
             onClick={() => {
@@ -284,7 +446,9 @@ export default function KRAs() {
               gap: '8px', 
               cursor: canCreate('kras') ? 'pointer' : 'not-allowed', 
               fontSize: '14px', 
-              fontWeight: '500' 
+              fontWeight: '500',
+              whiteSpace: 'nowrap',
+              flexShrink: 0
             }}
           >
             <Plus size={16} /> Add KRA
@@ -304,9 +468,9 @@ export default function KRAs() {
             <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: kpi.bgColor, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               {kpi.icon}
             </div>
-            <div>
-              <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '500', marginBottom: '4px' }}>{kpi.title}</div>
-              <div style={{ fontSize: '24px', color: '#1E293B', fontWeight: '700' }}>{kpi.value}</div>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: '12px', color: '#64748B', fontWeight: '500', marginBottom: '4px', whiteSpace: 'nowrap' }}>{kpi.title}</div>
+              <div style={{ fontSize: '24px', color: '#1E293B', fontWeight: '700', whiteSpace: 'nowrap' }}>{kpi.value}</div>
             </div>
           </div>
         ))}
@@ -317,8 +481,8 @@ export default function KRAs() {
 
         {/* Table */}
         <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>KRA Tracker</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B', whiteSpace: 'nowrap' }}>KRA Tracker</h3>
             <input
               type="text"
               placeholder="Search..."
@@ -330,34 +494,39 @@ export default function KRAs() {
 
           <div style={{ overflowX: 'auto' }}>
             {loading ? (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>Loading KRAs...</div>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748B', whiteSpace: 'nowrap' }}>Loading KRAs...</div>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', whiteSpace: 'nowrap' }}>
                 <thead>
                   <tr style={{ background: '#F8FAFC' }}>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>KRA Title</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Department</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Target Role</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Weightage</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Status</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>KRA Title</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Parent Goal</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Department</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', whiteSpace: 'nowrap' }}>Role / Designation</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center', whiteSpace: 'nowrap' }}>Weightage</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center', whiteSpace: 'nowrap' }}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {kraList.length === 0 ? (
                     <tr>
-                      <td colSpan={5} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No KRAs defined</td>
+                      <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#64748B', whiteSpace: 'nowrap' }}>No KRAs defined</td>
                     </tr>
                   ) : (
                     kraList.map((row, idx) => (
                       <tr key={row.id} style={{ borderBottom: idx === kraList.length - 1 ? 'none' : '1px solid #F8FAFC' }}>
-                        <td style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#1E293B' }}>{row.kra_title}</td>
-                        <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.department_name}</td>
-                        <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.role_id}</td>
-                        <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{row.weightage || '-'}</td>
-                        <td style={{ padding: '16px 24px', textAlign: 'center' }}>
+                        <td style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#1E293B', whiteSpace: 'nowrap' }}>{row.kra_title}</td>
+                        <td style={{ padding: '16px 24px', fontSize: '13px', color: '#2563EB', fontWeight: '500', whiteSpace: 'nowrap' }}>{row.goal_title || '-'}</td>
+                        <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.department_name}</td>
+                        <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.role_id || '-'}</td>
+                        <td style={{ padding: '16px 24px', fontSize: '13px', color: '#0F172A', fontWeight: '600', textAlign: 'center', whiteSpace: 'nowrap' }}>
+                          {row.weightage !== null && row.weightage !== undefined ? `${row.weightage}%` : '-'}
+                        </td>
+                        <td style={{ padding: '16px 24px', textAlign: 'center', whiteSpace: 'nowrap' }}>
                           <span style={{
                             padding: '4px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '600',
-                            backgroundColor: getStatusStyle(row.status).bg, color: getStatusStyle(row.status).color
+                            backgroundColor: getStatusStyle(row.status).bg, color: getStatusStyle(row.status).color,
+                            whiteSpace: 'nowrap', display: 'inline-block'
                           }}>
                             {row.status}
                           </span>
@@ -406,7 +575,7 @@ export default function KRAs() {
               {kpiData.deptData?.map((item, idx) => (
                 <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
                   <span style={{ color: '#475569', fontWeight: '500' }}>{item.name}</span>
-                  <span style={{ color: '#1E293B', fontWeight: '600' }}>{item.kras}</span>
+                  <span style={{ color: '#1E293B', fontWeight: '600' }}>{item.count}</span>
                 </div>
               ))}
             </div>

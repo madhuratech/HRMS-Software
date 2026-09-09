@@ -28,7 +28,30 @@ import { apiFetch } from '../../lib/api';
 import { canView } from '../../lib/permissions';
 
 export function Sidebar({ userRole, onLogout, onClose }) {
-  const [expandedGroups, setExpandedGroups] = useState([]);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const [expandedGroup, setExpandedGroup] = useState(() => {
+    const currentPath = window.location.pathname;
+    const match = [
+      { id: 'organization', paths: ['/company-profile', '/departments', '/designations', '/teams', '/shift-management', '/holiday-calendar', '/organization-chart'] },
+      { id: 'employees', paths: ['/employees'] },
+      { id: 'attendance', paths: ['/attendance'] },
+      { id: 'leave-management', paths: ['/leave', '/holiday-list', '/comp-off'] },
+      { id: 'payroll', paths: ['/payroll'] },
+      { id: 'recruitment', paths: ['/recruitment'] },
+      { id: 'onboarding', paths: ['/onboarding'] },
+      { id: 'performance', paths: ['/performance'] },
+      { id: 'projects', paths: ['/projects'] },
+      { id: 'clients', paths: ['/clients'] },
+      { id: 'expenses', paths: ['/expenses'] },
+      { id: 'documents', paths: ['/documents'] },
+      { id: 'help-desk', paths: ['/help-desk'] },
+      { id: 'settings', paths: ['/settings'] },
+    ].find(g => g.paths.some(p => currentPath.startsWith(p) || currentPath === p));
+    return match ? match.id : null;
+  });
+
   const [userPermissions, setUserPermissions] = useState(() => {
     try {
       const raw = localStorage.getItem('hrms_permissions');
@@ -37,8 +60,6 @@ export function Sidebar({ userRole, onLogout, onClose }) {
       return null;
     }
   });
-  const location = useLocation();
-  const navigate = useNavigate();
 
   // Fetch real-time role permissions from backend
   const fetchPermissions = async () => {
@@ -61,7 +82,14 @@ export function Sidebar({ userRole, onLogout, onClose }) {
   useEffect(() => {
     fetchPermissions();
 
-    const handlePermUpdate = () => fetchPermissions();
+    const handlePermUpdate = (e) => {
+      if (e && e.detail && e.detail.permissions) {
+        setUserPermissions(e.detail.permissions);
+      } else {
+        fetchPermissions();
+      }
+    };
+
     window.addEventListener('permissionsUpdated', handlePermUpdate);
     return () => window.removeEventListener('permissionsUpdated', handlePermUpdate);
   }, [userRole]);
@@ -77,11 +105,13 @@ export function Sidebar({ userRole, onLogout, onClose }) {
           const role = parsed.role || userObj.role || localStorage.getItem('userRole') || userRole || 'SUPER_ADMIN';
           const photo = userObj.profile_photo || userObj.avatar || null;
           const department = userObj.department_name || userObj.department || '';
+          const empCode = userObj.employee_code || userObj.employeeCode || userObj.emp_id || (userObj.employee_id ? `EMP${String(userObj.employee_id).padStart(4, '0')}` : '');
 
           return {
             name,
             role,
             department,
+            empCode,
             initials: name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
             photoUrl: photo ? getAvatarUrl(photo) : null
           };
@@ -92,10 +122,12 @@ export function Sidebar({ userRole, onLogout, onClose }) {
     }
 
     const storedName = localStorage.getItem('userName') || 'Admin User';
+    const storedRole = localStorage.getItem('userRole') || userRole || 'SUPER_ADMIN';
     return {
       name: storedName,
-      role: localStorage.getItem('userRole') || userRole || 'SUPER_ADMIN',
+      role: storedRole,
       department: '',
+      empCode: '',
       initials: storedName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase(),
       photoUrl: null
     };
@@ -119,9 +151,7 @@ export function Sidebar({ userRole, onLogout, onClose }) {
   };
 
   const toggleGroup = (groupId) => {
-    setExpandedGroups(prev =>
-      prev.includes(groupId) ? [] : [groupId]
-    );
+    setExpandedGroup(prev => (prev === groupId ? null : groupId));
   };
 
   const getDashboardPath = () => {
@@ -172,7 +202,7 @@ export function Sidebar({ userRole, onLogout, onClose }) {
       roles: ['ALL'],
       children: [
         { id: 'daily-attendance', label: 'Daily Attendance', path: '/attendance/daily', moduleKey: 'attendance', submoduleKey: 'daily_attendance' },
-        { id: 'gps-attendance', label: 'GPS Attendance', path: '/attendance/gps', moduleKey: 'attendance', submoduleKey: 'gps_attendance' },
+        { id: 'gps-attendance', label: 'GPS Attendance Punch', path: '/attendance/gps', moduleKey: 'attendance', submoduleKey: 'gps_attendance' },
         { id: 'regularization', label: 'Regularization', path: '/attendance/regularization', moduleKey: 'attendance', submoduleKey: 'regularization' },
         { id: 'shift-roster', label: 'Shift Roster', path: '/attendance/shift-roster', moduleKey: 'attendance', submoduleKey: 'shift_roster' },
         { id: 'overtime', label: 'Overtime', path: '/attendance/overtime', moduleKey: 'attendance', submoduleKey: 'overtime' },
@@ -340,14 +370,6 @@ export function Sidebar({ userRole, onLogout, onClose }) {
   ];
 
   const isItemPermitted = (item) => {
-    if (item.id === 'gps-attendance') {
-      if (isProtectedAdmin || userInfo.department === 'Sales & Marketing') {
-        // Fallthrough to permission check if they pass department check, or return true for admin
-        if (isProtectedAdmin) return true;
-      } else {
-        return false;
-      }
-    }
     if (isProtectedAdmin) return true;
     if (!userPermissions) return false;
     return canView(userPermissions, normRole, item.moduleKey, item.submoduleKey);
@@ -355,9 +377,9 @@ export function Sidebar({ userRole, onLogout, onClose }) {
 
   // Admin / Super Admin gets the original untouched sidebar
   // Employee / Team Leader / HR gets the dynamic database-driven sidebar
-  const filteredMenu = isProtectedAdmin
-    ? masterMenuItems
-    : masterMenuItems
+  const filteredMenu = React.useMemo(() => {
+    if (isProtectedAdmin) return masterMenuItems;
+    return masterMenuItems
       .map(item => {
         if (item.children && item.children.length > 0) {
           const validChildren = item.children.filter(child => isItemPermitted(child));
@@ -367,6 +389,7 @@ export function Sidebar({ userRole, onLogout, onClose }) {
         return isItemPermitted(item) ? item : null;
       })
       .filter(Boolean);
+  }, [isProtectedAdmin, userPermissions, normRole]);
 
   useEffect(() => {
     const currentPath = location.pathname;
@@ -378,9 +401,11 @@ export function Sidebar({ userRole, onLogout, onClose }) {
     });
 
     if (matchingGroup) {
-      setExpandedGroups(prev => prev.includes(matchingGroup.id) ? prev : [...prev, matchingGroup.id]);
+      setExpandedGroup(matchingGroup.id);
+    } else {
+      setExpandedGroup(null);
     }
-  }, [location.pathname, filteredMenu]);
+  }, [location.pathname]);
 
   const handleNav = (path) => {
     navigate(path);
@@ -389,7 +414,7 @@ export function Sidebar({ userRole, onLogout, onClose }) {
 
   const renderMenuItem = (item) => {
     const hasChildren = item.children && item.children.length > 0;
-    const isExpanded = expandedGroups.includes(item.id);
+    const isExpanded = expandedGroup === item.id;
     const isActive = item.path === location.pathname || (hasChildren && item.children.some(child => child.path === location.pathname));
 
     if (hasChildren) {
@@ -515,8 +540,8 @@ export function Sidebar({ userRole, onLogout, onClose }) {
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">{localStorage.getItem('userName') || 'John Doe'}</p>
-                <p className="text-xs text-slate-400 truncate">{userRole === 'EMPLOYEE' ? 'EMP0015' : (localStorage.getItem('userRole') || 'Super Admin')}</p>
+                <p className="text-sm font-medium text-white truncate">{userInfo.name || 'User'}</p>
+                <p className="text-xs text-slate-400 truncate">{userInfo.role ? userInfo.role.replace(/_/g, ' ') : 'Employee'}{userInfo.empCode ? ` (${userInfo.empCode})` : ''}</p>
               </div>
             </div>
             <button

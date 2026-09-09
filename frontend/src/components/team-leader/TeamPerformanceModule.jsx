@@ -5,30 +5,51 @@ import { apiFetch } from '../../lib/api';
 export function TeamPerformanceModule() {
   const [loading, setLoading] = useState(true);
   const [teamPerformance, setTeamPerformance] = useState([]);
+  const [overallScore, setOverallScore] = useState(0);
+  const [totalGoalsCount, setTotalGoalsCount] = useState(0);
 
   useEffect(() => {
     const fetchPerformanceData = async () => {
       setLoading(true);
       try {
-        const metaRes = await apiFetch('/projects/meta');
-        if (metaRes && metaRes.success && metaRes.data && Array.isArray(metaRes.data.employees)) {
-          const emps = metaRes.data.employees;
-          const formatted = emps.map((e, idx) => ({
-            id: e.id,
-            name: e.name,
-            empId: e.employee_id || `EMP00${15 + idx}`,
-            role: e.designation || 'Software Developer',
-            score: '4.8 / 5.0',
-            goalPct: 85 + (idx % 3) * 5,
-            kpis: '90%',
-            status: 'High Performing'
-          }));
-          setTeamPerformance(formatted);
+        const goalsRes = await apiFetch('/goals');
+        if (goalsRes && goalsRes.success && goalsRes.data && Array.isArray(goalsRes.data.goals)) {
+          const goals = goalsRes.data.goals;
+          setTotalGoalsCount(goals.length);
+          if (goals.length > 0) {
+            const sumPct = goals.reduce((acc, g) => acc + (Number(g.completion_percentage || g.progress) || 0), 0);
+            const avg = Math.round(sumPct / goals.length);
+            setOverallScore(avg);
+
+            const formatted = goals.map((g, idx) => {
+              const pct = Number(g.completion_percentage || g.progress) || 0;
+              const ratingVal = (pct / 20).toFixed(1);
+              return {
+                id: g.id || idx + 1,
+                name: g.employee_name || 'Team Member',
+                empId: g.employee_id ? `EMP${String(g.employee_id).padStart(4, '0')}` : `GOAL-${g.id}`,
+                role: g.goal_title || g.title || 'Goal Target',
+                score: `${ratingVal} / 5.0`,
+                goalPct: pct,
+                kpis: `${pct}%`,
+                status: g.status || (pct >= 100 ? 'Completed' : (pct > 0 ? 'On Track' : 'Not Started'))
+              };
+            });
+            setTeamPerformance(formatted);
+          } else {
+            setOverallScore(0);
+            setTeamPerformance([]);
+          }
         } else {
+          setOverallScore(0);
+          setTotalGoalsCount(0);
           setTeamPerformance([]);
         }
       } catch (err) {
         console.error("Failed to load team performance from database:", err);
+        setOverallScore(0);
+        setTotalGoalsCount(0);
+        setTeamPerformance([]);
       } finally {
         setLoading(false);
       }
@@ -96,8 +117,10 @@ export function TeamPerformanceModule() {
           </div>
           <div>
             <span className="text-xs font-semibold text-slate-400 block">Overall Team Score</span>
-            <strong className="text-2xl font-extrabold text-slate-900">86%</strong>
-            <span className="text-[11px] text-emerald-600 font-semibold block mt-0.5">High Performing Team</span>
+            <strong className="text-2xl font-extrabold text-slate-900">{overallScore}%</strong>
+            <span className="text-[11px] text-emerald-600 font-semibold block mt-0.5">
+              {overallScore > 0 ? (overallScore >= 80 ? 'High Performing Team' : 'Progressing Team') : 'No Evaluation Data'}
+            </span>
           </div>
         </div>
 
@@ -106,9 +129,9 @@ export function TeamPerformanceModule() {
             <Target size={28} />
           </div>
           <div>
-            <span className="text-xs font-semibold text-slate-400 block">Team Members Evaluated</span>
-            <strong className="text-2xl font-extrabold text-blue-600">{teamPerformance.length}</strong>
-            <span className="text-[11px] text-slate-500 block mt-0.5">Q3 Objectives</span>
+            <span className="text-xs font-semibold text-slate-400 block">Goals Evaluated</span>
+            <strong className="text-2xl font-extrabold text-blue-600">{totalGoalsCount}</strong>
+            <span className="text-[11px] text-slate-500 block mt-0.5">Active Objectives</span>
           </div>
         </div>
 
@@ -118,7 +141,9 @@ export function TeamPerformanceModule() {
           </div>
           <div>
             <span className="text-xs font-semibold text-slate-400 block">Avg Team Rating</span>
-            <strong className="text-2xl font-extrabold text-slate-900">4.8 / 5.0</strong>
+            <strong className="text-2xl font-extrabold text-slate-900">
+              {overallScore > 0 ? (overallScore / 20).toFixed(1) : '0.0'} / 5.0
+            </strong>
             <span className="text-[11px] text-slate-500 block mt-0.5">Evaluation Score</span>
           </div>
         </div>

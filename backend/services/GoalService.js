@@ -2,15 +2,22 @@ const Performance = require('../models/Performance');
 
 class GoalService {
   static async create(data, userId) {
+    const titleVal = data.goal_title || data.title;
+    const progressVal = data.completion_percentage !== undefined ? data.completion_percentage : (data.progress !== undefined ? data.progress : 0);
+    const targetDateVal = data.target_date || data.due_date || data.targetDate || null;
+    const startDateVal = data.start_date || data.startDate || null;
+    const descVal = data.goal_description || data.description || null;
+    const deptId = data.department_id || data.departmentId || null;
+
     const sql = `
       INSERT INTO goals (
-        employee_id, goal_title, goal_category, goal_description, priority,
-        start_date, target_date, completion_percentage, status, created_by, updated_by
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        employee_id, department_id, goal_title, title, goal_category, goal_description, description, priority,
+        start_date, target_date, due_date, completion_percentage, progress, status, created_by, updated_by
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
     const params = [
-      data.employee_id, data.goal_title, data.goal_category || 'General', data.goal_description || null,
-      data.priority || 'Medium', data.start_date || null, data.target_date, data.completion_percentage || 0,
+      data.employee_id, deptId, titleVal, titleVal, data.goal_category || 'General', descVal, descVal,
+      data.priority || 'Medium', startDateVal, targetDateVal, targetDateVal, progressVal, progressVal,
       data.status || 'Not Started', userId, userId
     ];
     const result = await Performance.query(sql, params);
@@ -18,15 +25,34 @@ class GoalService {
   }
 
   static async update(id, data, userId) {
+    const titleVal = data.goal_title || data.title;
+    const progressVal = data.completion_percentage !== undefined ? data.completion_percentage : (data.progress !== undefined ? data.progress : null);
+    const targetDateVal = data.target_date || data.due_date || data.targetDate || null;
+    const startDateVal = data.start_date || data.startDate || null;
+    const descVal = data.goal_description || data.description || null;
+    const deptId = data.department_id || data.departmentId || null;
+
     const sql = `
       UPDATE goals SET
-        goal_title = ?, goal_category = ?, goal_description = ?, priority = ?,
-        start_date = ?, target_date = ?, completion_percentage = ?, status = ?, updated_by = ?
+        goal_title = COALESCE(?, goal_title),
+        title = COALESCE(?, title),
+        department_id = COALESCE(?, department_id),
+        goal_category = COALESCE(?, goal_category),
+        goal_description = COALESCE(?, goal_description),
+        description = COALESCE(?, description),
+        priority = COALESCE(?, priority),
+        start_date = COALESCE(?, start_date),
+        target_date = COALESCE(?, target_date),
+        due_date = COALESCE(?, due_date),
+        completion_percentage = COALESCE(?, completion_percentage),
+        progress = COALESCE(?, progress),
+        status = COALESCE(?, status),
+        updated_by = ?
       WHERE id = ?
     `;
     const params = [
-      data.goal_title, data.goal_category || 'General', data.goal_description || null, data.priority || 'Medium',
-      data.start_date || null, data.target_date, data.completion_percentage, data.status, userId, id
+      titleVal, titleVal, deptId, data.goal_category, descVal, descVal, data.priority,
+      startDateVal, targetDateVal, targetDateVal, progressVal, progressVal, data.status, userId, id
     ];
     await Performance.query(sql, params);
     return true;
@@ -39,9 +65,10 @@ class GoalService {
 
   static async getById(id) {
     const rows = await Performance.query(
-      `SELECT g.*, e.name as employee_name, b.branch_name as department_name
+      `SELECT g.*, e.name as employee_name, COALESCE(dept.dept_name, b.branch_name, 'General') as department_name
        FROM goals g
        LEFT JOIN employees e ON g.employee_id = e.id
+       LEFT JOIN departments dept ON (COALESCE(g.department_id, e.department_id) = dept.id)
        LEFT JOIN branches b ON e.branch_id = b.id
        WHERE g.id = ?`,
       [id]
@@ -51,9 +78,10 @@ class GoalService {
 
   static async list(filters, pagination) {
     let sql = `
-      SELECT g.*, e.name as employee_name, b.branch_name as department_name
+      SELECT g.*, e.name as employee_name, COALESCE(dept.dept_name, b.branch_name, 'General') as department_name
       FROM goals g
       LEFT JOIN employees e ON g.employee_id = e.id
+      LEFT JOIN departments dept ON (COALESCE(g.department_id, e.department_id) = dept.id)
       LEFT JOIN branches b ON e.branch_id = b.id
       WHERE 1=1
     `;
@@ -66,8 +94,8 @@ class GoalService {
       params.push(term, term, term);
     }
     if (filters.branch_id) {
-      sql += ` AND e.branch_id = ?`;
-      params.push(filters.branch_id);
+      sql += ` AND (e.department_id = ? OR g.department_id = ? OR e.branch_id = ? OR dept.dept_name = ? OR b.branch_name = ?)`;
+      params.push(filters.branch_id, filters.branch_id, filters.branch_id, filters.branch_id, filters.branch_id);
     }
 
     sql += ` ORDER BY g.created_at DESC`;
@@ -83,6 +111,8 @@ class GoalService {
       SELECT COUNT(*) as count
       FROM goals g
       LEFT JOIN employees e ON g.employee_id = e.id
+      LEFT JOIN departments dept ON (COALESCE(g.department_id, e.department_id) = dept.id)
+      LEFT JOIN branches b ON e.branch_id = b.id
       WHERE 1=1
     `;
     const countParams = [];
@@ -91,8 +121,8 @@ class GoalService {
       countParams.push(term, term, term);
     }
     if (filters.branch_id) {
-      countSql += ` AND e.branch_id = ?`;
-      countParams.push(filters.branch_id);
+      countSql += ` AND (e.department_id = ? OR g.department_id = ? OR e.branch_id = ? OR dept.dept_name = ? OR b.branch_name = ?)`;
+      countParams.push(filters.branch_id, filters.branch_id, filters.branch_id, filters.branch_id, filters.branch_id);
     }
 
     const totalRes = await Performance.query(countSql, countParams);
@@ -140,6 +170,53 @@ class GoalService {
       ],
       deptData: deptSummary
     };
+  }
+  static async getGoalsByEmployee(employeeId) {
+    return await Performance.query(
+      `SELECT g.*, COALESCE(d.dept_name, 'General') as department_name
+       FROM goals g
+       LEFT JOIN departments d ON g.department_id = d.id
+       WHERE g.employee_id = ? AND g.status != 'Cancelled'
+       ORDER BY g.created_at DESC`,
+      [employeeId]
+    );
+  }
+
+  static async getGoalHierarchy(goalId) {
+    const goalRows = await Performance.query(
+      `SELECT g.*, e.name as employee_name, COALESCE(d.dept_name, 'General') as department_name
+       FROM goals g
+       LEFT JOIN employees e ON g.employee_id = e.id
+       LEFT JOIN departments d ON g.department_id = d.id
+       WHERE g.id = ?`,
+      [goalId]
+    );
+    if (!goalRows || goalRows.length === 0) return null;
+    const goal = goalRows[0];
+
+    const kras = await Performance.query(
+      `SELECT k.*, COALESCE(d.dept_name, 'General') as department_name
+       FROM kras k
+       LEFT JOIN departments d ON k.department_id = d.id
+       WHERE k.goal_id = ? AND k.status = 'Active'
+       ORDER BY k.id ASC`,
+      [goalId]
+    );
+
+    for (const kra of kras) {
+      const kpis = await Performance.query(
+        `SELECT kp.*, COALESCE(d.dept_name, 'General') as department_name
+         FROM kpis kp
+         LEFT JOIN departments d ON kp.department_id = d.id
+         WHERE kp.kra_id = ? AND kp.status = 'Active'
+         ORDER BY kp.id ASC`,
+        [kra.id]
+      );
+      kra.kpis = kpis || [];
+    }
+
+    goal.kras = kras;
+    return goal;
   }
 }
 
