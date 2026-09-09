@@ -18,6 +18,10 @@
       "destination": "https://madhura-hrm.onrender.com/uploads/:path*"
     },
     {
+      "source": "/assets/maplibre-gl-worker.mjs",
+      "destination": "https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl-worker.js"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
