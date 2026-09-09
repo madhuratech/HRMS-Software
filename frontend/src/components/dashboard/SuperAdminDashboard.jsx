@@ -81,7 +81,7 @@ export function SuperAdminDashboard() {
         navigate('/projects/list');
         break;
       case 'Add Client':
-        navigate('/customer-sales');
+        navigate('/clients/add');
         break;
       case 'Create Invoice':
         navigate('/payroll/payslips');

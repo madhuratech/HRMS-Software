@@ -7,7 +7,7 @@ exports.startJourney = async (req, res) => {
   try {
     let employeeId = req.user.employeeId || req.user.employee_id;
     
-    if (!employeeId && req.user.role === 'SUPER_ADMIN') {
+    if (!employeeId && ['SUPER_ADMIN', 'SUPERADMIN', 'ADMIN'].includes(String(req.user.role || '').toUpperCase())) {
       const rows = await query('SELECT id FROM employees LIMIT 1');
       if (rows && rows.length > 0) {
         employeeId = rows[0].id;
@@ -17,7 +17,6 @@ exports.startJourney = async (req, res) => {
     } else if (!employeeId) {
       employeeId = req.user.id;
     }
-
     const { clientName, lat, lng, clientAddress, destLat, destLng } = req.body;
     
     if (!clientName || !lat || !lng) {
@@ -80,7 +79,7 @@ exports.endMeeting = async (req, res) => {
 
 exports.reachOffice = async (req, res) => {
   try {
-    const employeeId = req.user.employeeId || req.user.employee_id || (req.user.role === 'SUPER_ADMIN' ? 1 : req.user.id);
+    const employeeId = req.user.employeeId || req.user.employee_id || req.user.id;
     const { visitId, lat, lng } = req.body;
     
     if (!visitId || !lat || !lng) {
@@ -97,7 +96,7 @@ exports.reachOffice = async (req, res) => {
 
 exports.trackLocation = async (req, res) => {
   try {
-    const employeeId = req.user.employeeId || req.user.employee_id || (req.user.role === 'SUPER_ADMIN' ? 1 : req.user.id);
+    const employeeId = req.user.employeeId || req.user.employee_id || req.user.id;
     const { visitId, lat, lng } = req.body;
     
     if (!visitId || !lat || !lng) {
@@ -114,11 +113,11 @@ exports.trackLocation = async (req, res) => {
 
 exports.getActiveVisits = async (req, res) => {
   try {
-    const employeeId = req.user.employeeId || req.user.employee_id || (req.user.role === 'SUPER_ADMIN' ? 1 : req.user.id);
-    const role = req.user.role;
+    const employeeId = req.user.employeeId || req.user.employee_id || req.user.id;
+    const role = String(req.user.role || '').toUpperCase();
     let visits = [];
     let completed = [];
-    if (role === 'SUPER_ADMIN' || role === 'SALES_MANAGER' || role === 'TEAM_LEADER' || role === 'ADMIN') {
+    if (['SUPER_ADMIN', 'SUPERADMIN', 'ADMIN', 'SALES_MANAGER', 'TEAM_LEADER', 'TEAMLEAD', 'MANAGER', 'HR', 'HR_MANAGER'].includes(role)) {
       const data = await ClientVisitService.getLiveVisits();
       visits = data.activeVisits;
       completed = data.completedVisits;

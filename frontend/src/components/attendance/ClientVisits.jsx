@@ -710,7 +710,7 @@ export default function ClientVisits() {
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px' }}>
         <div>
           <h2 style={{ margin:0, fontSize:'20px', fontWeight:'800', color:'#0F172A' }}>GPS Field Tracking</h2>
-          <p style={{ margin:'4px 0 0', fontSize:'13px', color:'#64748B' }}>Sales & Marketing live journey management</p>
+          <p style={{ margin:'4px 0 0', fontSize:'13px', color:'#64748B' }}>Live journey tracking and client visit management</p>
         </div>
         <button className="gps-btn-primary" onClick={() => setShowStart(true)}>
           <Navigation size={15} /> Start Journey

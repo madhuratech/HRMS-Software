@@ -614,10 +614,7 @@ export default function JobOpenings() {
 
       {/* Header Area */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-        <div>
-          <h1 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '700', color: '#0F172A' }}>Job Openings</h1>
-          <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Manage requisitions and automatically publish organic posts to Madhura Technologies LinkedIn Company Page</p>
-        </div>
+        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#0F172A' }}>Job Openings</h1>
 
         {/* Header Actions */}
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
@@ -688,7 +685,7 @@ export default function JobOpenings() {
 
         {/* Toolbar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9', flexWrap: 'wrap', gap: '12px' }}>
-          <div style={{ display: 'flex', gap: '16px', flex: 1, flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flex: 1, flexWrap: 'wrap' }}>
             <div style={{ position: 'relative', width: '280px' }}>
               <Search size={18} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input
@@ -696,21 +693,25 @@ export default function JobOpenings() {
                 placeholder="Search job title..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                style={{ width: '100%', padding: '10px 10px 10px 40px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px' }}
+                style={{ width: '100%', padding: '10px 10px 10px 40px', borderRadius: '8px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '14px', boxSizing: 'border-box' }}
               />
             </div>
-            <AppDropdown
+            <div style={{ width: '180px' }}>
+              <AppDropdown
                 value={selectedDept}
                 onChange={v => setSelectedDept(v)}
                 options={[{value:'',label:'All Departments'}]}
                 size="sm"
               />
-            <AppDropdown
+            </div>
+            <div style={{ width: '160px' }}>
+              <AppDropdown
                 value={selectedStatus}
                 onChange={v => setSelectedStatus(v)}
                 options={[{value:'',label:'All Status'},{value:'Open',label:'Open'},{value:'Published',label:'Published'},{value:'Closed',label:'Closed'},{value:'Draft',label:'Draft'},{value:'Pending',label:'Pending'},{value:'Approved',label:'Approved'}]}
                 size="sm"
               />
+            </div>
           </div>
         </div>
 

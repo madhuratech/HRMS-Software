@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import AppDropdown from '../ui/AppDropdown';
-import { Search, Plus, Laptop, CheckCircle, Clock, HardDrive, X, ChevronLeft, ChevronRight, MoreHorizontal } from 'lucide-react';
+import { Search, Plus, Laptop, CheckCircle, Clock, HardDrive, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Label } from 'recharts';
 import { useToast } from '../ui/Toast';
 import { hasPermission } from '../../lib/permissions';
+import { apiFetch } from '../../lib/api';
 
 export default function AssetAllocation() {
   const { addToast } = useToast();
@@ -43,34 +44,19 @@ export default function AssetAllocation() {
     description: ''
   });
 
-  const getAuthToken = () => {
-    const auth = localStorage.getItem('hrms_auth');
-    if (auth) {
-      try {
-        const parsed = JSON.parse(auth);
-        return parsed.token || 'mock_jwt_token';
-      } catch (e) {
-        return 'mock_jwt_token';
-      }
-    }
-    return 'mock_jwt_token';
-  };
-
   const fetchMeta = async () => {
     try {
-      const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
-      
       // Fetch active employees
-      const empRes = await fetch('/app/employees', { headers });
-      const empData = await empRes.json();
+      const empData = await apiFetch('/employees');
       if (Array.isArray(empData)) {
         setEmployees(empData);
+      } else if (empData && empData.data && Array.isArray(empData.data)) {
+        setEmployees(empData.data);
       }
 
       // Fetch available assets
-      const assetRes = await fetch('/app/assets/available', { headers });
-      const assetData = await assetRes.json();
-      if (assetData.success && assetData.data) {
+      const assetData = await apiFetch('/assets/available');
+      if (assetData && assetData.success && assetData.data) {
         setAvailableAssets(assetData.data);
       }
     } catch (err) {
@@ -80,11 +66,8 @@ export default function AssetAllocation() {
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const res = await fetch('/app/assets/dashboard', {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const resData = await res.json();
-      if (resData.success && resData.data) {
+      const resData = await apiFetch('/assets/dashboard');
+      if (resData && resData.success && resData.data) {
         setKpiData(resData.data);
       }
     } catch (err) {
@@ -95,20 +78,17 @@ export default function AssetAllocation() {
   const fetchAllocations = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `/app/assets?page=${page}&limit=${limit}`;
+      let url = `/assets?page=${page}&limit=${limit}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
 
-      const res = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const resData = await res.json();
-      if (resData.success && resData.data) {
+      const resData = await apiFetch(url);
+      if (resData && resData.success && resData.data) {
         setAssetsList(resData.data.allocations || []);
         setTotal(resData.data.total || 0);
       } else {
-        addToast(resData.message || 'Failed to fetch asset allocations', 'error');
+        addToast((resData && (resData.message || resData.error)) || 'Failed to fetch asset allocations', 'error');
       }
     } catch (err) {
       addToast('Error connecting to backend server', 'error');
@@ -164,24 +144,19 @@ export default function AssetAllocation() {
         description: formData.description.trim()
       };
 
-      const res = await fetch('/app/assets', {
+      const resData = await apiFetch('/assets', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
         body: JSON.stringify(payload)
       });
-      const resData = await res.json();
-      if (resData.success) {
+      if (resData && resData.success) {
         addToast('Asset allocated successfully!', 'success');
         setShowAddModal(false);
         setFormData({ employee_id: '', asset_id: '', allocationDate: '', assignedBy: '', status: 'Allocated', description: '' });
         fetchAllocations();
         fetchDashboardStats();
-        fetchMeta(); // reload available assets dropdown list
+        fetchMeta();
       } else {
-        addToast(resData.message || 'Failed to allocate asset', 'error');
+        addToast((resData && (resData.message || resData.error)) || 'Failed to allocate asset', 'error');
       }
     } catch (err) {
       addToast('Connection error occurred', 'error');
@@ -194,20 +169,16 @@ export default function AssetAllocation() {
     if (!window.confirm('Are you sure you want to mark this asset as returned?')) return;
     
     try {
-      const res = await fetch(`/app/assets/${allocationId}/return`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`
-        }
+      const resData = await apiFetch(`/assets/${allocationId}/return`, {
+        method: 'PUT'
       });
-      const resData = await res.json();
-      if (resData.success) {
+      if (resData && resData.success) {
         addToast('Asset returned successfully!', 'success');
         fetchAllocations();
         fetchDashboardStats();
-        fetchMeta(); // reload available assets
+        fetchMeta();
       } else {
-        addToast(resData.message || 'Failed to return asset', 'error');
+        addToast((resData && (resData.message || resData.error)) || 'Failed to return asset', 'error');
       }
     } catch (err) {
       addToast('Connection error occurred', 'error');

@@ -14,7 +14,7 @@ export const getAuthToken = () => {
   return 'mock_jwt_token';
 };
 
-export const apiFetch = async (path, options = {}) => {
+export const getAuthHeaders = (extraHeaders = {}) => {
   let empHeaderId = '';
   let userRole = localStorage.getItem('userRole') || '';
   const auth = localStorage.getItem('hrms_auth');
@@ -26,7 +26,15 @@ export const apiFetch = async (path, options = {}) => {
       if (!userRole) userRole = parsed.role || userObj.role || '';
     } catch (e) {}
   }
+  return {
+    'Authorization': `Bearer ${getAuthToken()}`,
+    ...(empHeaderId ? { 'x-employee-id': String(empHeaderId) } : {}),
+    ...(userRole ? { 'x-user-role': String(userRole) } : {}),
+    ...extraHeaders
+  };
+};
 
+export const apiFetch = async (path, options = {}) => {
   let targetPath = path || '';
   if (targetPath.startsWith('/app/')) {
     targetPath = targetPath.substring(4);
@@ -38,13 +46,15 @@ export const apiFetch = async (path, options = {}) => {
   }
 
   const isFormData = options.body instanceof FormData;
-  const headers = {
+  const headers = getAuthHeaders({
     ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
-    'Authorization': `Bearer ${getAuthToken()}`,
-    ...(empHeaderId ? { 'x-employee-id': String(empHeaderId) } : {}),
-    ...(userRole ? { 'x-user-role': String(userRole) } : {}),
     ...(options.headers || {})
-  };
+  });
+
+  if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    return { success: false, offline: true, message: 'Internet connection unavailable' };
+  }
+
   try {
     const res = await fetch(`${API_BASE}${targetPath}`, { ...options, headers });
     const text = await res.text();
@@ -57,8 +67,12 @@ export const apiFetch = async (path, options = {}) => {
     }
     return json;
   } catch (e) {
-    console.error(`apiFetch error for ${path}:`, e);
-    return { success: false, message: e.message };
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      return { success: false, offline: true, message: 'Internet connection unavailable' };
+    }
+    // Only warn if this isn't a transient network drop
+    console.warn(`apiFetch notice for ${path}:`, e.message || e);
+    return { success: false, message: e.message || 'Network request failed' };
   }
 };
 

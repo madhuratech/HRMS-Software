@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import AppDropdown from '../ui/AppDropdown';
-import { UserCheck, Clock, AlertTriangle, Award, Plus, Search, ChevronLeft, ChevronRight, X, MoreHorizontal } from 'lucide-react';
+import { UserCheck, Clock, AlertTriangle, Award, Plus, Search, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Label } from 'recharts';
 import { useToast } from '../ui/Toast';
 import { hasPermission } from '../../lib/permissions';
+import { apiFetch } from '../../lib/api';
 
 export default function Probation() {
   const { addToast } = useToast();
@@ -44,28 +45,13 @@ export default function Probation() {
     remarks: ''
   });
 
-  const getAuthToken = () => {
-    const auth = localStorage.getItem('hrms_auth');
-    if (auth) {
-      try {
-        const parsed = JSON.parse(auth);
-        return parsed.token || 'mock_jwt_token';
-      } catch (e) {
-        return 'mock_jwt_token';
-      }
-    }
-    return 'mock_jwt_token';
-  };
-
   const fetchMeta = async () => {
     try {
-      const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
-      
-      // Fetch active employees
-      const empRes = await fetch('/app/employees', { headers });
-      const empData = await empRes.json();
+      const empData = await apiFetch('/employees');
       if (Array.isArray(empData)) {
         setEmployees(empData);
+      } else if (empData && empData.data && Array.isArray(empData.data)) {
+        setEmployees(empData.data);
       }
     } catch (err) {
       console.error('Failed to load probation metadata:', err);
@@ -74,11 +60,8 @@ export default function Probation() {
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const res = await fetch('/app/probations/dashboard', {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const resData = await res.json();
-      if (resData.success && resData.data) {
+      const resData = await apiFetch('/probations/dashboard');
+      if (resData && resData.success && resData.data) {
         setKpiData(resData.data);
       }
     } catch (err) {
@@ -89,20 +72,17 @@ export default function Probation() {
   const fetchProbations = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `/app/probations?page=${page}&limit=${limit}`;
+      let url = `/probations?page=${page}&limit=${limit}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
 
-      const res = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const resData = await res.json();
-      if (resData.success && resData.data) {
+      const resData = await apiFetch(url);
+      if (resData && resData.success && resData.data) {
         setProbationList(resData.data.probations || []);
         setTotal(resData.data.total || 0);
       } else {
-        addToast(resData.message || 'Failed to fetch probation records', 'error');
+        addToast((resData && (resData.message || resData.error)) || 'Failed to fetch probation records', 'error');
       }
     } catch (err) {
       addToast('Error connecting to backend server', 'error');
@@ -159,23 +139,18 @@ export default function Probation() {
         remarks: formData.remarks.trim()
       };
 
-      const res = await fetch('/app/probations', {
+      const resData = await apiFetch('/probations', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
         body: JSON.stringify(payload)
       });
-      const resData = await res.json();
-      if (resData.success) {
+      if (resData && resData.success) {
         addToast('Probation record created successfully!', 'success');
         setShowAddModal(false);
         setFormData({ employee_id: '', startDate: '', endDate: '', manager: '', status: 'Due for Review', rating: '3 - Satisfactory', remarks: '' });
         fetchProbations();
         fetchDashboardStats();
       } else {
-        addToast(resData.message || 'Failed to create probation record', 'error');
+        addToast((resData && (resData.message || resData.error)) || 'Failed to create probation record', 'error');
       }
     } catch (err) {
       addToast('Connection error occurred', 'error');
@@ -186,19 +161,15 @@ export default function Probation() {
 
   const handleComplete = async (probationId) => {
     try {
-      const res = await fetch(`/app/probations/${probationId}/complete`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`
-        }
+      const resData = await apiFetch(`/probations/${probationId}/complete`, {
+        method: 'PUT'
       });
-      const resData = await res.json();
-      if (resData.success) {
+      if (resData && resData.success) {
         addToast('Employee probation completed successfully and Confirmed!', 'success');
         fetchProbations();
         fetchDashboardStats();
       } else {
-        addToast(resData.message || 'Failed to complete probation', 'error');
+        addToast((resData && (resData.message || resData.error)) || 'Failed to complete probation', 'error');
       }
     } catch (err) {
       addToast('Connection error occurred', 'error');
@@ -210,21 +181,16 @@ export default function Probation() {
     if (!newDate) return;
 
     try {
-      const res = await fetch(`/app/probations/${probationId}/extend`, {
+      const resData = await apiFetch(`/probations/${probationId}/extend`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
         body: JSON.stringify({ probation_end_date: newDate })
       });
-      const resData = await res.json();
-      if (resData.success) {
+      if (resData && resData.success) {
         addToast('Probation period extended successfully!', 'success');
         fetchProbations();
         fetchDashboardStats();
       } else {
-        addToast(resData.message || 'Failed to extend probation', 'error');
+        addToast((resData && (resData.message || resData.error)) || 'Failed to extend probation', 'error');
       }
     } catch (err) {
       addToast('Connection error occurred', 'error');
@@ -298,20 +264,20 @@ export default function Probation() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Probation Status</label>
                   <AppDropdown
-                value={formData.status}
-                onChange={v => setFormData({ ...formData, status: v })}
-                options={[{value:'Due for Review',label:'Due for Review'},{value:'Confirmed',label:'Confirmed'},{value:'Extended',label:'Extended'}]}
-                size="sm"
-              />
+                    value={formData.status}
+                    onChange={v => setFormData({ ...formData, status: v })}
+                    options={[{value:'Due for Review',label:'Due for Review'},{value:'Confirmed',label:'Confirmed'},{value:'Extended',label:'Extended'}]}
+                    size="sm"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Rating</label>
                   <AppDropdown
-                value={formData.rating}
-                onChange={v => setFormData({ ...formData, rating: v })}
-                options={[{value:'5 - Outstanding',label:'5 - Outstanding'},{value:'4 - Exceeds Expectations',label:'4 - Exceeds Expectations'},{value:'3 - Satisfactory',label:'3 - Satisfactory'},{value:'2 - Needs Improvement',label:'2 - Needs Improvement'},{value:'1 - Unsatisfactory',label:'1 - Unsatisfactory'}]}
-                size="sm"
-              />
+                    value={formData.rating}
+                    onChange={v => setFormData({ ...formData, rating: v })}
+                    options={[{value:'5 - Outstanding',label:'5 - Outstanding'},{value:'4 - Exceeds Expectations',label:'4 - Exceeds Expectations'},{value:'3 - Satisfactory',label:'3 - Satisfactory'},{value:'2 - Needs Improvement',label:'2 - Needs Improvement'},{value:'1 - Unsatisfactory',label:'1 - Unsatisfactory'}]}
+                    size="sm"
+                  />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Performance Assessment & Remarks</label>

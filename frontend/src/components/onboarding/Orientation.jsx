@@ -3,6 +3,7 @@ import AppDropdown from '../ui/AppDropdown';
 import { Calendar, CheckCircle, Users, Percent, Plus, Info, Shield, CheckSquare, Presentation, X, Clock, ChevronLeft, ChevronRight, Search } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { hasPermission } from '../../lib/permissions';
+import { apiFetch } from '../../lib/api';
 
 export default function Orientation() {
   const { addToast } = useToast();
@@ -60,27 +61,10 @@ export default function Orientation() {
     status: 'Pending'
   });
 
-  const getAuthToken = () => {
-    const auth = localStorage.getItem('hrms_auth');
-    if (auth) {
-      try {
-        const parsed = JSON.parse(auth);
-        return parsed.token || 'mock_jwt_token';
-      } catch (e) {
-        return 'mock_jwt_token';
-      }
-    }
-    return 'mock_jwt_token';
-  };
-
   const fetchMeta = async () => {
     try {
-      const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
-      
-      // Fetch eligible joiners (verified new joiners)
-      const res = await fetch('/app/orientations/eligible', { headers });
-      const data = await res.json();
-      if (data.success && data.data) {
+      const data = await apiFetch('/orientations/eligible');
+      if (data && data.success && data.data) {
         setEligibleJoiners(data.data);
       }
     } catch (err) {
@@ -90,11 +74,8 @@ export default function Orientation() {
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const res = await fetch('/app/orientations/dashboard', {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const resData = await res.json();
-      if (resData.success && resData.data) {
+      const resData = await apiFetch('/orientations/dashboard');
+      if (resData && resData.success && resData.data) {
         setKpiData(resData.data);
       }
     } catch (err) {
@@ -105,20 +86,17 @@ export default function Orientation() {
   const fetchSessions = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `/app/orientations?page=${page}&limit=${limit}`;
+      let url = `/orientations?page=${page}&limit=${limit}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
 
-      const res = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const resData = await res.json();
-      if (resData.success && resData.data) {
+      const resData = await apiFetch(url);
+      if (resData && resData.success && resData.data) {
         setSessionsList(resData.data.orientations || []);
         setTotal(resData.data.total || 0);
       } else {
-        addToast(resData.message || 'Failed to load orientation schedule', 'error');
+        addToast((resData && (resData.message || resData.error)) || 'Failed to load orientation schedule', 'error');
       }
     } catch (err) {
       addToast('Error connecting to backend server', 'error');
@@ -177,23 +155,18 @@ export default function Orientation() {
         notes: formData.notes.trim()
       };
 
-      const res = await fetch('/app/orientations', {
+      const resData = await apiFetch('/orientations', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
         body: JSON.stringify(payload)
       });
-      const resData = await res.json();
-      if (resData.success) {
+      if (resData && resData.success) {
         addToast('Orientation session scheduled successfully!', 'success');
         setShowScheduleModal(false);
         setFormData({ new_joiner_id: '', title: '', orientation_date: '', start_time: '', end_time: '', trainer: '', venue: '', session_type: 'Offline', meeting_link: '', notes: '' });
         fetchSessions();
         fetchDashboardStats();
       } else {
-        addToast(resData.message || 'Failed to schedule orientation session', 'error');
+        addToast((resData && (resData.message || resData.error)) || 'Failed to schedule orientation session', 'error');
       }
     } catch (err) {
       addToast('Connection error occurred', 'error');
@@ -204,19 +177,15 @@ export default function Orientation() {
 
   const handleComplete = async (sessionId) => {
     try {
-      const res = await fetch(`/app/orientations/${sessionId}/complete`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`
-        }
+      const resData = await apiFetch(`/orientations/${sessionId}/complete`, {
+        method: 'PUT'
       });
-      const resData = await res.json();
-      if (resData.success) {
+      if (resData && resData.success) {
         addToast('Orientation session marked as Completed!', 'success');
         fetchSessions();
         fetchDashboardStats();
       } else {
-        addToast(resData.message || 'Failed to update orientation status', 'error');
+        addToast((resData && (resData.message || resData.error)) || 'Failed to update orientation status', 'error');
       }
     } catch (err) {
       addToast('Connection error occurred', 'error');
@@ -298,7 +267,7 @@ export default function Orientation() {
       {/* Main Content Layout */}
       <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: '24px' }}>
         
-        {/* Left Side: Table */}
+        {/* Left Side: Sessions Table */}
         <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
@@ -307,58 +276,63 @@ export default function Orientation() {
               <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
               <input 
                 type="text" 
-                placeholder="Search..." 
+                placeholder="Search session or joiner..." 
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                style={{ width: '180px', padding: '8px 10px 8px 30px', borderRadius: '6px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '13px' }}
+                style={{ width: '220px', padding: '8px 10px 8px 30px', borderRadius: '6px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '13px' }}
               />
             </div>
           </div>
 
           <div style={{ overflowX: 'auto' }}>
             {loading ? (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>Loading orientation schedules...</div>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>Loading orientation sessions...</div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ background: '#F8FAFC' }}>
                     <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Session Title</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Attendee</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Date</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Time</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Venue/Link</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Joiner Name</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Date & Time</th>
                     <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Trainer</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Venue / Mode</th>
                     <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Status</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Action</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {sessionsList.length === 0 ? (
                     <tr>
-                      <td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No orientations scheduled</td>
+                      <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No orientation sessions scheduled</td>
                     </tr>
                   ) : (
                     sessionsList.map((row, index) => {
-                      const orientDate = row.orientation_date ? new Date(row.orientation_date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : '-';
+                      const dateStr = row.orientation_date ? new Date(row.orientation_date).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
                       return (
                         <tr key={row.id} style={{ borderBottom: index === sessionsList.length - 1 ? 'none' : '1px solid #F8FAFC', transition: 'background 0.2s', ':hover': { background: '#F8FAFC' } }}>
-                          <td style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '500', color: '#334155', whiteSpace: 'nowrap' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                <Presentation size={14} color="#64748B" />
+                          <td style={{ padding: '16px 24px', fontSize: '13px', fontWeight: '600', color: '#1E293B', whiteSpace: 'nowrap' }}>
+                            {row.title}
+                          </td>
+                          <td style={{ padding: '16px 24px', whiteSpace: 'nowrap' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600', color: '#475569' }}>
+                                {row.joiner_name ? row.joiner_name.split(' ').map(n => n[0]).join('') : 'NJ'}
                               </div>
-                              {row.title}
+                              <div>
+                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#1E293B' }}>{row.joiner_name}</div>
+                                <div style={{ fontSize: '11px', color: '#64748B' }}>{row.department_name || 'General'}</div>
+                              </div>
                             </div>
                           </td>
-                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.employee_name}</td>
-                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{orientDate}</td>
-                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.start_time.substring(0, 5)} - {row.end_time.substring(0, 5)}</td>
                           <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>
-                            {row.session_type === 'Online' ? (
-                              <a href={row.meeting_link} target="_blank" rel="noreferrer" className="text-blue-600 hover:underline">Zoom Link</a>
-                            ) : row.venue}
+                            <div>{dateStr}</div>
+                            <div style={{ fontSize: '11px', color: '#94A3B8' }}>{row.start_time} - {row.end_time}</div>
                           </td>
                           <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.trainer}</td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>
+                            <div>{row.venue}</div>
+                            <span style={{ fontSize: '10px', color: '#64748B', background: '#F1F5F9', padding: '2px 6px', borderRadius: '4px' }}>{row.session_type}</span>
+                          </td>
                           <td style={{ padding: '16px 24px', whiteSpace: 'nowrap', textAlign: 'center' }}>
                             <span style={{ 
                               padding: '4px 10px', 
@@ -464,11 +438,17 @@ export default function Orientation() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">New Joiner <span className="text-red-500">*</span></label>
                   <AppDropdown
-                value={formData.new_joiner_id}
-                onChange={v => setFormData({ ...formData, new_joiner_id: v })}
-                options={[{value:'',label:'Select Onboarding Joiner'}]}
-                size="sm"
-              />
+                    value={formData.new_joiner_id}
+                    onChange={v => setFormData({ ...formData, new_joiner_id: v })}
+                    options={[
+                      { value: '', label: 'Select Onboarding Joiner' },
+                      ...eligibleJoiners.map(j => ({
+                        value: String(j.id),
+                        label: `${j.full_name} (${j.department_name || 'General'})`
+                      }))
+                    ]}
+                    size="sm"
+                  />
                 </div>
 
                 {selectedJoiner && (
@@ -501,11 +481,11 @@ export default function Orientation() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Session Type <span className="text-red-500">*</span></label>
                   <AppDropdown
-                value={formData.session_type}
-                onChange={v => setFormData({ ...formData, session_type: v })}
-                options={[{value:'Offline',label:'Offline (Office Conference)'},{value:'Online',label:'Online (Zoom / Meet)'},{value:'Hybrid',label:'Hybrid'}]}
-                size="sm"
-              />
+                    value={formData.session_type}
+                    onChange={v => setFormData({ ...formData, session_type: v })}
+                    options={[{value:'Offline',label:'Offline (Office Conference)'},{value:'Online',label:'Online (Zoom / Meet)'},{value:'Hybrid',label:'Hybrid'}]}
+                    size="sm"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Venue / Location</label>
@@ -562,11 +542,11 @@ export default function Orientation() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
                   <AppDropdown
-                value={templateForm.status}
-                onChange={v => setTemplateForm({ ...templateForm, status: v })}
-                options={[{value:'Active',label:'Active'},{value:'Inactive',label:'Inactive'}]}
-                size="sm"
-              />
+                    value={templateForm.status}
+                    onChange={v => setTemplateForm({ ...templateForm, status: v })}
+                    options={[{value:'Active',label:'Active'},{value:'Inactive',label:'Inactive'}]}
+                    size="sm"
+                  />
                 </div>
                 <div className="col-span-1 sm:col-span-2">
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Description <span className="text-red-500">*</span></label>
@@ -617,11 +597,11 @@ export default function Orientation() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Priority</label>
                   <AppDropdown
-                value={taskForm.priority}
-                onChange={v => setTaskForm({ ...taskForm, priority: v })}
-                options={[{value:'High',label:'High'},{value:'Medium',label:'Medium'},{value:'Low',label:'Low'}]}
-                size="sm"
-              />
+                    value={taskForm.priority}
+                    onChange={v => setTaskForm({ ...taskForm, priority: v })}
+                    options={[{value:'High',label:'High'},{value:'Medium',label:'Medium'},{value:'Low',label:'Low'}]}
+                    size="sm"
+                  />
                 </div>
               </div>
               <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">

@@ -21,120 +21,43 @@ import {
   ChevronRight,
   Mail,
   Phone,
-  MapPin,
-  GitBranch,
-  Briefcase,
-  Code,
-  Palette,
-  Megaphone,
-  TrendingUp,
-  ShieldCheck,
-  DollarSign,
-  Calendar
+  Calendar,
+  User
 } from 'lucide-react';
 
-const INITIAL_DEPARTMENTS = [];
-const MOCK_EMPLOYEES = [];
-
-const emptyForm = { name: '', code: '', headName: '', headAvatar: '', headRole: '', parentDepartment: '', email: '', phone: '', description: '', status: 'Active' };
+const emptyForm = {
+  name: '',
+  code: '',
+  headName: '',
+  headAvatar: '',
+  headRole: '',
+  parentDepartment: '',
+  email: '',
+  phone: '',
+  description: '',
+  status: 'Active'
+};
 
 const getDeptStyles = (deptName) => {
   switch (deptName) {
     case 'Human Resources':
-      return {
-        IconComp: Users,
-        bg: '#EEF2FF',
-        color: '#2563EB'
-      };
+      return { bg: '#EEF2FF', color: '#2563EB' };
     case 'Finance':
-      return {
-        IconComp: DollarSign,
-        bg: '#ECFDF5',
-        color: '#10B981'
-      };
+      return { bg: '#ECFDF5', color: '#10B981' };
     case 'Development':
-      return {
-        IconComp: Code,
-        bg: '#F5F3FF',
-        color: '#8B5CF6'
-      };
+      return { bg: '#F5F3FF', color: '#8B5CF6' };
     case 'Quality Assurance':
-      return {
-        IconComp: ShieldCheck,
-        bg: '#FFF7ED',
-        color: '#F97316'
-      };
+      return { bg: '#FFF7ED', color: '#F97316' };
     case 'UI/UX Design':
-      return {
-        IconComp: Palette,
-        bg: '#FFF1F2',
-        color: '#F43F5E'
-      };
+      return { bg: '#FFF1F2', color: '#F43F5E' };
     case 'Marketing':
-      return {
-        IconComp: Megaphone,
-        bg: '#ECFEFF',
-        color: '#0891B2'
-      };
+      return { bg: '#ECFEFF', color: '#0891B2' };
     case 'Sales':
-      return {
-        IconComp: TrendingUp,
-        bg: '#F0F9FF',
-        color: '#0284C7'
-      };
+      return { bg: '#F0F9FF', color: '#0284C7' };
     default:
-      return {
-        IconComp: Building2,
-        bg: '#F8FAFC',
-        color: '#64748B'
-      };
+      return { bg: '#F8FAFC', color: '#64748B' };
   }
 };
-
-function CustomSelect({ label, value, options, placeholder, error, onChange }) {
-  const [isOpen, setIsOpen] = useState(false);
-
-  return (
-    <div className="form-group-field">
-      <label className="form-field-label">{label}</label>
-      <div className="relative">
-        <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          className={`form-field-input flex items-center justify-between text-left w-full ${error ? 'border-red-500' : ''}`}
-        >
-          <span className={value ? 'text-slate-800' : 'text-slate-400'}>
-            {value || placeholder || 'Select Option'}
-          </span>
-          <span className="text-slate-400 text-xs">▼</span>
-        </button>
-
-        {isOpen && (
-          <>
-            <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
-            <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto z-20">
-              {options.map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => {
-                    onChange(opt);
-                    setIsOpen(false);
-                  }}
-                  className={`w-full text-left px-4 py-2.5 text-sm hover:bg-slate-50 transition-colors ${value === opt ? 'bg-blue-50 text-blue-600 font-semibold' : 'text-slate-700'
-                    }`}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          </>
-        )}
-      </div>
-      {error && <span className="text-xs text-red-500 mt-1">{error}</span>}
-    </div>
-  );
-}
 
 export function Departments() {
   const { addToast } = useToast();
@@ -162,7 +85,7 @@ export function Departments() {
         setDepartments(data);
       }
     } catch (e) {
-      console.error("Failed to load departments:", e);
+      console.error('Failed to load departments:', e);
     }
     setLoading(false);
   };
@@ -173,7 +96,7 @@ export function Departments() {
       .then(data => {
         if (Array.isArray(data)) setEmployeesList(data);
       })
-      .catch(err => console.error("Failed to load employees:", err));
+      .catch(err => console.error('Failed to load employees:', err));
   }, []);
 
   const isAnyModalOpen = isAddEditModalOpen || isViewModalOpen || isDeleteModalOpen;
@@ -244,7 +167,7 @@ export function Departments() {
   }, [departments, search, statusFilter, branchFilter]);
 
   // Pagination
-  const pageSize = 7;
+  const pageSize = 8;
   const totalPages = Math.ceil(filteredDepartments.length / pageSize) || 1;
   const paginatedData = useMemo(() => {
     const start = (currentPage - 1) * pageSize;
@@ -268,14 +191,11 @@ export function Departments() {
     setFormData({
       name: dept.name,
       code: dept.code,
-      headName: dept.headName,
-      branch: dept.branch,
+      headName: dept.headName || '',
       parentDepartment: dept.parentDepartment || '',
       email: dept.email || '',
       phone: dept.phone || '',
-      extension: dept.extension || '',
-      location: dept.location || '',
-      status: dept.status,
+      status: dept.status || 'Active',
       description: dept.description || ''
     });
     setFormErrors({});
@@ -329,7 +249,7 @@ export function Departments() {
       await loadDepartments();
       setIsAddEditModalOpen(false);
     } catch (err) {
-      console.error("Error saving department:", err);
+      console.error('Error saving department:', err);
       addToast('Failed to save department', 'error');
     }
   };
@@ -340,9 +260,11 @@ export function Departments() {
         await apiFetch(`/organization/departments/${selectedDept.id}`, {
           method: 'DELETE'
         });
+        addToast('Department deleted successfully!', 'success');
         await loadDepartments();
       } catch (err) {
-        console.error("Error deleting department:", err);
+        console.error('Error deleting department:', err);
+        addToast('Failed to delete department', 'error');
       }
     }
     setIsDeleteModalOpen(false);
@@ -364,66 +286,66 @@ export function Departments() {
     <div className="space-y-6 relative min-h-full pb-12">
 
       {/* Header section */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Departments</h1>
-          <p className="text-sm text-slate-500 mt-1">Manage all company departments and department heads.</p>
+          <p className="text-sm text-slate-500 mt-1">Manage company organizational units, hierarchy, and department heads.</p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={handleExportData}
-            className="px-5 py-2.5 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2 bg-white"
+            className="px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2 bg-white shadow-sm"
           >
             <Download size={16} /> Export
           </button>
           <button
             onClick={handleOpenAddModal}
-            className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
           >
-            <Plus size={16} /> Add Department
+            <Plus size={18} /> Add Department
           </button>
         </div>
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-          <div className="w-16 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#EEF2FF', color: '#2563EB' }}>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#EEF2FF', color: '#2563EB' }}>
             <Building2 size={22} />
           </div>
           <div>
-            <p className="text-[13px] font-semibold text-slate-500 leading-tight">Total Departments</p>
-            <p className="text-[28px] font-bold text-[#0a1629] mt-1 leading-none">{statistics.total}</p>
+            <p className="text-xs font-semibold text-slate-500">Total Departments</p>
+            <p className="text-2xl font-bold text-[#0a1629] mt-0.5">{statistics.total}</p>
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-          <div className="w-16 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#ECFDF5', color: '#10B981' }}>
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#ECFDF5', color: '#10B981' }}>
             <CheckCircle2 size={22} />
           </div>
           <div>
-            <p className="text-[13px] font-semibold text-slate-500 leading-tight">Active Departments</p>
-            <p className="text-[28px] font-bold text-[#0a1629] mt-1 leading-none">{statistics.active}</p>
+            <p className="text-xs font-semibold text-slate-500">Active Departments</p>
+            <p className="text-2xl font-bold text-[#0a1629] mt-0.5">{statistics.active}</p>
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-          <div className="w-16 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#F5F3FF', color: '#8B5CF6' }}>
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#F5F3FF', color: '#8B5CF6' }}>
             <Users size={22} />
           </div>
           <div>
-            <p className="text-[13px] font-semibold text-slate-500 leading-tight">Employees Assigned</p>
-            <p className="text-[28px] font-bold text-[#0a1629] mt-1 leading-none">{statistics.employees}</p>
+            <p className="text-xs font-semibold text-slate-500">Employees Assigned</p>
+            <p className="text-2xl font-bold text-[#0a1629] mt-0.5">{statistics.employees}</p>
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-xl border border-slate-200/80 shadow-sm flex items-center gap-4">
-          <div className="w-16 h-12 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#FFF7ED', color: '#F97316' }}>
+        <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#FFF7ED', color: '#F97316' }}>
             <UserCheck size={22} />
           </div>
           <div>
-            <p className="text-[13px] font-semibold text-slate-500 leading-tight">Department Heads</p>
-            <p className="text-[28px] font-bold text-[#0a1629] mt-1 leading-none">{statistics.heads}</p>
+            <p className="text-xs font-semibold text-slate-500">Department Heads</p>
+            <p className="text-2xl font-bold text-[#0a1629] mt-0.5">{statistics.heads}</p>
           </div>
         </div>
       </div>
@@ -435,10 +357,10 @@ export function Departments() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
               type="text"
-              placeholder="Search Department..."
+              placeholder="Search department, code, or head..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-slate-50/50"
+              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50/50"
             />
           </div>
 
@@ -452,25 +374,10 @@ export function Departments() {
                 size="sm"
               />
             </div>
-            <div style={{ minWidth: 160 }}>
-              <AppDropdown
-                value={branchFilter}
-                onChange={v => setBranchFilter(v || 'All')}
-                options={['All']}
-                placeholder="Branch: All"
-                size="sm"
-              />
-            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <button className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm font-medium">
-            <Filter size={16} /> Filters
-          </button>
-          <button className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors">
-            <Grid size={16} />
-          </button>
+        <div className="flex items-center gap-2 self-end sm:self-auto">
           <button
             onClick={() => {
               setSearch('');
@@ -478,6 +385,7 @@ export function Departments() {
               setBranchFilter('All');
             }}
             className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors"
+            title="Reset Filters"
           >
             <RotateCw size={16} />
           </button>
@@ -485,143 +393,156 @@ export function Departments() {
       </div>
 
       {/* Main Content Area */}
-      {filteredDepartments.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 bg-white border border-slate-200 rounded-xl shadow-sm text-center">
-          <span className="text-5xl mb-4">🏢</span>
+      {loading ? (
+        <div className="bg-white border border-slate-200 rounded-xl p-16 text-center text-slate-500 shadow-sm">
+          Loading departments...
+        </div>
+      ) : filteredDepartments.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-16 px-4 bg-white border border-slate-200 rounded-xl shadow-sm text-center">
+          <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mb-4">
+            <Building2 size={32} />
+          </div>
           <h3 className="text-lg font-bold text-slate-800">No Departments Found</h3>
-          <p className="text-slate-500 text-sm mt-1 mb-6">Create your first department to get started.</p>
+          <p className="text-slate-500 text-sm mt-1 mb-6 max-w-sm">
+            {search || statusFilter !== 'All'
+              ? 'No departments match your current filter criteria. Try resetting your search.'
+              : 'Create your first organizational department to get started.'}
+          </p>
           <button
             onClick={handleOpenAddModal}
-            className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2"
+            className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
           >
             <Plus size={16} /> Add Department
           </button>
         </div>
       ) : (
-        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col justify-between min-h-[480px]">
+        <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col justify-between">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-[#F8FAFC] border-b border-slate-200">
-                  <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467]">Department</th>
-                  <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Code</th>
-                  <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Department Head</th>
-                  <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Employees</th>
-                  <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Created Date</th>
-                  <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Status</th>
-                  <th className="text-left py-4 px-4 text-[13px] font-semibold text-[#475467] whitespace-nowrap">Actions</th>
+                  <th className="text-left py-4 px-6 text-[12px] font-semibold text-slate-500">Department</th>
+                  <th className="text-left py-4 px-6 text-[12px] font-semibold text-slate-500 whitespace-nowrap">Code</th>
+                  <th className="text-left py-4 px-6 text-[12px] font-semibold text-slate-500 whitespace-nowrap">Department Head</th>
+                  <th className="text-left py-4 px-6 text-[12px] font-semibold text-slate-500 whitespace-nowrap">Employees</th>
+                  <th className="text-left py-4 px-6 text-[12px] font-semibold text-slate-500 whitespace-nowrap">Status</th>
+                  <th className="text-center py-4 px-6 text-[12px] font-semibold text-slate-500 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedData.map((dept) => (
-                  <tr key={dept.id} className="border-b border-slate-100 hover:bg-slate-50/30 transition-colors">
-                    <td className="py-4 px-4">
-                      <div className="flex items-center gap-3">
-                        {(() => {
-                          const styles = getDeptStyles(dept.name);
-                          const IconComp = styles.IconComp;
-                          return (
-                            <div className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style={{ backgroundColor: styles.bg, color: styles.color }}>
-                              <IconComp size={18} />
-                            </div>
-                          );
-                        })()}
-                        <span className="font-semibold text-[#101828] text-sm">{dept.name}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">{dept.code}</td>
-                    <td className="py-4 px-4">
-                      {dept.headName && dept.headName !== 'Unassigned' ? (
+                {paginatedData.map((dept) => {
+                  const styles = getDeptStyles(dept.name);
+                  return (
+                    <tr key={dept.id} className="border-b border-slate-100 hover:bg-slate-50/50 transition-colors">
+                      <td className="py-4 px-6">
                         <div className="flex items-center gap-3">
-                          <img
-                            src={getHeadAvatarUrl(dept)}
-                            alt={dept.headName}
-                            className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-slate-200"
-                            style={{ minWidth: '32px', minHeight: '32px' }}
-                            onError={(e) => {
-                              e.target.onerror = null;
-                              e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(dept.headName)}&background=2563eb&color=fff&bold=true`;
-                            }}
-                          />
-                          <div>
-                            <p className="text-sm font-semibold text-[#101828] leading-none whitespace-nowrap">{dept.headName}</p>
-                            <p className="text-xs text-slate-400 mt-1 leading-none whitespace-nowrap">{getHeadRole(dept)}</p>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-semibold flex-shrink-0">
-                            <Users size={14} />
+                          <div
+                            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+                            style={{ backgroundColor: styles.bg, color: styles.color }}
+                          >
+                            <Building2 size={18} />
                           </div>
                           <div>
-                            <p className="text-sm font-medium text-slate-500 leading-none">Unassigned</p>
-                            <p className="text-xs text-slate-400 mt-1 leading-none">No Head</p>
+                            <span className="font-semibold text-slate-900 text-sm block">{dept.name}</span>
+                            {dept.parentDepartment && (
+                              <span className="text-xs text-slate-400 block">Parent: {dept.parentDepartment}</span>
+                            )}
                           </div>
                         </div>
-                      )}
-                    </td>
-                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <Users size={16} className="text-slate-400" />
-                        <span>{dept.employees}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 text-slate-600 text-sm whitespace-nowrap">
-                      <div className="flex items-center gap-1.5">
-                        <Calendar size={16} className="text-slate-400" />
-                        <span>{dept.createdDate || '12 Jan 2026'}</span>
-                      </div>
-                    </td>
-                    <td className="py-4 px-4 whitespace-nowrap">
-                      <span
-                        className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold"
-                        style={
-                          dept.status === 'Active'
-                            ? { backgroundColor: '#ECFDF5', color: '#047857' }
-                            : { backgroundColor: '#F3F4F6', color: '#4B5563' }
-                        }
-                      >
-                        {dept.status}
-                      </span>
-                    </td>
-                    <td className="py-4 px-4 whitespace-nowrap text-left">
-                      <div className="flex items-center justify-start gap-2">
-                        <button
-                          onClick={() => handleOpenViewModal(dept)}
-                          className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
+                      </td>
+                      <td className="py-4 px-6 text-slate-600 text-sm font-mono whitespace-nowrap">
+                        <span className="px-2.5 py-1 bg-slate-100 rounded-lg text-slate-700 font-medium text-xs">
+                          {dept.code}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6">
+                        {dept.headName && dept.headName !== 'Unassigned' ? (
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={getHeadAvatarUrl(dept)}
+                              alt={dept.headName}
+                              className="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-slate-200"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(dept.headName)}&background=2563eb&color=fff&bold=true`;
+                              }}
+                            />
+                            <div>
+                              <p className="text-sm font-semibold text-slate-800 leading-none whitespace-nowrap">{dept.headName}</p>
+                              <p className="text-xs text-slate-400 mt-1 leading-none whitespace-nowrap">{getHeadRole(dept)}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-xs font-semibold flex-shrink-0">
+                              <Users size={14} />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-slate-500 leading-none">Unassigned</p>
+                              <p className="text-xs text-slate-400 mt-1 leading-none">No Head</p>
+                            </div>
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-4 px-6 text-slate-600 text-sm whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 font-medium">
+                          <Users size={16} className="text-slate-400" />
+                          <span>{dept.employees || 0}</span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-6 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${
+                            dept.status === 'Active'
+                              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                              : 'bg-slate-100 text-slate-600 border border-slate-200'
+                          }`}
                         >
-                          <Eye size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleOpenEditModal(dept)}
-                          className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"
-                        >
-                          <Edit2 size={16} />
-                        </button>
-                        <button
-                          onClick={() => handleOpenDeleteModal(dept)}
-                          className="p-1.5 border border-red-100 rounded-lg text-red-500 hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                          {dept.status}
+                        </span>
+                      </td>
+                      <td className="py-4 px-6 whitespace-nowrap text-center">
+                        <div className="flex items-center justify-center gap-2">
+                          <button
+                            onClick={() => handleOpenViewModal(dept)}
+                            className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="View Department"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleOpenEditModal(dept)}
+                            className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                            title="Edit Department"
+                          >
+                            <Edit2 size={16} />
+                          </button>
+                          <button
+                            onClick={() => handleOpenDeleteModal(dept)}
+                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete Department"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
 
           {/* Table Pagination */}
           <div className="px-6 py-4 border-t border-slate-100 flex items-center justify-between text-sm">
-            <span className="text-slate-500">
+            <span className="text-slate-500 font-medium">
               Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, filteredDepartments.length)} of {filteredDepartments.length} departments
             </span>
             <div className="flex items-center gap-1.5">
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="p-1.5 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent"
+                className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
               >
                 <ChevronLeft size={16} />
               </button>
@@ -629,7 +550,11 @@ export function Departments() {
                 <button
                   key={page}
                   onClick={() => handlePageChange(page)}
-                  className={`px-3 py-1.5 rounded-lg border text-sm font-semibold transition-colors ${page === currentPage ? 'bg-blue-600 border-blue-600 text-white' : 'border-slate-200 text-slate-600 hover:bg-slate-50'}`}
+                  className={`min-w-[34px] h-[34px] px-2 rounded-lg border text-sm font-semibold transition-colors ${
+                    page === currentPage
+                      ? 'bg-blue-600 border-blue-600 text-white'
+                      : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                  }`}
                 >
                   {page}
                 </button>
@@ -637,154 +562,73 @@ export function Departments() {
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="p-1.5 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 disabled:opacity-50 disabled:hover:bg-transparent"
+                className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 disabled:opacity-40 disabled:hover:bg-transparent transition-colors"
               >
                 <ChevronRight size={16} />
               </button>
             </div>
           </div>
-
         </div>
       )}
 
       {/* Add / Edit Department Modal */}
       {isAddEditModalOpen && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '16px',
-          background: 'rgba(15, 23, 42, 0.55)',
-          backdropFilter: 'blur(6px)'
-        }}>
-          <div style={{
-            width: '640px',
-            maxWidth: '95vw',
-            maxHeight: '90vh',
-            display: 'flex',
-            flexDirection: 'column',
-            background: '#FFFFFF',
-            borderRadius: '22px',
-            boxShadow: '0 32px 80px rgba(15, 23, 42, 0.28)',
-            overflow: 'hidden',
-            border: '1px solid rgba(255,255,255,0.8)'
-          }}>
-            {/* Header */}
-            <div style={{
-              position: 'relative',
-              padding: '20px 24px',
-              background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              overflow: 'hidden',
-              flexShrink: 0
-            }}>
-              <div style={{
-                position: 'absolute',
-                top: '-30px',
-                right: '-30px',
-                width: '130px',
-                height: '130px',
-                borderRadius: '50%',
-                background: 'rgba(255, 255, 255, 0.08)',
-                pointerEvents: 'none'
-              }} />
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1, flex: 1, marginRight: '16px' }}>
-                <div style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '12px',
-                  background: 'rgba(255, 255, 255, 0.18)',
-                  backdropFilter: 'blur(8px)',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  display: 'grid',
-                  placeItems: 'center',
-                  placeContent: 'center',
-                  color: '#FFFFFF',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                  flexShrink: 0,
-                  lineHeight: 0,
-                  padding: 0
-                }}>
-                  <Building2 size={22} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
-                </div>
-                <div>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#FFFFFF', letterSpacing: '-0.2px' }}>
-                    {selectedDept ? 'Edit Department' : 'Add Department'}
-                  </h3>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'rgba(255, 255, 255, 0.85)' }}>
-                    {selectedDept ? 'Modify department details.' : 'Create a new department.'}
-                  </p>
-                </div>
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setIsAddEditModalOpen(false)} />
+          <div className="modal-centered-content" style={{ width: '850px', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
+              <div>
+                <h2 className="text-xl font-bold text-[#0A1629]">
+                  {selectedDept ? 'Edit Department' : 'Add Department'}
+                </h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  {selectedDept ? 'Modify department configuration and assignments.' : 'Create a new company department and assign a department head.'}
+                </p>
               </div>
-
               <button
-                type="button"
                 onClick={() => setIsAddEditModalOpen(false)}
-                style={{
-                  width: '34px',
-                  height: '34px',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.25)',
-                  background: 'rgba(255, 255, 255, 0.12)',
-                  backdropFilter: 'blur(4px)',
-                  display: 'grid',
-                  placeItems: 'center',
-                  placeContent: 'center',
-                  cursor: 'pointer',
-                  zIndex: 1,
-                  transition: 'all 0.2s',
-                  flexShrink: 0,
-                  marginLeft: 'auto',
-                  lineHeight: 0,
-                  padding: 0
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
               >
-                <X size={16} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
+                <X size={20} className="text-slate-400" />
               </button>
             </div>
 
-            {/* Form Body */}
-            <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '18px', overflowY: 'auto', flex: 1 }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                <div className="hrms-input-group">
-                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Department Name *</label>
+            <form onSubmit={(e) => { e.preventDefault(); handleSaveDepartment(); }} className="p-6 overflow-y-auto flex-1 space-y-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Department Name <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
-                    className={`hrms-input ${formErrors.name ? 'border-red-500' : ''}`}
+                    required
+                    placeholder="e.g. Human Resources"
                     value={formData.name}
                     onChange={(e) => handleFormChange('name', e.target.value)}
-                    style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }}
+                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   />
-                  {formErrors.name && <span className="text-xs text-red-500 mt-1">{formErrors.name}</span>}
+                  {formErrors.name && <span className="text-xs text-red-500 mt-1 block">{formErrors.name}</span>}
                 </div>
 
-                <div className="hrms-input-group">
-                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Department Code *</label>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">
+                    Department Code <span className="text-red-500">*</span>
+                  </label>
                   <input
                     type="text"
-                    className={`hrms-input ${formErrors.code ? 'border-red-500' : ''}`}
+                    required
+                    placeholder="e.g. HR-001"
                     value={formData.code}
                     onChange={(e) => handleFormChange('code', e.target.value)}
-                    style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }}
+                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
                   />
-                  {formErrors.code && <span className="text-xs text-red-500 mt-1">{formErrors.code}</span>}
+                  {formErrors.code && <span className="text-xs text-red-500 mt-1 block">{formErrors.code}</span>}
                 </div>
 
-                <div className="hrms-input-group">
-                  <CustomSelect
-                    label="Department Head"
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Department Head</label>
+                  <AppDropdown
                     value={formData.headName || 'Unassigned'}
-                    placeholder="Select Employee"
-                    options={['Unassigned', ...employeesList.map(emp => emp.name)]}
-                    error={formErrors.headName}
                     onChange={(val) => {
                       const isUnassigned = val === 'Unassigned' || !val;
                       const selectedEmp = employeesList.find(e => e.name === val);
@@ -795,321 +639,209 @@ export function Departments() {
                         headRole: isUnassigned ? '' : (selectedEmp?.designation || selectedEmp?.role || selectedEmp?.jobTitle || 'Department Manager')
                       }));
                     }}
+                    options={[
+                      { value: 'Unassigned', label: 'Unassigned (No Head)' },
+                      ...employeesList.map(e => ({
+                        value: e.name,
+                        label: `${e.name} ${e.designation || e.role ? `(${e.designation || e.role})` : ''}`
+                      }))
+                    ]}
+                    size="sm"
                   />
                 </div>
 
-                <div className="hrms-input-group">
-                  <CustomSelect
-                    label="Parent Department"
-                    value={formData.parentDepartment}
-                    placeholder="Select Parent Department"
-                    options={['None', ...departments.filter(d => !selectedDept || d.id !== selectedDept.id).map(d => d.name)]}
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Parent Department</label>
+                  <AppDropdown
+                    value={formData.parentDepartment || 'None'}
                     onChange={(val) => handleFormChange('parentDepartment', val === 'None' ? '' : val)}
+                    options={[
+                      { value: 'None', label: 'None (Top Level)' },
+                      ...departments.filter(d => !selectedDept || d.id !== selectedDept.id).map(d => ({
+                        value: d.name,
+                        label: d.name
+                      }))
+                    ]}
+                    size="sm"
                   />
                 </div>
 
-                <div className="hrms-input-group">
-                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Department Email</label>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Department Email</label>
                   <input
                     type="email"
-                    className="hrms-input"
+                    placeholder="e.g. hr@company.com"
                     value={formData.email}
                     onChange={(e) => handleFormChange('email', e.target.value)}
-                    style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }}
+                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   />
                 </div>
 
-                <div className="hrms-input-group">
-                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Department Phone</label>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Department Phone</label>
                   <input
                     type="text"
-                    className="hrms-input"
+                    placeholder="e.g. +1 (555) 123-4567"
                     value={formData.phone}
                     onChange={(e) => handleFormChange('phone', e.target.value)}
-                    style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }}
+                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
                   />
                 </div>
 
-                <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
-                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Status</label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingTop: '4px' }}>
-                    <span style={{ fontSize: '14px', color: '#64748B' }}>Toggle Active State</span>
-                    <label className="form-toggle-switch">
-                      <input
-                        type="checkbox"
-                        checked={formData.status === 'Active'}
-                        onChange={(e) => handleFormChange('status', e.target.checked ? 'Active' : 'Inactive')}
-                      />
-                      <span className="form-toggle-slider"></span>
-                    </label>
-                  </div>
+                <div className="col-span-1 sm:col-span-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
+                  <AppDropdown
+                    value={formData.status}
+                    onChange={(v) => handleFormChange('status', v)}
+                    options={[
+                      { value: 'Active', label: 'Active' },
+                      { value: 'Inactive', label: 'Inactive' }
+                    ]}
+                    size="sm"
+                  />
+                </div>
+
+                <div className="col-span-1 sm:col-span-2">
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Description</label>
+                  <textarea
+                    placeholder="Brief description of the department's role and responsibilities..."
+                    value={formData.description}
+                    onChange={(e) => handleFormChange('description', e.target.value)}
+                    style={{ height: '90px' }}
+                    className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+                  />
                 </div>
               </div>
-            </div>
 
-            {/* Footer */}
-            <div style={{
-              padding: '16px 28px',
-              background: '#F8FAFC',
-              borderTop: '1px solid #E2E8F0',
-              display: 'flex',
-              gap: '12px',
-              justifyContent: 'flex-end',
-              flexShrink: 0
-            }}>
-              <button
-                type="button"
-                className="hrms-secondary-btn"
-                onClick={() => setIsAddEditModalOpen(false)}
-                style={{ borderRadius: '10px', padding: '9px 18px', fontWeight: '600' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="hrms-btn-primary"
-                onClick={handleSaveDepartment}
-                style={{ borderRadius: '10px', padding: '9px 22px', fontWeight: '600', background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)', color: '#FFF' }}
-              >
-                Save Department
-              </button>
-            </div>
+              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsAddEditModalOpen(false)}
+                  className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md"
+                >
+                  {selectedDept ? 'Update Department' : 'Save Department'}
+                </button>
+              </div>
+            </form>
           </div>
-        </div>
+        </>
       )}
 
       {/* View Department Details Modal */}
       {isViewModalOpen && selectedDept && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 1000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '16px',
-          background: 'rgba(15, 23, 42, 0.55)',
-          backdropFilter: 'blur(6px)'
-        }}>
-          <div style={{
-            width: '640px',
-            maxWidth: '95vw',
-            maxHeight: '90vh',
-            display: 'flex',
-            flexDirection: 'column',
-            background: '#FFFFFF',
-            borderRadius: '22px',
-            boxShadow: '0 32px 80px rgba(15, 23, 42, 0.28)',
-            overflow: 'hidden',
-            border: '1px solid rgba(255,255,255,0.8)'
-          }}>
-            {/* Header */}
-            <div style={{
-              position: 'relative',
-              padding: '20px 24px',
-              background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              overflow: 'hidden',
-              flexShrink: 0
-            }}>
-              <div style={{
-                position: 'absolute',
-                top: '-30px',
-                right: '-30px',
-                width: '130px',
-                height: '130px',
-                borderRadius: '50%',
-                background: 'rgba(255, 255, 255, 0.08)',
-                pointerEvents: 'none'
-              }} />
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1, flex: 1, marginRight: '16px' }}>
-                <div style={{
-                  width: '42px',
-                  height: '42px',
-                  borderRadius: '12px',
-                  background: 'rgba(255, 255, 255, 0.18)',
-                  backdropFilter: 'blur(8px)',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  display: 'grid',
-                  placeItems: 'center',
-                  placeContent: 'center',
-                  color: '#FFFFFF',
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
-                  flexShrink: 0,
-                  lineHeight: 0,
-                  padding: 0
-                }}>
-                  <Building2 size={22} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
+        <>
+          <div className="modal-backdrop-blur" onClick={() => setIsViewModalOpen(false)} />
+          <div className="modal-centered-content" style={{ width: '800px', maxWidth: '90vw', maxHeight: '90vh' }}>
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+                  <Building2 size={22} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#FFFFFF', letterSpacing: '-0.2px' }}>
-                    {selectedDept.name}
-                  </h3>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'rgba(255, 255, 255, 0.85)', fontFamily: 'monospace' }}>
-                    {selectedDept.code}
-                  </p>
+                  <h2 className="text-xl font-bold text-[#0A1629]">{selectedDept.name}</h2>
+                  <p className="text-sm text-slate-500 font-mono mt-0.5">{selectedDept.code}</p>
                 </div>
               </div>
-
               <button
-                type="button"
                 onClick={() => setIsViewModalOpen(false)}
-                style={{
-                  width: '34px',
-                  height: '34px',
-                  borderRadius: '10px',
-                  border: '1px solid rgba(255, 255, 255, 0.25)',
-                  background: 'rgba(255, 255, 255, 0.12)',
-                  backdropFilter: 'blur(4px)',
-                  display: 'grid',
-                  placeItems: 'center',
-                  placeContent: 'center',
-                  cursor: 'pointer',
-                  zIndex: 1,
-                  transition: 'all 0.2s',
-                  flexShrink: 0,
-                  marginLeft: 'auto',
-                  lineHeight: 0,
-                  padding: 0
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
-                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
               >
-                <X size={16} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
+                <X size={20} className="text-slate-400" />
               </button>
             </div>
 
             <div className="p-6 overflow-y-auto flex-1 space-y-6">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-slate-400 font-medium">Department Name</p>
-                  <p className="text-slate-800 font-semibold mt-1">{selectedDept.name}</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-xs font-medium text-slate-400">Department Head</span>
+                  <div className="text-sm font-semibold text-slate-800 mt-1 flex items-center gap-2">
+                    <User size={16} className="text-blue-500" />
+                    {selectedDept.headName || 'Unassigned'}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-slate-400 font-medium">Department Code</p>
-                  <p className="text-slate-800 font-semibold font-mono mt-1">{selectedDept.code}</p>
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-xs font-medium text-slate-400">Parent Department</span>
+                  <div className="text-sm font-semibold text-slate-800 mt-1">
+                    {selectedDept.parentDepartment || 'None (Top Level)'}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-slate-400 font-medium">Department Head</p>
-                  {selectedDept.headName && selectedDept.headName !== 'Unassigned' ? (
-                    <div className="flex items-center gap-2 mt-1">
-                      <img
-                        src={getHeadAvatarUrl(selectedDept)}
-                        alt={selectedDept.headName}
-                        className="w-7 h-7 rounded-full object-cover border border-slate-200"
-                        onError={(e) => {
-                          e.target.onerror = null;
-                          e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(selectedDept.headName)}&background=2563eb&color=fff&bold=true`;
-                        }}
-                      />
-                      <div>
-                        <p className="text-slate-800 font-semibold leading-tight">{selectedDept.headName}</p>
-                        <p className="text-xs text-slate-400">{getHeadRole(selectedDept)}</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-slate-800 font-semibold mt-1 text-slate-500">Unassigned</p>
-                  )}
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-xs font-medium text-slate-400">Employees Assigned</span>
+                  <div className="text-sm font-semibold text-slate-800 mt-1 flex items-center gap-1.5">
+                    <Users size={16} className="text-emerald-500" />
+                    {selectedDept.employees || 0} Employees
+                  </div>
                 </div>
-                <div>
-                  <p className="text-slate-400 font-medium">Branch</p>
-                  <p className="text-slate-800 font-semibold mt-1">{selectedDept.branch}</p>
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-xs font-medium text-slate-400">Status</span>
+                  <div className="mt-1">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${selectedDept.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                      {selectedDept.status}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-slate-400 font-medium">Parent Department</p>
-                  <p className="text-slate-800 font-semibold mt-1">{selectedDept.parentDepartment || 'None'}</p>
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-xs font-medium text-slate-400">Department Email</span>
+                  <div className="text-sm font-semibold text-slate-800 mt-1">
+                    {selectedDept.email || '—'}
+                  </div>
                 </div>
-                <div>
-                  <p className="text-slate-400 font-medium">Employee Count</p>
-                  <p className="text-slate-800 font-semibold mt-1 flex items-center gap-1.5">
-                    <Users size={14} className="text-slate-400" />
-                    {selectedDept.employees} Employees
-                  </p>
-                </div>
-                <div>
-                  <p className="text-slate-400 font-medium">Department Email</p>
-                  <p className="text-slate-800 font-semibold mt-1">{selectedDept.email || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-slate-400 font-medium">Phone</p>
-                  <p className="text-slate-800 font-semibold mt-1">
-                    {selectedDept.phone || '—'} {selectedDept.extension && `(Ext: ${selectedDept.extension})`}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-slate-400 font-medium">Location</p>
-                  <p className="text-slate-800 font-semibold mt-1">{selectedDept.location || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-slate-400 font-medium">Status</p>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mt-1 ${selectedDept.status === 'Active' ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
-                    {selectedDept.status}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-slate-400 font-medium">Created Date</p>
-                  <p className="text-slate-800 font-semibold mt-1">{selectedDept.createdDate}</p>
-                </div>
-                <div>
-                  <p className="text-slate-400 font-medium">Updated Date</p>
-                  <p className="text-slate-800 font-semibold mt-1">{selectedDept.updatedDate || '—'}</p>
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-xs font-medium text-slate-400">Department Phone</span>
+                  <div className="text-sm font-semibold text-slate-800 mt-1">
+                    {selectedDept.phone || '—'}
+                  </div>
                 </div>
               </div>
-
-              <div className="border-t border-slate-100 pt-4">
-                <p className="text-slate-400 font-medium text-sm">Description</p>
-                <p className="text-slate-600 text-sm mt-1 bg-slate-50 p-3 rounded-lg border border-slate-100 leading-relaxed">
-                  {selectedDept.description || 'No description provided.'}
-                </p>
-              </div>
+              {selectedDept.description && (
+                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
+                  <span className="text-xs font-medium text-slate-400">Description</span>
+                  <p className="text-sm text-slate-700 mt-1 leading-relaxed">{selectedDept.description}</p>
+                </div>
+              )}
             </div>
 
-            <div style={{
-              padding: '16px 28px',
-              background: '#F8FAFC',
-              borderTop: '1px solid #E2E8F0',
-              display: 'flex',
-              justifyContent: 'center',
-              flexShrink: 0
-            }}>
+            <div className="p-6 border-t border-slate-200 flex justify-end shrink-0">
               <button
                 type="button"
                 onClick={() => setIsViewModalOpen(false)}
-                className="hrms-btn-primary"
-                style={{ borderRadius: '10px', padding: '9px 28px', fontWeight: '600', background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)', color: '#FFF' }}
+                className="px-8 h-12 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-base font-semibold transition-colors"
               >
-                Close Details
+                Close
               </button>
             </div>
           </div>
-        </div>
+        </>
       )}
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && selectedDept && (
         <>
-          <div className="modal-backdrop-blur" />
+          <div className="modal-backdrop-blur" onClick={() => setIsDeleteModalOpen(false)} />
           <div className="modal-centered-content modal-centered-content-delete">
             <span className="text-4xl mb-4">⚠️</span>
             <h3 className="text-lg font-bold text-slate-800">Delete Department?</h3>
-            <p className="text-sm text-slate-500 mt-2">
+            <p className="text-sm text-slate-500 mt-2 text-center">
               Are you sure you want to delete the department <strong>{selectedDept.name}</strong>? This action cannot be undone.
             </p>
-            <div className="flex items-center justify-center gap-3 mt-6">
+            <div className="flex items-center justify-center gap-3 mt-6 w-full">
               <button
                 type="button"
                 onClick={() => setIsDeleteModalOpen(false)}
-                className="px-4 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors bg-white flex-1"
+                className="px-6 h-11 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors bg-white flex-1"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleDeleteConfirm}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors flex-1"
+                className="px-6 h-11 bg-red-600 hover:bg-red-700 text-white rounded-xl text-sm font-semibold transition-colors flex-1"
               >
                 Delete
               </button>
@@ -1121,3 +853,5 @@ export function Departments() {
     </div>
   );
 }
+
+export default Departments;

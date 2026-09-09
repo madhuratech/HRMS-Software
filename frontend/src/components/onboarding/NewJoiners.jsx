@@ -4,6 +4,7 @@ import { Search, Plus, Users, UserPlus, Clock, CheckCircle, Percent, MoreHorizon
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Label } from 'recharts';
 import { useToast } from '../ui/Toast';
 import { hasPermission } from '../../lib/permissions';
+import { apiFetch } from '../../lib/api';
 
 export default function NewJoiners() {
   const { addToast } = useToast();
@@ -51,34 +52,17 @@ export default function NewJoiners() {
     status: 'In Progress'
   });
 
-  const getAuthToken = () => {
-    const auth = localStorage.getItem('hrms_auth');
-    if (auth) {
-      try {
-        const parsed = JSON.parse(auth);
-        return parsed.token || 'mock_jwt_token';
-      } catch (e) {
-        return 'mock_jwt_token';
-      }
-    }
-    return 'mock_jwt_token';
-  };
-
   const fetchMeta = async () => {
     try {
-      const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
-      
       // Fetch departments
-      const res = await fetch('/app/requirements/meta/all', { headers });
-      const data = await res.json();
+      const data = await apiFetch('/requirements/meta/all');
       if (data && data.departments) {
         setDepartments(data.departments);
       }
 
       // Fetch accepted offers
-      const offerRes = await fetch('/app/offers?status=Accepted&limit=100', { headers });
-      const offerData = await offerRes.json();
-      if (offerData.success && offerData.data) {
+      const offerData = await apiFetch('/offers?status=Accepted&limit=100');
+      if (offerData && offerData.success && offerData.data) {
         setAcceptedOffers(offerData.data.offers || []);
       }
     } catch (err) {
@@ -88,11 +72,8 @@ export default function NewJoiners() {
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const res = await fetch('/app/joiners/dashboard', {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const resData = await res.json();
-      if (resData.success && resData.data) {
+      const resData = await apiFetch('/joiners/dashboard');
+      if (resData && resData.success && resData.data) {
         setKpiData(resData.data);
       }
     } catch (err) {
@@ -103,7 +84,7 @@ export default function NewJoiners() {
   const fetchJoiners = useCallback(async () => {
     setLoading(true);
     try {
-      let url = `/app/joiners?page=${page}&limit=${limit}`;
+      let url = `/joiners?page=${page}&limit=${limit}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
@@ -114,15 +95,12 @@ export default function NewJoiners() {
         url += `&department_id=${encodeURIComponent(filterDept)}`;
       }
 
-      const res = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const resData = await res.json();
-      if (resData.success && resData.data) {
+      const resData = await apiFetch(url);
+      if (resData && resData.success && resData.data) {
         setJoinersList(resData.data.joiners || []);
         setTotal(resData.data.total || 0);
       } else {
-        addToast(resData.message || 'Failed to fetch joiners onboarding', 'error');
+        addToast((resData && (resData.message || resData.error)) || 'Failed to fetch joiners onboarding', 'error');
       }
     } catch (err) {
       addToast('Error connecting to backend server', 'error');
@@ -212,16 +190,11 @@ export default function NewJoiners() {
         status: formData.status
       };
 
-      const res = await fetch('/app/joiners', {
+      const resData = await apiFetch('/joiners', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
         body: JSON.stringify(payload)
       });
-      const resData = await res.json();
-      if (resData.success) {
+      if (resData && resData.success) {
         addToast('New Joiner onboarding created successfully!', 'success');
         setShowAddModal(false);
         setFormData({
@@ -231,7 +204,7 @@ export default function NewJoiners() {
         fetchJoiners();
         fetchDashboardStats();
       } else {
-        addToast(resData.message || 'Failed to start onboarding', 'error');
+        addToast((resData && (resData.message || resData.error)) || 'Failed to start onboarding', 'error');
       }
     } catch (err) {
       addToast('Error connecting to backend server', 'error');
@@ -291,80 +264,83 @@ export default function NewJoiners() {
       </div>
 
       {/* Main Content Layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 2fr) minmax(0, 1fr)', gap: '24px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: '24px' }}>
 
         {/* Left Side: Table */}
         <div style={{ ...cardStyle, padding: 0, overflow: 'hidden' }}>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9' }}>
-            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B', whiteSpace: 'nowrap' }}>Recently Joined Employees</h3>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <AppDropdown
-                value={filterDept}
-                onChange={v => setFilterDept(v)}
-                options={[{value:'All Departments',label:'All Departments'}]}
-                size="sm"
-              />
-              <AppDropdown
-                value={filterStatus}
-                onChange={v => setFilterStatus(v)}
-                options={[{value:'All Status',label:'All Status'},{value:'In Progress',label:'In Progress'},{value:'Pending',label:'Pending'},{value:'Completed',label:'Completed'}]}
-                size="sm"
-              />
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '20px 24px', borderBottom: '1px solid #F1F5F9', flexWrap: 'wrap', gap: '12px' }}>
+            <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '600', color: '#1E293B' }}>Joiners List</h3>
+
+            {/* Filters */}
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
               <div style={{ position: 'relative' }}>
                 <Search size={14} color="#94A3B8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
                 <input
                   type="text"
-                  placeholder="Search..."
+                  placeholder="Search joiner..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  style={{ width: '160px', padding: '8px 10px 8px 30px', borderRadius: '6px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '13px' }}
+                  style={{ width: '180px', padding: '8px 10px 8px 30px', borderRadius: '6px', border: '1px solid #E2E8F0', outline: 'none', fontSize: '13px' }}
                 />
               </div>
+
+              <AppDropdown
+                value={filterDept}
+                onChange={v => setFilterDept(v)}
+                options={[{ value: 'All Departments', label: 'All Departments' }, ...departments.map(d => ({ value: String(d.id), label: d.name }))]}
+                size="sm"
+              />
+
+              <AppDropdown
+                value={filterStatus}
+                onChange={v => setFilterStatus(v)}
+                options={[{ value: 'All Status', label: 'All Status' }, { value: 'In Progress', label: 'In Progress' }, { value: 'Pending', label: 'Pending' }, { value: 'Completed', label: 'Completed' }]}
+                size="sm"
+              />
             </div>
           </div>
 
           <div style={{ overflowX: 'auto' }}>
             {loading ? (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>Loading onboarding joiners...</div>
+              <div style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>Loading joiners records...</div>
             ) : (
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr style={{ background: '#F8FAFC' }}>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Employee</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Employee Name</th>
                     <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Department</th>
                     <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Designation</th>
                     <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Joining Date</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Reporting Manager</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Onboarding Status</th>
-                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Actions</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9' }}>Assigned Checklist</th>
+                    <th style={{ padding: '16px 24px', fontSize: '12px', fontWeight: '600', color: '#64748B', borderBottom: '1px solid #F1F5F9', textAlign: 'center' }}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
                   {joinersList.length === 0 ? (
                     <tr>
-                      <td colSpan={7} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No onboarding records found</td>
+                      <td colSpan={6} style={{ padding: '40px', textAlign: 'center', color: '#64748B' }}>No joiners onboarding found</td>
                     </tr>
                   ) : (
                     joinersList.map((row, index) => {
-                      const joinDate = row.joining_date ? new Date(row.joining_date).toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }) : '-';
+                      const dateStr = row.joining_date ? new Date(row.joining_date).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
                       return (
                         <tr key={row.id} style={{ borderBottom: index === joinersList.length - 1 ? 'none' : '1px solid #F8FAFC', transition: 'background 0.2s', ':hover': { background: '#F8FAFC' } }}>
                           <td style={{ padding: '16px 24px', whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                               <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '600', color: '#475569' }}>
-                                {row.employee_name.split(' ').map(n => n[0]).join('')}
+                                {row.employee_name ? row.employee_name.split(' ').map(n => n[0]).join('') : 'EM'}
                               </div>
                               <div>
                                 <div style={{ fontSize: '13px', fontWeight: '600', color: '#1E293B' }}>{row.employee_name}</div>
-                                <div style={{ fontSize: '11px', color: '#64748B' }}>EMP{String(row.id).padStart(3, '0')}</div>
+                                <div style={{ fontSize: '11px', color: '#64748B' }}>Buddy: {row.buddy || 'Not Assigned'}</div>
                               </div>
                             </div>
                           </td>
                           <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.department_name}</td>
                           <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.designation}</td>
-                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{joinDate}</td>
-                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.reporting_manager}</td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{dateStr}</td>
+                          <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569', whiteSpace: 'nowrap' }}>{row.checklist}</td>
                           <td style={{ padding: '16px 24px', whiteSpace: 'nowrap', textAlign: 'center' }}>
                             <span style={{
                               padding: '4px 10px',
@@ -376,9 +352,6 @@ export default function NewJoiners() {
                             }}>
                               {row.status}
                             </span>
-                          </td>
-                          <td style={{ padding: '16px 24px', whiteSpace: 'nowrap', textAlign: 'center' }}>
-                            <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94A3B8' }}><MoreHorizontal size={16} /></button>
                           </td>
                         </tr>
                       );
@@ -395,7 +368,7 @@ export default function NewJoiners() {
               Showing {total === 0 ? 0 : (page - 1) * limit + 1} to {Math.min(page * limit, total)} of {total} entries
             </div>
             <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-              <button 
+              <button
                 disabled={page === 1}
                 onClick={() => setPage(prev => Math.max(prev - 1, 1))}
                 style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: page === 1 ? 'not-allowed' : 'pointer', color: '#64748B' }}
@@ -403,7 +376,7 @@ export default function NewJoiners() {
                 <ChevronLeft size={16} />
               </button>
               {[...Array(totalPages)].map((_, i) => (
-                <button 
+                <button
                   key={i + 1}
                   onClick={() => setPage(i + 1)}
                   style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: page === i + 1 ? '#2952E3' : '#FFF', border: page === i + 1 ? 'none' : '1px solid #E2E8F0', borderRadius: '6px', cursor: 'pointer', color: page === i + 1 ? '#FFF' : '#64748B', fontSize: '13px', fontWeight: '500' }}
@@ -411,7 +384,7 @@ export default function NewJoiners() {
                   {i + 1}
                 </button>
               ))}
-              <button 
+              <button
                 disabled={page === totalPages}
                 onClick={() => setPage(prev => Math.min(prev + 1, totalPages))}
                 style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '6px', cursor: page === totalPages ? 'not-allowed' : 'pointer', color: '#64748B' }}
@@ -496,16 +469,16 @@ export default function NewJoiners() {
               </button>
             </div>
             <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
-              
+
               {/* Auto Populate section */}
               <div style={{ background: '#EFF6FF', border: '1px dashed #2952E3', borderRadius: '12px', padding: '16px', marginBottom: '16px' }}>
                 <label className="block text-sm font-semibold text-blue-700 mb-2">Import from Accepted Offer Letters (Optional)</label>
                 <AppDropdown
-                value={formData.selectedOfferId}
-                onChange={v => handleOfferChange(v)}
-                options={[{value:'',label:'Select Accepted Offer to Auto-Populate'}]}
-                size="sm"
-              />
+                  value={formData.selectedOfferId}
+                  onChange={v => handleOfferChange(v)}
+                  options={[{ value: '', label: 'Select Accepted Offer to Auto-Populate' }, ...acceptedOffers.map(o => ({ value: String(o.id), label: `${o.candidate_name} - ${o.job_position}` }))]}
+                  size="sm"
+                />
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -516,11 +489,11 @@ export default function NewJoiners() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Department <span className="text-red-500">*</span></label>
                   <AppDropdown
-                value={formData.department}
-                onChange={v => setFormData({ ...formData, department: v })}
-                options={[{value:'',label:'Select Department'}]}
-                size="sm"
-              />
+                    value={formData.department}
+                    onChange={v => setFormData({ ...formData, department: v })}
+                    options={[{ value: '', label: 'Select Department' }, ...departments.map(d => ({ value: String(d.id), label: d.name }))]}
+                    size="sm"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Designation <span className="text-red-500">*</span></label>
@@ -537,11 +510,11 @@ export default function NewJoiners() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Assigned Checklist <span className="text-red-500">*</span></label>
                   <AppDropdown
-                value={formData.checklist}
-                onChange={v => setFormData({ ...formData, checklist: v })}
-                options={[{value:'',label:'Select Onboarding Checklist'},{value:'Standard Engineering Checklist',label:'Standard Engineering Checklist'},{value:'HR & Admin Checklist',label:'HR & Admin Checklist'},{value:'Executive Management Checklist',label:'Executive Management Checklist'}]}
-                size="sm"
-              />
+                    value={formData.checklist}
+                    onChange={v => setFormData({ ...formData, checklist: v })}
+                    options={[{ value: '', label: 'Select Onboarding Checklist' }, { value: 'Standard Engineering Checklist', label: 'Standard Engineering Checklist' }, { value: 'HR & Admin Checklist', label: 'HR & Admin Checklist' }, { value: 'Executive Management Checklist', label: 'Executive Management Checklist' }]}
+                    size="sm"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Buddy / Mentor</label>
@@ -550,11 +523,11 @@ export default function NewJoiners() {
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
                   <AppDropdown
-                value={formData.status}
-                onChange={v => setFormData({ ...formData, status: v })}
-                options={[{value:'In Progress',label:'In Progress'},{value:'Pending',label:'Pending'},{value:'Completed',label:'Completed'}]}
-                size="sm"
-              />
+                    value={formData.status}
+                    onChange={v => setFormData({ ...formData, status: v })}
+                    options={[{ value: 'In Progress', label: 'In Progress' }, { value: 'Pending', label: 'Pending' }, { value: 'Completed', label: 'Completed' }]}
+                    size="sm"
+                  />
                 </div>
               </div>
               <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">

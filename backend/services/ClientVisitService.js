@@ -114,8 +114,10 @@ class ClientVisitService {
 
   static async getActiveVisitsForEmployee(employeeId) {
     const visits = await query(`
-      SELECT * FROM client_visits
-      WHERE employee_id = ? AND status != 'Completed'
+      SELECT cv.*, e.name as employee_name
+      FROM client_visits cv
+      LEFT JOIN employees e ON cv.employee_id = e.id
+      WHERE cv.employee_id = ? AND cv.status != 'Completed'
     `, [employeeId]);
     return visits;
   }
@@ -123,8 +125,10 @@ class ClientVisitService {
   static async getCompletedVisitsForEmployee(employeeId) {
     const today = new Date().toISOString().split('T')[0];
     const visits = await query(`
-      SELECT * FROM client_visits
-      WHERE employee_id = ? AND status = 'Completed' AND date = ?
+      SELECT cv.*, e.name as employee_name
+      FROM client_visits cv
+      LEFT JOIN employees e ON cv.employee_id = e.id
+      WHERE cv.employee_id = ? AND cv.status = 'Completed' AND cv.date = ?
     `, [employeeId, today]);
     return visits;
   }
@@ -136,18 +140,18 @@ class ClientVisitService {
              (SELECT longitude FROM LocationHistory lh WHERE lh.visit_id = cv.id ORDER BY recorded_at DESC LIMIT 1) as last_lng,
              (SELECT recorded_at FROM LocationHistory lh WHERE lh.visit_id = cv.id ORDER BY recorded_at DESC LIMIT 1) as last_update
       FROM client_visits cv
-      JOIN employees e ON cv.employee_id = e.id
-      JOIN departments d ON e.department_id = d.id
-      WHERE cv.status != 'Completed' AND d.dept_name = 'Sales & Marketing'
+      LEFT JOIN employees e ON cv.employee_id = e.id
+      LEFT JOIN departments d ON e.department_id = d.id
+      WHERE cv.status != 'Completed'
     `);
     
     const today = new Date().toISOString().split('T')[0];
     const completedVisits = await query(`
       SELECT cv.id, cv.employee_id, cv.client_name, cv.start_journey_time, cv.end_journey_time, cv.check_in_time, cv.check_out_time, cv.distance_travelled, cv.calculated_fee, cv.status, e.name as employee_name
       FROM client_visits cv
-      JOIN employees e ON cv.employee_id = e.id
-      JOIN departments d ON e.department_id = d.id
-      WHERE cv.date = ? AND cv.status = 'Completed' AND d.dept_name = 'Sales & Marketing'
+      LEFT JOIN employees e ON cv.employee_id = e.id
+      LEFT JOIN departments d ON e.department_id = d.id
+      WHERE cv.date = ? AND cv.status = 'Completed'
     `, [today]);
 
     return { activeVisits, completedVisits };

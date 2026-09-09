@@ -31,6 +31,8 @@ export function Header({ title, userRole, currentView }) {
   };
 
   const fetchNotifications = async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) return;
+    if (typeof document !== 'undefined' && document.hidden) return;
     try {
       const res = await apiFetch('/notifications');
       if (res && res.success) {
@@ -38,20 +40,23 @@ export function Header({ title, userRole, currentView }) {
         setNotifications(notifList);
         const count = typeof res.unreadCount === 'number' ? res.unreadCount : notifList.filter(n => !n.is_read && !n.isRead).length;
         setUnreadCount(count);
-      } else {
-        setNotifications([]);
-        setUnreadCount(0);
       }
     } catch (e) {
-      setNotifications([]);
-      setUnreadCount(0);
+      // Gracefully maintain current state on network hiccups
     }
   };
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 15000);
-    return () => clearInterval(interval);
+    const interval = setInterval(fetchNotifications, 20000);
+    const handleOnline = () => fetchNotifications();
+    window.addEventListener('online', handleOnline);
+    document.addEventListener('visibilitychange', handleOnline);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('online', handleOnline);
+      document.removeEventListener('visibilitychange', handleOnline);
+    };
   }, []);
 
   const handleNotificationClick = async (notif) => {
@@ -190,7 +195,12 @@ export function Header({ title, userRole, currentView }) {
 
   const getBreadcrumbs = () => {
     const viewMap = {
+      // Main & Common
       'dashboard': ['Dashboard'],
+      'ai-assistant': ['AI Assistant'],
+      'notifications': ['Notifications'],
+
+      // Organization
       'company-profile': ['Organization', 'Company Profile'],
       'branches': ['Organization', 'Branches'],
       'departments': ['Organization', 'Departments'],
@@ -200,7 +210,11 @@ export function Header({ title, userRole, currentView }) {
       'shift-management': ['Organization', 'Shift Management'],
       'holiday-calendar': ['Organization', 'Holiday Calendar'],
       'organization-chart': ['Organization', 'Organization Chart'],
+      'user-roles': ['Organization', 'User Roles'],
+
+      // Employees (Admin/HR)
       'employees': ['Employees', 'Employee Directory'],
+      'employees-dashboard': ['Employees', 'Employee Directory'],
       'employees-list': ['Employees', 'Employee List'],
       'employees-add': ['Employees', 'Add Employee'],
       'employees-profile': ['Employees', 'Employee Profile'],
@@ -209,31 +223,168 @@ export function Header({ title, userRole, currentView }) {
       'employees-transfers': ['Employees', 'Transfers'],
       'employees-exit': ['Employees', 'Exit Management'],
       'employees-documents': ['Employees', 'Employee Documents'],
-      'attendance': ['Attendance'],
+      'employees-reports': ['Employees', 'Employee Reports'],
+
+      // Employee Self-Service Portal
+      'employee': ['Employee Portal', 'Dashboard'],
+      'employee-dashboard': ['Employee Portal', 'Dashboard'],
+      'employee-profile': ['Employee Portal', 'My Profile'],
+      'employee-attendance': ['Employee Portal', 'My Attendance'],
+      'employee-shift': ['Employee Portal', 'My Shift'],
+      'employee-leave': ['Employee Portal', 'Leave Applications'],
+      'employee-leave-balance': ['Employee Portal', 'Leave Balance'],
+      'employee-leave-requests': ['Employee Portal', 'Leave Requests'],
+      'employee-leave-types': ['Employee Portal', 'Leave Types'],
+      'employee-holidays': ['Employee Portal', 'Holidays'],
+      'employee-payroll': ['Employee Portal', 'My Payroll'],
+      'employee-tasks': ['Employee Portal', 'My Tasks'],
+      'employee-team': ['Employee Portal', 'My Team'],
+      'employee-performance': ['Employee Portal', 'My Performance'],
+      'employee-documents': ['Employee Portal', 'My Documents'],
+      'employee-announcements': ['Employee Portal', 'Announcements'],
+      'employee-help': ['Employee Portal', 'Help Desk'],
+
+      // Team Leader Portal
+      'team-leader': ['Team Leader Portal', 'Dashboard'],
+      'team-leader-dashboard': ['Team Leader Portal', 'Dashboard'],
+      'team-leader-profile': ['Team Leader Portal', 'My Profile'],
+      'team-leader-my-attendance': ['Team Leader Portal', 'My Attendance'],
+      'team-leader-my-shift': ['Team Leader Portal', 'My Shift'],
+      'team-leader-my-team': ['Team Leader Portal', 'My Team'],
+      'team-leader-team-attendance': ['Team Leader Portal', 'Team Attendance'],
+      'team-leader-projects': ['Team Leader Portal', 'Projects'],
+      'team-leader-team-tasks': ['Team Leader Portal', 'Team Tasks'],
+      'team-leader-team-performance': ['Team Leader Portal', 'Team Performance'],
+      'team-leader-my-leave': ['Team Leader Portal', 'My Leave'],
+      'team-leader-team-leave': ['Team Leader Portal', 'Team Leave Approval'],
+      'team-leader-holidays': ['Team Leader Portal', 'Holidays'],
+      'team-leader-leave-types': ['Team Leader Portal', 'Leave Types'],
+      'team-leader-my-payroll': ['Team Leader Portal', 'My Payroll'],
+      'team-leader-help': ['Team Leader Portal', 'Help Desk'],
+
+      // Attendance
+      'attendance': ['Attendance', 'Daily Attendance'],
       'attendance-daily': ['Attendance', 'Daily Attendance'],
-      'attendance-gps': ['Attendance', 'GPS Attendance Punch'],
+      'attendance-gps': ['Attendance', 'GPS & Geofencing'],
       'attendance-gps-punch': ['Attendance', 'GPS Attendance Punch'],
+      'attendance-punch': ['Attendance', 'GPS Attendance Punch'],
+      'attendance-punch-locations': ['Attendance', 'Punch Locations'],
       'attendance-biometric': ['Attendance', 'Biometric Attendance'],
       'attendance-regularization': ['Attendance', 'Regularization'],
       'attendance-shift-roster': ['Attendance', 'Shift Roster'],
       'attendance-overtime': ['Attendance', 'Overtime'],
       'attendance-late-arrival': ['Attendance', 'Late Arrival'],
       'attendance-reports': ['Attendance', 'Attendance Reports'],
-      'leave-management': ['Leave Management'],
+
+      // Leave Management
+      'leave-management': ['Leave Management', 'Leave Dashboard'],
       'leave-dashboard': ['Leave Management', 'Leave Dashboard'],
       'leave-applications': ['Leave Management', 'Leave Applications'],
       'leave-approval': ['Leave Management', 'Leave Approval'],
       'leave-balance': ['Leave Management', 'Leave Balance'],
       'leave-types': ['Leave Management', 'Leave Types'],
+      'leave-reports': ['Leave Management', 'Leave Reports'],
       'holiday-list': ['Leave Management', 'Holiday List'],
       'comp-off': ['Leave Management', 'Comp Off'],
-      'payroll': ['Payroll'],
-      'recruitment': ['Recruitment'],
-      'onboarding': ['Onboarding'],
-      'performance': ['Performance'],
-      'training': ['Training'],
-      'projects': ['Projects'],
-      'reports': ['Reports'],
+
+      // Payroll
+      'payroll': ['Payroll', 'Salary Structure'],
+      'payroll-salary-structure': ['Payroll', 'Salary Structure'],
+      'payroll-components': ['Payroll', 'Salary Components'],
+      'payroll-processing': ['Payroll', 'Payroll Processing'],
+      'payroll-payslips': ['Payroll', 'Generate Payslips'],
+      'payroll-bonus': ['Payroll', 'Bonus & Incentives'],
+      'payroll-reimbursements': ['Payroll', 'Reimbursements'],
+      'payroll-loans': ['Payroll', 'Loans & Advances'],
+      'payroll-tax': ['Payroll', 'Tax Management'],
+      'payroll-reports': ['Payroll', 'Payroll Reports'],
+
+      // Recruitment
+      'recruitment': ['Recruitment', 'Recruitment Dashboard'],
+      'recruitment-dashboard': ['Recruitment', 'Recruitment Dashboard'],
+      'recruitment-jobs': ['Recruitment', 'Job Openings'],
+      'recruitment-candidates': ['Recruitment', 'Candidates'],
+      'recruitment-screening': ['Recruitment', 'Candidate Screening'],
+      'recruitment-interviews': ['Recruitment', 'Interview Schedule'],
+      'recruitment-offers': ['Recruitment', 'Offer Letters'],
+      'recruitment-pipeline': ['Recruitment', 'Hiring Pipeline'],
+      'recruitment-reports': ['Recruitment', 'Recruitment Reports'],
+
+      // Onboarding
+      'onboarding': ['Onboarding', 'New Joiners'],
+      'onboarding-new-joiners': ['Onboarding', 'New Joiners'],
+      'onboarding-documents': ['Onboarding', 'Document Verification'],
+      'onboarding-assets': ['Onboarding', 'Asset Allocation'],
+      'onboarding-welcome-kit': ['Onboarding', 'Welcome Kit'],
+      'onboarding-orientation': ['Onboarding', 'Orientation'],
+      'onboarding-probation': ['Onboarding', 'Probation'],
+
+      // Performance
+      'performance': ['Performance', 'Goals'],
+      'performance-goals': ['Performance', 'Goals'],
+      'performance-kpis': ['Performance', 'KPIs'],
+      'performance-kras': ['Performance', 'KRAs'],
+      'performance-appraisals': ['Performance', 'Appraisals'],
+      'performance-reviews': ['Performance', 'Reviews'],
+      'performance-feedback': ['Performance', 'Feedback'],
+      'performance-promotions': ['Performance', 'Promotions'],
+      'performance-reports': ['Performance', 'Performance Reports'],
+
+      // Projects
+      'projects': ['Projects', 'Project Dashboard'],
+      'projects-dashboard': ['Projects', 'Project Dashboard'],
+      'projects-list': ['Projects', 'Projects List'],
+      'projects-tasks': ['Projects', 'Tasks'],
+      'projects-sprint-board': ['Projects', 'Sprint Board'],
+      'projects-timesheets': ['Projects', 'Timesheets'],
+      'projects-milestones': ['Projects', 'Milestones'],
+      'projects-team': ['Projects', 'Team Members'],
+      'projects-reports': ['Projects', 'Project Reports'],
+
+      // Clients
+      'clients': ['Clients', 'All Clients'],
+      'clients-list': ['Clients', 'All Clients'],
+      'clients-add': ['Clients', 'Add Client'],
+
+      // Expenses
+      'expenses': ['Expenses', 'Expense Claims'],
+      'expenses-claims': ['Expenses', 'Expense Claims'],
+      'expenses-categories': ['Expenses', 'Expense Categories'],
+      'expenses-approval': ['Expenses', 'Expense Approval'],
+      'expenses-reimbursements': ['Expenses', 'Reimbursements'],
+      'expenses-reports': ['Expenses', 'Expense Reports'],
+
+      // Documents
+      'documents': ['Documents', 'Employee Documents'],
+      'documents-employee': ['Documents', 'Employee Documents'],
+      'documents-company': ['Documents', 'Company Documents'],
+      'documents-policies': ['Documents', 'HR Policies'],
+      'documents-templates': ['Documents', 'Templates'],
+      'documents-signatures': ['Documents', 'Digital Signatures'],
+
+      // Help Desk
+      'help-desk': ['Help Desk', 'Help Desk Dashboard'],
+      'help-desk-dashboard': ['Help Desk', 'Help Desk Dashboard'],
+      'help-desk-tickets': ['Help Desk', 'Tickets'],
+      'help-desk-categories': ['Help Desk', 'Categories'],
+      'help-desk-priorities': ['Help Desk', 'Priorities'],
+      'help-desk-knowledge-base': ['Help Desk', 'Knowledge Base'],
+      'help-desk-reports': ['Help Desk', 'Help Desk Reports'],
+
+      // Settings
+      'settings': ['Settings', 'Company Settings'],
+      'settings-company': ['Settings', 'Company Settings'],
+      'settings-branding': ['Settings', 'Branding'],
+      'settings-organization': ['Settings', 'Organization'],
+      'settings-users': ['Settings', 'User Roles & Permissions'],
+      'settings-hr': ['Settings', 'HR Settings'],
+      'settings-communication': ['Settings', 'Communication'],
+      'settings-integrations': ['Settings', 'Integrations'],
+      'settings-security': ['Settings', 'Security'],
+      'settings-system': ['Settings', 'System Settings'],
+
+      // Reports
+      'reports': ['Reports', 'Reports Directory'],
       'reports-employees': ['Reports', 'Employee Reports'],
       'reports-employee': ['Reports', 'Employee Reports'],
       'reports-attendance': ['Reports', 'Attendance Reports'],
@@ -243,13 +394,38 @@ export function Header({ title, userRole, currentView }) {
       'reports-performance': ['Reports', 'Performance Reports'],
       'reports-projects': ['Reports', 'Project Reports'],
       'reports-project': ['Reports', 'Project Reports'],
-      'assets': ['Assets'],
-      'expenses': ['Expenses'],
-      'documents': ['Documents'],
-      'help-desk': ['Help Desk'],
-      'settings': ['Settings'],
+      'reports-expenses': ['Reports', 'Expense Reports'],
+
+      // Sales, Support & Service
+      'sales': ['Sales', 'Sales Entry'],
+      'leads': ['Sales', 'Sales Enquiries'],
+      'customer-sales': ['Sales', 'Customer Sales Details'],
+      'service': ['Service', 'Task Board'],
+      'news': ['Communication', 'News Feed'],
+      'schedule': ['HR', 'Shift Scheduler'],
+      'support': ['Support', 'Support Tickets'],
+      'assets': ['Assets', 'Asset Allocation'],
     };
-    return viewMap[currentView] || [title];
+
+    if (viewMap[currentView]) {
+      return viewMap[currentView];
+    }
+
+    // Dynamic matching for client paths
+    if (currentView?.startsWith('clients-')) {
+      if (currentView.endsWith('-edit')) return ['Clients', 'Edit Client'];
+      return ['Clients', 'Client Details'];
+    }
+
+    // Smart fallback formatting: turn 'recruitment-dashboard' -> ['Recruitment', 'Dashboard']
+    if (currentView && typeof currentView === 'string') {
+      const parts = currentView.split('-').filter(Boolean);
+      if (parts.length > 0) {
+        return parts.map(p => p.charAt(0).toUpperCase() + p.slice(1));
+      }
+    }
+
+    return [title || 'Dashboard'];
   };
 
   const breadcrumbs = getBreadcrumbs();

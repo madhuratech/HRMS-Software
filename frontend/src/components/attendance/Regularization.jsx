@@ -103,7 +103,6 @@ export default function Regularization() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
           <div>
             <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#0f172a', margin: 0 }}>Attendance Regularization</h1>
-            <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>Review and manage employee punch correction & regularization requests</p>
           </div>
           <button
             onClick={() => setShowApplyModal(true)}
@@ -115,19 +114,19 @@ export default function Regularization() {
         </div>
 
         <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid #e2e8f0', width: '100%', justifyContent: 'flex-start' }}>
-          <button 
+          <button
             style={{ padding: '12px 16px', background: 'none', border: 'none', borderBottom: activeTab === 'pending' ? '2px solid #2563EB' : '2px solid transparent', color: activeTab === 'pending' ? '#2563EB' : '#64748b', fontWeight: activeTab === 'pending' ? '600' : '400', cursor: 'pointer' }}
             onClick={() => setActiveTab('pending')}
           >
             Pending Requests
           </button>
-          <button 
+          <button
             style={{ padding: '12px 16px', background: 'none', border: 'none', borderBottom: activeTab === 'approved' ? '2px solid #2563EB' : '2px solid transparent', color: activeTab === 'approved' ? '#2563EB' : '#64748b', fontWeight: activeTab === 'approved' ? '600' : '400', cursor: 'pointer' }}
             onClick={() => setActiveTab('approved')}
           >
             Approved Requests
           </button>
-          <button 
+          <button
             style={{ padding: '12px 16px', background: 'none', border: 'none', borderBottom: activeTab === 'rejected' ? '2px solid #2563EB' : '2px solid transparent', color: activeTab === 'rejected' ? '#2563EB' : '#64748b', fontWeight: activeTab === 'rejected' ? '600' : '400', cursor: 'pointer' }}
             onClick={() => setActiveTab('rejected')}
           >
@@ -181,7 +180,7 @@ export default function Regularization() {
                       <tr key={req.id}>
                         <td style={{ whiteSpace: 'nowrap' }}>
                           <div className="hrms-user-info">
-                            <img src={getAvatarUrl(req.profile_photo || req.avatar, req.employee_name, req.employee_id || req.id)} alt={req.employee_name} className="hrms-avatar" style={{width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover'}} />
+                            <img src={getAvatarUrl(req.profile_photo || req.avatar, req.employee_name, req.employee_id || req.id)} alt={req.employee_name} className="hrms-avatar" style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover' }} />
                             <span className="hrms-font-medium hrms-text-primary">{req.employee_name}</span>
                           </div>
                         </td>
@@ -190,9 +189,9 @@ export default function Regularization() {
                         <td style={{ whiteSpace: 'nowrap' }}>{req.reason}</td>
                         <td>
                           <span style={{
-                            padding: '6px 16px', 
-                            borderRadius: '6px', 
-                            fontSize: '12px', 
+                            padding: '6px 16px',
+                            borderRadius: '6px',
+                            fontSize: '12px',
                             fontWeight: '600',
                             backgroundColor: req.status === 'Approved' ? '#f0fdf4' : req.status === 'Rejected' ? '#fef2f2' : '#fff7ed',
                             color: req.status === 'Approved' ? '#16a34a' : req.status === 'Rejected' ? '#dc2626' : '#ea580c'
@@ -204,14 +203,14 @@ export default function Regularization() {
                           <div style={{ display: 'flex', gap: '8px' }}>
                             {activeTab === 'pending' && (
                               <>
-                                <button 
+                                <button
                                   title="Approve"
                                   onClick={() => handleUpdateStatus(req.id, 'Approved')}
                                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', width: '32px', height: '32px', cursor: 'pointer', color: '#16a34a' }}
                                 >
                                   <Check size={16} />
                                 </button>
-                                <button 
+                                <button
                                   title="Reject"
                                   onClick={() => handleUpdateStatus(req.id, 'Rejected')}
                                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', width: '32px', height: '32px', cursor: 'pointer', color: '#dc2626' }}
@@ -228,7 +227,7 @@ export default function Regularization() {
                 </tbody>
               </table>
             </div>
-            
+
             <div className="hrms-flex-between" style={{ padding: '16px 24px', borderTop: '1px solid #f1f5f9' }}>
               <span className="hrms-text-sm hrms-text-muted">
                 Showing {requests.length} entries
@@ -242,7 +241,7 @@ export default function Regularization() {
       {showApplyModal && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', background: 'rgba(15, 23, 42, 0.55)', backdropFilter: 'blur(6px)' }}>
           <div style={{ width: '560px', maxWidth: '95vw', maxHeight: '90vh', display: 'flex', flexDirection: 'column', background: '#FFFFFF', borderRadius: '22px', boxShadow: '0 32px 80px rgba(15, 23, 42, 0.28)', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.8)' }}>
-            
+
             {/* Modal Header */}
             <div style={{ position: 'relative', padding: '20px 24px', background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', overflow: 'hidden', flexShrink: 0 }}>
               <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '130px', height: '130px', borderRadius: '50%', background: 'rgba(255, 255, 255, 0.08)', pointerEvents: 'none' }} />
@@ -262,9 +261,9 @@ export default function Regularization() {
                 </div>
               </div>
 
-              <button 
+              <button
                 type="button"
-                onClick={() => setShowApplyModal(false)} 
+                onClick={() => setShowApplyModal(false)}
                 style={{ width: '34px', height: '34px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.25)', background: 'rgba(255, 255, 255, 0.12)', backdropFilter: 'blur(4px)', display: 'grid', placeItems: 'center', placeContent: 'center', cursor: 'pointer', zIndex: 1, transition: 'all 0.2s', flexShrink: 0, marginLeft: 'auto', lineHeight: 0, padding: 0 }}
                 onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
@@ -280,11 +279,11 @@ export default function Regularization() {
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '7px' }}>
                   Employee <span style={{ color: '#EF4444' }}>*</span>
                 </label>
-                <AppDropdown 
-                  value={formData.employee_id} 
-                  options={[{ value: '', label: 'Select Employee' }, ...(employees || [])]} 
+                <AppDropdown
+                  value={formData.employee_id}
+                  options={[{ value: '', label: 'Select Employee' }, ...(employees || [])]}
                   onChange={(val) => setFormData({ ...formData, employee_id: val })}
-                  size="sm" 
+                  size="sm"
                 />
               </div>
 
@@ -310,7 +309,7 @@ export default function Regularization() {
                   <AppDropdown
                     value={formData.type}
                     onChange={v => setFormData({ ...formData, type: v })}
-                    options={[{value:'Late Arrival',label:'Late Arrival'},{value:'Early Exit',label:'Early Exit'},{value:'Missed Punch',label:'Missed Punch'},{value:'On-Duty',label:'On-Duty'},{value:'Absent',label:'Absent'}]}
+                    options={[{ value: 'Late Arrival', label: 'Late Arrival' }, { value: 'Early Exit', label: 'Early Exit' }, { value: 'Missed Punch', label: 'Missed Punch' }, { value: 'On-Duty', label: 'On-Duty' }, { value: 'Absent', label: 'Absent' }]}
                     size="sm"
                   />
                 </div>

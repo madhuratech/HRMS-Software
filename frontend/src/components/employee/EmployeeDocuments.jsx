@@ -170,35 +170,11 @@ export default function EmployeeDocuments() {
 
   return (
     <div className="hrms-content">
-      {/* Top Header Banner */}
-      <div className="hrms-header" style={{ marginBottom: '24px', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-            <span style={{
-              fontSize: '11px',
-              fontWeight: '700',
-              textTransform: 'uppercase',
-              letterSpacing: '0.6px',
-              backgroundColor: '#EFF6FF',
-              color: '#2563EB',
-              padding: '4px 10px',
-              borderRadius: '20px',
-              border: '1px solid #BFDBFE'
-            }}>
-              Document Archive
-            </span>
-            <span style={{ fontSize: '13px', color: '#94A3B8', fontWeight: '500' }}>•</span>
-            <span style={{ fontSize: '13px', color: '#64748B', fontWeight: '600' }}>
-              ID: {`EMP${String(currentEmpId).padStart(4, '0')}`}
-            </span>
-          </div>
-          <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#0F172A', margin: 0, letterSpacing: '-0.3px' }}>
-            Employee Documents
-          </h1>
-          <p style={{ margin: '4px 0 0 0', fontSize: '14px', color: '#64748B' }}>
-            Manage identity proofs, contracts, salary slips, and compliance records for employees.
-          </p>
-        </div>
+      {/* Header */}
+      <div className="hrms-header" style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#0F172A', margin: 0, letterSpacing: '-0.3px' }}>
+          Employee Documents
+        </h1>
 
         {/* Action Bar & Employee Dropdown */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>

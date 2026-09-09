@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import AppDropdown from '../ui/AppDropdown';
-import { Search, Eye, Download, FileText, CheckCircle, Clock, AlertCircle, Plus, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Eye, Download, FileText, CheckCircle, Clock, AlertCircle, Plus, X, ChevronLeft, ChevronRight, UploadCloud, Check, ExternalLink, ShieldCheck, User } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Label } from 'recharts';
 import { useToast } from '../ui/Toast';
 import { hasPermission } from '../../lib/permissions';
+import { apiFetch } from '../../lib/api';
 
 export default function DocumentVerification() {
   const { addToast } = useToast();
@@ -43,34 +44,17 @@ export default function DocumentVerification() {
   const [formFiles, setFormFiles] = useState({});
   const [formStatus, setFormStatus] = useState('Pending');
 
-  const getAuthToken = () => {
-    const auth = localStorage.getItem('hrms_auth');
-    if (auth) {
-      try {
-        const parsed = JSON.parse(auth);
-        return parsed.token || 'mock_jwt_token';
-      } catch (e) {
-        return 'mock_jwt_token';
-      }
-    }
-    return 'mock_jwt_token';
-  };
-
   const fetchMeta = async () => {
     try {
-      const headers = { 'Authorization': `Bearer ${getAuthToken()}` };
-      
       // Fetch departments
-      const deptRes = await fetch('/app/requirements/meta/all', { headers });
-      const deptData = await deptRes.json();
+      const deptData = await apiFetch('/requirements/meta/all');
       if (deptData && deptData.departments) {
         setDepartments(deptData.departments);
       }
 
       // Fetch active new joiners
-      const joinersRes = await fetch('/app/joiners?limit=1000', { headers });
-      const joinersData = await joinersRes.json();
-      if (joinersData.success && joinersData.data) {
+      const joinersData = await apiFetch('/joiners?limit=1000');
+      if (joinersData && joinersData.success && joinersData.data) {
         setNewJoiners(joinersData.data.joiners || []);
       }
     } catch (err) {
@@ -80,11 +64,8 @@ export default function DocumentVerification() {
 
   const fetchDashboardStats = useCallback(async () => {
     try {
-      const res = await fetch('/app/verifications/stats', {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const resData = await res.json();
-      if (resData.success && resData.data) {
+      const resData = await apiFetch('/verifications/stats');
+      if (resData && resData.success && resData.data) {
         setKpiData(resData.data);
       }
     } catch (err) {
@@ -100,7 +81,7 @@ export default function DocumentVerification() {
       if (activeTab === 'Rejected Documents') mappedStatus = 'Rejected';
       if (activeTab === 'Completed Verification') mappedStatus = 'Completed';
 
-      let url = `/app/verifications?page=${page}&limit=${limit}&status=${mappedStatus}`;
+      let url = `/verifications?page=${page}&limit=${limit}&status=${mappedStatus}`;
       if (search) {
         url += `&search=${encodeURIComponent(search)}`;
       }
@@ -108,15 +89,12 @@ export default function DocumentVerification() {
         url += `&department_id=${encodeURIComponent(filterDept)}`;
       }
 
-      const res = await fetch(url, {
-        headers: { 'Authorization': `Bearer ${getAuthToken()}` }
-      });
-      const resData = await res.json();
-      if (resData.success && resData.data) {
+      const resData = await apiFetch(url);
+      if (resData && resData.success && resData.data) {
         setVerificationsList(resData.data.verifications || []);
         setTotal(resData.data.total || 0);
       } else {
-        addToast(resData.message || 'Failed to fetch document verifications', 'error');
+        addToast((resData && (resData.message || resData.error)) || 'Failed to fetch document verifications', 'error');
       }
     } catch (err) {
       addToast('Error connecting to backend server', 'error');
@@ -201,26 +179,22 @@ export default function DocumentVerification() {
       });
 
       const url = selectedVerification 
-        ? `/app/verifications/${selectedVerification.id}`
-        : '/app/verifications';
+        ? `/verifications/${selectedVerification.id}`
+        : '/verifications';
       
       const method = selectedVerification ? 'PUT' : 'POST';
 
-      const res = await fetch(url, {
+      const resData = await apiFetch(url, {
         method,
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`
-        },
         body: data
       });
-      const resData = await res.json();
-      if (resData.success) {
+      if (resData && resData.success) {
         addToast('Verification record saved successfully!', 'success');
         setShowModal(false);
         fetchVerifications();
         fetchDashboardStats();
       } else {
-        addToast(resData.message || 'Failed to save verification details', 'error');
+        addToast((resData && (resData.message || resData.error)) || 'Failed to save verification details', 'error');
       }
     } catch (err) {
       addToast('Connection error occurred', 'error');
@@ -234,20 +208,16 @@ export default function DocumentVerification() {
     
     setSubmitting(true);
     try {
-      const res = await fetch(`/app/verifications/${verifyId}/complete`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${getAuthToken()}`
-        }
+      const resData = await apiFetch(`/verifications/${verifyId}/complete`, {
+        method: 'PUT'
       });
-      const resData = await res.json();
-      if (resData.success) {
+      if (resData && resData.success) {
         addToast('Verification completed and Employee generated successfully!', 'success');
         setShowModal(false);
         fetchVerifications();
         fetchDashboardStats();
       } else {
-        addToast(resData.message || 'Failed to complete verification', 'error');
+        addToast((resData && (resData.message || resData.error)) || 'Failed to complete verification', 'error');
       }
     } catch (err) {
       addToast('Connection error occurred', 'error');
@@ -279,12 +249,9 @@ export default function DocumentVerification() {
       
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <h1 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '700', color: '#1E293B' }}>Document Verification</h1>
-          <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Verify and track employee documents</p>
-        </div>
+        <h1 style={{ margin: 0, fontSize: '24px', fontWeight: '700', color: '#1E293B' }}>Document Verification</h1>
         {hasPermission('onboarding', 'document_verification', 'create') && (
-          <button onClick={handleOpenAdd} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#2952E3', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+          <button onClick={handleOpenAdd} style={{ padding: '10px 20px', borderRadius: '10px', border: 'none', background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)', color: '#FFF', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '600', boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)' }}>
             <Plus size={18} /> Initiate Verification
           </button>
         )}
@@ -317,13 +284,18 @@ export default function DocumentVerification() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
           
           {/* Toolbar */}
-          <div style={{ display: 'flex', gap: '16px' }}>
-            <AppDropdown
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <div style={{ width: '200px' }}>
+              <AppDropdown
                 value={filterDept}
                 onChange={v => setFilterDept(v)}
-                options={[{value:'All Departments',label:'All Departments'}]}
+                options={[
+                  { value: 'All Departments', label: 'All Departments' },
+                  ...departments.map(d => ({ value: String(d.id || d.name), label: d.name || d.department_name }))
+                ]}
                 size="sm"
               />
+            </div>
             <div style={{ position: 'relative', flex: 1 }}>
               <Search size={16} color="#94A3B8" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
               <input 
@@ -488,114 +460,358 @@ export default function DocumentVerification() {
 
       </div>
 
-      {/* Verification Review Modal (1100px Standard) */}
+      {/* Verification Review Modal */}
       {showModal && (selectedVerification ? hasPermission('onboarding', 'document_verification', 'edit') : hasPermission('onboarding', 'document_verification', 'create')) && (
-        <>
-          <div className="modal-backdrop-blur" onClick={() => setShowModal(false)} />
-          <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
-            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-[#0A1629]">
-                  {selectedVerification ? 'Review Onboarding Documents' : 'Initiate Onboarding Verification'}
-                </h2>
-                <p className="text-sm text-slate-500 mt-1">Manage and evaluate document uploads for this onboarding joiner.</p>
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px',
+          background: 'rgba(15, 23, 42, 0.55)',
+          backdropFilter: 'blur(6px)'
+        }}>
+          <div style={{
+            width: '920px',
+            maxWidth: '95vw',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            background: '#FFFFFF',
+            borderRadius: '20px',
+            boxShadow: '0 24px 60px rgba(15, 23, 42, 0.25)',
+            overflow: 'hidden',
+            border: '1px solid rgba(226, 232, 240, 0.9)'
+          }}>
+            {/* Modal Header */}
+            <div style={{
+              position: 'relative',
+              padding: '20px 24px',
+              background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              overflow: 'hidden',
+              flexShrink: 0
+            }}>
+              <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '130px', height: '130px', borderRadius: '50%', background: 'rgba(255, 255, 255, 0.08)', pointerEvents: 'none' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1 }}>
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#FFFFFF'
+                }}>
+                  <ShieldCheck size={22} />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#FFFFFF', letterSpacing: '-0.2px' }}>
+                    {selectedVerification ? 'Review Onboarding Documents' : 'Initiate Onboarding Verification'}
+                  </h2>
+                  <p style={{ margin: '3px 0 0 0', fontSize: '13px', color: 'rgba(255, 255, 255, 0.82)' }}>
+                    Verify required identity proofs, certificates, and compliance records
+                  </p>
+                </div>
               </div>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-                <X size={20} className="text-slate-400" />
+
+              <button
+                type="button"
+                onClick={() => setShowModal(false)}
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  background: 'rgba(255, 255, 255, 0.12)',
+                  color: '#FFFFFF',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  zIndex: 1,
+                  transition: 'background 0.15s'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
+              >
+                <X size={18} />
               </button>
             </div>
-            <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
-              
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">New Joiner <span className="text-red-500">*</span></label>
-                  {selectedVerification ? (
-                    <input type="text" readOnly value={selectedVerification.employee_name} className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm bg-slate-50 outline-none" />
-                  ) : (
+
+            {/* Modal Form Body */}
+            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+              <div style={{ padding: '24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                
+                {/* Top Section: Joiner Selection & Status */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>
+                      New Joiner <span style={{ color: '#EF4444' }}>*</span>
+                    </label>
+                    {selectedVerification ? (
+                      <div style={{
+                        height: '40px',
+                        padding: '0 14px',
+                        borderRadius: '10px',
+                        border: '1px solid #E2E8F0',
+                        background: '#F8FAFC',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        color: '#1E293B'
+                      }}>
+                        <User size={16} color="#64748B" />
+                        {selectedVerification.employee_name}
+                      </div>
+                    ) : (
+                      <AppDropdown
+                        value={String(formJoinerId)}
+                        onChange={v => setFormJoinerId(v)}
+                        options={[
+                          { value: '', label: 'Select Onboarding Joiner' },
+                          ...newJoiners.map(j => ({
+                            value: String(j.id),
+                            label: j.candidate_name || j.name || j.employee_name || `Joiner #${j.id}`,
+                            sublabel: j.designation || j.job_title || j.department_name || ''
+                          }))
+                        ]}
+                        placeholder="Select Onboarding Joiner"
+                        size="md"
+                      />
+                    )}
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '6px' }}>
+                      Overall Verification Status
+                    </label>
                     <AppDropdown
-                value={formJoinerId}
-                onChange={v => setFormJoinerId(v)}
-                options={[{value:'',label:'Select Onboarding Joiner'}]}
-                size="sm"
-              />
-                  )}
+                      value={formStatus}
+                      onChange={v => setFormStatus(v)}
+                      options={[
+                        { value: 'Pending', label: 'Pending Review' },
+                        { value: 'Verified', label: 'Verified & Approved' },
+                        { value: 'Rejected', label: 'Rejected / Incomplete' }
+                      ]}
+                      size="md"
+                    />
+                  </div>
                 </div>
 
+                {/* Active Joiner Info Card */}
                 {activeJoiner && (
-                  <div className="col-span-1 sm:col-span-2 grid grid-cols-2 gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600">
-                    <div><strong>Department:</strong> {activeJoiner.department_name}</div>
-                    <div><strong>Designation:</strong> {activeJoiner.designation}</div>
-                    <div><strong>Joining Date:</strong> {new Date(activeJoiner.joining_date).toLocaleDateString()}</div>
-                    <div><strong>Reporting Manager:</strong> {activeJoiner.reporting_manager}</div>
+                  <div style={{
+                    padding: '14px 18px',
+                    background: '#F0F7FF',
+                    border: '1px solid #BFDBFE',
+                    borderRadius: '12px',
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                    gap: '12px',
+                    fontSize: '12px',
+                    color: '#1E40AF'
+                  }}>
+                    <div><strong>Department:</strong> {activeJoiner.department_name || 'General'}</div>
+                    <div><strong>Designation:</strong> {activeJoiner.designation || 'Specialist'}</div>
+                    <div><strong>Joining Date:</strong> {activeJoiner.joining_date ? new Date(activeJoiner.joining_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</div>
+                    <div><strong>Reporting Manager:</strong> {activeJoiner.reporting_manager || 'HR Team'}</div>
                   </div>
                 )}
 
-                <div className="col-span-1 sm:col-span-2">
-                  <h4 className="text-sm font-bold text-slate-700 mb-4 pb-2 border-b border-slate-100">Document Upload Files</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                {/* Document Uploads Grid */}
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #F1F5F9' }}>
+                    <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '700', color: '#0F172A' }}>
+                      Document Uploads & Files
+                    </h4>
+                    <span style={{ fontSize: '12px', color: '#64748B' }}>Supported: PDF, PNG, JPG (Max 10MB)</span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(380px, 1fr))', gap: '14px' }}>
                     {docTypesList.map(doc => {
                       const existingPath = selectedVerification ? selectedVerification[doc.key] : null;
+                      const selectedNewFile = formFiles[doc.key];
+
                       return (
-                        <div key={doc.key} className="p-4 border border-slate-200 rounded-xl bg-white flex flex-col gap-2">
-                          <label className="text-xs font-semibold text-slate-700">{doc.name}</label>
-                          {existingPath ? (
-                            <div className="flex items-center justify-between gap-2 p-2 bg-blue-50 border border-blue-200 rounded-lg">
-                              <span className="text-xs text-blue-700 truncate max-w-[150px]">{existingPath.split('/').pop()}</span>
-                              <a 
-                                href={`${existingPath}`}
-                                target="_blank" 
+                        <div key={doc.key} style={{
+                          padding: '14px 16px',
+                          border: '1px solid #E2E8F0',
+                          borderRadius: '12px',
+                          background: '#FAFAFA',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px'
+                        }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <FileText size={16} color="#3B82F6" />
+                              <span style={{ fontSize: '13px', fontWeight: '600', color: '#1E293B' }}>{doc.name}</span>
+                            </div>
+                            {existingPath ? (
+                              <span style={{ fontSize: '11px', fontWeight: '600', color: '#059669', background: '#ECFDF5', padding: '2px 8px', borderRadius: '12px', border: '1px solid #A7F3D0' }}>
+                                ✓ Uploaded
+                              </span>
+                            ) : (
+                              <span style={{ fontSize: '11px', fontWeight: '500', color: '#94A3B8' }}>
+                                Not Uploaded
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Existing File Link */}
+                          {existingPath && (
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '8px 12px',
+                              background: '#FFFFFF',
+                              border: '1px solid #CBD5E1',
+                              borderRadius: '8px',
+                              fontSize: '12px'
+                            }}>
+                              <span style={{ color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '200px' }}>
+                                {existingPath.split('/').pop()}
+                              </span>
+                              <a
+                                href={existingPath}
+                                target="_blank"
                                 rel="noreferrer"
-                                className="text-xs text-[#2952E3] font-bold hover:underline"
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  color: '#2563EB',
+                                  fontWeight: '600',
+                                  textDecoration: 'none'
+                                }}
                               >
-                                View File
+                                View File <ExternalLink size={12} />
                               </a>
                             </div>
-                          ) : (
-                            <input 
-                              type="file" 
-                              onChange={e => handleFileChange(doc.key, e.target.files?.[0])}
-                              className="text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" 
-                            />
                           )}
+
+                          {/* Upload Trigger Input */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <label style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              padding: '6px 14px',
+                              background: '#FFFFFF',
+                              border: '1px solid #CBD5E1',
+                              borderRadius: '8px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              color: '#334155',
+                              cursor: 'pointer',
+                              transition: 'all 0.15s'
+                            }}>
+                              <UploadCloud size={14} color="#2563EB" />
+                              {existingPath ? 'Replace File' : 'Choose File'}
+                              <input
+                                type="file"
+                                accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                                onChange={e => handleFileChange(doc.key, e.target.files?.[0])}
+                                style={{ display: 'none' }}
+                              />
+                            </label>
+                            {selectedNewFile && (
+                              <span style={{ fontSize: '12px', color: '#2563EB', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                Selected: {selectedNewFile.name}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Overall Verification Status</label>
-                  <AppDropdown
-                value={formStatus}
-                onChange={v => setFormStatus(v)}
-                options={[{value:'Pending',label:'Pending'},{value:'Verified',label:'Verified'},{value:'Rejected',label:'Rejected'}]}
-                size="sm"
-              />
-                </div>
               </div>
 
-              <div className="flex items-center justify-between pt-6 border-t border-slate-200 shrink-0">
+              {/* Modal Actions Footer */}
+              <div style={{
+                padding: '16px 24px',
+                borderTop: '1px solid #E2E8F0',
+                background: '#F8FAFC',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexShrink: 0
+              }}>
                 <div>
                   {selectedVerification && selectedVerification.status !== 'Completed' && (
-                    <button 
-                      type="button" 
+                    <button
+                      type="button"
                       onClick={() => handleCompleteVerification(selectedVerification.id)}
-                      className="px-6 h-12 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition-colors shadow-md disabled:opacity-50"
+                      disabled={submitting}
+                      style={{
+                        padding: '10px 20px',
+                        background: '#059669',
+                        color: '#FFFFFF',
+                        borderRadius: '10px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        border: 'none',
+                        cursor: submitting ? 'not-allowed' : 'pointer',
+                        boxShadow: '0 2px 6px rgba(5, 150, 105, 0.25)'
+                      }}
                     >
-                      Complete Verification
+                      Complete Verification & Generate Employee
                     </button>
                   )}
                 </div>
-                <div className="flex items-center gap-4">
-                  <button type="button" onClick={() => setShowModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-                  <button type="submit" disabled={submitting} className="px-8 h-12 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors shadow-md disabled:opacity-50">
-                    {submitting ? 'Saving...' : 'Save Changes'}
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    style={{
+                      padding: '10px 20px',
+                      background: '#FFFFFF',
+                      border: '1px solid #CBD5E1',
+                      borderRadius: '10px',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      color: '#475569',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    style={{
+                      padding: '10px 24px',
+                      background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                      color: '#FFFFFF',
+                      borderRadius: '10px',
+                      fontSize: '13px',
+                      fontWeight: '600',
+                      border: 'none',
+                      cursor: submitting ? 'not-allowed' : 'pointer',
+                      boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+                    }}
+                  >
+                    {submitting ? 'Saving Changes...' : (selectedVerification ? 'Save Changes' : 'Initiate Verification')}
                   </button>
                 </div>
               </div>
             </form>
           </div>
-        </>
+        </div>
       )}
 
     </div>
