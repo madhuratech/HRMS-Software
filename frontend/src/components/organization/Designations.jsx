@@ -56,6 +56,7 @@ const getDesigStyles = (name) => {
 
 export const Designations = () => {
   const [designations, setDesignations] = useState([]);
+  const [departmentsList, setDepartmentsList] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [deptFilter, setDeptFilter] = useState('All');
@@ -72,9 +73,16 @@ export const Designations = () => {
   const loadDesignations = async () => {
     setLoading(true);
     try {
-      const data = await apiFetch('/organization/designations');
-      if (Array.isArray(data)) {
-        setDesignations(data);
+      const [desigData, deptData] = await Promise.all([
+        apiFetch('/organization/designations'),
+        apiFetch('/organization/departments')
+      ]);
+      if (Array.isArray(desigData)) {
+        setDesignations(desigData);
+      }
+      if (Array.isArray(deptData)) {
+        const fetchedDepts = deptData.map(d => d.name || d.dept_name).filter(Boolean);
+        setDepartmentsList(fetchedDepts);
       }
     } catch (e) {
       console.error("Failed to load designations:", e);
@@ -270,7 +278,7 @@ export const Designations = () => {
                 <AppDropdown
                   value={formData.department}
                   onChange={v => setFormData({ ...formData, department: v })}
-                  options={DEPARTMENTS}
+                  options={departmentsList.length > 0 ? departmentsList : DEPARTMENTS}
                   placeholder="Select Department"
                   size="sm"
                 />
@@ -439,7 +447,7 @@ export const Designations = () => {
               <AppDropdown
                 value={deptFilter}
                 onChange={v => { setDeptFilter(v || 'All'); setCurrentPage(1); }}
-                options={['All', ...DEPARTMENTS]}
+                options={['All', ...(departmentsList.length > 0 ? departmentsList : DEPARTMENTS)]}
                 placeholder="Department: All"
                 size="sm"
               />

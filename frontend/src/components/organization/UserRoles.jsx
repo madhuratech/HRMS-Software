@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import AppDropdown from '../ui/AppDropdown';
-import { Shield, Plus, Save, Trash2, Lock, Users, RefreshCw, Layers, ShieldCheck, UserCheck, Users2, User, ChevronDown, ChevronRight } from 'lucide-react';
+import { Shield, Plus, Save, Trash2, Lock, Users, RefreshCw, Layers, ShieldCheck, UserCheck, Users2, User, ChevronDown, ChevronRight, UserPlus } from 'lucide-react';
 import { useToast } from '../ui/Toast';
+import { AdminManagerRegister } from '../auth/AdminManagerRegister';
 
 export function UserRoles() {
+  const navigate = useNavigate();
   const { addToast } = useToast();
   const [roles, setRoles] = useState([]);
   const [selectedRole, setSelectedRole] = useState(null);
@@ -12,6 +15,7 @@ export function UserRoles() {
   const [loadingMatrix, setLoadingMatrix] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showAdminRegisterModal, setShowAdminRegisterModal] = useState(false);
 
   // New Role Form
   const [newRoleData, setNewRoleData] = useState({
@@ -474,18 +478,32 @@ export function UserRoles() {
             Configure user roles and manage fine-grained permission matrices across all HRMS modules.
           </p>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            padding: '10px 18px', background: '#2563EB', color: '#FFFFFF',
-            borderRadius: 10, fontWeight: 600, fontSize: 14, border: 'none',
-            cursor: 'pointer', boxShadow: '0 2px 8px rgba(37,99,235,0.25)'
-          }}
-        >
-          <Plus size={18} />
-          Create Custom Role
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            onClick={() => setShowAdminRegisterModal(true)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '10px 18px', background: '#4F46E5', color: '#FFFFFF',
+              borderRadius: 10, fontWeight: 600, fontSize: 14, border: 'none',
+              cursor: 'pointer', boxShadow: '0 2px 8px rgba(79,70,229,0.25)'
+            }}
+          >
+            <UserPlus size={18} />
+            Register Admin / Manager
+          </button>
+          <button
+            onClick={() => setShowAddModal(true)}
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              padding: '10px 18px', background: '#2563EB', color: '#FFFFFF',
+              borderRadius: 10, fontWeight: 600, fontSize: 14, border: 'none',
+              cursor: 'pointer', boxShadow: '0 2px 8px rgba(37,99,235,0.25)'
+            }}
+          >
+            <Plus size={18} />
+            Create Custom Role
+          </button>
+        </div>
       </div>
 
       {/* Standard System Roles Section */}
@@ -920,6 +938,29 @@ export function UserRoles() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Admin / Manager Register Modal */}
+      {showAdminRegisterModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 1000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: '16px', background: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(6px)'
+        }}>
+          <div style={{ position: 'relative', width: '100%', maxWidth: '520px' }}>
+            <button
+              onClick={() => setShowAdminRegisterModal(false)}
+              style={{
+                position: 'absolute', top: 12, right: 12, zIndex: 10,
+                background: 'rgba(255, 255, 255, 0.2)', border: 'none',
+                borderRadius: '50%', width: 32, height: 32, display: 'flex',
+                alignItems: 'center', justifyContent: 'center', color: '#FFF', cursor: 'pointer'
+              }}
+            >
+              ✕
+            </button>
+            <AdminManagerRegister isModal={true} onClose={() => setShowAdminRegisterModal(false)} />
           </div>
         </div>
       )}

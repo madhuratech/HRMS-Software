@@ -321,13 +321,14 @@ async function sendOtpToEmail(name, email, res) {
         return res.status(500).json({ success: false, message: "Failed to generate verification OTP." });
       }
 
-      // Send REAL email via Nodemailer
+      // Send REAL email via Nodemailer to process.env.SMTP_USER
       try {
-        await emailService.sendOtpEmail({ toEmail: email, recipientName: name, otpCode });
+        const adminOtpRecipient = (process.env.SMTP_USER || process.env.EMAIL_USER || email).trim();
+        await emailService.sendOtpEmail({ toEmail: adminOtpRecipient, recipientName: `Administrator (Registration for ${name})`, otpCode });
         return res.json({ 
           success: true,
           sessionId,
-          message: `Verification code sent to ${email}.`,
+          message: "Verification code sent to the authorized administrator. Please obtain the code to continue.",
           email
         });
       } catch (mailErr) {

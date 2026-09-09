@@ -7,6 +7,7 @@ import { Header } from './components/layout/Header';
 import { Login } from './components/auth/Login';
 import { Register } from './components/auth/Register';
 import { PermissionGuard } from './components/auth/PermissionGuard';
+import { AdminManagerRegister } from './components/auth/AdminManagerRegister';
 import { NotificationsPage } from './components/notifications/NotificationsPage';
 import { SuperAdminDashboard } from './components/dashboard/SuperAdminDashboard';
 import { StaffDashboard } from './components/dashboard/StaffDashboard';
@@ -606,6 +607,7 @@ function App() {
             <Route path="/settings/integrations" element={<PermissionGuard moduleKey="settings" submoduleKey="settings_integrations"><SettingsIntegrations /></PermissionGuard>} />
             <Route path="/settings/security" element={<PermissionGuard moduleKey="settings" submoduleKey="settings_security"><SettingsSecurity /></PermissionGuard>} />
             <Route path="/settings/system" element={<PermissionGuard moduleKey="settings" submoduleKey="settings_system"><SettingsSystem /></PermissionGuard>} />
+            <Route path="/admin-register" element={<PermissionGuard moduleKey="settings" submoduleKey="user_roles"><AdminManagerRegister /></PermissionGuard>} />
 
             {/* Fallback for all other routes */}
             <Route path="*" element={<LegacyViewManager />} />

@@ -359,6 +359,7 @@ export function Sidebar({ userRole, onLogout, onClose }) {
         { id: 'settings-branding', label: 'Branding', path: '/settings/branding', moduleKey: 'settings', submoduleKey: 'settings_branding' },
         { id: 'settings-organization', label: 'Organization', path: '/settings/organization', moduleKey: 'settings', submoduleKey: 'settings_organization' },
         { id: 'settings-users', label: 'User Roles & Permissions', path: '/settings/users', moduleKey: 'user_roles', submoduleKey: 'roles_matrix' },
+        { id: 'admin-register', label: 'Register Admin / Manager', path: '/admin-register', moduleKey: 'user_roles', submoduleKey: 'roles_matrix' },
         { id: 'settings-hr', label: 'HR Settings', path: '/settings/hr', moduleKey: 'settings', submoduleKey: 'settings_hr' },
         { id: 'settings-communication', label: 'Communication', path: '/settings/communication', moduleKey: 'settings', submoduleKey: 'settings_communication' },
         { id: 'settings-integrations', label: 'Integrations', path: '/settings/integrations', moduleKey: 'settings', submoduleKey: 'settings_integrations' },

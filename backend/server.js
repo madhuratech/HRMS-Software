@@ -123,6 +123,8 @@ app.use("/api/attendance", require("./routes/attendanceRoute"));
 app.use("/app/attendance", require("./routes/attendanceRoute"));
 app.use("/api/auth", require("./routes/auth"));
 app.use("/app/auth", require("./routes/auth"));
+app.use("/api/auth/admin-register", require("./routes/adminRegister"));
+app.use("/app/auth/admin-register", require("./routes/adminRegister"));
 app.use("/app/dashboard", require("./routes/dashboard"));
 app.use("/app/employees", require("./routes/employee"));
 app.use("/app/requirements", require("./routes/requirements"));

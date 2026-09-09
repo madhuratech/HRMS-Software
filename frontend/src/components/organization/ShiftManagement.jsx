@@ -368,8 +368,8 @@ export const ShiftManagement = () => {
                         setFormData({ ...formData, workingDays: updated });
                       }}
                       className={`px-4 py-2.5 rounded-xl text-xs font-semibold border transition-all ${isSelected
-                          ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                        ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                         }`}
                     >
                       {day}
@@ -623,18 +623,18 @@ export const ShiftManagement = () => {
 
       <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-1 flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="relative flex-1">
+          <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none z-10" size={16} />
             <input
               type="text"
-              placeholder="Search shifts by name or code..."
+              placeholder="Search Shift..."
               value={searchTerm}
               onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
               className="w-full h-10 pl-10 pr-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white hover:border-slate-300 transition-colors shadow-sm text-slate-900 placeholder:text-slate-400"
             />
           </div>
 
-          <div className="flex items-center gap-3 flex-shrink-0">
+          <div className="flex items-center gap-3">
             <AppDropdown
               value={statusFilter}
               onChange={v => { setStatusFilter(v); setCurrentPage(1); }}
@@ -644,8 +644,8 @@ export const ShiftManagement = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
-          <button className="px-3 py-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm font-medium">
+        <div className="flex items-center gap-2">
+          <button className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors flex items-center gap-2 text-sm font-medium">
             <Filter size={16} /> Filters
           </button>
           <button className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors">
@@ -658,27 +658,19 @@ export const ShiftManagement = () => {
               setCurrentPage(1);
             }}
             className="p-2 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 transition-colors"
-            title="Reset filters"
           >
             <RotateCw size={16} />
           </button>
         </div>
       </div>
 
-      <div className="w-full bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-x-auto">
+      <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-x-auto">
         {paginatedData.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 px-8 text-center">
-            <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-5">
-              <Clock size={28} className="text-blue-500" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-800 mb-2">No Shifts Found</h3>
-            <p className="text-sm text-slate-500 max-w-xs mb-6">No work shifts have been created yet. Add a shift schedule to get started.</p>
-            <button
-              onClick={handleAdd}
-              className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 shadow-sm shadow-blue-200 transition-all"
-            >
-              <Plus size={16} /> Add Shift
-            </button>
+          <div className="flex flex-col items-center justify-center p-8 py-16 text-center">
+            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4"><Clock size={24} className="text-slate-400" /></div>
+            <h3 className="text-lg font-semibold text-slate-700">No Shifts Found</h3>
+            <p className="text-sm text-slate-500 mt-1">Create your first shift.</p>
+            <button onClick={handleAdd} className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"><Plus size={16} /> Add Shift</button>
           </div>
         ) : (
           <table className="w-full">
