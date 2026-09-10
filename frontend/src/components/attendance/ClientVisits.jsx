@@ -912,9 +912,117 @@ const NavigationManeuverIcon = ({ step, size = 22, color = '#FFFFFF' }) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
+// DEDICATED WEBGEL ROUTE LAYER COMPONENT (100% Guaranteed Road Polyline Rendering)
+// ═══════════════════════════════════════════════════════════════════════════
+const NavigationRouteLayer = ({ coordinates }) => {
+  const { current: map } = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+    const sourceId = 'rider-route-geojson';
+    const casingId = 'rider-route-casing-layer';
+    const lineId = 'rider-route-line-layer';
+    const innerId = 'rider-route-inner-layer';
+
+    const geojsonData = {
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: 'LineString',
+        coordinates: coordinates || []
+      }
+    };
+
+    const updateOrAddLayers = () => {
+      if (!coordinates || coordinates.length < 2) return;
+
+      const existingSource = map.getSource(sourceId);
+      if (existingSource) {
+        existingSource.setData(geojsonData);
+      } else {
+        try {
+          map.addSource(sourceId, {
+            type: 'geojson',
+            data: geojsonData
+          });
+
+          // 1. High contrast crisp white casing
+          if (!map.getLayer(casingId)) {
+            map.addLayer({
+              id: casingId,
+              type: 'line',
+              source: sourceId,
+              layout: { 'line-join': 'round', 'line-cap': 'round' },
+              paint: {
+                'line-color': '#FFFFFF',
+                'line-width': 10,
+                'line-opacity': 0.95
+              }
+            });
+          }
+
+          // 2. Vibrant Google / Swiggy Navigation Blue road path
+          if (!map.getLayer(lineId)) {
+            map.addLayer({
+              id: lineId,
+              type: 'line',
+              source: sourceId,
+              layout: { 'line-join': 'round', 'line-cap': 'round' },
+              paint: {
+                'line-color': '#2563EB',
+                'line-width': 6,
+                'line-opacity': 1.0
+              }
+            });
+          }
+
+          // 3. Inner bright highlight core
+          if (!map.getLayer(innerId)) {
+            map.addLayer({
+              id: innerId,
+              type: 'line',
+              source: sourceId,
+              layout: { 'line-join': 'round', 'line-cap': 'round' },
+              paint: {
+                'line-color': '#93C5FD',
+                'line-width': 2,
+                'line-opacity': 0.9
+              }
+            });
+          }
+        } catch (err) {
+          console.warn('Navigation layer injection note:', err);
+        }
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      updateOrAddLayers();
+    } else {
+      map.once('style.load', updateOrAddLayers);
+    }
+
+    return () => {
+      try {
+        if (map && map.getStyle()) {
+          if (map.getLayer(innerId)) map.removeLayer(innerId);
+          if (map.getLayer(lineId)) map.removeLayer(lineId);
+          if (map.getLayer(casingId)) map.removeLayer(casingId);
+          if (map.getSource(sourceId)) map.removeSource(sourceId);
+        }
+      } catch (e) {}
+    };
+  }, [map, coordinates]);
+
+  return null;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // RIDER TURN-BY-TURN NAVIGATION MODAL (Clean Light Minimalist Apple / Swiggy Style)
 // ═══════════════════════════════════════════════════════════════════════════
 const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
+  const mapRef = useRef(null);
+
   // Destination coordinate resolution
   const initialLat = visit?.status === 'Returning' && visit?.office_lat
     ? parseFloat(visit.office_lat)
@@ -937,14 +1045,16 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
   const [currentPos, setCurrentPos] = useState(startLat && startLng ? [startLat, startLng] : null); // [lat, lng]
   const [speed, setSpeed] = useState(0); // km/h
   const [routeData, setRouteData] = useState(null);
+  const [plannedCoords, setPlannedCoords] = useState(null); // [[lng, lat], ...]
   const [stepIdx, setStepIdx] = useState(0);
   const [voiceOn, setVoiceOn] = useState(true);
   const [showStepList, setShowStepList] = useState(false);
+  const [followMode, setFollowMode] = useState(true);
   const [viewState, setViewState] = useState({
     longitude: startLng || initialLng || 77.0,
     latitude: startLat || initialLat || 11.0,
-    zoom: 16.5,
-    pitch: 30,
+    zoom: 15.5,
+    pitch: 25,
     bearing: 0
   });
 
@@ -980,6 +1090,26 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
     }
   }, [voiceOn]);
 
+  // Fit the whole route bounds onto screen (Google Maps style)
+  const fitRouteBounds = useCallback((coords) => {
+    if (!mapRef.current || !coords || coords.length < 2) return;
+    try {
+      const lngs = coords.map(c => c[0]);
+      const lats = coords.map(c => c[1]);
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+
+      mapRef.current.fitBounds(
+        [[minLng, minLat], [maxLng, maxLat]],
+        { padding: { top: 140, bottom: 140, left: 60, right: 60 }, duration: 1200 }
+      );
+    } catch (e) {
+      console.warn('fitBounds note:', e);
+    }
+  }, []);
+
   // Stable single-flight route calculation
   const calculateRoute = useCallback(async (cLat, cLng, dLat, dLng) => {
     if (!cLat || !cLng || !dLat || !dLng) return;
@@ -990,6 +1120,14 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         latestRouteDataRef.current = r;
         setStepIdx(0);
         latestStepIdxRef.current = 0;
+
+        if (r.latlngs && r.latlngs.length > 0) {
+          const coords = r.latlngs.map(([la, ln]) => [ln, la]);
+          setPlannedCoords(coords);
+          // Initial fit to show the complete road route clearly like Google Maps
+          setTimeout(() => fitRouteBounds(coords), 300);
+        }
+
         if (r.steps && r.steps.length > 0) {
           const first = r.steps[0];
           speakInstruction(`${first.instruction}`);
@@ -998,7 +1136,7 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
     } catch (err) {
       console.warn('Route calculation error:', err);
     }
-  }, [speakInstruction]);
+  }, [speakInstruction, fitRouteBounds]);
 
   // Initial route fetch on mount / when coordinates first become available
   useEffect(() => {
@@ -1040,7 +1178,6 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         setCurrentPos([lat, lng]);
-        setViewState(v => ({ ...v, latitude: lat, longitude: lng }));
 
         if (dest.lat && dest.lng && !routeCalculatedRef.current) {
           routeCalculatedRef.current = true;
@@ -1074,12 +1211,16 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         prevTime.current = now;
 
         setCurrentPos([lat, lng]);
-        setViewState(prev => ({
-          ...prev,
-          latitude: lat,
-          longitude: lng,
-          bearing: heading || prev.bearing
-        }));
+
+        // If follow mode is active, smoothly update camera view
+        if (followMode) {
+          setViewState(prev => ({
+            ...prev,
+            latitude: lat,
+            longitude: lng,
+            bearing: heading || prev.bearing
+          }));
+        }
 
         // Throttled live telemetry stream to backend for Super Admin / HR (at most once every 3.5s)
         if (now - lastTrackTimeRef.current > 3500) {
@@ -1117,7 +1258,7 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
       if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
       if ('speechSynthesis' in window) window.speechSynthesis.cancel();
     };
-  }, [visit.id, dest.lat, dest.lng, calculateRoute, speakInstruction]);
+  }, [visit.id, dest.lat, dest.lng, followMode, calculateRoute, speakInstruction]);
 
   const currentStep = routeData?.steps?.[stepIdx] || routeData?.steps?.[0];
   const nextStep = routeData?.steps?.[stepIdx + 1];
@@ -1142,8 +1283,16 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
   }, [liveRemainingDistanceKm]);
 
   const recenterMap = () => {
+    setFollowMode(true);
     if (currentPos) {
-      setViewState(v => ({ ...v, latitude: currentPos[0], longitude: currentPos[1], zoom: 16.5 }));
+      setViewState(v => ({ ...v, latitude: currentPos[0], longitude: currentPos[1], zoom: 16.5, pitch: 30 }));
+    }
+  };
+
+  const handleShowOverview = () => {
+    setFollowMode(false);
+    if (plannedCoords && plannedCoords.length > 1) {
+      fitRouteBounds(plannedCoords);
     }
   };
 
@@ -1326,8 +1475,14 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
       {/* ─── Main Map Canvas (GPU WebGL Render Engine — Zero Lag, 60 FPS) ─── */}
       <div style={{ flex:1, position:'relative' }}>
         <Map
+          ref={mapRef}
           {...viewState}
-          onMove={evt => setViewState(evt.viewState)}
+          onMove={evt => {
+            setViewState(evt.viewState);
+            if (evt.interactionState?.isDragging) {
+              setFollowMode(false);
+            }
+          }}
           minZoom={4}
           maxZoom={18.5}
           mapStyle={MAP_STYLES.street}
@@ -1335,32 +1490,28 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         >
           <NavigationControl position="bottom-right" />
 
-          {/* Planned Road Route (GPU WebGL Native Layer — 60 FPS, Zero CPU Stutter) */}
-          {routeData?.latlngs && routeData.latlngs.length > 1 && (
-            <Source
-              id="rider-route"
-              type="geojson"
-              data={{
-                type: 'Feature',
-                geometry: {
-                  type: 'LineString',
-                  coordinates: routeData.latlngs.map(([la, ln]) => [ln, la])
-                }
-              }}
-            >
-              <Layer
-                id="rider-route-casing"
-                type="line"
-                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                paint={{ 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.95 }}
-              />
-              <Layer
-                id="rider-route-line"
-                type="line"
-                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                paint={{ 'line-color': '#2563EB', 'line-width': 5, 'line-opacity': 1.0 }}
-              />
-            </Source>
+          {/* Guaranteed Road Route Layer (WebGL GPU Accelerated) */}
+          <NavigationRouteLayer coordinates={plannedCoords} />
+
+          {/* Start Origin Pin */}
+          {startLat && startLng && (
+            <Marker longitude={startLng} latitude={startLat} anchor="bottom">
+              <div title="Starting Point" style={{
+                background:'#2563EB',
+                color:'#fff',
+                border:'2px solid #fff',
+                borderRadius:'8px',
+                padding:'2px 6px',
+                fontSize:'10px',
+                fontWeight:'800',
+                boxShadow:'0 4px 10px rgba(37,99,235,0.4)',
+                display:'flex',
+                alignItems:'center',
+                gap:'3px'
+              }}>
+                📍 Start
+              </div>
+            </Marker>
           )}
 
           {/* Destination Pin */}
@@ -1404,33 +1555,66 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
           )}
         </Map>
 
-        {/* Minimalist Floating Recenter Button */}
-        <button
-          onClick={recenterMap}
-          title="Recenter GPS Position"
-          style={{
-            position:'absolute',
-            bottom:'90px',
-            right:'16px',
-            background:'rgba(255, 255, 255, 0.98)',
-            backdropFilter:'blur(8px)',
-            border:'1px solid #E2E8F0',
-            borderRadius:'50%',
-            width:'42px',
-            height:'42px',
-            display:'flex',
-            alignItems:'center',
-            justifyContent:'center',
-            cursor:'pointer',
-            boxShadow:'0 6px 16px rgba(0, 0, 0, 0.1)',
-            zIndex:20,
-            transition:'transform 0.15s'
-          }}
-          onMouseDown={e => e.currentTarget.style.transform = 'scale(0.95)'}
-          onMouseUp={e => e.currentTarget.style.transform = 'scale(1)'}
-        >
-          <Crosshair size={19} color="#2563EB" />
-        </button>
+        {/* Minimalist Floating Navigation Controls (Overview & Follow Mode) */}
+        <div style={{
+          position:'absolute',
+          bottom:'90px',
+          right:'16px',
+          display:'flex',
+          flexDirection:'column',
+          gap:'8px',
+          zIndex:20
+        }}>
+          {/* Overview Route Button (Fits entire route on screen like Google Maps) */}
+          <button
+            onClick={handleShowOverview}
+            title="View Full Route Overview"
+            style={{
+              background: !followMode ? '#2563EB' : 'rgba(255, 255, 255, 0.98)',
+              color: !followMode ? '#FFFFFF' : '#334155',
+              backdropFilter:'blur(8px)',
+              border: `1px solid ${!followMode ? '#1D4ED8' : '#E2E8F0'}`,
+              borderRadius:'12px',
+              padding:'8px 12px',
+              display:'flex',
+              alignItems:'center',
+              gap:'6px',
+              fontSize:'12px',
+              fontWeight:'800',
+              cursor:'pointer',
+              boxShadow:'0 6px 16px rgba(0, 0, 0, 0.1)',
+              transition:'all 0.15s'
+            }}
+          >
+            <Compass size={15} color={!followMode ? '#FFFFFF' : '#2563EB'} />
+            <span>Overview</span>
+          </button>
+
+          {/* Follow Me / Recenter GPS Button */}
+          <button
+            onClick={recenterMap}
+            title="Recenter GPS Position (Follow Mode)"
+            style={{
+              background: followMode ? '#ECFDF5' : 'rgba(255, 255, 255, 0.98)',
+              color: followMode ? '#059669' : '#334155',
+              backdropFilter:'blur(8px)',
+              border: `1px solid ${followMode ? '#A7F3D0' : '#E2E8F0'}`,
+              borderRadius:'12px',
+              padding:'8px 12px',
+              display:'flex',
+              alignItems:'center',
+              gap:'6px',
+              fontSize:'12px',
+              fontWeight:'800',
+              cursor:'pointer',
+              boxShadow:'0 6px 16px rgba(0, 0, 0, 0.1)',
+              transition:'all 0.15s'
+            }}
+          >
+            <Crosshair size={15} color={followMode ? '#059669' : '#2563EB'} />
+            <span>{followMode ? 'Following' : 'Center'}</span>
+          </button>
+        </div>
 
         {/* Step-by-Step Maneuvers Drawer */}
         {showStepList && routeData?.steps && (
