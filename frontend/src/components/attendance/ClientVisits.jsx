@@ -912,113 +912,50 @@ const NavigationManeuverIcon = ({ step, size = 22, color = '#FFFFFF' }) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// DEDICATED WEBGEL ROUTE LAYER COMPONENT (100% Guaranteed Road Polyline Rendering)
+// SVG ROAD POLYLINE OVERLAY (100% Guaranteed Google Maps Cyan Road Route)
 // ═══════════════════════════════════════════════════════════════════════════
-const NavigationRouteLayer = ({ coordinates }) => {
+const RouteSvgOverlay = ({ coordinates }) => {
   const { current: map } = useMap();
+  const [, setTick] = useState(0);
 
   useEffect(() => {
     if (!map) return;
-    const sourceId = 'rider-route-geojson';
-    const casingId = 'rider-route-casing-layer';
-    const lineId = 'rider-route-line-layer';
-    const innerId = 'rider-route-inner-layer';
-
-    const geojsonData = {
-      type: 'Feature',
-      properties: {},
-      geometry: {
-        type: 'LineString',
-        coordinates: coordinates || []
-      }
-    };
-
-    const updateOrAddLayers = () => {
-      if (!coordinates || coordinates.length < 2) return;
-
-      const existingSource = map.getSource(sourceId);
-      if (existingSource) {
-        existingSource.setData(geojsonData);
-      } else {
-        try {
-          map.addSource(sourceId, {
-            type: 'geojson',
-            data: geojsonData
-          });
-
-          // 1. High contrast crisp white casing
-          if (!map.getLayer(casingId)) {
-            map.addLayer({
-              id: casingId,
-              type: 'line',
-              source: sourceId,
-              layout: { 'line-join': 'round', 'line-cap': 'round' },
-              paint: {
-                'line-color': '#FFFFFF',
-                'line-width': 10,
-                'line-opacity': 0.95
-              }
-            });
-          }
-
-          // 2. Vibrant Google / Swiggy Navigation Blue road path
-          if (!map.getLayer(lineId)) {
-            map.addLayer({
-              id: lineId,
-              type: 'line',
-              source: sourceId,
-              layout: { 'line-join': 'round', 'line-cap': 'round' },
-              paint: {
-                'line-color': '#2563EB',
-                'line-width': 6,
-                'line-opacity': 1.0
-              }
-            });
-          }
-
-          // 3. Inner bright highlight core
-          if (!map.getLayer(innerId)) {
-            map.addLayer({
-              id: innerId,
-              type: 'line',
-              source: sourceId,
-              layout: { 'line-join': 'round', 'line-cap': 'round' },
-              paint: {
-                'line-color': '#93C5FD',
-                'line-width': 2,
-                'line-opacity': 0.9
-              }
-            });
-          }
-        } catch (err) {
-          console.warn('Navigation layer injection note:', err);
-        }
-      }
-    };
-
-    if (map.isStyleLoaded()) {
-      updateOrAddLayers();
-    } else {
-      map.once('style.load', updateOrAddLayers);
-    }
-
+    const onRender = () => setTick(t => t + 1);
+    map.on('move', onRender);
+    map.on('zoom', onRender);
+    map.on('rotate', onRender);
+    map.on('pitch', onRender);
+    map.on('resize', onRender);
     return () => {
-      try {
-        if (map && map.getStyle()) {
-          if (map.getLayer(innerId)) map.removeLayer(innerId);
-          if (map.getLayer(lineId)) map.removeLayer(lineId);
-          if (map.getLayer(casingId)) map.removeLayer(casingId);
-          if (map.getSource(sourceId)) map.removeSource(sourceId);
-        }
-      } catch (e) {}
+      map.off('move', onRender);
+      map.off('zoom', onRender);
+      map.off('rotate', onRender);
+      map.off('pitch', onRender);
+      map.off('resize', onRender);
     };
-  }, [map, coordinates]);
+  }, [map]);
 
-  return null;
+  if (!map || !coordinates || coordinates.length < 2) return null;
+
+  const points = coordinates.map(c => {
+    const p = map.project(c);
+    return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+  }).join(' ');
+
+  return (
+    <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:10 }}>
+      {/* Deep Navy Google Maps outer casing */}
+      <polyline points={points} fill="none" stroke="#0D47A1" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+      {/* Electric Cyan / Bright Blue Google Navigation Route Line */}
+      <polyline points={points} fill="none" stroke="#00B0FF" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
+      {/* Center white dashed stripe */}
+      <polyline points={points} fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="8,12" />
+    </svg>
+  );
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// RIDER TURN-BY-TURN NAVIGATION MODAL (Clean Light Minimalist Apple / Swiggy Style)
+// RIDER GOOGLE MAPS LIVE TURN-BY-TURN NAVIGATION MODAL
 // ═══════════════════════════════════════════════════════════════════════════
 const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
   const mapRef = useRef(null);
@@ -1044,6 +981,7 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
 
   const [currentPos, setCurrentPos] = useState(startLat && startLng ? [startLat, startLng] : null); // [lat, lng]
   const [speed, setSpeed] = useState(0); // km/h
+  const [heading, setHeading] = useState(0); // degrees
   const [routeData, setRouteData] = useState(null);
   const [plannedCoords, setPlannedCoords] = useState(null); // [[lng, lat], ...]
   const [stepIdx, setStepIdx] = useState(0);
@@ -1053,8 +991,8 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
   const [viewState, setViewState] = useState({
     longitude: startLng || initialLng || 77.0,
     latitude: startLat || initialLat || 11.0,
-    zoom: 15.5,
-    pitch: 25,
+    zoom: 16.5,
+    pitch: 35,
     bearing: 0
   });
 
@@ -1103,7 +1041,7 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
 
       mapRef.current.fitBounds(
         [[minLng, minLat], [maxLng, maxLat]],
-        { padding: { top: 140, bottom: 140, left: 60, right: 60 }, duration: 1200 }
+        { padding: { top: 150, bottom: 150, left: 60, right: 60 }, duration: 1200 }
       );
     } catch (e) {
       console.warn('fitBounds note:', e);
@@ -1194,8 +1132,10 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         if (!isMountedRef.current) return;
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
-        const heading = pos.coords.heading || 0;
+        const liveHead = pos.coords.heading || 0;
         const now = Date.now();
+
+        setHeading(liveHead);
 
         // Compute speed in km/h
         let currentSpeed = 0;
@@ -1218,7 +1158,7 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
             ...prev,
             latitude: lat,
             longitude: lng,
-            bearing: heading || prev.bearing
+            bearing: liveHead || prev.bearing
           }));
         }
 
@@ -1282,10 +1222,17 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
     return Math.max(1, Math.round(km * 2.2));
   }, [liveRemainingDistanceKm]);
 
+  // Estimated clock arrival time (e.g. "1:06 pm")
+  const estimatedArrivalTime = useMemo(() => {
+    const min = liveRemainingDurationMin || 1;
+    const target = new Date(Date.now() + min * 60000);
+    return target.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+  }, [liveRemainingDurationMin]);
+
   const recenterMap = () => {
     setFollowMode(true);
     if (currentPos) {
-      setViewState(v => ({ ...v, latitude: currentPos[0], longitude: currentPos[1], zoom: 16.5, pitch: 30 }));
+      setViewState(v => ({ ...v, latitude: currentPos[0], longitude: currentPos[1], zoom: 16.5, pitch: 35 }));
     }
   };
 
@@ -1316,122 +1263,137 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
       fontFamily:'-apple-system, BlinkMacSystemFont, "Inter", "SF Pro Text", "Segoe UI", Roboto, sans-serif'
     }}>
       
-      {/* ─── Top Floating Minimalist White Turn HUD (Apple Maps / Swiggy Style) ─── */}
-      <div style={{ position:'absolute', top:'16px', left:'16px', right:'16px', zIndex:30, pointerEvents:'none' }}>
+      {/* ─── Top Floating Google Maps Navigation Banner (Forest Emerald) ─── */}
+      <div style={{ position:'absolute', top:'12px', left:'12px', right:'12px', zIndex:30, pointerEvents:'none' }}>
         <div style={{
           maxWidth:'680px',
           margin:'0 auto',
-          background:'rgba(255, 255, 255, 0.98)',
-          backdropFilter:'blur(16px)',
-          WebkitBackdropFilter:'blur(16px)',
-          borderRadius:'20px',
-          border:'1px solid rgba(226, 232, 240, 0.9)',
-          padding:'12px 16px',
-          boxShadow:'0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.04)',
-          color:'#0F172A',
-          display:'flex',
-          alignItems:'center',
-          justifyContent:'space-between',
           pointerEvents:'auto',
-          gap:'12px'
+          display:'flex',
+          flexDirection:'column'
         }}>
-          {/* Turn Maneuver Icon & Real-time Live Guidance */}
-          <div style={{ display:'flex', alignItems:'center', gap:'12px', flex:1, minWidth:0 }}>
-            <div style={{
-              width:'46px',
-              height:'46px',
-              background:'linear-gradient(135deg, #059669 0%, #10B981 100%)',
-              borderRadius:'14px',
-              display:'flex',
-              alignItems:'center',
-              justifyContent:'center',
-              flexShrink:0,
-              boxShadow:'0 4px 14px rgba(16, 185, 129, 0.35)'
-            }}>
-              <NavigationManeuverIcon step={currentStep} size={24} color="#FFFFFF" />
-            </div>
-
-            <div style={{ flex:1, overflow:'hidden' }}>
-              <div style={{ fontSize:'11px', color:'#059669', fontWeight:'800', textTransform:'uppercase', letterSpacing:'0.6px' }}>
-                {liveTurnDistanceMeters > 0 ? `In ${liveTurnDistanceMeters} m` : 'Navigating'}
-              </div>
-              <div style={{ fontSize:'15px', fontWeight:'800', color:'#0F172A', marginTop:'1px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', letterSpacing:'-0.2px' }}>
-                {currentStep ? currentStep.instruction : `Follow route to ${dest.label}`}
-              </div>
-              {nextStep && (
-                <div style={{ fontSize:'11px', color:'#64748B', marginTop:'1px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', fontWeight:'500' }}>
-                  Then {nextStep.instruction}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Right Action Controls */}
-          <div style={{ display:'flex', alignItems:'center', gap:'6px', flexShrink:0 }}>
-            <button
-              onClick={() => setVoiceOn(!voiceOn)}
-              title={voiceOn ? 'Voice guidance active' : 'Voice muted'}
-              style={{
-                background: voiceOn ? '#ECFDF5' : '#F8FAFC',
-                border: `1px solid ${voiceOn ? '#A7F3D0' : '#E2E8F0'}`,
-                color: voiceOn ? '#059669' : '#64748B',
-                borderRadius:'10px',
-                padding:'7px 11px',
-                fontSize:'12px',
-                fontWeight:'700',
-                cursor:'pointer',
-                display:'flex',
-                alignItems:'center',
-                gap:'5px',
-                transition:'all 0.15s'
-              }}
-            >
-              {voiceOn ? <Volume2 size={14} color="#059669" /> : <VolumeX size={14} color="#64748B" />}
-              <span>{voiceOn ? 'Voice' : 'Muted'}</span>
-            </button>
-
-            <button
-              onClick={() => setShowStepList(!showStepList)}
-              style={{
-                background: showStepList ? '#EFF6FF' : '#F8FAFC',
-                border: `1px solid ${showStepList ? '#BFDBFE' : '#E2E8F0'}`,
-                color: showStepList ? '#2563EB' : '#475569',
-                borderRadius:'10px',
-                padding:'7px 11px',
-                fontSize:'12px',
-                fontWeight:'700',
-                cursor:'pointer',
-                display:'flex',
-                alignItems:'center',
-                gap:'5px',
-                transition:'all 0.15s'
-              }}
-            >
-              <List size={14} />
-              <span>Steps</span>
-            </button>
-
-            <button
-              onClick={onClose}
-              title="Close Navigator"
-              style={{
-                background:'#F8FAFC',
-                border:'1px solid #E2E8F0',
-                borderRadius:'10px',
-                color:'#64748B',
-                cursor:'pointer',
-                padding:'7px',
+          {/* Main Dark Emerald Turn Card */}
+          <div style={{
+            background:'#005A44',
+            borderRadius:'16px',
+            padding:'14px 16px',
+            boxShadow:'0 10px 30px rgba(0, 0, 0, 0.25)',
+            color:'#FFFFFF',
+            display:'flex',
+            alignItems:'center',
+            justifyContent:'space-between',
+            gap:'14px'
+          }}>
+            {/* Turn Icon & Live Guidance */}
+            <div style={{ display:'flex', alignItems:'center', gap:'14px', flex:1, minWidth:0 }}>
+              <div style={{
+                width:'44px',
+                height:'44px',
+                borderRadius:'12px',
+                background:'rgba(255, 255, 255, 0.15)',
                 display:'flex',
                 alignItems:'center',
                 justifyContent:'center',
-                transition:'all 0.15s'
-              }}
-              onMouseEnter={e => e.currentTarget.style.background = '#F1F5F9'}
-              onMouseLeave={e => e.currentTarget.style.background = '#F8FAFC'}
-            >
-              <X size={16} />
-            </button>
+                flexShrink:0
+              }}>
+                <NavigationManeuverIcon step={currentStep} size={26} color="#FFFFFF" />
+              </div>
+
+              <div style={{ flex:1, overflow:'hidden' }}>
+                <div style={{ fontSize:'12px', color:'#A7F3D0', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.5px' }}>
+                  {liveTurnDistanceMeters > 0 ? `In ${liveTurnDistanceMeters} m` : 'Head towards'}
+                </div>
+                <div style={{ fontSize:'17px', fontWeight:'800', color:'#FFFFFF', marginTop:'1px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', letterSpacing:'-0.2px' }}>
+                  {currentStep ? currentStep.instruction : `Follow route to ${dest.label}`}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Action Pills */}
+            <div style={{ display:'flex', alignItems:'center', gap:'6px', flexShrink:0 }}>
+              <button
+                onClick={() => setVoiceOn(!voiceOn)}
+                title={voiceOn ? 'Voice guidance active' : 'Voice muted'}
+                style={{
+                  background: voiceOn ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.25)',
+                  border:'none',
+                  color:'#FFFFFF',
+                  borderRadius:'8px',
+                  padding:'6px 10px',
+                  fontSize:'12px',
+                  fontWeight:'700',
+                  cursor:'pointer',
+                  display:'flex',
+                  alignItems:'center',
+                  gap:'4px'
+                }}
+              >
+                {voiceOn ? <Volume2 size={14} /> : <VolumeX size={14} />}
+                <span>{voiceOn ? 'Voice' : 'Muted'}</span>
+              </button>
+
+              <button
+                onClick={() => setShowStepList(!showStepList)}
+                style={{
+                  background:'rgba(255, 255, 255, 0.2)',
+                  border:'none',
+                  color:'#FFFFFF',
+                  borderRadius:'8px',
+                  padding:'6px 10px',
+                  fontSize:'12px',
+                  fontWeight:'700',
+                  cursor:'pointer',
+                  display:'flex',
+                  alignItems:'center',
+                  gap:'4px'
+                }}
+              >
+                <List size={14} />
+                <span>Steps</span>
+              </button>
+
+              <button
+                onClick={onClose}
+                title="Close Navigator"
+                style={{
+                  background:'rgba(255, 255, 255, 0.15)',
+                  border:'none',
+                  borderRadius:'8px',
+                  color:'#FFFFFF',
+                  cursor:'pointer',
+                  padding:'6px',
+                  display:'flex',
+                  alignItems:'center',
+                  justifyContent:'center'
+                }}
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
+
+          {/* Sub Next Turn Card (Pinned below emerald banner) */}
+          {nextStep && (
+            <div style={{
+              alignSelf:'flex-start',
+              background:'#003D2E',
+              color:'#A7F3D0',
+              borderBottomLeftRadius:'12px',
+              borderBottomRightRadius:'12px',
+              padding:'5px 14px',
+              fontSize:'12px',
+              fontWeight:'700',
+              marginLeft:'16px',
+              display:'flex',
+              alignItems:'center',
+              gap:'6px',
+              boxShadow:'0 4px 10px rgba(0,0,0,0.15)'
+            }}>
+              <span style={{ color:'#FFFFFF', fontWeight:'900' }}>Then</span>
+              <NavigationManeuverIcon step={nextStep} size={13} color="#A7F3D0" />
+              <span>{nextStep.instruction}</span>
+            </div>
+          )}
         </div>
 
         {/* Missing Destination Banner Alert */}
@@ -1472,7 +1434,7 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         )}
       </div>
 
-      {/* ─── Main Map Canvas (GPU WebGL Render Engine — Zero Lag, 60 FPS) ─── */}
+      {/* ─── Main Map Canvas (GPU WebGL Render Engine + SVG Route Overlay) ─── */}
       <div style={{ flex:1, position:'relative' }}>
         <Map
           ref={mapRef}
@@ -1490,21 +1452,21 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         >
           <NavigationControl position="bottom-right" />
 
-          {/* Guaranteed Road Route Layer (WebGL GPU Accelerated) */}
-          <NavigationRouteLayer coordinates={plannedCoords} />
+          {/* 100% Guaranteed SVG Google Maps Cyan Route Polyline Overlay */}
+          <RouteSvgOverlay coordinates={plannedCoords} />
 
           {/* Start Origin Pin */}
           {startLat && startLng && (
             <Marker longitude={startLng} latitude={startLat} anchor="bottom">
               <div title="Starting Point" style={{
-                background:'#2563EB',
+                background:'#1A73E8',
                 color:'#fff',
                 border:'2px solid #fff',
                 borderRadius:'8px',
                 padding:'2px 6px',
                 fontSize:'10px',
                 fontWeight:'800',
-                boxShadow:'0 4px 10px rgba(37,99,235,0.4)',
+                boxShadow:'0 4px 10px rgba(26,115,232,0.4)',
                 display:'flex',
                 alignItems:'center',
                 gap:'3px'
@@ -1518,101 +1480,137 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
           {dest.lat && dest.lng && (
             <Marker longitude={dest.lng} latitude={dest.lat} anchor="bottom">
               <div title={dest.label} style={{
-                width:'32px',
-                height:'32px',
-                background:'#EF4444',
+                width:'34px',
+                height:'34px',
+                background:'#EA4335',
                 border:'3px solid #fff',
                 borderRadius:'50%',
-                boxShadow:'0 6px 16px rgba(239, 68, 68, 0.45)',
+                boxShadow:'0 6px 16px rgba(234, 67, 53, 0.45)',
                 display:'flex',
                 alignItems:'center',
                 justifyContent:'center',
                 color:'#fff',
-                fontSize:'14px'
+                fontSize:'15px'
               }}>
                 🎯
               </div>
             </Marker>
           )}
 
-          {/* Rider Live Location Marker */}
+          {/* Google Maps 3D Blue Vehicle Marker with Heading Rotation & Tooltip */}
           {currentPos && (
             <Marker longitude={currentPos[1]} latitude={currentPos[0]} anchor="center">
-              <div style={{ position:'relative', width:'34px', height:'34px', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <div style={{ position:'absolute', inset:'-6px', background:'rgba(16, 185, 129, 0.25)', borderRadius:'50%', animation:'livePulse 1.5s infinite' }} />
+              <div style={{ position:'relative', display:'flex', flexDirection:'column', alignItems:'center' }}>
+                {/* Floating Street Name Tooltip above vehicle */}
                 <div style={{
-                  width:'18px',
-                  height:'18px',
-                  background:'#10B981',
-                  border:'3.5px solid #FFFFFF',
+                  background:'#1A73E8',
+                  color:'#FFFFFF',
+                  padding:'3px 8px',
+                  borderRadius:'6px',
+                  fontSize:'11px',
+                  fontWeight:'800',
+                  whiteSpace:'nowrap',
+                  boxShadow:'0 4px 10px rgba(26,115,232,0.4)',
+                  marginBottom:'4px'
+                }}>
+                  {currentStep?.name || dest.label || 'Vehicle'}
+                </div>
+
+                {/* 3D Vehicle Icon */}
+                <div style={{
+                  width:'38px',
+                  height:'38px',
+                  background:'#1A73E8',
                   borderRadius:'50%',
-                  boxShadow:'0 2px 10px rgba(0, 0, 0, 0.25)',
-                  position:'relative',
-                  zIndex:2
-                }} />
+                  border:'3px solid #FFFFFF',
+                  boxShadow:'0 4px 14px rgba(0, 0, 0, 0.3)',
+                  display:'flex',
+                  alignItems:'center',
+                  justifyContent:'center',
+                  fontSize:'20px',
+                  transform: `rotate(${heading}deg)`,
+                  transition: 'transform 0.2s linear'
+                }}>
+                  🚙
+                </div>
               </div>
             </Marker>
           )}
         </Map>
 
-        {/* Minimalist Floating Navigation Controls (Overview & Follow Mode) */}
+        {/* Speedometer Circle on Bottom-Left (Google Maps Style) */}
         <div style={{
           position:'absolute',
-          bottom:'90px',
+          bottom:'100px',
+          left:'16px',
+          width:'58px',
+          height:'58px',
+          background:'#FFFFFF',
+          borderRadius:'50%',
+          border:'2px solid #E2E8F0',
+          boxShadow:'0 6px 18px rgba(0,0,0,0.12)',
+          display:'flex',
+          flexDirection:'column',
+          alignItems:'center',
+          justifyContent:'center',
+          zIndex:20
+        }}>
+          <div style={{ fontSize:'18px', fontWeight:'900', color:'#0F172A', lineHeight:1 }}>{speed}</div>
+          <div style={{ fontSize:'9px', fontWeight:'800', color:'#64748B', marginTop:'1px' }}>km/h</div>
+        </div>
+
+        {/* Floating Quick Action Controls (Right side) */}
+        <div style={{
+          position:'absolute',
+          bottom:'100px',
           right:'16px',
           display:'flex',
           flexDirection:'column',
           gap:'8px',
           zIndex:20
         }}>
-          {/* Overview Route Button (Fits entire route on screen like Google Maps) */}
+          {/* Re-centre Button (when panned away) */}
+          {!followMode && (
+            <button
+              onClick={recenterMap}
+              style={{
+                background:'#FFFFFF',
+                color:'#1A73E8',
+                border:'1px solid #E2E8F0',
+                borderRadius:'24px',
+                padding:'8px 14px',
+                display:'flex',
+                alignItems:'center',
+                gap:'6px',
+                fontSize:'12px',
+                fontWeight:'800',
+                cursor:'pointer',
+                boxShadow:'0 6px 18px rgba(0,0,0,0.12)'
+              }}
+            >
+              <Navigation size={14} color="#1A73E8" />
+              <span>Re-centre</span>
+            </button>
+          )}
+
+          {/* Full Route Overview Button */}
           <button
             onClick={handleShowOverview}
             title="View Full Route Overview"
             style={{
-              background: !followMode ? '#2563EB' : 'rgba(255, 255, 255, 0.98)',
-              color: !followMode ? '#FFFFFF' : '#334155',
-              backdropFilter:'blur(8px)',
-              border: `1px solid ${!followMode ? '#1D4ED8' : '#E2E8F0'}`,
-              borderRadius:'12px',
-              padding:'8px 12px',
+              width:'42px',
+              height:'42px',
+              background:'#FFFFFF',
+              border:'1px solid #E2E8F0',
+              borderRadius:'50%',
               display:'flex',
               alignItems:'center',
-              gap:'6px',
-              fontSize:'12px',
-              fontWeight:'800',
+              justifyContent:'center',
               cursor:'pointer',
-              boxShadow:'0 6px 16px rgba(0, 0, 0, 0.1)',
-              transition:'all 0.15s'
+              boxShadow:'0 6px 18px rgba(0,0,0,0.12)'
             }}
           >
-            <Compass size={15} color={!followMode ? '#FFFFFF' : '#2563EB'} />
-            <span>Overview</span>
-          </button>
-
-          {/* Follow Me / Recenter GPS Button */}
-          <button
-            onClick={recenterMap}
-            title="Recenter GPS Position (Follow Mode)"
-            style={{
-              background: followMode ? '#ECFDF5' : 'rgba(255, 255, 255, 0.98)',
-              color: followMode ? '#059669' : '#334155',
-              backdropFilter:'blur(8px)',
-              border: `1px solid ${followMode ? '#A7F3D0' : '#E2E8F0'}`,
-              borderRadius:'12px',
-              padding:'8px 12px',
-              display:'flex',
-              alignItems:'center',
-              gap:'6px',
-              fontSize:'12px',
-              fontWeight:'800',
-              cursor:'pointer',
-              boxShadow:'0 6px 16px rgba(0, 0, 0, 0.1)',
-              transition:'all 0.15s'
-            }}
-          >
-            <Crosshair size={15} color={followMode ? '#059669' : '#2563EB'} />
-            <span>{followMode ? 'Following' : 'Center'}</span>
+            <Compass size={18} color="#1A73E8" />
           </button>
         </div>
 
@@ -1651,7 +1649,7 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
                   gap:'12px',
                   padding:'10px 8px',
                   borderRadius:'10px',
-                  background: idx === stepIdx ? '#F0FDF4' : 'transparent',
+                  background: idx === stepIdx ? '#ECFDF5' : 'transparent',
                   borderBottom: idx === stepIdx ? 'none' : '1px solid #F8FAFC',
                   opacity: idx < stepIdx ? 0.35 : 1,
                   marginBottom:'4px'
@@ -1661,7 +1659,7 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
                   width:'28px',
                   height:'28px',
                   borderRadius:'8px',
-                  background: idx === stepIdx ? '#059669' : '#F1F5F9',
+                  background: idx === stepIdx ? '#005A44' : '#F1F5F9',
                   display:'flex',
                   alignItems:'center',
                   justifyContent:'center',
@@ -1670,7 +1668,7 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
                   <NavigationManeuverIcon step={s} size={15} color={idx === stepIdx ? '#FFFFFF' : '#64748B'} />
                 </div>
                 <div style={{ flex:1 }}>
-                  <div style={{ fontSize:'13px', fontWeight: idx === stepIdx ? '800' : '600', color: idx === stepIdx ? '#059669' : '#334155' }}>
+                  <div style={{ fontSize:'13px', fontWeight: idx === stepIdx ? '800' : '600', color: idx === stepIdx ? '#005A44' : '#334155' }}>
                     {s.instruction}
                   </div>
                   <div style={{ fontSize:'11px', color:'#94A3B8', marginTop:'2px', fontWeight:'500' }}>{s.distance} meters</div>
@@ -1732,18 +1730,16 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         )}
       </div>
 
-      {/* ─── Bottom Floating Minimalist White Pill (Apple Maps / Swiggy Style) ─── */}
-      <div style={{ position:'absolute', bottom:'16px', left:'16px', right:'16px', zIndex:30, pointerEvents:'none' }}>
+      {/* ─── Bottom Google Maps Travel Info Card ─── */}
+      <div style={{ position:'absolute', bottom:'14px', left:'14px', right:'14px', zIndex:30, pointerEvents:'none' }}>
         <div style={{
           maxWidth:'680px',
           margin:'0 auto',
-          background:'rgba(255, 255, 255, 0.98)',
-          backdropFilter:'blur(16px)',
-          WebkitBackdropFilter:'blur(16px)',
-          borderRadius:'20px',
-          border:'1px solid rgba(226, 232, 240, 0.9)',
+          background:'#FFFFFF',
+          borderRadius:'22px',
+          border:'1px solid #E2E8F0',
           padding:'12px 18px',
-          boxShadow:'0 10px 30px -5px rgba(0, 0, 0, 0.08), 0 4px 12px -2px rgba(0, 0, 0, 0.04)',
+          boxShadow:'0 10px 30px rgba(0, 0, 0, 0.12)',
           color:'#0F172A',
           display:'flex',
           alignItems:'center',
@@ -1751,20 +1747,36 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
           pointerEvents:'auto',
           gap:'12px'
         }}>
-          {/* Trip ETA & Real-time Live Speed Badge */}
-          <div style={{ display:'flex', alignItems:'center', gap:'14px' }}>
-            <div>
-              <div style={{ fontSize:'10px', color:'#94A3B8', fontWeight:'800', textTransform:'uppercase', letterSpacing:'0.5px' }}>Remaining</div>
-              <div style={{ fontSize:'17px', fontWeight:'900', color:'#2563EB', marginTop:'1px', letterSpacing:'-0.3px' }}>
-                {liveRemainingDistanceKm} km <span style={{ fontSize:'12px', fontWeight:'700', color:'#64748B' }}>• ~{liveRemainingDurationMin} min</span>
-              </div>
+          {/* Close Circular Button */}
+          <button
+            onClick={onClose}
+            title="Exit Navigation"
+            style={{
+              width:'40px',
+              height:'40px',
+              borderRadius:'50%',
+              background:'#F1F5F9',
+              border:'none',
+              display:'flex',
+              alignItems:'center',
+              justifyContent:'center',
+              cursor:'pointer',
+              color:'#475569'
+            }}
+          >
+            <X size={18} />
+          </button>
+
+          {/* ETA & Distance Info (Google Maps Typography) */}
+          <div style={{ display:'flex', flexDirection:'column', alignItems:'center', flex:1 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+              <span style={{ fontSize:'22px', fontWeight:'900', color:'#16A34A', letterSpacing:'-0.3px' }}>
+                {liveRemainingDurationMin} min
+              </span>
+              <span style={{ fontSize:'14px' }}>🌱</span>
             </div>
-
-            <div style={{ width:'1px', height:'24px', background:'#E2E8F0' }} />
-
-            <div style={{ display:'flex', alignItems:'center', gap:'6px', background:'#ECFDF5', border:'1px solid #A7F3D0', borderRadius:'10px', padding:'5px 10px' }}>
-              <Activity size={13} color="#059669" />
-              <span style={{ fontSize:'12px', fontWeight:'800', color:'#059669' }}>{speed} km/h</span>
+            <div style={{ fontSize:'12px', fontWeight:'700', color:'#64748B', marginTop:'1px' }}>
+              {liveRemainingDistanceKm} km • {estimatedArrivalTime}
             </div>
           </div>
 
@@ -1773,25 +1785,25 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
             <button
               onClick={() => { onClose(); onReachClient(); }}
               style={{
-                background:'linear-gradient(135deg, #059669 0%, #10B981 100%)',
+                background:'#10B981',
                 color:'#fff',
                 border:'none',
-                borderRadius:'12px',
-                padding:'11px 20px',
+                borderRadius:'14px',
+                padding:'10px 18px',
                 fontSize:'13px',
                 fontWeight:'800',
                 cursor:'pointer',
                 display:'flex',
                 alignItems:'center',
-                gap:'8px',
-                boxShadow:'0 4px 14px rgba(16, 185, 129, 0.35)',
-                transition:'all 0.15s'
+                gap:'6px',
+                boxShadow:'0 4px 12px rgba(16, 185, 129, 0.3)',
+                transition:'background 0.15s'
               }}
-              onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-1px)'}
-              onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+              onMouseEnter={e => e.currentTarget.style.background='#059669'}
+              onMouseLeave={e => e.currentTarget.style.background='#10B981'}
             >
-              <Camera size={16} />
-              <span>Reached Client — Take Photo</span>
+              <Camera size={15} />
+              <span>Reached Client</span>
             </button>
           )}
         </div>
