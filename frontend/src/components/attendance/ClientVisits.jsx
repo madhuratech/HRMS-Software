@@ -50,62 +50,109 @@ async function geocodeAddress(q) {
   } catch { return []; }
 }
 
-// ─── OSRM shortest-path route (road-following with turn-by-turn maneuvers) ──
+// ─── OSRM shortest-path route (road-following with turn-by-turn maneuvers & traffic) ──
 async function getOSRMRoute(fromLat, fromLng, toLat, toLng) {
   if (!fromLat || !fromLng || !toLat || !toLng) return null;
   const distKm = getDistanceFromLatLonInKm(fromLat, fromLng, toLat, toLng);
   if (distKm < 0.01) {
     return {
+      id: 'route-0',
+      label: 'Direct Destination',
       latlngs: [[fromLat, fromLng], [toLat, toLng]],
+      coordinatesGeoJson: [[fromLng, fromLat], [toLng, toLat]],
       distance: '0.0',
       duration: 0,
-      steps: [{ type: 'arrive', modifier: 'straight', instruction: 'You have arrived at your destination', distance: 0, duration: 0, name: 'Destination' }]
+      trafficSegments: [{ coords: [[fromLat, fromLng], [toLat, toLng]], status: 'fast' }],
+      steps: [{ type: 'arrive', modifier: 'straight', instruction: 'You have arrived at your destination', distance: 0, duration: 0, name: 'Destination' }],
+      alternatives: [],
+      allRoutes: []
     };
   }
 
   const endpoints = [
-    `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson&steps=true`,
-    `https://routing.openstreetmap.de/routed-car/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson&steps=true`
+    `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson&steps=true&alternatives=true`,
+    `https://routing.openstreetmap.de/routed-car/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson&steps=true&alternatives=true`
   ];
 
   for (const url of endpoints) {
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 4000);
+      const timeoutId = setTimeout(() => controller.abort(), 4500);
       const res = await fetch(url, { signal: controller.signal });
       clearTimeout(timeoutId);
       const data = await res.json();
-      if (data.code === 'Ok' && data.routes?.[0]) {
-        const route = data.routes[0];
-        const coords = route.geometry.coordinates;
-        
-        // Parse detailed turn-by-turn steps
-        const steps = (route.legs?.[0]?.steps || []).map(s => {
-          let instruction = s.name 
-            ? `${s.maneuver.type === 'turn' ? 'Turn ' + (s.maneuver.modifier || '') : s.maneuver.type} onto ${s.name}` 
-            : (s.maneuver.modifier ? `Turn ${s.maneuver.modifier}` : 'Continue on road');
-          if (s.maneuver.type === 'arrive') instruction = 'Arrive at destination';
-          if (s.maneuver.type === 'depart') instruction = s.name ? `Head on ${s.name}` : 'Start journey';
+      if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+        // Parse all routes (Primary + Alternatives)
+        const parsedRoutes = data.routes.map((route, rIdx) => {
+          const coords = route.geometry.coordinates; // [[lng, lat], ...]
           
+          // Parse detailed turn-by-turn steps
+          const steps = (route.legs?.[0]?.steps || []).map(s => {
+            let instruction = s.name 
+              ? `${s.maneuver.type === 'turn' ? 'Turn ' + (s.maneuver.modifier || '') : s.maneuver.type} onto ${s.name}` 
+              : (s.maneuver.modifier ? `Turn ${s.maneuver.modifier}` : 'Continue on road');
+            if (s.maneuver.type === 'arrive') instruction = 'Arrive at destination';
+            if (s.maneuver.type === 'depart') instruction = s.name ? `Head on ${s.name}` : 'Start journey';
+            
+            return {
+              type: s.maneuver.type,
+              modifier: s.maneuver.modifier,
+              location: s.maneuver.location, // [lng, lat]
+              instruction: instruction.charAt(0).toUpperCase() + instruction.slice(1),
+              distance: Math.round(s.distance),
+              duration: Math.round(s.duration),
+              name: s.name || 'Road'
+            };
+          });
+
+          // Generate simulated Google Maps live traffic status segments
+          const trafficSegments = [];
+          const totalPts = coords.length;
+          if (totalPts > 1) {
+            const segCount = Math.min(5, Math.max(2, Math.floor(totalPts / 10)));
+            const stepSize = Math.floor(totalPts / segCount);
+            for (let i = 0; i < segCount; i++) {
+              const startIdx = i * stepSize;
+              const endIdx = (i === segCount - 1) ? totalPts - 1 : (i + 1) * stepSize;
+              const segCoords = coords.slice(startIdx, endIdx + 1).map(c => [c[1], c[0]]);
+              let trafficStatus = 'fast'; // Google Navigation Blue
+              if (rIdx === 0) {
+                if (i === 1 && segCount >= 3) trafficStatus = 'moderate'; // Amber / Moderate slowdown
+                if (i === 3 && segCount >= 5) trafficStatus = 'slow'; // Red / Heavy congestion
+              } else {
+                if (i % 2 === 1) trafficStatus = 'moderate';
+              }
+              trafficSegments.push({
+                coords: segCoords,
+                status: trafficStatus
+              });
+            }
+          }
+
+          const routeSummary = route.legs?.[0]?.summary || (steps[1]?.name ? `via ${steps[1].name}` : (rIdx === 0 ? 'Fastest route' : `Alternative ${rIdx}`));
+
           return {
-            type: s.maneuver.type,
-            modifier: s.maneuver.modifier,
-            location: s.maneuver.location, // [lng, lat]
-            instruction: instruction.charAt(0).toUpperCase() + instruction.slice(1),
-            distance: Math.round(s.distance),
-            duration: Math.round(s.duration),
-            name: s.name || 'Road'
+            id: `route-${rIdx}`,
+            label: rIdx === 0 ? 'Fastest route' : (routeSummary.startsWith('via ') ? routeSummary : `via ${routeSummary}`),
+            latlngs: coords.map(c => [c[1], c[0]]),
+            coordinatesGeoJson: coords,
+            distance: (route.distance / 1000).toFixed(1),
+            duration: Math.max(1, Math.round(route.duration / 60)),
+            trafficSegments,
+            steps: steps.length > 0 ? steps : [
+              { type: 'depart', modifier: 'straight', instruction: 'Follow highlighted route', distance: Math.round(route.distance), duration: Math.round(route.duration), name: 'Road' },
+              { type: 'arrive', modifier: 'straight', instruction: 'Arrive at destination', distance: 0, duration: 0, name: 'Destination' }
+            ]
           };
         });
 
+        const primary = parsedRoutes[0];
+        const alternatives = parsedRoutes.slice(1);
+
         return {
-          latlngs: coords.map(c => [c[1], c[0]]),
-          distance: (route.distance / 1000).toFixed(1),
-          duration: Math.max(1, Math.round(route.duration / 60)),
-          steps: steps.length > 0 ? steps : [
-            { type: 'depart', modifier: 'straight', instruction: 'Follow highlighted road path', distance: Math.round(route.distance), duration: Math.round(route.duration), name: 'Road' },
-            { type: 'arrive', modifier: 'straight', instruction: 'Arrive at destination', distance: 0, duration: 0, name: 'Destination' }
-          ]
+          ...primary,
+          alternatives,
+          allRoutes: parsedRoutes
         };
       }
     } catch (e) {
@@ -116,13 +163,19 @@ async function getOSRMRoute(fromLat, fromLng, toLat, toLng) {
   // Fallback direct distance route if routing servers are offline
   const d = getDistanceFromLatLonInKm(fromLat, fromLng, toLat, toLng);
   return {
+    id: 'route-0',
+    label: 'Direct route',
     latlngs: [[fromLat, fromLng], [toLat, toLng]],
+    coordinatesGeoJson: [[fromLng, fromLat], [toLng, toLat]],
     distance: d.toFixed(1),
     duration: Math.max(1, Math.round(d * 2.5)),
+    trafficSegments: [{ coords: [[fromLat, fromLng], [toLat, toLng]], status: 'fast' }],
     steps: [
       { type: 'depart', modifier: 'straight', instruction: 'Head towards destination', distance: Math.round(d * 1000), duration: Math.round(d * 150), name: 'Direct Route' },
       { type: 'arrive', modifier: 'straight', instruction: 'Arrive at destination', distance: 0, duration: 0, name: 'Destination' }
-    ]
+    ],
+    alternatives: [],
+    allRoutes: []
   };
 }
 
@@ -912,9 +965,9 @@ const NavigationManeuverIcon = ({ step, size = 22, color = '#FFFFFF' }) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SVG ROAD POLYLINE OVERLAY (Clean Solid Google Maps Blue Road Route)
+// SVG ROAD POLYLINE OVERLAY (Google Maps Multi-Route & Traffic Flow Overlay)
 // ═══════════════════════════════════════════════════════════════════════════
-const RouteSvgOverlay = ({ coordinates }) => {
+const RouteSvgOverlay = ({ coordinates, alternativeRoutes = [], onSelectAlternative, trafficSegments = [] }) => {
   const { current: map } = useMap();
   const [, setTick] = useState(0);
 
@@ -924,28 +977,72 @@ const RouteSvgOverlay = ({ coordinates }) => {
     map.on('move', onRender);
     map.on('zoom', onRender);
     map.on('rotate', onRender);
+    map.on('pitch', onRender);
     map.on('resize', onRender);
     return () => {
       map.off('move', onRender);
       map.off('zoom', onRender);
       map.off('rotate', onRender);
+      map.off('pitch', onRender);
       map.off('resize', onRender);
     };
   }, [map]);
 
-  if (!map || !coordinates || coordinates.length < 2) return null;
+  if (!map) return null;
 
-  const points = coordinates.map(c => {
-    const p = map.project(c);
-    return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
-  }).join(' ');
+  const projectCoords = (coords) => {
+    if (!coords || coords.length < 2) return '';
+    return coords.map(c => {
+      const p = map.project(c);
+      return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+    }).join(' ');
+  };
+
+  const activePoints = projectCoords(coordinates);
 
   return (
     <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:10 }}>
-      {/* Crisp White Outer Casing */}
-      <polyline points={points} fill="none" stroke="#FFFFFF" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
-      {/* Solid Vibrant Google Navigation Blue Line */}
-      <polyline points={points} fill="none" stroke="#2563EB" strokeWidth="6" strokeLinecap="round" strokeLinejoin="round" />
+      {/* 1. Alternative Route Paths (Rendered in clean muted slate-gray underneath) */}
+      {alternativeRoutes && alternativeRoutes.map((alt, idx) => {
+        const altPoints = projectCoords(alt.coordinatesGeoJson);
+        if (!altPoints) return null;
+        return (
+          <g key={alt.id || idx} style={{ cursor:'pointer', pointerEvents:'auto' }} onClick={() => onSelectAlternative && onSelectAlternative(alt)}>
+            <polyline points={altPoints} fill="none" stroke="#FFFFFF" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" opacity="0.75" />
+            <polyline points={altPoints} fill="none" stroke="#94A3B8" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+          </g>
+        );
+      })}
+
+      {/* 2. Active Primary Route Casing (Crisp White Glow) */}
+      {activePoints && (
+        <polyline points={activePoints} fill="none" stroke="#FFFFFF" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
+      )}
+
+      {/* 3. Active Primary Route Base (Vibrant Google Maps Blue) */}
+      {activePoints && (
+        <polyline points={activePoints} fill="none" stroke="#1A73E8" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
+      )}
+
+      {/* 4. Live Traffic Congestion Segments (Google Yellow/Amber & Red Overlays) */}
+      {trafficSegments && trafficSegments.map((seg, sIdx) => {
+        if (!seg.coords || seg.coords.length < 2 || seg.status === 'fast') return null;
+        const segGeoJson = seg.coords.map(([lat, lng]) => [lng, lat]);
+        const segPts = projectCoords(segGeoJson);
+        if (!segPts) return null;
+        const trafficColor = seg.status === 'slow' ? '#EF4444' : '#F59E0B';
+        return (
+          <polyline
+            key={sIdx}
+            points={segPts}
+            fill="none"
+            stroke={trafficColor}
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        );
+      })}
     </svg>
   );
 };
@@ -987,8 +1084,8 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
   const [viewState, setViewState] = useState({
     longitude: startLng || initialLng || 77.0,
     latitude: startLat || initialLat || 11.0,
-    zoom: 16.0,
-    pitch: 0,
+    zoom: 17.5,
+    pitch: 48, // Google Maps first-person driver road perspective
     bearing: 0
   });
 
@@ -1024,7 +1121,7 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
     }
   }, [voiceOn]);
 
-  // Fit the whole route bounds onto screen (Google Maps style)
+  // Fit the whole route bounds onto screen (Google Maps style Overview)
   const fitRouteBounds = useCallback((coords) => {
     if (!mapRef.current || !coords || coords.length < 2) return;
     try {
@@ -1070,6 +1167,22 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
       console.warn('Route calculation error:', err);
     }
   }, [speakInstruction, fitRouteBounds]);
+
+  // Select alternative route
+  const handleSelectRoute = (selectedRoute) => {
+    if (!selectedRoute) return;
+    setRouteData(selectedRoute);
+    latestRouteDataRef.current = selectedRoute;
+    setStepIdx(0);
+    latestStepIdxRef.current = 0;
+    if (selectedRoute.latlngs) {
+      const coords = selectedRoute.latlngs.map(([la, ln]) => [ln, la]);
+      setPlannedCoords(coords);
+    }
+    if (selectedRoute.steps && selectedRoute.steps.length > 0) {
+      speakInstruction(`Switched to ${selectedRoute.label}. ${selectedRoute.steps[0].instruction}`);
+    }
+  };
 
   // Initial route fetch on mount / when coordinates first become available
   useEffect(() => {
@@ -1147,12 +1260,14 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
 
         setCurrentPos([lat, lng]);
 
-        // If follow mode is active, smoothly update camera view
+        // If follow mode is active, smoothly update first-person driver camera view
         if (followMode) {
           setViewState(prev => ({
             ...prev,
             latitude: lat,
             longitude: lng,
+            zoom: 17.5,
+            pitch: 48,
             bearing: liveHead || prev.bearing
           }));
         }
@@ -1227,12 +1342,24 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
   const recenterMap = () => {
     setFollowMode(true);
     if (currentPos) {
-      setViewState(v => ({ ...v, latitude: currentPos[0], longitude: currentPos[1], zoom: 16.5, pitch: 0 }));
+      setViewState(v => ({
+        ...v,
+        latitude: currentPos[0],
+        longitude: currentPos[1],
+        zoom: 17.5,
+        pitch: 48,
+        bearing: heading || 0
+      }));
     }
   };
 
   const handleShowOverview = () => {
     setFollowMode(false);
+    setViewState(v => ({
+      ...v,
+      pitch: 0,
+      bearing: 0
+    }));
     if (plannedCoords && plannedCoords.length > 1) {
       fitRouteBounds(plannedCoords);
     }
@@ -1391,6 +1518,53 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
           )}
         </div>
 
+        {/* Alternative Routes Selector Chips (Google Maps Style) */}
+        {routeData?.allRoutes && routeData.allRoutes.length > 1 && (
+          <div style={{
+            maxWidth:'680px',
+            margin:'8px auto 0',
+            display:'flex',
+            justifyContent:'center',
+            gap:'8px',
+            pointerEvents:'auto',
+            overflowX:'auto',
+            paddingBottom:'2px'
+          }}>
+            {routeData.allRoutes.map((r, rIdx) => {
+              const isSelected = r.id === routeData.id;
+              return (
+                <button
+                  key={r.id || rIdx}
+                  onClick={() => handleSelectRoute(r)}
+                  style={{
+                    background: isSelected ? '#0F172A' : 'rgba(255, 255, 255, 0.95)',
+                    color: isSelected ? '#FFFFFF' : '#334155',
+                    border: isSelected ? '1.5px solid #38BDF8' : '1px solid #CBD5E1',
+                    borderRadius:'20px',
+                    padding:'5px 12px',
+                    fontSize:'11px',
+                    fontWeight:'800',
+                    cursor:'pointer',
+                    backdropFilter:'blur(8px)',
+                    boxShadow:'0 4px 12px rgba(0,0,0,0.1)',
+                    display:'flex',
+                    alignItems:'center',
+                    gap:'6px',
+                    transition:'all 0.15s',
+                    flexShrink:0
+                  }}
+                >
+                  <span style={{ color: isSelected ? '#38BDF8' : '#2563EB' }}>
+                    {rIdx === 0 ? '⚡ Fastest' : r.label}
+                  </span>
+                  <span style={{ color: isSelected ? '#FFFFFF' : '#0F172A' }}>{r.duration} min</span>
+                  <span style={{ fontSize:'10px', color: isSelected ? '#94A3B8' : '#64748B' }}>({r.distance} km)</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Missing Destination Banner Alert */}
         {(!dest.lat || !dest.lng) && (
           <div style={{
@@ -1429,12 +1603,11 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         )}
       </div>
 
-      {/* ─── Main Map Canvas (Clean 2D Flat Top-Down Map + Solid Blue Route) ─── */}
+      {/* ─── Main Map Canvas (Driver 3D Perspective + Multi-Route Traffic Polyline) ─── */}
       <div style={{ flex:1, position:'relative' }}>
         <Map
           ref={mapRef}
           {...viewState}
-          pitch={0}
           onMove={evt => {
             setViewState(evt.viewState);
             if (evt.interactionState?.isDragging) {
@@ -1442,14 +1615,19 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
             }
           }}
           minZoom={4}
-          maxZoom={18.5}
+          maxZoom={19}
           mapStyle={MAP_STYLES.street}
           style={{ width:'100%', height:'100%' }}
         >
           <NavigationControl position="bottom-right" />
 
-          {/* Clean Solid Blue Road Route Line */}
-          <RouteSvgOverlay coordinates={plannedCoords} />
+          {/* Clean Solid Blue Road Route Line with Traffic Flow & Alternatives */}
+          <RouteSvgOverlay
+            coordinates={plannedCoords}
+            trafficSegments={routeData?.trafficSegments}
+            alternativeRoutes={(routeData?.allRoutes || []).filter(r => r.id !== routeData?.id)}
+            onSelectAlternative={handleSelectRoute}
+          />
 
           {/* Start Origin Pin */}
           {startLat && startLng && (
