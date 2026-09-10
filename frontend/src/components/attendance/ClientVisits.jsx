@@ -292,140 +292,128 @@ const MAP_STYLES = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// HIGH-PERFORMANCE 60-120 FPS CLEAN ROUTE CANVAS OVERLAY
+// HARDWARE GPU MAPLIBRE NATIVE ROUTE & TRAFFIC LAYER (Zero 3D Frustum Bugs)
 // ═══════════════════════════════════════════════════════════════════════════
-const LiveMapRouteOverlay = ({ plannedCoords = [], travelCoords = [] }) => {
+const MapLibreRouteLayer = ({ plannedCoords = [], trafficSegments = [], travelCoords = [] }) => {
   const { current: map } = useMap();
-  const canvasRef = useRef(null);
 
   useEffect(() => {
     if (!map) return;
 
-    let animFrameId = null;
-
-    const render = () => {
-      const canvas = canvasRef.current;
-      if (!canvas || !map) return;
-      const ctx = canvas.getContext('2d');
-      const container = map.getContainer ? map.getContainer() : null;
-      const width = container ? container.clientWidth : map.getCanvas().clientWidth;
-      const height = container ? container.clientHeight : map.getCanvas().clientHeight;
-      const dpr = window.devicePixelRatio || 1;
-
-      if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
-        canvas.width = width * dpr;
-        canvas.height = height * dpr;
-        canvas.style.width = `${width}px`;
-        canvas.style.height = `${height}px`;
+    const setupLayers = () => {
+      // 1. Travelled GPS Breadcrumbs Layer (for supervisor live map)
+      if (!map.getSource('native-travel-source')) {
+        map.addSource('native-travel-source', {
+          type: 'geojson',
+          data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } }
+        });
+        map.addLayer({
+          id: 'native-travel-casing',
+          type: 'line',
+          source: 'native-travel-source',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.95 }
+        });
+        map.addLayer({
+          id: 'native-travel-line',
+          type: 'line',
+          source: 'native-travel-source',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': '#2563EB', 'line-width': 5, 'line-opacity': 1.0 }
+        });
       }
 
-      ctx.save();
-      ctx.scale(dpr, dpr);
-      ctx.clearRect(0, 0, width, height);
+      // 2. Planned Route Casing Layer (Crisp White Border)
+      if (!map.getSource('native-route-source')) {
+        map.addSource('native-route-source', {
+          type: 'geojson',
+          data: { type: 'FeatureCollection', features: [] }
+        });
+        map.addLayer({
+          id: 'native-route-casing',
+          type: 'line',
+          source: 'native-route-source',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: { 'line-color': '#FFFFFF', 'line-width': 9, 'line-opacity': 0.95 }
+        });
+        map.addLayer({
+          id: 'native-route-line',
+          type: 'line',
+          source: 'native-route-source',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': ['get', 'color'],
+            'line-width': 5.5,
+            'line-opacity': 1.0
+          }
+        });
+      }
+    };
 
-      const project = (pt) => {
-        try {
-          if (!pt || pt.length < 2) return null;
-          const p = map.project([pt[0], pt[1]]);
-          if (isNaN(p.x) || isNaN(p.y)) return null;
-          return p;
-        } catch {
-          return null;
+    if (map.isStyleLoaded()) {
+      setupLayers();
+    } else {
+      map.once('load', setupLayers);
+      map.once('styledata', setupLayers);
+    }
+  }, [map]);
+
+  // Dynamically stream GeoJSON updates into GPU buffers
+  useEffect(() => {
+    if (!map) return;
+
+    const updateData = () => {
+      // 1. Update planned route with live traffic segments
+      const routeSource = map.getSource('native-route-source');
+      if (routeSource) {
+        const features = [];
+        if (trafficSegments && trafficSegments.length > 0) {
+          trafficSegments.forEach(seg => {
+            if (seg.coords && seg.coords.length > 1) {
+              features.push({
+                type: 'Feature',
+                properties: {
+                  color: seg.status === 'slow' ? '#EF4444' : (seg.status === 'moderate' ? '#F59E0B' : '#1A73E8')
+                },
+                geometry: { type: 'LineString', coordinates: seg.coords }
+              });
+            }
+          });
+        } else if (plannedCoords && plannedCoords.length > 1) {
+          features.push({
+            type: 'Feature',
+            properties: { color: '#1A73E8' },
+            geometry: { type: 'LineString', coordinates: plannedCoords }
+          });
         }
-      };
 
-      // 1. Draw Travelled GPS Breadcrumb Path (for Supervisor Map)
-      if (travelCoords && travelCoords.length > 1) {
-        const pts = travelCoords.map(project).filter(Boolean);
-        if (pts.length > 1) {
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-          ctx.strokeStyle = '#FFFFFF';
-          ctx.lineWidth = 7;
-          ctx.beginPath();
-          ctx.moveTo(pts[0].x, pts[0].y);
-          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-          ctx.stroke();
-
-          ctx.strokeStyle = '#2563EB';
-          ctx.lineWidth = 4.5;
-          ctx.beginPath();
-          ctx.moveTo(pts[0].x, pts[0].y);
-          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-          ctx.stroke();
-        }
+        routeSource.setData({
+          type: 'FeatureCollection',
+          features
+        });
       }
 
-      // 2. Draw Clean Single Planned Primary Road Route (Google Navigation Blue with White Casing)
-      if (plannedCoords && plannedCoords.length > 1) {
-        const pts = plannedCoords.map(project).filter(Boolean);
-        if (pts.length > 1) {
-          ctx.lineCap = 'round';
-          ctx.lineJoin = 'round';
-          // Crisp White Casing (ensures clear contrast across all maps & zooms)
-          ctx.strokeStyle = '#FFFFFF';
-          ctx.lineWidth = 9;
-          ctx.beginPath();
-          ctx.moveTo(pts[0].x, pts[0].y);
-          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-          ctx.stroke();
-
-          // Vibrant Solid Google Navigation Blue
-          ctx.strokeStyle = '#1A73E8';
-          ctx.lineWidth = 5.5;
-          ctx.beginPath();
-          ctx.moveTo(pts[0].x, pts[0].y);
-          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-          ctx.stroke();
-        }
+      // 2. Update travelled GPS breadcrumbs
+      const travelSource = map.getSource('native-travel-source');
+      if (travelSource) {
+        travelSource.setData({
+          type: 'Feature',
+          geometry: {
+            type: 'LineString',
+            coordinates: travelCoords && travelCoords.length > 1 ? travelCoords : []
+          }
+        });
       }
-
-      ctx.restore();
     };
 
-    const scheduleRender = () => {
-      if (animFrameId) cancelAnimationFrame(animFrameId);
-      animFrameId = requestAnimationFrame(render);
-    };
+    if (map.isStyleLoaded()) {
+      updateData();
+    } else {
+      map.once('idle', updateData);
+    }
+  }, [map, plannedCoords, trafficSegments, travelCoords]);
 
-    map.on('render', render);
-    map.on('move', render);
-    map.on('zoom', render);
-    map.on('rotate', render);
-    map.on('pitch', render);
-    map.on('resize', render);
-    map.on('load', scheduleRender);
-    map.on('styledata', scheduleRender);
-
-    scheduleRender();
-
-    return () => {
-      if (animFrameId) cancelAnimationFrame(animFrameId);
-      map.off('render', render);
-      map.off('move', render);
-      map.off('zoom', render);
-      map.off('rotate', render);
-      map.off('pitch', render);
-      map.off('resize', render);
-      map.off('load', scheduleRender);
-      map.off('styledata', scheduleRender);
-    };
-  }, [map, plannedCoords, travelCoords]);
-
-  return (
-    <canvas
-      ref={canvasRef}
-      style={{
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: '100%',
-        height: '100%',
-        pointerEvents: 'none',
-        zIndex: 5
-      }}
-    />
-  );
+  return null;
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -836,9 +824,10 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
             >
               <NavigationControl position="bottom-right" />
               
-              {/* High Performance 60-120 FPS Clean Planned Route & Travelled Breadcrumb Canvas Overlay */}
-              <LiveMapRouteOverlay
+              {/* Native GPU 3D Frustum Clipped Route, Live Traffic Colors & Travelled Breadcrumb Trail */}
+              <MapLibreRouteLayer
                 plannedCoords={plannedCoords}
+                trafficSegments={routeInfo?.trafficSegments}
                 travelCoords={travelCoords}
               />
 
@@ -1503,9 +1492,10 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         >
           <NavigationControl position="bottom-right" />
 
-          {/* High-Performance 60-120 FPS Single Road Route Canvas Overlay */}
-          <LiveMapRouteOverlay
+          {/* Native GPU 3D Frustum Clipped Route & Live Traffic Colors */}
+          <MapLibreRouteLayer
             plannedCoords={plannedCoords}
+            trafficSegments={routeData?.trafficSegments}
           />
 
           {/* Start Origin Pin */}
