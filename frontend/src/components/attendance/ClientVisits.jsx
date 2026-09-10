@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import Map, { Marker, NavigationControl } from 'react-map-gl/maplibre';
+import Map, { Marker, NavigationControl, Source, Layer, useMap } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { apiFetch } from '../../lib/api';
 import { 
@@ -62,7 +62,7 @@ async function getOSRMRoute(fromLat, fromLng, toLat, toLng) {
       coordinatesGeoJson: [[fromLng, fromLat], [toLng, toLat]],
       distance: '0.0',
       duration: 0,
-      trafficSegments: [{ coords: [[fromLng, fromLat], [toLng, toLat]], status: 'fast' }],
+      trafficSegments: [{ coords: [[fromLat, fromLng], [toLat, toLng]], status: 'fast' }],
       steps: [{ type: 'arrive', modifier: 'straight', instruction: 'You have arrived at your destination', distance: 0, duration: 0, name: 'Destination' }],
       alternatives: [],
       allRoutes: []
@@ -114,7 +114,7 @@ async function getOSRMRoute(fromLat, fromLng, toLat, toLng) {
             for (let i = 0; i < segCount; i++) {
               const startIdx = i * stepSize;
               const endIdx = (i === segCount - 1) ? totalPts - 1 : (i + 1) * stepSize;
-              const segCoords = coords.slice(startIdx, endIdx + 1); // Exact GeoJSON [[lng, lat], ...]
+              const segCoords = coords.slice(startIdx, endIdx + 1).map(c => [c[1], c[0]]);
               let trafficStatus = 'fast'; // Google Navigation Blue
               if (rIdx === 0) {
                 if (i === 1 && segCount >= 3) trafficStatus = 'moderate'; // Amber / Moderate slowdown
@@ -169,7 +169,7 @@ async function getOSRMRoute(fromLat, fromLng, toLat, toLng) {
     coordinatesGeoJson: [[fromLng, fromLat], [toLng, toLat]],
     distance: d.toFixed(1),
     duration: Math.max(1, Math.round(d * 2.5)),
-    trafficSegments: [{ coords: [[fromLng, fromLat], [toLng, toLat]], status: 'fast' }],
+    trafficSegments: [{ coords: [[fromLat, fromLng], [toLat, toLng]], status: 'fast' }],
     steps: [
       { type: 'depart', modifier: 'straight', instruction: 'Head towards destination', distance: Math.round(d * 1000), duration: Math.round(d * 150), name: 'Direct Route' },
       { type: 'arrive', modifier: 'straight', instruction: 'Arrive at destination', distance: 0, duration: 0, name: 'Destination' }
@@ -177,38 +177,6 @@ async function getOSRMRoute(fromLat, fromLng, toLat, toLng) {
     alternatives: [],
     allRoutes: []
   };
-}
-
-// ─── Geometric Distance from Point to Polyline in Meters ───────────────────
-function pointToSegmentDistanceMeters(lat, lng, p1Lat, p1Lng, p2Lat, p2Lng) {
-  const midLat = (p1Lat + p2Lat) / 2;
-  const kx = 111320 * Math.cos((midLat * Math.PI) / 180);
-  const ky = 110540;
-  
-  const x = (lng - p1Lng) * kx;
-  const y = (lat - p1Lat) * ky;
-  const dx = (p2Lng - p1Lng) * kx;
-  const dy = (p2Lat - p1Lat) * ky;
-  
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq === 0) return Math.sqrt(x * x + y * y);
-  
-  const t = Math.max(0, Math.min(1, (x * dx + y * dy) / lenSq));
-  const projX = t * dx;
-  const projY = t * dy;
-  return Math.sqrt((x - projX) ** 2 + (y - projY) ** 2);
-}
-
-function getDistanceToRouteMeters(lat, lng, coordsGeoJson) {
-  if (!coordsGeoJson || coordsGeoJson.length < 2) return 0;
-  let minD = Infinity;
-  for (let i = 0; i < coordsGeoJson.length - 1; i++) {
-    const p1 = coordsGeoJson[i];     // [lng, lat]
-    const p2 = coordsGeoJson[i + 1]; // [lng, lat]
-    const d = pointToSegmentDistanceMeters(lat, lng, p1[1], p1[0], p2[1], p2[0]);
-    if (d < minD) minD = d;
-  }
-  return minD;
 }
 
 // ─── Smooth marker animation (lat/lng interpolation) ─────────────────────────
@@ -292,156 +260,9 @@ const MAP_STYLES = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// HARDWARE GPU MAPLIBRE NATIVE ROUTE & TRAFFIC LAYER (Direct WebGL Pipeline)
-// ═══════════════════════════════════════════════════════════════════════════
-const MapLibreNativeRouteLayer = ({
-  mapRef,
-  sourceId = 'native-route-source',
-  routeGeoJson,
-  travelSourceId = 'native-travel-source',
-  travelGeoJson
-}) => {
-  const getRawMap = useCallback(() => {
-    if (!mapRef) return null;
-    if (mapRef.current) {
-      return mapRef.current.getMap ? mapRef.current.getMap() : mapRef.current;
-    }
-    return mapRef.getMap ? mapRef.getMap() : mapRef;
-  }, [mapRef]);
-
-  const updateMapLayers = useCallback(() => {
-    const map = getRawMap();
-    if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) return;
-
-    try {
-      // 1. Planned Route & Traffic segments
-      if (routeGeoJson && routeGeoJson.features && routeGeoJson.features.length > 0) {
-        let source = map.getSource(sourceId);
-        if (!source) {
-          map.addSource(sourceId, {
-            type: 'geojson',
-            data: routeGeoJson
-          });
-        } else {
-          source.setData(routeGeoJson);
-        }
-
-        // Casing layer (9px white border for high-contrast crisp visibility)
-        if (!map.getLayer(`${sourceId}-casing`)) {
-          map.addLayer({
-            id: `${sourceId}-casing`,
-            type: 'line',
-            source: sourceId,
-            layout: { 'line-join': 'round', 'line-cap': 'round' },
-            paint: {
-              'line-color': '#FFFFFF',
-              'line-width': 9,
-              'line-opacity': 0.95
-            }
-          });
-        }
-
-        // Main traffic colored route line
-        if (!map.getLayer(`${sourceId}-line`)) {
-          map.addLayer({
-            id: `${sourceId}-line`,
-            type: 'line',
-            source: sourceId,
-            layout: { 'line-join': 'round', 'line-cap': 'round' },
-            paint: {
-              'line-color': ['coalesce', ['get', 'color'], '#1A73E8'],
-              'line-width': 5.5,
-              'line-opacity': 1.0
-            }
-          });
-        }
-      }
-
-      // 2. Travelled GPS Breadcrumbs (for supervisor live map)
-      if (travelGeoJson && travelGeoJson.geometry && travelGeoJson.geometry.coordinates?.length > 1) {
-        let travelSource = map.getSource(travelSourceId);
-        if (!travelSource) {
-          map.addSource(travelSourceId, {
-            type: 'geojson',
-            data: travelGeoJson
-          });
-        } else {
-          travelSource.setData(travelGeoJson);
-        }
-
-        if (!map.getLayer(`${travelSourceId}-casing`)) {
-          map.addLayer({
-            id: `${travelSourceId}-casing`,
-            type: 'line',
-            source: travelSourceId,
-            layout: { 'line-join': 'round', 'line-cap': 'round' },
-            paint: {
-              'line-color': '#FFFFFF',
-              'line-width': 8,
-              'line-opacity': 0.95
-            }
-          });
-        }
-
-        if (!map.getLayer(`${travelSourceId}-line`)) {
-          map.addLayer({
-            id: `${travelSourceId}-line`,
-            type: 'line',
-            source: travelSourceId,
-            layout: { 'line-join': 'round', 'line-cap': 'round' },
-            paint: {
-              'line-color': '#2563EB',
-              'line-width': 5,
-              'line-opacity': 1.0
-            }
-          });
-        }
-      }
-    } catch (e) {
-      console.warn('MapLibre route rendering note:', e);
-    }
-  }, [getRawMap, sourceId, routeGeoJson, travelSourceId, travelGeoJson]);
-
-  useEffect(() => {
-    let interval = null;
-    const map = getRawMap();
-    if (!map) {
-      interval = setInterval(() => {
-        const m = getRawMap();
-        if (m) {
-          clearInterval(interval);
-          updateMapLayers();
-        }
-      }, 100);
-    } else {
-      updateMapLayers();
-    }
-
-    const onSync = () => updateMapLayers();
-    if (map) {
-      map.on('styledata', onSync);
-      map.on('load', onSync);
-      map.on('idle', onSync);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-      if (map) {
-        map.off('styledata', onSync);
-        map.off('load', onSync);
-        map.off('idle', onSync);
-      }
-    };
-  }, [getRawMap, updateMapLayers]);
-
-  return null;
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
 // LIVE TRACKING MAP MODAL  (react-map-gl / MapLibre GL)
 // ═══════════════════════════════════════════════════════════════════════════
 const LiveTrackingMap = ({ visitId, onClose }) => {
-  const mapRef = useRef(null);
   const [data, setData] = useState(null);
   const [routeInfo, setRouteInfo] = useState(null);
   const [bikePos, setBikePos] = useState(null);   // animated [lat, lng]
@@ -455,7 +276,13 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
   // Photo Lightbox modal state
   const [inspectPhoto, setInspectPhoto] = useState(null);
 
-  // Projected route coordinate arrays for guaranteed rendering
+  // Route Replay Simulator State
+  const [replayActive, setReplayActive] = useState(false);
+  const [replayIdx, setReplayIdx] = useState(0);
+  const [replaySpeed, setReplaySpeed] = useState(1);
+  const replayTimer = useRef(null);
+
+  // Projected route coordinate arrays for guaranteed SVG rendering
   const [plannedCoords, setPlannedCoords] = useState([]);
   const [travelCoords, setTravelCoords] = useState([]);
 
@@ -544,7 +371,7 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
     }
 
     // ─── 3. Bike / Live Marker Animation ─────────────────────────────────────
-    if (liveLat && liveLng) {
+    if (!replayActive && liveLat && liveLng) {
       const live = [liveLat, liveLng];
       if (lastPt.current) {
         animateTo(lastPt.current, live, 2000, pos => setBikePos(pos));
@@ -598,7 +425,7 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
         hasFitBounds.current = true;
       }
     }
-  }, [followMode]);
+  }, [followMode, replayActive]);
 
   const fetch_ = useCallback(async () => {
     setRefreshing(true);
@@ -668,52 +495,36 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
     }
   };
 
-  // GeoJSON data structures for native GPU route rendering & traffic flow
-  const supervisorRouteGeoJson = useMemo(() => {
-    const features = [];
-    if (routeInfo?.trafficSegments && routeInfo.trafficSegments.length > 0) {
-      routeInfo.trafficSegments.forEach((seg, idx) => {
-        if (seg.coords && seg.coords.length > 1) {
-          features.push({
-            type: 'Feature',
-            id: `sup-seg-${idx}`,
-            properties: {
-              color: seg.status === 'slow' ? '#EF4444' : (seg.status === 'moderate' ? '#F59E0B' : '#1A73E8')
-            },
-            geometry: {
-              type: 'LineString',
-              coordinates: seg.coords
-            }
-          });
-        }
-      });
-    } else if (plannedCoords && plannedCoords.length > 1) {
-      features.push({
-        type: 'Feature',
-        id: 'sup-planned-fallback',
-        properties: { color: '#1A73E8' },
-        geometry: {
-          type: 'LineString',
-          coordinates: plannedCoords
-        }
-      });
+  // ─── Route Replay Simulator Controller ────────────────────────────────────
+  useEffect(() => {
+    if (replayActive && rawPointsList.length > 1) {
+      replayTimer.current = setInterval(() => {
+        setReplayIdx(prev => {
+          if (prev >= rawPointsList.length - 1) {
+            setReplayActive(false);
+            return prev;
+          }
+          const next = prev + 1;
+          const pt = rawPointsList[next];
+          if (pt) {
+            setBikePos([pt.lat, pt.lng]);
+            setViewState(v => ({ ...v, latitude: pt.lat, longitude: pt.lng }));
+          }
+          return next;
+        });
+      }, 1000 / replaySpeed);
+    } else {
+      clearInterval(replayTimer.current);
     }
-    return {
-      type: 'FeatureCollection',
-      features
-    };
-  }, [routeInfo?.trafficSegments, plannedCoords]);
+    return () => clearInterval(replayTimer.current);
+  }, [replayActive, replaySpeed, rawPointsList]);
 
-  const supervisorTravelGeoJson = useMemo(() => {
-    return {
-      type: 'Feature',
-      properties: {},
-      geometry: {
-        type: 'LineString',
-        coordinates: travelCoords && travelCoords.length > 1 ? travelCoords : []
-      }
-    };
-  }, [travelCoords]);
+  const startReplay = () => {
+    if (rawPointsList.length === 0) return alert('No recorded GPS points yet to replay.');
+    setReplayIdx(0);
+    setBikePos([rawPointsList[0].lat, rawPointsList[0].lng]);
+    setReplayActive(true);
+  };
 
   const steps = [
     { label: 'Journey Started', time: v?.start_journey_time, done: true, color: '#2563EB' },
@@ -879,7 +690,6 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
           {/* MapLibre Map Canvas */}
           <div style={{ flex:1, position:'relative' }}>
             <Map
-              ref={mapRef}
               {...viewState}
               onMove={evt => {
                 setViewState(evt.viewState);
@@ -894,14 +704,55 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
             >
               <NavigationControl position="bottom-right" />
               
-              {/* Native GPU Hardware Accelerated Planned Route & Live Traffic Colors */}
-              <MapLibreNativeRouteLayer
-                mapRef={mapRef}
-                sourceId="sup-route-source"
-                routeGeoJson={supervisorRouteGeoJson}
-                travelSourceId="sup-travel-source"
-                travelGeoJson={supervisorTravelGeoJson}
-              />
+              {/* Planned Road Route (GPU WebGL - 60 FPS, Zero CPU Lag) */}
+              {plannedCoords && plannedCoords.length > 1 && (
+                <Source
+                  id="sup-planned-route"
+                  type="geojson"
+                  data={{
+                    type: 'Feature',
+                    geometry: { type: 'LineString', coordinates: plannedCoords }
+                  }}
+                >
+                  <Layer
+                    id="sup-planned-casing"
+                    type="line"
+                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                    paint={{ 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.9 }}
+                  />
+                  <Layer
+                    id="sup-planned-line"
+                    type="line"
+                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                    paint={{ 'line-color': '#F97316', 'line-width': 5, 'line-opacity': 1.0 }}
+                  />
+                </Source>
+              )}
+
+              {/* Actual Travelled Path (GPU WebGL) */}
+              {travelCoords && travelCoords.length > 1 && (
+                <Source
+                  id="sup-travel-route"
+                  type="geojson"
+                  data={{
+                    type: 'Feature',
+                    geometry: { type: 'LineString', coordinates: travelCoords }
+                  }}
+                >
+                  <Layer
+                    id="sup-travel-casing"
+                    type="line"
+                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                    paint={{ 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.9 }}
+                  />
+                  <Layer
+                    id="sup-travel-line"
+                    type="line"
+                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                    paint={{ 'line-color': '#2563EB', 'line-width': 5, 'line-opacity': 1.0 }}
+                  />
+                </Source>
+              )}
 
               {/* Office start marker */}
               {startLat && startLng && (
@@ -928,8 +779,94 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
               )}
             </Map>
 
+            {/* Floating Telemetry Glass Cockpit */}
+            <div style={{ position:'absolute', top:'14px', left:'14px', background:'rgba(15,23,42,0.88)', backdropFilter:'blur(8px)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'14px', padding:'10px 16px', color:'#fff', display:'flex', alignItems:'center', gap:'18px', boxShadow:'0 10px 30px rgba(0,0,0,0.3)', pointerEvents:'none' }}>
+              <div>
+                <div style={{ fontSize:'9px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.5px' }}>TELEMETRY</div>
+                <div style={{ fontSize:'13px', fontWeight:'800', color:'#38BDF8', marginTop:'1px', display:'flex', alignItems:'center', gap:'4px' }}>
+                  <Activity size={12} /> {speedDisplay}
+                </div>
+              </div>
+              <div style={{ width:'1px', height:'22px', background:'rgba(255,255,255,0.15)' }} />
+              <div>
+                <div style={{ fontSize:'9px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.5px' }}>GPS SIGNAL</div>
+                <div style={{ fontSize:'12px', fontWeight:'700', color:'#4ADE80', marginTop:'1px', display:'flex', alignItems:'center', gap:'4px' }}>
+                  <Zap size={11} /> High Precision (±3m)
+                </div>
+              </div>
+              <div style={{ width:'1px', height:'22px', background:'rgba(255,255,255,0.15)' }} />
+              <div>
+                <div style={{ fontSize:'9px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.5px' }}>BREADCRUMBS</div>
+                <div style={{ fontSize:'12px', fontWeight:'700', color:'#F1F5F9', marginTop:'1px' }}>
+                  {rawPointsList.length} Logged Pts
+                </div>
+              </div>
+            </div>
+
+            {/* Floating Route Replay Simulator Trigger */}
+            <div style={{ position:'absolute', top:'14px', right:'14px', display:'flex', gap:'8px' }}>
+              <button
+                onClick={replayActive ? () => setReplayActive(false) : startReplay}
+                style={{
+                  background: replayActive ? '#EF4444' : 'rgba(15,23,42,0.85)',
+                  backdropFilter: 'blur(6px)',
+                  color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: '10px',
+                  padding: '7px 14px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.25)'
+                }}
+              >
+                {replayActive ? <><Pause size={13} /> Stop Replay</> : <><Play size={13} /> Route Replay</>}
+              </button>
+            </div>
+
+            {/* Route Replay Controller Scrub Bar (Shows when replay is running) */}
+            {replayActive && (
+              <div style={{ position:'absolute', bottom:'20px', left:'20px', right:'70px', background:'rgba(15,23,42,0.92)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:'14px', padding:'12px 18px', color:'#fff', display:'flex', alignItems:'center', gap:'16px', boxShadow:'0 10px 30px rgba(0,0,0,0.4)', zIndex:30 }}>
+                <button onClick={() => setReplayActive(!replayActive)} style={{ background:'#2563EB', border:'none', borderRadius:'50%', width:'32px', height:'32px', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', cursor:'pointer' }}>
+                  {replayActive ? <Pause size={14} /> : <Play size={14} />}
+                </button>
+                <div style={{ flex:1 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:'11px', color:'#94A3B8', marginBottom:'4px' }}>
+                    <span>Replaying Waypoint {replayIdx + 1} of {rawPointsList.length}</span>
+                    <span>{rawPointsList[replayIdx]?.time ? new Date(rawPointsList[replayIdx].time).toLocaleTimeString('en-IN') : ''}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max={Math.max(rawPointsList.length - 1, 0)}
+                    value={replayIdx}
+                    onChange={e => {
+                      const idx = parseInt(e.target.value);
+                      setReplayIdx(idx);
+                      const pt = rawPointsList[idx];
+                      if (pt) {
+                        setBikePos([pt.lat, pt.lng]);
+                        setViewState(v => ({ ...v, latitude: pt.lat, longitude: pt.lng }));
+                      }
+                    }}
+                    style={{ width:'100%', accentColor:'#38BDF8', cursor:'pointer' }}
+                  />
+                </div>
+                <div style={{ display:'flex', gap:'4px' }}>
+                  {[1, 2, 5].map(spd => (
+                    <button key={spd} onClick={() => setReplaySpeed(spd)} style={{ background: replaySpeed === spd ? '#38BDF8' : 'rgba(255,255,255,0.1)', color: replaySpeed === spd ? '#0F172A' : '#fff', border:'none', borderRadius:'6px', padding:'3px 7px', fontSize:'10px', fontWeight:'700', cursor:'pointer' }}>
+                      {spd}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Floating Snap to Employee button */}
-            {!followMode && (
+            {!followMode && !replayActive && (
               <button
                 onClick={snapToVehicle}
                 style={{
@@ -1028,7 +965,88 @@ const NavigationManeuverIcon = ({ step, size = 22, color = '#FFFFFF' }) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// RIDER GOOGLE MAPS LIVE TURN-BY-TURN NAVIGATION MODAL
+// SVG ROAD POLYLINE OVERLAY (Google Maps Multi-Route & Traffic Flow Overlay)
+// ═══════════════════════════════════════════════════════════════════════════
+const RouteSvgOverlay = ({ coordinates, alternativeRoutes = [], onSelectAlternative, trafficSegments = [] }) => {
+  const { current: map } = useMap();
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!map) return;
+    const onRender = () => setTick(t => t + 1);
+    map.on('move', onRender);
+    map.on('zoom', onRender);
+    map.on('rotate', onRender);
+    map.on('pitch', onRender);
+    map.on('resize', onRender);
+    return () => {
+      map.off('move', onRender);
+      map.off('zoom', onRender);
+      map.off('rotate', onRender);
+      map.off('pitch', onRender);
+      map.off('resize', onRender);
+    };
+  }, [map]);
+
+  if (!map) return null;
+
+  const projectCoords = (coords) => {
+    if (!coords || coords.length < 2) return '';
+    return coords.map(c => {
+      const p = map.project(c);
+      return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+    }).join(' ');
+  };
+
+  const activePoints = projectCoords(coordinates);
+
+  return (
+    <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:10 }}>
+      {/* 1. Alternative Route Paths (Rendered in clean muted slate-gray underneath) */}
+      {alternativeRoutes && alternativeRoutes.map((alt, idx) => {
+        const altPoints = projectCoords(alt.coordinatesGeoJson);
+        if (!altPoints) return null;
+        return (
+          <g key={alt.id || idx} style={{ cursor:'pointer', pointerEvents:'auto' }} onClick={() => onSelectAlternative && onSelectAlternative(alt)}>
+            <polyline points={altPoints} fill="none" stroke="#FFFFFF" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" opacity="0.75" />
+            <polyline points={altPoints} fill="none" stroke="#94A3B8" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+          </g>
+        );
+      })}
+
+      {/* 2. Active Primary Route Casing (Crisp White Glow) */}
+      {activePoints && (
+        <polyline points={activePoints} fill="none" stroke="#FFFFFF" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
+      )}
+
+      {/* 3. Active Primary Route Base (Vibrant Google Maps Blue) */}
+      {activePoints && (
+        <polyline points={activePoints} fill="none" stroke="#1A73E8" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
+      )}
+
+      {/* 4. Live Traffic Congestion Segments (Google Yellow/Amber & Red Overlays) */}
+      {trafficSegments && trafficSegments.map((seg, sIdx) => {
+        if (!seg.coords || seg.coords.length < 2 || seg.status === 'fast') return null;
+        const segGeoJson = seg.coords.map(([lat, lng]) => [lng, lat]);
+        const segPts = projectCoords(segGeoJson);
+        if (!segPts) return null;
+        const trafficColor = seg.status === 'slow' ? '#EF4444' : '#F59E0B';
+        return (
+          <polyline
+            key={sIdx}
+            points={segPts}
+            fill="none"
+            stroke={trafficColor}
+            strokeWidth="7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        );
+      })}
+    </svg>
+  );
+};
+
 // ═══════════════════════════════════════════════════════════════════════════
 // RIDER GOOGLE MAPS LIVE TURN-BY-TURN NAVIGATION MODAL
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1076,15 +1094,11 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
   const [destResults, setDestResults] = useState([]);
   const [showSearchModal, setShowSearchModal] = useState(false);
 
-  // Memoized alternative routes for 60-120 FPS GPU overlay rendering
-  // References for zero-jitter, single-flight route calculations & dynamic auto-rerouting
+  // References for zero-jitter, single-flight route calculations
   const routeCalculatedRef = useRef(false);
   const latestRouteDataRef = useRef(null);
-  const latestPlannedCoordsRef = useRef(null);
   const latestStepIdxRef = useRef(0);
   const lastSpokenRef = useRef('');
-  const lastRerouteTimeRef = useRef(0);
-  const isReroutingRef = useRef(false);
   const watchId = useRef(null);
   const prevCoord = useRef(null);
   const prevTime = useRef(null);
@@ -1127,8 +1141,8 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
     }
   }, []);
 
-  // Stable single-flight route calculation with auto-reroute support
-  const calculateRoute = useCallback(async (cLat, cLng, dLat, dLng, isInitial = false) => {
+  // Stable single-flight route calculation
+  const calculateRoute = useCallback(async (cLat, cLng, dLat, dLng) => {
     if (!cLat || !cLng || !dLat || !dLng) return;
     try {
       const r = await getOSRMRoute(cLat, cLng, dLat, dLng);
@@ -1141,10 +1155,7 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         if (r.latlngs && r.latlngs.length > 0) {
           const coords = r.latlngs.map(([la, ln]) => [ln, la]);
           setPlannedCoords(coords);
-          latestPlannedCoordsRef.current = coords;
-          if (isInitial) {
-            setTimeout(() => fitRouteBounds(coords), 300);
-          }
+          setTimeout(() => fitRouteBounds(coords), 300);
         }
 
         if (r.steps && r.steps.length > 0) {
@@ -1157,6 +1168,22 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
     }
   }, [speakInstruction, fitRouteBounds]);
 
+  // Select alternative route
+  const handleSelectRoute = (selectedRoute) => {
+    if (!selectedRoute) return;
+    setRouteData(selectedRoute);
+    latestRouteDataRef.current = selectedRoute;
+    setStepIdx(0);
+    latestStepIdxRef.current = 0;
+    if (selectedRoute.latlngs) {
+      const coords = selectedRoute.latlngs.map(([la, ln]) => [ln, la]);
+      setPlannedCoords(coords);
+    }
+    if (selectedRoute.steps && selectedRoute.steps.length > 0) {
+      speakInstruction(`Switched to ${selectedRoute.label}. ${selectedRoute.steps[0].instruction}`);
+    }
+  };
+
   // Initial route fetch on mount / when coordinates first become available
   useEffect(() => {
     if (dest.lat && dest.lng) {
@@ -1164,7 +1191,7 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
       const fromLn = currentPos ? currentPos[1] : startLng;
       if (fromLa && fromLn && !routeCalculatedRef.current) {
         routeCalculatedRef.current = true;
-        calculateRoute(fromLa, fromLn, dest.lat, dest.lng, true);
+        calculateRoute(fromLa, fromLn, dest.lat, dest.lng);
       }
     }
   }, [dest.lat, dest.lng, startLat, startLng, currentPos, calculateRoute]);
@@ -1185,7 +1212,7 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
     }
   }, [dest.lat, dest.lng, visit]);
 
-  // High-accuracy live GPS telemetry stream with Real-Time Google Maps Auto-Rerouting
+  // High-accuracy live GPS telemetry stream (Runs continuously without re-fetching routes)
   useEffect(() => {
     isMountedRef.current = true;
     if (!navigator.geolocation) return;
@@ -1200,14 +1227,14 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
 
         if (dest.lat && dest.lng && !routeCalculatedRef.current) {
           routeCalculatedRef.current = true;
-          calculateRoute(lat, lng, dest.lat, dest.lng, true);
+          calculateRoute(lat, lng, dest.lat, dest.lng);
         }
       },
       () => {},
       { enableHighAccuracy: true, timeout: 6000 }
     );
 
-    // 2. Real-time continuous GPS tracking & dynamic path adaptation
+    // 2. Real-time continuous GPS tracking
     watchId.current = navigator.geolocation.watchPosition(
       pos => {
         if (!isMountedRef.current) return;
@@ -1252,23 +1279,6 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
             method: 'POST',
             body: JSON.stringify({ visitId: visit.id, lat, lng })
           }).catch(() => {});
-        }
-
-        // 3. Dynamic Google Maps Auto-Reroute on Deviation / Path Change
-        if (dest.lat && dest.lng && !isReroutingRef.current) {
-          const currentRouteCoords = latestPlannedCoordsRef.current;
-          if (currentRouteCoords && currentRouteCoords.length > 1) {
-            const distToRoute = getDistanceToRouteMeters(lat, lng, currentRouteCoords);
-            // If rider moved > 35 meters away from the current route line (took a different road / deviated)
-            if (distToRoute > 35 && (now - lastRerouteTimeRef.current > 4000)) {
-              lastRerouteTimeRef.current = now;
-              isReroutingRef.current = true;
-              speakInstruction('Rerouting...');
-              calculateRoute(lat, lng, dest.lat, dest.lng, false).finally(() => {
-                isReroutingRef.current = false;
-              });
-            }
-          }
         }
 
         // Advance turn steps dynamically without network requests
@@ -1328,42 +1338,6 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
     const target = new Date(Date.now() + min * 60000);
     return target.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
   }, [liveRemainingDurationMin]);
-
-  // Native GPU GeoJSON feature collection for turn-by-turn route & live traffic flow
-  const riderRouteGeoJson = useMemo(() => {
-    const features = [];
-    if (routeData?.trafficSegments && routeData.trafficSegments.length > 0) {
-      routeData.trafficSegments.forEach((seg, idx) => {
-        if (seg.coords && seg.coords.length > 1) {
-          features.push({
-            type: 'Feature',
-            id: `rider-seg-${idx}`,
-            properties: {
-              color: seg.status === 'slow' ? '#EF4444' : (seg.status === 'moderate' ? '#F59E0B' : '#1A73E8')
-            },
-            geometry: {
-              type: 'LineString',
-              coordinates: seg.coords
-            }
-          });
-        }
-      });
-    } else if (plannedCoords && plannedCoords.length > 1) {
-      features.push({
-        type: 'Feature',
-        id: 'rider-planned-fallback',
-        properties: { color: '#1A73E8' },
-        geometry: {
-          type: 'LineString',
-          coordinates: plannedCoords
-        }
-      });
-    }
-    return {
-      type: 'FeatureCollection',
-      features
-    };
-  }, [routeData?.trafficSegments, plannedCoords]);
 
   const recenterMap = () => {
     setFollowMode(true);
@@ -1544,6 +1518,53 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
           )}
         </div>
 
+        {/* Alternative Routes Selector Chips (Google Maps Style) */}
+        {routeData?.allRoutes && routeData.allRoutes.length > 1 && (
+          <div style={{
+            maxWidth:'680px',
+            margin:'8px auto 0',
+            display:'flex',
+            justifyContent:'center',
+            gap:'8px',
+            pointerEvents:'auto',
+            overflowX:'auto',
+            paddingBottom:'2px'
+          }}>
+            {routeData.allRoutes.map((r, rIdx) => {
+              const isSelected = r.id === routeData.id;
+              return (
+                <button
+                  key={r.id || rIdx}
+                  onClick={() => handleSelectRoute(r)}
+                  style={{
+                    background: isSelected ? '#0F172A' : 'rgba(255, 255, 255, 0.95)',
+                    color: isSelected ? '#FFFFFF' : '#334155',
+                    border: isSelected ? '1.5px solid #38BDF8' : '1px solid #CBD5E1',
+                    borderRadius:'20px',
+                    padding:'5px 12px',
+                    fontSize:'11px',
+                    fontWeight:'800',
+                    cursor:'pointer',
+                    backdropFilter:'blur(8px)',
+                    boxShadow:'0 4px 12px rgba(0,0,0,0.1)',
+                    display:'flex',
+                    alignItems:'center',
+                    gap:'6px',
+                    transition:'all 0.15s',
+                    flexShrink:0
+                  }}
+                >
+                  <span style={{ color: isSelected ? '#38BDF8' : '#2563EB' }}>
+                    {rIdx === 0 ? '⚡ Fastest' : r.label}
+                  </span>
+                  <span style={{ color: isSelected ? '#FFFFFF' : '#0F172A' }}>{r.duration} min</span>
+                  <span style={{ fontSize:'10px', color: isSelected ? '#94A3B8' : '#64748B' }}>({r.distance} km)</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Missing Destination Banner Alert */}
         {(!dest.lat || !dest.lng) && (
           <div style={{
@@ -1582,7 +1603,7 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         )}
       </div>
 
-      {/* ─── Main Map Canvas (Driver 3D Perspective + Single Road Route Polyline) ─── */}
+      {/* ─── Main Map Canvas (Driver 3D Perspective + Multi-Route Traffic Polyline) ─── */}
       <div style={{ flex:1, position:'relative' }}>
         <Map
           ref={mapRef}
@@ -1600,11 +1621,12 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         >
           <NavigationControl position="bottom-right" />
 
-          {/* Native GPU Hardware Accelerated Planned Route & Live Traffic Colors */}
-          <MapLibreNativeRouteLayer
-            mapRef={mapRef}
-            sourceId="rider-route-source"
-            routeGeoJson={riderRouteGeoJson}
+          {/* Clean Solid Blue Road Route Line with Traffic Flow & Alternatives */}
+          <RouteSvgOverlay
+            coordinates={plannedCoords}
+            trafficSegments={routeData?.trafficSegments}
+            alternativeRoutes={(routeData?.allRoutes || []).filter(r => r.id !== routeData?.id)}
+            onSelectAlternative={handleSelectRoute}
           />
 
           {/* Start Origin Pin */}
