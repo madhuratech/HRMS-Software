@@ -179,6 +179,38 @@ async function getOSRMRoute(fromLat, fromLng, toLat, toLng) {
   };
 }
 
+// ─── Geometric Distance from Point to Polyline in Meters ───────────────────
+function pointToSegmentDistanceMeters(lat, lng, p1Lat, p1Lng, p2Lat, p2Lng) {
+  const midLat = (p1Lat + p2Lat) / 2;
+  const kx = 111320 * Math.cos((midLat * Math.PI) / 180);
+  const ky = 110540;
+  
+  const x = (lng - p1Lng) * kx;
+  const y = (lat - p1Lat) * ky;
+  const dx = (p2Lng - p1Lng) * kx;
+  const dy = (p2Lat - p1Lat) * ky;
+  
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.sqrt(x * x + y * y);
+  
+  const t = Math.max(0, Math.min(1, (x * dx + y * dy) / lenSq));
+  const projX = t * dx;
+  const projY = t * dy;
+  return Math.sqrt((x - projX) ** 2 + (y - projY) ** 2);
+}
+
+function getDistanceToRouteMeters(lat, lng, coordsGeoJson) {
+  if (!coordsGeoJson || coordsGeoJson.length < 2) return 0;
+  let minD = Infinity;
+  for (let i = 0; i < coordsGeoJson.length - 1; i++) {
+    const p1 = coordsGeoJson[i];     // [lng, lat]
+    const p2 = coordsGeoJson[i + 1]; // [lng, lat]
+    const d = pointToSegmentDistanceMeters(lat, lng, p1[1], p1[0], p2[1], p2[0]);
+    if (d < minD) minD = d;
+  }
+  return minD;
+}
+
 // ─── Smooth marker animation (lat/lng interpolation) ─────────────────────────
 function lerp(a, b, t) { return a + (b - a) * t; }
 function easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
@@ -260,9 +292,9 @@ const MAP_STYLES = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// HIGH-PERFORMANCE 60-120 FPS MAP ROUTE & TRAFFIC CANVAS OVERLAY
+// HIGH-PERFORMANCE 60-120 FPS CLEAN ROUTE CANVAS OVERLAY
 // ═══════════════════════════════════════════════════════════════════════════
-const LiveMapRouteOverlay = ({ plannedCoords = [], trafficSegments = [], travelCoords = [], altRoutes = [] }) => {
+const LiveMapRouteOverlay = ({ plannedCoords = [], travelCoords = [] }) => {
   const { current: map } = useMap();
   const canvasRef = useRef(null);
 
@@ -302,21 +334,21 @@ const LiveMapRouteOverlay = ({ plannedCoords = [], trafficSegments = [], travelC
         }
       };
 
-      // 1. Draw Travelled GPS Breadcrumb Path (Solid Royal Blue with White Casing)
+      // 1. Draw Travelled GPS Breadcrumb Path (for Supervisor Map)
       if (travelCoords && travelCoords.length > 1) {
         const pts = travelCoords.map(project).filter(Boolean);
         if (pts.length > 1) {
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
           ctx.strokeStyle = '#FFFFFF';
-          ctx.lineWidth = 8;
+          ctx.lineWidth = 7;
           ctx.beginPath();
           ctx.moveTo(pts[0].x, pts[0].y);
           for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
           ctx.stroke();
 
           ctx.strokeStyle = '#2563EB';
-          ctx.lineWidth = 5;
+          ctx.lineWidth = 4.5;
           ctx.beginPath();
           ctx.moveTo(pts[0].x, pts[0].y);
           for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
@@ -324,72 +356,28 @@ const LiveMapRouteOverlay = ({ plannedCoords = [], trafficSegments = [], travelC
         }
       }
 
-      // 2. Draw Alternative Candidate Routes (Muted Slate Gray)
-      if (altRoutes && altRoutes.length > 0) {
-        altRoutes.forEach(alt => {
-          const coords = alt.coordinatesGeoJson || (alt.latlngs ? alt.latlngs.map(([la, ln]) => [ln, la]) : null);
-          if (!coords || coords.length < 2) return;
-          const pts = coords.map(project).filter(Boolean);
-          if (pts.length > 1) {
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.strokeStyle = '#FFFFFF';
-            ctx.lineWidth = 8;
-            ctx.beginPath();
-            ctx.moveTo(pts[0].x, pts[0].y);
-            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-            ctx.stroke();
-
-            ctx.strokeStyle = '#94A3B8';
-            ctx.lineWidth = 5;
-            ctx.beginPath();
-            ctx.moveTo(pts[0].x, pts[0].y);
-            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-            ctx.stroke();
-          }
-        });
-      }
-
-      // 3. Draw Planned Primary Road Route (Google Navigation Blue with White Casing)
+      // 2. Draw Clean Single Planned Primary Road Route (Google Navigation Blue with White Casing)
       if (plannedCoords && plannedCoords.length > 1) {
         const pts = plannedCoords.map(project).filter(Boolean);
         if (pts.length > 1) {
           ctx.lineCap = 'round';
           ctx.lineJoin = 'round';
-          // Crisp White Casing
+          // Crisp White Casing (ensures clear contrast across all maps & zooms)
           ctx.strokeStyle = '#FFFFFF';
-          ctx.lineWidth = 10;
+          ctx.lineWidth = 9;
           ctx.beginPath();
           ctx.moveTo(pts[0].x, pts[0].y);
           for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
           ctx.stroke();
 
-          // Vibrant Google Blue Line
+          // Vibrant Solid Google Navigation Blue
           ctx.strokeStyle = '#1A73E8';
-          ctx.lineWidth = 6;
+          ctx.lineWidth = 5.5;
           ctx.beginPath();
           ctx.moveTo(pts[0].x, pts[0].y);
           for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
           ctx.stroke();
         }
-      }
-
-      // 4. Draw Traffic Delay Congestion Hotspots (Amber & Red Segments)
-      if (trafficSegments && trafficSegments.length > 0) {
-        trafficSegments.forEach(seg => {
-          if (!seg.coords || seg.coords.length < 2 || seg.status === 'fast') return;
-          const pts = seg.coords.map(project).filter(Boolean);
-          if (pts.length > 1) {
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.strokeStyle = seg.status === 'slow' ? '#EF4444' : '#F59E0B';
-            ctx.lineWidth = 6;
-            ctx.beginPath();
-            ctx.moveTo(pts[0].x, pts[0].y);
-            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
-            ctx.stroke();
-          }
-        });
       }
 
       ctx.restore();
@@ -422,7 +410,7 @@ const LiveMapRouteOverlay = ({ plannedCoords = [], trafficSegments = [], travelC
       map.off('load', scheduleRender);
       map.off('styledata', scheduleRender);
     };
-  }, [map, plannedCoords, trafficSegments, travelCoords, altRoutes]);
+  }, [map, plannedCoords, travelCoords]);
 
   return (
     <canvas
@@ -848,10 +836,9 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
             >
               <NavigationControl position="bottom-right" />
               
-              {/* High Performance 60-120 FPS Route, Traffic, and Travelled Breadcrumb Canvas Overlay */}
+              {/* High Performance 60-120 FPS Clean Planned Route & Travelled Breadcrumb Canvas Overlay */}
               <LiveMapRouteOverlay
                 plannedCoords={plannedCoords}
-                trafficSegments={routeInfo?.trafficSegments}
                 travelCoords={travelCoords}
               />
 
@@ -1029,15 +1016,14 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
   const [showSearchModal, setShowSearchModal] = useState(false);
 
   // Memoized alternative routes for 60-120 FPS GPU overlay rendering
-  const alternativeRoutes = useMemo(() => {
-    return (routeData?.allRoutes || []).filter(r => r.id !== routeData?.id);
-  }, [routeData]);
-
-  // References for zero-jitter, single-flight route calculations
+  // References for zero-jitter, single-flight route calculations & dynamic auto-rerouting
   const routeCalculatedRef = useRef(false);
   const latestRouteDataRef = useRef(null);
+  const latestPlannedCoordsRef = useRef(null);
   const latestStepIdxRef = useRef(0);
   const lastSpokenRef = useRef('');
+  const lastRerouteTimeRef = useRef(0);
+  const isReroutingRef = useRef(false);
   const watchId = useRef(null);
   const prevCoord = useRef(null);
   const prevTime = useRef(null);
@@ -1080,8 +1066,8 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
     }
   }, []);
 
-  // Stable single-flight route calculation
-  const calculateRoute = useCallback(async (cLat, cLng, dLat, dLng) => {
+  // Stable single-flight route calculation with auto-reroute support
+  const calculateRoute = useCallback(async (cLat, cLng, dLat, dLng, isInitial = false) => {
     if (!cLat || !cLng || !dLat || !dLng) return;
     try {
       const r = await getOSRMRoute(cLat, cLng, dLat, dLng);
@@ -1094,7 +1080,10 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         if (r.latlngs && r.latlngs.length > 0) {
           const coords = r.latlngs.map(([la, ln]) => [ln, la]);
           setPlannedCoords(coords);
-          setTimeout(() => fitRouteBounds(coords), 300);
+          latestPlannedCoordsRef.current = coords;
+          if (isInitial) {
+            setTimeout(() => fitRouteBounds(coords), 300);
+          }
         }
 
         if (r.steps && r.steps.length > 0) {
@@ -1107,22 +1096,6 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
     }
   }, [speakInstruction, fitRouteBounds]);
 
-  // Select alternative route
-  const handleSelectRoute = (selectedRoute) => {
-    if (!selectedRoute) return;
-    setRouteData(selectedRoute);
-    latestRouteDataRef.current = selectedRoute;
-    setStepIdx(0);
-    latestStepIdxRef.current = 0;
-    if (selectedRoute.latlngs) {
-      const coords = selectedRoute.latlngs.map(([la, ln]) => [ln, la]);
-      setPlannedCoords(coords);
-    }
-    if (selectedRoute.steps && selectedRoute.steps.length > 0) {
-      speakInstruction(`Switched to ${selectedRoute.label}. ${selectedRoute.steps[0].instruction}`);
-    }
-  };
-
   // Initial route fetch on mount / when coordinates first become available
   useEffect(() => {
     if (dest.lat && dest.lng) {
@@ -1130,7 +1103,7 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
       const fromLn = currentPos ? currentPos[1] : startLng;
       if (fromLa && fromLn && !routeCalculatedRef.current) {
         routeCalculatedRef.current = true;
-        calculateRoute(fromLa, fromLn, dest.lat, dest.lng);
+        calculateRoute(fromLa, fromLn, dest.lat, dest.lng, true);
       }
     }
   }, [dest.lat, dest.lng, startLat, startLng, currentPos, calculateRoute]);
@@ -1151,7 +1124,7 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
     }
   }, [dest.lat, dest.lng, visit]);
 
-  // High-accuracy live GPS telemetry stream (Runs continuously without re-fetching routes)
+  // High-accuracy live GPS telemetry stream with Real-Time Google Maps Auto-Rerouting
   useEffect(() => {
     isMountedRef.current = true;
     if (!navigator.geolocation) return;
@@ -1166,14 +1139,14 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
 
         if (dest.lat && dest.lng && !routeCalculatedRef.current) {
           routeCalculatedRef.current = true;
-          calculateRoute(lat, lng, dest.lat, dest.lng);
+          calculateRoute(lat, lng, dest.lat, dest.lng, true);
         }
       },
       () => {},
       { enableHighAccuracy: true, timeout: 6000 }
     );
 
-    // 2. Real-time continuous GPS tracking
+    // 2. Real-time continuous GPS tracking & dynamic path adaptation
     watchId.current = navigator.geolocation.watchPosition(
       pos => {
         if (!isMountedRef.current) return;
@@ -1218,6 +1191,23 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
             method: 'POST',
             body: JSON.stringify({ visitId: visit.id, lat, lng })
           }).catch(() => {});
+        }
+
+        // 3. Dynamic Google Maps Auto-Reroute on Deviation / Path Change
+        if (dest.lat && dest.lng && !isReroutingRef.current) {
+          const currentRouteCoords = latestPlannedCoordsRef.current;
+          if (currentRouteCoords && currentRouteCoords.length > 1) {
+            const distToRoute = getDistanceToRouteMeters(lat, lng, currentRouteCoords);
+            // If rider moved > 35 meters away from the current route line (took a different road / deviated)
+            if (distToRoute > 35 && (now - lastRerouteTimeRef.current > 4000)) {
+              lastRerouteTimeRef.current = now;
+              isReroutingRef.current = true;
+              speakInstruction('Rerouting...');
+              calculateRoute(lat, lng, dest.lat, dest.lng, false).finally(() => {
+                isReroutingRef.current = false;
+              });
+            }
+          }
         }
 
         // Advance turn steps dynamically without network requests
@@ -1457,53 +1447,6 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
           )}
         </div>
 
-        {/* Alternative Routes Selector Chips (Google Maps Style) */}
-        {routeData?.allRoutes && routeData.allRoutes.length > 1 && (
-          <div style={{
-            maxWidth:'680px',
-            margin:'8px auto 0',
-            display:'flex',
-            justifyContent:'center',
-            gap:'8px',
-            pointerEvents:'auto',
-            overflowX:'auto',
-            paddingBottom:'2px'
-          }}>
-            {routeData.allRoutes.map((r, rIdx) => {
-              const isSelected = r.id === routeData.id;
-              return (
-                <button
-                  key={r.id || rIdx}
-                  onClick={() => handleSelectRoute(r)}
-                  style={{
-                    background: isSelected ? '#0F172A' : 'rgba(255, 255, 255, 0.95)',
-                    color: isSelected ? '#FFFFFF' : '#334155',
-                    border: isSelected ? '1.5px solid #38BDF8' : '1px solid #CBD5E1',
-                    borderRadius:'20px',
-                    padding:'5px 12px',
-                    fontSize:'11px',
-                    fontWeight:'800',
-                    cursor:'pointer',
-                    backdropFilter:'blur(8px)',
-                    boxShadow:'0 4px 12px rgba(0,0,0,0.1)',
-                    display:'flex',
-                    alignItems:'center',
-                    gap:'6px',
-                    transition:'all 0.15s',
-                    flexShrink:0
-                  }}
-                >
-                  <span style={{ color: isSelected ? '#38BDF8' : '#2563EB' }}>
-                    {rIdx === 0 ? '⚡ Fastest' : r.label}
-                  </span>
-                  <span style={{ color: isSelected ? '#FFFFFF' : '#0F172A' }}>{r.duration} min</span>
-                  <span style={{ fontSize:'10px', color: isSelected ? '#94A3B8' : '#64748B' }}>({r.distance} km)</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
         {/* Missing Destination Banner Alert */}
         {(!dest.lat || !dest.lng) && (
           <div style={{
@@ -1542,7 +1485,7 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         )}
       </div>
 
-      {/* ─── Main Map Canvas (Driver 3D Perspective + Multi-Route Traffic Polyline) ─── */}
+      {/* ─── Main Map Canvas (Driver 3D Perspective + Single Road Route Polyline) ─── */}
       <div style={{ flex:1, position:'relative' }}>
         <Map
           ref={mapRef}
@@ -1560,11 +1503,9 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         >
           <NavigationControl position="bottom-right" />
 
-          {/* High-Performance 60-120 FPS Planned Route, Alternatives & Traffic Canvas Overlay */}
+          {/* High-Performance 60-120 FPS Single Road Route Canvas Overlay */}
           <LiveMapRouteOverlay
             plannedCoords={plannedCoords}
-            trafficSegments={routeData?.trafficSegments}
-            altRoutes={alternativeRoutes}
           />
 
           {/* Start Origin Pin */}
