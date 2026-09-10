@@ -260,6 +260,102 @@ const MAP_STYLES = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
+// SVG ROAD POLYLINE OVERLAY (Google Maps Multi-Route, Custom Colors & Traffic Flow)
+// ═══════════════════════════════════════════════════════════════════════════
+const RouteSvgOverlay = ({ 
+  coordinates = [], 
+  color = '#1A73E8', 
+  width = 7, 
+  alternativeRoutes = [], 
+  onSelectAlternative, 
+  trafficSegments = [] 
+}) => {
+  const { current: map } = useMap();
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!map) return;
+    const onRender = () => setTick(t => t + 1);
+    map.on('move', onRender);
+    map.on('zoom', onRender);
+    map.on('rotate', onRender);
+    map.on('pitch', onRender);
+    map.on('resize', onRender);
+    map.on('render', onRender);
+    return () => {
+      map.off('move', onRender);
+      map.off('zoom', onRender);
+      map.off('rotate', onRender);
+      map.off('pitch', onRender);
+      map.off('resize', onRender);
+      map.off('render', onRender);
+    };
+  }, [map]);
+
+  if (!map) return null;
+
+  const projectCoords = (coords) => {
+    if (!coords || coords.length < 2) return '';
+    return coords.map(c => {
+      try {
+        const p = map.project(c);
+        return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+      } catch {
+        return null;
+      }
+    }).filter(Boolean).join(' ');
+  };
+
+  const activePoints = projectCoords(coordinates);
+
+  return (
+    <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:10 }}>
+      {/* 1. Alternative Route Paths (Rendered in clean muted slate-gray underneath) */}
+      {alternativeRoutes && alternativeRoutes.map((alt, idx) => {
+        const altPoints = projectCoords(alt.coordinatesGeoJson);
+        if (!altPoints) return null;
+        return (
+          <g key={alt.id || idx} style={{ cursor:'pointer', pointerEvents:'auto' }} onClick={() => onSelectAlternative && onSelectAlternative(alt)}>
+            <polyline points={altPoints} fill="none" stroke="#FFFFFF" strokeWidth={width + 2} strokeLinecap="round" strokeLinejoin="round" opacity="0.75" />
+            <polyline points={altPoints} fill="none" stroke="#94A3B8" strokeWidth={Math.max(4, width - 2)} strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+          </g>
+        );
+      })}
+
+      {/* 2. Active Primary Route Casing (Crisp White Glow) */}
+      {activePoints && (
+        <polyline points={activePoints} fill="none" stroke="#FFFFFF" strokeWidth={width + 4} strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
+      )}
+
+      {/* 3. Active Primary Route Base */}
+      {activePoints && (
+        <polyline points={activePoints} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" />
+      )}
+
+      {/* 4. Live Traffic Congestion Segments (Google Yellow/Amber & Red Overlays) */}
+      {trafficSegments && trafficSegments.map((seg, sIdx) => {
+        if (!seg.coords || seg.coords.length < 2 || seg.status === 'fast') return null;
+        const segGeoJson = seg.coords.map(([lat, lng]) => [lng, lat]);
+        const segPts = projectCoords(segGeoJson);
+        if (!segPts) return null;
+        const trafficColor = seg.status === 'slow' ? '#EF4444' : '#F59E0B';
+        return (
+          <polyline
+            key={sIdx}
+            points={segPts}
+            fill="none"
+            stroke={trafficColor}
+            strokeWidth={width}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        );
+      })}
+    </svg>
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // LIVE TRACKING MAP MODAL  (react-map-gl / MapLibre GL)
 // ═══════════════════════════════════════════════════════════════════════════
 const LiveTrackingMap = ({ visitId, onClose }) => {
@@ -703,56 +799,12 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
               style={{ width:'100%', height:'100%' }}
             >
               <NavigationControl position="bottom-right" />
-              
-              {/* Planned Road Route (GPU WebGL - 60 FPS, Zero CPU Lag) */}
-              {plannedCoords && plannedCoords.length > 1 && (
-                <Source
-                  id="sup-planned-route"
-                  type="geojson"
-                  data={{
-                    type: 'Feature',
-                    geometry: { type: 'LineString', coordinates: plannedCoords }
-                  }}
-                >
-                  <Layer
-                    id="sup-planned-casing"
-                    type="line"
-                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                    paint={{ 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.9 }}
-                  />
-                  <Layer
-                    id="sup-planned-line"
-                    type="line"
-                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                    paint={{ 'line-color': '#F97316', 'line-width': 5, 'line-opacity': 1.0 }}
-                  />
-                </Source>
-              )}
 
-              {/* Actual Travelled Path (GPU WebGL) */}
-              {travelCoords && travelCoords.length > 1 && (
-                <Source
-                  id="sup-travel-route"
-                  type="geojson"
-                  data={{
-                    type: 'Feature',
-                    geometry: { type: 'LineString', coordinates: travelCoords }
-                  }}
-                >
-                  <Layer
-                    id="sup-travel-casing"
-                    type="line"
-                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                    paint={{ 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.9 }}
-                  />
-                  <Layer
-                    id="sup-travel-line"
-                    type="line"
-                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                    paint={{ 'line-color': '#2563EB', 'line-width': 5, 'line-opacity': 1.0 }}
-                  />
-                </Source>
-              )}
+              {/* Planned Road Route — orange, SVG (works on raster tiles) */}
+              <RouteSvgOverlay coordinates={plannedCoords} color="#F97316" width={5} />
+
+              {/* Actual Travelled GPS Path — blue */}
+              <RouteSvgOverlay coordinates={travelCoords} color="#2563EB" width={5} />
 
               {/* Office start marker */}
               {startLat && startLng && (
@@ -779,94 +831,10 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
               )}
             </Map>
 
-            {/* Floating Telemetry Glass Cockpit */}
-            <div style={{ position:'absolute', top:'14px', left:'14px', background:'rgba(15,23,42,0.88)', backdropFilter:'blur(8px)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'14px', padding:'10px 16px', color:'#fff', display:'flex', alignItems:'center', gap:'18px', boxShadow:'0 10px 30px rgba(0,0,0,0.3)', pointerEvents:'none' }}>
-              <div>
-                <div style={{ fontSize:'9px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.5px' }}>TELEMETRY</div>
-                <div style={{ fontSize:'13px', fontWeight:'800', color:'#38BDF8', marginTop:'1px', display:'flex', alignItems:'center', gap:'4px' }}>
-                  <Activity size={12} /> {speedDisplay}
-                </div>
-              </div>
-              <div style={{ width:'1px', height:'22px', background:'rgba(255,255,255,0.15)' }} />
-              <div>
-                <div style={{ fontSize:'9px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.5px' }}>GPS SIGNAL</div>
-                <div style={{ fontSize:'12px', fontWeight:'700', color:'#4ADE80', marginTop:'1px', display:'flex', alignItems:'center', gap:'4px' }}>
-                  <Zap size={11} /> High Precision (±3m)
-                </div>
-              </div>
-              <div style={{ width:'1px', height:'22px', background:'rgba(255,255,255,0.15)' }} />
-              <div>
-                <div style={{ fontSize:'9px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.5px' }}>BREADCRUMBS</div>
-                <div style={{ fontSize:'12px', fontWeight:'700', color:'#F1F5F9', marginTop:'1px' }}>
-                  {rawPointsList.length} Logged Pts
-                </div>
-              </div>
-            </div>
 
-            {/* Floating Route Replay Simulator Trigger */}
-            <div style={{ position:'absolute', top:'14px', right:'14px', display:'flex', gap:'8px' }}>
-              <button
-                onClick={replayActive ? () => setReplayActive(false) : startReplay}
-                style={{
-                  background: replayActive ? '#EF4444' : 'rgba(15,23,42,0.85)',
-                  backdropFilter: 'blur(6px)',
-                  color: '#fff',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  borderRadius: '10px',
-                  padding: '7px 14px',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: '0 4px 14px rgba(0,0,0,0.25)'
-                }}
-              >
-                {replayActive ? <><Pause size={13} /> Stop Replay</> : <><Play size={13} /> Route Replay</>}
-              </button>
-            </div>
-
-            {/* Route Replay Controller Scrub Bar (Shows when replay is running) */}
-            {replayActive && (
-              <div style={{ position:'absolute', bottom:'20px', left:'20px', right:'70px', background:'rgba(15,23,42,0.92)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:'14px', padding:'12px 18px', color:'#fff', display:'flex', alignItems:'center', gap:'16px', boxShadow:'0 10px 30px rgba(0,0,0,0.4)', zIndex:30 }}>
-                <button onClick={() => setReplayActive(!replayActive)} style={{ background:'#2563EB', border:'none', borderRadius:'50%', width:'32px', height:'32px', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', cursor:'pointer' }}>
-                  {replayActive ? <Pause size={14} /> : <Play size={14} />}
-                </button>
-                <div style={{ flex:1 }}>
-                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:'11px', color:'#94A3B8', marginBottom:'4px' }}>
-                    <span>Replaying Waypoint {replayIdx + 1} of {rawPointsList.length}</span>
-                    <span>{rawPointsList[replayIdx]?.time ? new Date(rawPointsList[replayIdx].time).toLocaleTimeString('en-IN') : ''}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max={Math.max(rawPointsList.length - 1, 0)}
-                    value={replayIdx}
-                    onChange={e => {
-                      const idx = parseInt(e.target.value);
-                      setReplayIdx(idx);
-                      const pt = rawPointsList[idx];
-                      if (pt) {
-                        setBikePos([pt.lat, pt.lng]);
-                        setViewState(v => ({ ...v, latitude: pt.lat, longitude: pt.lng }));
-                      }
-                    }}
-                    style={{ width:'100%', accentColor:'#38BDF8', cursor:'pointer' }}
-                  />
-                </div>
-                <div style={{ display:'flex', gap:'4px' }}>
-                  {[1, 2, 5].map(spd => (
-                    <button key={spd} onClick={() => setReplaySpeed(spd)} style={{ background: replaySpeed === spd ? '#38BDF8' : 'rgba(255,255,255,0.1)', color: replaySpeed === spd ? '#0F172A' : '#fff', border:'none', borderRadius:'6px', padding:'3px 7px', fontSize:'10px', fontWeight:'700', cursor:'pointer' }}>
-                      {spd}x
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Floating Snap to Employee button */}
-            {!followMode && !replayActive && (
+            {!followMode && (
               <button
                 onClick={snapToVehicle}
                 style={{
@@ -964,88 +932,6 @@ const NavigationManeuverIcon = ({ step, size = 22, color = '#FFFFFF' }) => {
   return <ArrowUp size={size} color={color} strokeWidth={2.5} />;
 };
 
-// ═══════════════════════════════════════════════════════════════════════════
-// SVG ROAD POLYLINE OVERLAY (Google Maps Multi-Route & Traffic Flow Overlay)
-// ═══════════════════════════════════════════════════════════════════════════
-const RouteSvgOverlay = ({ coordinates, alternativeRoutes = [], onSelectAlternative, trafficSegments = [] }) => {
-  const { current: map } = useMap();
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    if (!map) return;
-    const onRender = () => setTick(t => t + 1);
-    map.on('move', onRender);
-    map.on('zoom', onRender);
-    map.on('rotate', onRender);
-    map.on('pitch', onRender);
-    map.on('resize', onRender);
-    return () => {
-      map.off('move', onRender);
-      map.off('zoom', onRender);
-      map.off('rotate', onRender);
-      map.off('pitch', onRender);
-      map.off('resize', onRender);
-    };
-  }, [map]);
-
-  if (!map) return null;
-
-  const projectCoords = (coords) => {
-    if (!coords || coords.length < 2) return '';
-    return coords.map(c => {
-      const p = map.project(c);
-      return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
-    }).join(' ');
-  };
-
-  const activePoints = projectCoords(coordinates);
-
-  return (
-    <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:10 }}>
-      {/* 1. Alternative Route Paths (Rendered in clean muted slate-gray underneath) */}
-      {alternativeRoutes && alternativeRoutes.map((alt, idx) => {
-        const altPoints = projectCoords(alt.coordinatesGeoJson);
-        if (!altPoints) return null;
-        return (
-          <g key={alt.id || idx} style={{ cursor:'pointer', pointerEvents:'auto' }} onClick={() => onSelectAlternative && onSelectAlternative(alt)}>
-            <polyline points={altPoints} fill="none" stroke="#FFFFFF" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" opacity="0.75" />
-            <polyline points={altPoints} fill="none" stroke="#94A3B8" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
-          </g>
-        );
-      })}
-
-      {/* 2. Active Primary Route Casing (Crisp White Glow) */}
-      {activePoints && (
-        <polyline points={activePoints} fill="none" stroke="#FFFFFF" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
-      )}
-
-      {/* 3. Active Primary Route Base (Vibrant Google Maps Blue) */}
-      {activePoints && (
-        <polyline points={activePoints} fill="none" stroke="#1A73E8" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
-      )}
-
-      {/* 4. Live Traffic Congestion Segments (Google Yellow/Amber & Red Overlays) */}
-      {trafficSegments && trafficSegments.map((seg, sIdx) => {
-        if (!seg.coords || seg.coords.length < 2 || seg.status === 'fast') return null;
-        const segGeoJson = seg.coords.map(([lat, lng]) => [lng, lat]);
-        const segPts = projectCoords(segGeoJson);
-        if (!segPts) return null;
-        const trafficColor = seg.status === 'slow' ? '#EF4444' : '#F59E0B';
-        return (
-          <polyline
-            key={sIdx}
-            points={segPts}
-            fill="none"
-            stroke={trafficColor}
-            strokeWidth="7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        );
-      })}
-    </svg>
-  );
-};
 
 // ═══════════════════════════════════════════════════════════════════════════
 // RIDER GOOGLE MAPS LIVE TURN-BY-TURN NAVIGATION MODAL
