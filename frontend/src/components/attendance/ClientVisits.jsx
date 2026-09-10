@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import Map, { Marker, NavigationControl, Source, Layer, useMap } from 'react-map-gl/maplibre';
+import Map, { Marker, NavigationControl } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { apiFetch } from '../../lib/api';
 import { 
@@ -292,9 +292,156 @@ const MAP_STYLES = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
+// HARDWARE GPU MAPLIBRE NATIVE ROUTE & TRAFFIC LAYER (Direct WebGL Pipeline)
+// ═══════════════════════════════════════════════════════════════════════════
+const MapLibreNativeRouteLayer = ({
+  mapRef,
+  sourceId = 'native-route-source',
+  routeGeoJson,
+  travelSourceId = 'native-travel-source',
+  travelGeoJson
+}) => {
+  const getRawMap = useCallback(() => {
+    if (!mapRef) return null;
+    if (mapRef.current) {
+      return mapRef.current.getMap ? mapRef.current.getMap() : mapRef.current;
+    }
+    return mapRef.getMap ? mapRef.getMap() : mapRef;
+  }, [mapRef]);
+
+  const updateMapLayers = useCallback(() => {
+    const map = getRawMap();
+    if (!map || !map.isStyleLoaded || !map.isStyleLoaded()) return;
+
+    try {
+      // 1. Planned Route & Traffic segments
+      if (routeGeoJson && routeGeoJson.features && routeGeoJson.features.length > 0) {
+        let source = map.getSource(sourceId);
+        if (!source) {
+          map.addSource(sourceId, {
+            type: 'geojson',
+            data: routeGeoJson
+          });
+        } else {
+          source.setData(routeGeoJson);
+        }
+
+        // Casing layer (9px white border for high-contrast crisp visibility)
+        if (!map.getLayer(`${sourceId}-casing`)) {
+          map.addLayer({
+            id: `${sourceId}-casing`,
+            type: 'line',
+            source: sourceId,
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: {
+              'line-color': '#FFFFFF',
+              'line-width': 9,
+              'line-opacity': 0.95
+            }
+          });
+        }
+
+        // Main traffic colored route line
+        if (!map.getLayer(`${sourceId}-line`)) {
+          map.addLayer({
+            id: `${sourceId}-line`,
+            type: 'line',
+            source: sourceId,
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: {
+              'line-color': ['coalesce', ['get', 'color'], '#1A73E8'],
+              'line-width': 5.5,
+              'line-opacity': 1.0
+            }
+          });
+        }
+      }
+
+      // 2. Travelled GPS Breadcrumbs (for supervisor live map)
+      if (travelGeoJson && travelGeoJson.geometry && travelGeoJson.geometry.coordinates?.length > 1) {
+        let travelSource = map.getSource(travelSourceId);
+        if (!travelSource) {
+          map.addSource(travelSourceId, {
+            type: 'geojson',
+            data: travelGeoJson
+          });
+        } else {
+          travelSource.setData(travelGeoJson);
+        }
+
+        if (!map.getLayer(`${travelSourceId}-casing`)) {
+          map.addLayer({
+            id: `${travelSourceId}-casing`,
+            type: 'line',
+            source: travelSourceId,
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: {
+              'line-color': '#FFFFFF',
+              'line-width': 8,
+              'line-opacity': 0.95
+            }
+          });
+        }
+
+        if (!map.getLayer(`${travelSourceId}-line`)) {
+          map.addLayer({
+            id: `${travelSourceId}-line`,
+            type: 'line',
+            source: travelSourceId,
+            layout: { 'line-join': 'round', 'line-cap': 'round' },
+            paint: {
+              'line-color': '#2563EB',
+              'line-width': 5,
+              'line-opacity': 1.0
+            }
+          });
+        }
+      }
+    } catch (e) {
+      console.warn('MapLibre route rendering note:', e);
+    }
+  }, [getRawMap, sourceId, routeGeoJson, travelSourceId, travelGeoJson]);
+
+  useEffect(() => {
+    let interval = null;
+    const map = getRawMap();
+    if (!map) {
+      interval = setInterval(() => {
+        const m = getRawMap();
+        if (m) {
+          clearInterval(interval);
+          updateMapLayers();
+        }
+      }, 100);
+    } else {
+      updateMapLayers();
+    }
+
+    const onSync = () => updateMapLayers();
+    if (map) {
+      map.on('styledata', onSync);
+      map.on('load', onSync);
+      map.on('idle', onSync);
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+      if (map) {
+        map.off('styledata', onSync);
+        map.off('load', onSync);
+        map.off('idle', onSync);
+      }
+    };
+  }, [getRawMap, updateMapLayers]);
+
+  return null;
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // LIVE TRACKING MAP MODAL  (react-map-gl / MapLibre GL)
 // ═══════════════════════════════════════════════════════════════════════════
 const LiveTrackingMap = ({ visitId, onClose }) => {
+  const mapRef = useRef(null);
   const [data, setData] = useState(null);
   const [routeInfo, setRouteInfo] = useState(null);
   const [bikePos, setBikePos] = useState(null);   // animated [lat, lng]
@@ -732,6 +879,7 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
           {/* MapLibre Map Canvas */}
           <div style={{ flex:1, position:'relative' }}>
             <Map
+              ref={mapRef}
               {...viewState}
               onMove={evt => {
                 setViewState(evt.viewState);
@@ -747,56 +895,13 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
               <NavigationControl position="bottom-right" />
               
               {/* Native GPU Hardware Accelerated Planned Route & Live Traffic Colors */}
-              {supervisorRouteGeoJson.features.length > 0 && (
-                <Source id="sup-route-source" type="geojson" data={supervisorRouteGeoJson}>
-                  <Layer
-                    id="sup-route-casing"
-                    type="line"
-                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                    paint={{
-                      'line-color': '#FFFFFF',
-                      'line-width': 9,
-                      'line-opacity': 0.95
-                    }}
-                  />
-                  <Layer
-                    id="sup-route-line"
-                    type="line"
-                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                    paint={{
-                      'line-color': ['get', 'color'],
-                      'line-width': 5.5,
-                      'line-opacity': 1.0
-                    }}
-                  />
-                </Source>
-              )}
-
-              {/* Native GPU Travelled GPS Breadcrumbs Path */}
-              {travelCoords && travelCoords.length > 1 && (
-                <Source id="sup-travel-source" type="geojson" data={supervisorTravelGeoJson}>
-                  <Layer
-                    id="sup-travel-casing"
-                    type="line"
-                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                    paint={{
-                      'line-color': '#FFFFFF',
-                      'line-width': 8,
-                      'line-opacity': 0.95
-                    }}
-                  />
-                  <Layer
-                    id="sup-travel-line"
-                    type="line"
-                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                    paint={{
-                      'line-color': '#2563EB',
-                      'line-width': 5,
-                      'line-opacity': 1.0
-                    }}
-                  />
-                </Source>
-              )}
+              <MapLibreNativeRouteLayer
+                mapRef={mapRef}
+                sourceId="sup-route-source"
+                routeGeoJson={supervisorRouteGeoJson}
+                travelSourceId="sup-travel-source"
+                travelGeoJson={supervisorTravelGeoJson}
+              />
 
               {/* Office start marker */}
               {startLat && startLng && (
@@ -1496,30 +1601,11 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
           <NavigationControl position="bottom-right" />
 
           {/* Native GPU Hardware Accelerated Planned Route & Live Traffic Colors */}
-          {riderRouteGeoJson.features.length > 0 && (
-            <Source id="rider-route-source" type="geojson" data={riderRouteGeoJson}>
-              <Layer
-                id="rider-route-casing"
-                type="line"
-                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                paint={{
-                  'line-color': '#FFFFFF',
-                  'line-width': 9,
-                  'line-opacity': 0.95
-                }}
-              />
-              <Layer
-                id="rider-route-line"
-                type="line"
-                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                paint={{
-                  'line-color': ['get', 'color'],
-                  'line-width': 5.5,
-                  'line-opacity': 1.0
-                }}
-              />
-            </Source>
-          )}
+          <MapLibreNativeRouteLayer
+            mapRef={mapRef}
+            sourceId="rider-route-source"
+            routeGeoJson={riderRouteGeoJson}
+          />
 
           {/* Start Origin Pin */}
           {startLat && startLng && (
