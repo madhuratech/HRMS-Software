@@ -670,16 +670,14 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
               3D
             </button>
 
-            {/* Multi-Theme Selector */}
+            {/* Map Style Toggle */}
             <div style={{ display:'flex', gap:'3px', background:'#F8FAFC', borderRadius:'8px', padding:'3px', border:'1px solid #E2E8F0' }}>
               {[
                 ['street','Street'],
-                ['satellite','Satellite'],
-                ['dark','Dark HUD'],
-                ['light','Light']
+                ['satellite','Satellite']
               ].map(([k, label]) => (
                 <button key={k} onClick={() => setMapStyle(k)}
-                  style={{ padding:'4px 9px', borderRadius:'6px', border:'none', fontSize:'11px', fontWeight:'600', cursor:'pointer',
+                  style={{ padding:'4px 10px', borderRadius:'6px', border:'none', fontSize:'11px', fontWeight:'600', cursor:'pointer',
                     background: mapStyle === k ? '#2563EB' : 'transparent',
                     color: mapStyle === k ? '#fff' : '#64748B' }}>{label}</button>
               ))}
