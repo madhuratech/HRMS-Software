@@ -17,88 +17,138 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// ─── Direct MapLibre Route Layer Hook & Component ─────────────────────────
-function MapRoutesOverlay({ routeGeoJSON, travelGeoJSON }) {
+// ─── Direct SVG Route Overlay Component (Guaranteed 60 FPS Vector Polyline Renderer) ─
+function MapSvgRouteOverlay({ plannedCoords, travelCoords }) {
   const { current: map } = useMap();
+  const [paths, setPaths] = useState({ planned: '', travel: '' });
+
+  const sync = useCallback(() => {
+    if (!map) return;
+    try {
+      // 1. Planned Road Route
+      let pStr = '';
+      if (plannedCoords && plannedCoords.length > 1) {
+        pStr = plannedCoords.map((pt, i) => {
+          const p = map.project(pt);
+          return `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+        }).join('');
+      }
+
+      // 2. Actual Travel Path
+      let tStr = '';
+      if (travelCoords && travelCoords.length > 1) {
+        tStr = travelCoords.map((pt, i) => {
+          const p = map.project(pt);
+          return `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+        }).join('');
+      }
+
+      setPaths({ planned: pStr, travel: tStr });
+    } catch (e) {
+      console.warn('SVG Route sync notice:', e);
+    }
+  }, [map, plannedCoords, travelCoords]);
 
   useEffect(() => {
     if (!map) return;
+    sync();
 
-    const renderRoutes = () => {
-      try {
-        // 1. PLANNED ROUTE (ORANGE ROAD / HIGHWAY)
-        if (routeGeoJSON && routeGeoJSON.features?.[0]?.geometry?.coordinates?.length > 1) {
-          if (map.getSource('planned-route-native')) {
-            map.getSource('planned-route-native').setData(routeGeoJSON);
-          } else {
-            map.addSource('planned-route-native', {
-              type: 'geojson',
-              data: routeGeoJSON
-            });
-            // White casing/shadow
-            map.addLayer({
-              id: 'planned-route-casing',
-              type: 'line',
-              source: 'planned-route-native',
-              layout: { 'line-cap': 'round', 'line-join': 'round' },
-              paint: { 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.9 }
-            });
-            // Main orange line
-            map.addLayer({
-              id: 'planned-route-core',
-              type: 'line',
-              source: 'planned-route-native',
-              layout: { 'line-cap': 'round', 'line-join': 'round' },
-              paint: { 'line-color': '#F97316', 'line-width': 5, 'line-opacity': 1.0 }
-            });
-          }
-        }
-
-        // 2. ACTUAL TRAVELLED PATH (BLUE BREADCRUMB TRAIL)
-        if (travelGeoJSON && travelGeoJSON.features?.[0]?.geometry?.coordinates?.length > 1) {
-          if (map.getSource('travel-route-native')) {
-            map.getSource('travel-route-native').setData(travelGeoJSON);
-          } else {
-            map.addSource('travel-route-native', {
-              type: 'geojson',
-              data: travelGeoJSON
-            });
-            // White casing/shadow
-            map.addLayer({
-              id: 'travel-route-casing',
-              type: 'line',
-              source: 'travel-route-native',
-              layout: { 'line-cap': 'round', 'line-join': 'round' },
-              paint: { 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.9 }
-            });
-            // Main blue line
-            map.addLayer({
-              id: 'travel-route-core',
-              type: 'line',
-              source: 'travel-route-native',
-              layout: { 'line-cap': 'round', 'line-join': 'round' },
-              paint: { 'line-color': '#2563EB', 'line-width': 5, 'line-opacity': 1.0 }
-            });
-          }
-        }
-      } catch (err) {
-        console.warn('MapLibre layer rendering notice:', err);
-      }
-    };
-
-    if (map.isStyleLoaded()) {
-      renderRoutes();
-    }
-    map.on('style.load', renderRoutes);
-    map.on('load', renderRoutes);
+    map.on('render', sync);
+    map.on('move', sync);
+    map.on('zoom', sync);
+    map.on('rotate', sync);
+    map.on('pitch', sync);
+    map.on('resize', sync);
 
     return () => {
-      map.off('style.load', renderRoutes);
-      map.off('load', renderRoutes);
+      map.off('render', sync);
+      map.off('move', sync);
+      map.off('zoom', sync);
+      map.off('rotate', sync);
+      map.off('pitch', sync);
+      map.off('resize', sync);
     };
-  }, [map, routeGeoJSON, travelGeoJSON]);
+  }, [map, sync]);
 
-  return null;
+  if (!paths.planned && !paths.travel) return null;
+
+  return (
+    <svg
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        zIndex: 10,
+        overflow: 'visible'
+      }}
+    >
+      {/* Planned Road Route */}
+      {paths.planned && (
+        <g>
+          {/* White Glow / Casing */}
+          <path
+            d={paths.planned}
+            fill="none"
+            stroke="#FFFFFF"
+            strokeWidth="9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.9"
+          />
+          {/* Vibrant Orange Road Route */}
+          <path
+            d={paths.planned}
+            fill="none"
+            stroke="#F97316"
+            strokeWidth="5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.98"
+          />
+          {/* Dashed White Center Line */}
+          <path
+            d={paths.planned}
+            fill="none"
+            stroke="#FFFFFF"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeDasharray="4 6"
+            opacity="0.85"
+          />
+        </g>
+      )}
+
+      {/* Actual Travelled Path */}
+      {paths.travel && (
+        <g>
+          {/* White Glow / Casing */}
+          <path
+            d={paths.travel}
+            fill="none"
+            stroke="#FFFFFF"
+            strokeWidth="9"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.9"
+          />
+          {/* Vibrant Blue GPS Path */}
+          <path
+            d={paths.travel}
+            fill="none"
+            stroke="#2563EB"
+            strokeWidth="5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.98"
+          />
+        </g>
+      )}
+    </svg>
+  );
 }
 
 // ─── Parse Google Maps URL to lat/lng ──────────────────────────────────────
@@ -238,6 +288,10 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
   const [mapStyle, setMapStyle] = useState('street');
   const [viewState, setViewState] = useState({ longitude: 77.0, latitude: 11.0, zoom: 12, pitch: 0, bearing: 0 });
 
+  // Projected route coordinate arrays for guaranteed SVG rendering
+  const [plannedCoords, setPlannedCoords] = useState([]);
+  const [travelCoords, setTravelCoords] = useState([]);
+
   // OSRM planned route GeoJSON
   const [routeGeoJSON, setRouteGeoJSON] = useState(null);
   // Actual travelled path GeoJSON
@@ -277,16 +331,19 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
       }
 
       // Straight-line fallback if OSRM is offline or blocked
-      if (!routeCoords) {
+      if (!routeCoords || routeCoords.length < 2) {
         const straightDist = getDistanceFromLatLonInKm(startLat, startLng, destLat, destLng);
         setRouteInfo({ distance: straightDist.toFixed(1), duration: Math.round(straightDist * 2) });
         routeCoords = [[startLng, startLat], [destLng, destLat]];
       }
 
+      setPlannedCoords(routeCoords);
+
       setRouteGeoJSON({
         type: 'FeatureCollection',
         features: [{
           type: 'Feature',
+          properties: { name: 'Planned Route' },
           geometry: {
             type: 'LineString',
             coordinates: routeCoords
@@ -334,10 +391,12 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
     }
 
     if (travelPoints.length >= 2) {
+      setTravelCoords(travelPoints);
       setTravelGeoJSON({
         type: 'FeatureCollection',
         features: [{
           type: 'Feature',
+          properties: { name: 'Actual Path' },
           geometry: {
             type: 'LineString',
             coordinates: travelPoints
@@ -540,51 +599,9 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
             >
               <NavigationControl position="bottom-right" />
               
-              {/* Direct MapLibre Route Renderer */}
-              <MapRoutesOverlay routeGeoJSON={routeGeoJSON} travelGeoJSON={travelGeoJSON} />
+              {/* 100% Reliable SVG Vector Polyline Overlay for Planned & Actual Routes */}
+              <MapSvgRouteOverlay plannedCoords={plannedCoords} travelCoords={travelCoords} />
 
-              {/* Planned Route (Road / Geometry Path) */}
-              {routeGeoJSON && (
-                <Source id="route-source" type="geojson" data={routeGeoJSON}>
-                  <Layer
-                    id="route-shadow-line"
-                    type="line"
-                    layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-                    paint={{ 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.85 }}
-                  />
-                  <Layer
-                    id="route-main-line"
-                    type="line"
-                    layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-                    paint={{ 'line-color': '#F97316', 'line-width': 5, 'line-opacity': 0.95 }}
-                  />
-                  <Layer
-                    id="route-dash-line"
-                    type="line"
-                    layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-                    paint={{ 'line-color': '#FFFFFF', 'line-width': 2, 'line-opacity': 0.7, 'line-dasharray': [2, 3] }}
-                  />
-                </Source>
-              )}
-
-              {/* Actual Travelled Path (GPS breadcrumbs) */}
-              {travelGeoJSON && (
-                <Source id="travel-source" type="geojson" data={travelGeoJSON}>
-                  <Layer
-                    id="travel-shadow-line"
-                    type="line"
-                    layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-                    paint={{ 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.85 }}
-                  />
-                  <Layer
-                    id="travel-main-line"
-                    type="line"
-                    layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-                    paint={{ 'line-color': '#2563EB', 'line-width': 5, 'line-opacity': 0.95 }}
-                  />
-                </Source>
-              )}
-              
               {/* Office start marker */}
               {startLat && startLng && (
                 <Marker longitude={startLng} latitude={startLat} anchor="center">
