@@ -292,131 +292,6 @@ const MAP_STYLES = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// HARDWARE GPU MAPLIBRE NATIVE ROUTE & TRAFFIC LAYER (Zero 3D Frustum Bugs)
-// ═══════════════════════════════════════════════════════════════════════════
-const MapLibreRouteLayer = ({ plannedCoords = [], trafficSegments = [], travelCoords = [] }) => {
-  const { current: map } = useMap();
-
-  useEffect(() => {
-    if (!map) return;
-
-    const setupLayers = () => {
-      // 1. Travelled GPS Breadcrumbs Layer (for supervisor live map)
-      if (!map.getSource('native-travel-source')) {
-        map.addSource('native-travel-source', {
-          type: 'geojson',
-          data: { type: 'Feature', geometry: { type: 'LineString', coordinates: [] } }
-        });
-        map.addLayer({
-          id: 'native-travel-casing',
-          type: 'line',
-          source: 'native-travel-source',
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: { 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.95 }
-        });
-        map.addLayer({
-          id: 'native-travel-line',
-          type: 'line',
-          source: 'native-travel-source',
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: { 'line-color': '#2563EB', 'line-width': 5, 'line-opacity': 1.0 }
-        });
-      }
-
-      // 2. Planned Route Casing Layer (Crisp White Border)
-      if (!map.getSource('native-route-source')) {
-        map.addSource('native-route-source', {
-          type: 'geojson',
-          data: { type: 'FeatureCollection', features: [] }
-        });
-        map.addLayer({
-          id: 'native-route-casing',
-          type: 'line',
-          source: 'native-route-source',
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: { 'line-color': '#FFFFFF', 'line-width': 9, 'line-opacity': 0.95 }
-        });
-        map.addLayer({
-          id: 'native-route-line',
-          type: 'line',
-          source: 'native-route-source',
-          layout: { 'line-join': 'round', 'line-cap': 'round' },
-          paint: {
-            'line-color': ['get', 'color'],
-            'line-width': 5.5,
-            'line-opacity': 1.0
-          }
-        });
-      }
-    };
-
-    if (map.isStyleLoaded()) {
-      setupLayers();
-    } else {
-      map.once('load', setupLayers);
-      map.once('styledata', setupLayers);
-    }
-  }, [map]);
-
-  // Dynamically stream GeoJSON updates into GPU buffers
-  useEffect(() => {
-    if (!map) return;
-
-    const updateData = () => {
-      // 1. Update planned route with live traffic segments
-      const routeSource = map.getSource('native-route-source');
-      if (routeSource) {
-        const features = [];
-        if (trafficSegments && trafficSegments.length > 0) {
-          trafficSegments.forEach(seg => {
-            if (seg.coords && seg.coords.length > 1) {
-              features.push({
-                type: 'Feature',
-                properties: {
-                  color: seg.status === 'slow' ? '#EF4444' : (seg.status === 'moderate' ? '#F59E0B' : '#1A73E8')
-                },
-                geometry: { type: 'LineString', coordinates: seg.coords }
-              });
-            }
-          });
-        } else if (plannedCoords && plannedCoords.length > 1) {
-          features.push({
-            type: 'Feature',
-            properties: { color: '#1A73E8' },
-            geometry: { type: 'LineString', coordinates: plannedCoords }
-          });
-        }
-
-        routeSource.setData({
-          type: 'FeatureCollection',
-          features
-        });
-      }
-
-      // 2. Update travelled GPS breadcrumbs
-      const travelSource = map.getSource('native-travel-source');
-      if (travelSource) {
-        travelSource.setData({
-          type: 'Feature',
-          geometry: {
-            type: 'LineString',
-            coordinates: travelCoords && travelCoords.length > 1 ? travelCoords : []
-          }
-        });
-      }
-    };
-
-    if (map.isStyleLoaded()) {
-      updateData();
-    } else {
-      map.once('idle', updateData);
-    }
-  }, [map, plannedCoords, trafficSegments, travelCoords]);
-
-  return null;
-};
-
-// ═══════════════════════════════════════════════════════════════════════════
 // LIVE TRACKING MAP MODAL  (react-map-gl / MapLibre GL)
 // ═══════════════════════════════════════════════════════════════════════════
 const LiveTrackingMap = ({ visitId, onClose }) => {
@@ -646,6 +521,53 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
     }
   };
 
+  // GeoJSON data structures for native GPU route rendering & traffic flow
+  const supervisorRouteGeoJson = useMemo(() => {
+    const features = [];
+    if (routeInfo?.trafficSegments && routeInfo.trafficSegments.length > 0) {
+      routeInfo.trafficSegments.forEach((seg, idx) => {
+        if (seg.coords && seg.coords.length > 1) {
+          features.push({
+            type: 'Feature',
+            id: `sup-seg-${idx}`,
+            properties: {
+              color: seg.status === 'slow' ? '#EF4444' : (seg.status === 'moderate' ? '#F59E0B' : '#1A73E8')
+            },
+            geometry: {
+              type: 'LineString',
+              coordinates: seg.coords
+            }
+          });
+        }
+      });
+    } else if (plannedCoords && plannedCoords.length > 1) {
+      features.push({
+        type: 'Feature',
+        id: 'sup-planned-fallback',
+        properties: { color: '#1A73E8' },
+        geometry: {
+          type: 'LineString',
+          coordinates: plannedCoords
+        }
+      });
+    }
+    return {
+      type: 'FeatureCollection',
+      features
+    };
+  }, [routeInfo?.trafficSegments, plannedCoords]);
+
+  const supervisorTravelGeoJson = useMemo(() => {
+    return {
+      type: 'Feature',
+      properties: {},
+      geometry: {
+        type: 'LineString',
+        coordinates: travelCoords && travelCoords.length > 1 ? travelCoords : []
+      }
+    };
+  }, [travelCoords]);
+
   const steps = [
     { label: 'Journey Started', time: v?.start_journey_time, done: true, color: '#2563EB' },
     { label: 'Reached Client', sub: 'Meeting Start', time: v?.check_in_time, done: !!v?.check_in_time, color: '#10B981', photo: v?.photo_in_url },
@@ -824,12 +746,57 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
             >
               <NavigationControl position="bottom-right" />
               
-              {/* Native GPU 3D Frustum Clipped Route, Live Traffic Colors & Travelled Breadcrumb Trail */}
-              <MapLibreRouteLayer
-                plannedCoords={plannedCoords}
-                trafficSegments={routeInfo?.trafficSegments}
-                travelCoords={travelCoords}
-              />
+              {/* Native GPU Hardware Accelerated Planned Route & Live Traffic Colors */}
+              {supervisorRouteGeoJson.features.length > 0 && (
+                <Source id="sup-route-source" type="geojson" data={supervisorRouteGeoJson}>
+                  <Layer
+                    id="sup-route-casing"
+                    type="line"
+                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                    paint={{
+                      'line-color': '#FFFFFF',
+                      'line-width': 9,
+                      'line-opacity': 0.95
+                    }}
+                  />
+                  <Layer
+                    id="sup-route-line"
+                    type="line"
+                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                    paint={{
+                      'line-color': ['get', 'color'],
+                      'line-width': 5.5,
+                      'line-opacity': 1.0
+                    }}
+                  />
+                </Source>
+              )}
+
+              {/* Native GPU Travelled GPS Breadcrumbs Path */}
+              {travelCoords && travelCoords.length > 1 && (
+                <Source id="sup-travel-source" type="geojson" data={supervisorTravelGeoJson}>
+                  <Layer
+                    id="sup-travel-casing"
+                    type="line"
+                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                    paint={{
+                      'line-color': '#FFFFFF',
+                      'line-width': 8,
+                      'line-opacity': 0.95
+                    }}
+                  />
+                  <Layer
+                    id="sup-travel-line"
+                    type="line"
+                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                    paint={{
+                      'line-color': '#2563EB',
+                      'line-width': 5,
+                      'line-opacity': 1.0
+                    }}
+                  />
+                </Source>
+              )}
 
               {/* Office start marker */}
               {startLat && startLng && (
@@ -1257,6 +1224,42 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
     return target.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
   }, [liveRemainingDurationMin]);
 
+  // Native GPU GeoJSON feature collection for turn-by-turn route & live traffic flow
+  const riderRouteGeoJson = useMemo(() => {
+    const features = [];
+    if (routeData?.trafficSegments && routeData.trafficSegments.length > 0) {
+      routeData.trafficSegments.forEach((seg, idx) => {
+        if (seg.coords && seg.coords.length > 1) {
+          features.push({
+            type: 'Feature',
+            id: `rider-seg-${idx}`,
+            properties: {
+              color: seg.status === 'slow' ? '#EF4444' : (seg.status === 'moderate' ? '#F59E0B' : '#1A73E8')
+            },
+            geometry: {
+              type: 'LineString',
+              coordinates: seg.coords
+            }
+          });
+        }
+      });
+    } else if (plannedCoords && plannedCoords.length > 1) {
+      features.push({
+        type: 'Feature',
+        id: 'rider-planned-fallback',
+        properties: { color: '#1A73E8' },
+        geometry: {
+          type: 'LineString',
+          coordinates: plannedCoords
+        }
+      });
+    }
+    return {
+      type: 'FeatureCollection',
+      features
+    };
+  }, [routeData?.trafficSegments, plannedCoords]);
+
   const recenterMap = () => {
     setFollowMode(true);
     if (currentPos) {
@@ -1492,11 +1495,31 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         >
           <NavigationControl position="bottom-right" />
 
-          {/* Native GPU 3D Frustum Clipped Route & Live Traffic Colors */}
-          <MapLibreRouteLayer
-            plannedCoords={plannedCoords}
-            trafficSegments={routeData?.trafficSegments}
-          />
+          {/* Native GPU Hardware Accelerated Planned Route & Live Traffic Colors */}
+          {riderRouteGeoJson.features.length > 0 && (
+            <Source id="rider-route-source" type="geojson" data={riderRouteGeoJson}>
+              <Layer
+                id="rider-route-casing"
+                type="line"
+                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                paint={{
+                  'line-color': '#FFFFFF',
+                  'line-width': 9,
+                  'line-opacity': 0.95
+                }}
+              />
+              <Layer
+                id="rider-route-line"
+                type="line"
+                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                paint={{
+                  'line-color': ['get', 'color'],
+                  'line-width': 5.5,
+                  'line-opacity': 1.0
+                }}
+              />
+            </Source>
+          )}
 
           {/* Start Origin Pin */}
           {startLat && startLng && (
