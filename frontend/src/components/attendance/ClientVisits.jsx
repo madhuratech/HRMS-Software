@@ -1,8 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import Map, { Marker, NavigationControl, Source, Layer, useMap } from 'react-map-gl/maplibre';
+import Map, { Marker, NavigationControl, useMap } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { apiFetch } from '../../lib/api';
-import { MapPin, Navigation, Camera, CheckCircle2, XCircle, Play, Map as MapIcon, Building, LogOut, Search, Loader2, Link, Image, Crosshair, Eye, Clock, ShieldCheck } from 'lucide-react';
+import { 
+  MapPin, Navigation, Camera, CheckCircle2, XCircle, Play, Pause, 
+  Map as MapIcon, Building, LogOut, Search, Loader2, Link, Image, 
+  Crosshair, Eye, Clock, ShieldCheck, RefreshCw, Zap, Phone, 
+  Download, Maximize2, Radio, Activity, Compass, Share2
+} from 'lucide-react';
 
 // ─── Distance calculation helper ──────────────────────────────────────────
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
@@ -17,10 +22,10 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 
-// ─── Direct SVG Route Overlay Component (Guaranteed 60 FPS Vector Polyline Renderer) ─
-function MapSvgRouteOverlay({ plannedCoords, travelCoords }) {
+// ─── Direct SVG Route & Geofence Radar Overlay (60 FPS Vector Engine) ──────
+function MapSvgRouteOverlay({ plannedCoords, travelCoords, clientDest, isInsideGeofence }) {
   const { current: map } = useMap();
-  const [paths, setPaths] = useState({ planned: '', travel: '' });
+  const [paths, setPaths] = useState({ planned: '', travel: '', clientPoint: null });
 
   const sync = useCallback(() => {
     if (!map) return;
@@ -43,11 +48,17 @@ function MapSvgRouteOverlay({ plannedCoords, travelCoords }) {
         }).join('');
       }
 
-      setPaths({ planned: pStr, travel: tStr });
+      // 3. Client destination geofence center point
+      let cPoint = null;
+      if (clientDest && clientDest[0] && clientDest[1]) {
+        cPoint = map.project(clientDest);
+      }
+
+      setPaths({ planned: pStr, travel: tStr, clientPoint: cPoint });
     } catch (e) {
       console.warn('SVG Route sync notice:', e);
     }
-  }, [map, plannedCoords, travelCoords]);
+  }, [map, plannedCoords, travelCoords, clientDest]);
 
   useEffect(() => {
     if (!map) return;
@@ -70,7 +81,7 @@ function MapSvgRouteOverlay({ plannedCoords, travelCoords }) {
     };
   }, [map, sync]);
 
-  if (!paths.planned && !paths.travel) return null;
+  if (!paths.planned && !paths.travel && !paths.clientPoint) return null;
 
   return (
     <svg
@@ -85,6 +96,27 @@ function MapSvgRouteOverlay({ plannedCoords, travelCoords }) {
         overflow: 'visible'
       }}
     >
+      {/* Client Destination 150m Geofence Radar Pulse */}
+      {paths.clientPoint && (
+        <g transform={`translate(${paths.clientPoint.x}, ${paths.clientPoint.y})`}>
+          {/* Animated pulsing geofence circle */}
+          <circle
+            r="45"
+            fill={isInsideGeofence ? 'rgba(16,185,129,0.18)' : 'rgba(37,99,235,0.12)'}
+            stroke={isInsideGeofence ? '#10B981' : '#3B82F6'}
+            strokeWidth="1.5"
+            strokeDasharray="4 3"
+          />
+          <circle
+            r="70"
+            fill="none"
+            stroke={isInsideGeofence ? 'rgba(16,185,129,0.4)' : 'rgba(59,130,246,0.3)'}
+            strokeWidth="1"
+            opacity="0.6"
+          />
+        </g>
+      )}
+
       {/* Planned Road Route */}
       {paths.planned && (
         <g>
@@ -154,19 +186,15 @@ function MapSvgRouteOverlay({ plannedCoords, travelCoords }) {
 // ─── Parse Google Maps URL to lat/lng ──────────────────────────────────────
 function parseGoogleMapsUrl(url) {
   if (!url) return null;
-  // Match all !3d and !4d pairs
   const matches = [...url.matchAll(/!3d(-?\d+\.?\d*)!4d(-?\d+\.?\d*)/g)];
   if (matches.length > 0) {
     const lastMatch = matches[matches.length - 1];
     return { lat: parseFloat(lastMatch[1]), lng: parseFloat(lastMatch[2]) };
   }
-  // Format: https://maps.google.com/?q=lat,lng
   let m = url.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
   if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
-  // Format: https://www.google.com/maps/place/.../@lat,lng,zoom
   m = url.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/);
   if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
-  // Format: maps.google.com/maps?ll=lat,lng
   m = url.match(/[?&]ll=(-?\d+\.?\d*),(-?\d+\.?\d*)/);
   if (m) return { lat: parseFloat(m[1]), lng: parseFloat(m[2]) };
   return null;
@@ -182,7 +210,7 @@ async function geocodeAddress(q) {
   } catch { return []; }
 }
 
-// ─── OSRM shortest-path route (road-following, like Swiggy) ──────────────
+// ─── OSRM shortest-path route (road-following) ─────────────────────────────
 async function getOSRMRoute(fromLat, fromLng, toLat, toLng) {
   try {
     const res = await fetch(
@@ -218,7 +246,7 @@ function animateTo(from, to, ms, onUpdate) {
   requestAnimationFrame(step);
 }
 
-// ─── Inject CSS once (for UI styles only; no Leaflet) ────────────────────────
+// ─── Inject UI CSS styles ──────────────────────────────────────────────────
 function injectStyles() {
   if (document.getElementById('gps-ui-style')) return;
   const s = document.createElement('style');
@@ -226,7 +254,11 @@ function injectStyles() {
   s.textContent = `
     @keyframes livePulse {
       0%,100% { opacity:1; transform:scale(1); }
-      50% { opacity:0.6; transform:scale(1.3); }
+      50% { opacity:0.6; transform:scale(1.35); }
+    }
+    @keyframes radarSweep {
+      0% { transform:scale(0.8); opacity:0.8; }
+      100% { transform:scale(2.2); opacity:0; }
     }
     @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
     .gps-input { width:100%; padding:10px 12px; border:1.5px solid #E2E8F0; border-radius:8px; font-size:14px; color:#1E293B; outline:none; box-sizing:border-box; transition:border-color .2s; background:#fff; }
@@ -240,7 +272,7 @@ function injectStyles() {
   document.head.appendChild(s);
 }
 
-// Base MapLibre Styles (100% Legal & Open HD Tile Providers)
+// ─── Multi-Theme Map Engine (100% Legal Open Cartography) ───────────────────
 const MAP_STYLES = {
   street: {
     version: 8,
@@ -276,6 +308,38 @@ const MAP_STYLES = {
       { id: 'esri-sat-layer', source: 'esri-sat-base', type: 'raster', minzoom: 0, maxzoom: 19 },
       { id: 'esri-labels-layer', source: 'esri-labels-base', type: 'raster', minzoom: 0, maxzoom: 19 }
     ]
+  },
+  dark: {
+    version: 8,
+    sources: {
+      'carto-dark': {
+        type: 'raster',
+        tiles: [
+          'https://a.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png',
+          'https://b.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'
+        ],
+        tileSize: 256,
+        maxzoom: 19,
+        attribution: '© CARTO, OpenStreetMap'
+      }
+    },
+    layers: [{ id: 'carto-dark-layer', source: 'carto-dark', type: 'raster', minzoom: 0, maxzoom: 19 }]
+  },
+  light: {
+    version: 8,
+    sources: {
+      'carto-light': {
+        type: 'raster',
+        tiles: [
+          'https://a.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png',
+          'https://b.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png'
+        ],
+        tileSize: 256,
+        maxzoom: 19,
+        attribution: '© CARTO, OpenStreetMap'
+      }
+    },
+    layers: [{ id: 'carto-light-layer', source: 'carto-light', type: 'raster', minzoom: 0, maxzoom: 19 }]
   }
 };
 
@@ -291,15 +355,23 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
   const hasFitBounds = useRef(false);
   const [mapStyle, setMapStyle] = useState('street');
   const [viewState, setViewState] = useState({ longitude: 77.0, latitude: 11.0, zoom: 13, pitch: 0, bearing: 0 });
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Photo Lightbox modal state
+  const [inspectPhoto, setInspectPhoto] = useState(null);
+
+  // Route Replay Simulator State
+  const [replayActive, setReplayActive] = useState(false);
+  const [replayIdx, setReplayIdx] = useState(0);
+  const [replaySpeed, setReplaySpeed] = useState(1);
+  const replayTimer = useRef(null);
 
   // Projected route coordinate arrays for guaranteed SVG rendering
   const [plannedCoords, setPlannedCoords] = useState([]);
   const [travelCoords, setTravelCoords] = useState([]);
 
-  // OSRM planned route GeoJSON
-  const [routeGeoJSON, setRouteGeoJSON] = useState(null);
-  // Actual travelled path GeoJSON
-  const [travelGeoJSON, setTravelGeoJSON] = useState(null);
+  // Raw point coordinates
+  const [rawPointsList, setRawPointsList] = useState([]);
 
   const buildMap = useCallback(async (visit, points) => {
     if (!visit) return;
@@ -342,75 +414,48 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
       }
 
       setPlannedCoords(routeCoords);
-
-      setRouteGeoJSON({
-        type: 'FeatureCollection',
-        features: [{
-          type: 'Feature',
-          properties: { name: 'Planned Route' },
-          geometry: {
-            type: 'LineString',
-            coordinates: routeCoords
-          }
-        }]
-      });
     }
 
     // ─── 2. Build Actual Travelled Path (GPS breadcrumbs) ─────────────────────
     const travelPoints = [];
+    const validPts = [];
+
+    // Add start point if present
+    if (startLat && startLng) {
+      travelPoints.push([startLng, startLat]);
+      validPts.push({ lat: startLat, lng: startLng, time: visit.start_journey_time, label: 'Start Point' });
+    }
 
     // Add all logged points
     if (points && points.length > 0) {
-      points.forEach(p => {
+      points.forEach((p, idx) => {
         if (p.latitude && p.longitude) {
-          travelPoints.push([parseFloat(p.longitude), parseFloat(p.latitude)]);
+          const ln = parseFloat(p.longitude);
+          const la = parseFloat(p.latitude);
+          travelPoints.push([ln, la]);
+          validPts.push({ lat: la, lng: ln, time: p.recorded_at, label: `Waypoint #${idx + 1}` });
         }
       });
     }
 
-    // Ensure start point is at the beginning
-    if (startLat && startLng) {
-      if (travelPoints.length === 0 ||
-          (Math.abs(travelPoints[0][1] - startLat) > 0.0001 || Math.abs(travelPoints[0][0] - startLng) > 0.0001)) {
-        travelPoints.unshift([startLng, startLat]);
-      }
-    }
-
-    // If check-in happened, ensure client check-in coordinate is included
+    // If check-in milestone happened, ensure client coordinate is included
     if (visit.check_in_lat && visit.check_in_lng) {
       const cIn = [parseFloat(visit.check_in_lng), parseFloat(visit.check_in_lat)];
       const last = travelPoints[travelPoints.length - 1];
       if (!last || Math.abs(last[0] - cIn[0]) > 0.0001 || Math.abs(last[1] - cIn[1]) > 0.0001) {
         travelPoints.push(cIn);
+        validPts.push({ lat: cIn[1], lng: cIn[0], time: visit.check_in_time, label: 'Client Arrival' });
       }
     }
 
-    // If check-out happened, ensure checkout coordinate is included
-    if (visit.check_out_lat && visit.check_out_lng) {
-      const cOut = [parseFloat(visit.check_out_lng), parseFloat(visit.check_out_lat)];
-      const last = travelPoints[travelPoints.length - 1];
-      if (!last || Math.abs(last[0] - cOut[0]) > 0.0001 || Math.abs(last[1] - cOut[1]) > 0.0001) {
-        travelPoints.push(cOut);
-      }
-    }
+    setRawPointsList(validPts);
 
     if (travelPoints.length >= 2) {
       setTravelCoords(travelPoints);
-      setTravelGeoJSON({
-        type: 'FeatureCollection',
-        features: [{
-          type: 'Feature',
-          properties: { name: 'Actual Path' },
-          geometry: {
-            type: 'LineString',
-            coordinates: travelPoints
-          }
-        }]
-      });
     }
 
     // ─── 3. Bike / Live Marker Animation ─────────────────────────────────────
-    if (liveLat && liveLng) {
+    if (!replayActive && liveLat && liveLng) {
       const live = [liveLat, liveLng];
       if (lastPt.current) {
         animateTo(lastPt.current, live, 2000, pos => setBikePos(pos));
@@ -464,14 +509,16 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
         hasFitBounds.current = true;
       }
     }
-  }, [followMode]);
+  }, [followMode, replayActive]);
 
   const fetch_ = useCallback(async () => {
+    setRefreshing(true);
     const res = await apiFetch(`/client-visits/${visitId}/track`);
     if (res.success) {
       setData(res);
       buildMap(res.visit, res.points);
     }
+    setRefreshing(false);
   }, [visitId, buildMap]);
 
   useEffect(() => {
@@ -502,12 +549,21 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
     return Math.max(1, Math.round((parseFloat(remainingKm) / 30) * 60)); // ~30 km/h average speed
   }, [remainingKm]);
 
+  // Geofence status (inside 150m of client destination)
+  const isInsideGeofence = useMemo(() => {
+    if (bikePos && destLat && destLng) {
+      const dKm = getDistanceFromLatLonInKm(bikePos[0], bikePos[1], destLat, destLng);
+      return dKm <= 0.15; // 150 meters
+    }
+    return false;
+  }, [bikePos, destLat, destLng]);
+
   // Telemetry Speed calculation
   const speedDisplay = useMemo(() => {
     if (v?.status === 'In Meeting') return 'At Client (Meeting)';
     if (v?.status === 'Returning') return 'Returning to Office';
     if (v?.status === 'Completed') return 'Journey Finished';
-    return '~28 km/h (Active)';
+    return '~28 km/h (In Transit)';
   }, [v?.status]);
 
   // Snap to vehicle
@@ -523,6 +579,37 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
     }
   };
 
+  // ─── Route Replay Simulator Controller ────────────────────────────────────
+  useEffect(() => {
+    if (replayActive && rawPointsList.length > 1) {
+      replayTimer.current = setInterval(() => {
+        setReplayIdx(prev => {
+          if (prev >= rawPointsList.length - 1) {
+            setReplayActive(false);
+            return prev;
+          }
+          const next = prev + 1;
+          const pt = rawPointsList[next];
+          if (pt) {
+            setBikePos([pt.lat, pt.lng]);
+            setViewState(v => ({ ...v, latitude: pt.lat, longitude: pt.lng }));
+          }
+          return next;
+        });
+      }, 1000 / replaySpeed);
+    } else {
+      clearInterval(replayTimer.current);
+    }
+    return () => clearInterval(replayTimer.current);
+  }, [replayActive, replaySpeed, rawPointsList]);
+
+  const startReplay = () => {
+    if (rawPointsList.length === 0) return alert('No recorded GPS points yet to replay.');
+    setReplayIdx(0);
+    setBikePos([rawPointsList[0].lat, rawPointsList[0].lng]);
+    setReplayActive(true);
+  };
+
   const steps = [
     { label: 'Journey Started', time: v?.start_journey_time, done: true, color: '#2563EB' },
     { label: 'Reached Client', sub: 'Meeting Start', time: v?.check_in_time, done: !!v?.check_in_time, color: '#10B981', photo: v?.photo_in_url },
@@ -531,15 +618,15 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
   ];
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', padding:'16px', backdropFilter:'blur(5px)' }}>
-      <div style={{ background:'#fff', width:'100%', maxWidth:'1120px', borderRadius:'18px', overflow:'hidden', display:'flex', flexDirection:'column', height:'90vh', boxShadow:'0 25px 70px rgba(0,0,0,0.25)', border:'1px solid #E2E8F0' }}>
+    <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'center', justifyContent:'center', padding:'16px', backdropFilter:'blur(6px)' }}>
+      <div style={{ background:'#fff', width:'100%', maxWidth:'1140px', borderRadius:'20px', overflow:'hidden', display:'flex', flexDirection:'column', height:'90vh', boxShadow:'0 30px 80px rgba(0,0,0,0.28)', border:'1px solid #E2E8F0' }}>
 
-        {/* Header */}
-        <div style={{ padding:'14px 20px', borderBottom:'1px solid #F1F5F9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fff' }}>
+        {/* Header HUD */}
+        <div style={{ padding:'14px 22px', borderBottom:'1px solid #F1F5F9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fff' }}>
           <div>
             <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-              <span style={{ fontWeight:'800', fontSize:'17px', color:'#0F172A' }}>Live Tracking — {v?.employee_name || '...'}</span>
-              <span style={{ fontSize:'11px', background:'#EFF6FF', color:'#2563EB', fontWeight:'700', padding:'2px 8px', borderRadius:'6px' }}>SUPERVISOR HUD</span>
+              <span style={{ fontWeight:'800', fontSize:'17px', color:'#0F172A' }}>Live Telemetry — {v?.employee_name || '...'}</span>
+              <span style={{ fontSize:'10px', background:'#EFF6FF', color:'#2563EB', fontWeight:'800', padding:'2px 8px', borderRadius:'6px', border:'1px solid #DBEAFE', letterSpacing:'0.5px' }}>SUPERVISOR COCKPIT</span>
             </div>
             <div style={{ fontSize:'12px', color:'#64748B', marginTop:'2px' }}>Client: <b>{v?.client_name}</b> {v?.client_address ? `• ${v.client_address}` : ''}</div>
           </div>
@@ -550,8 +637,8 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
             </div>
             <div style={{ width:'1px', height:'28px', background:'#F1F5F9' }} />
             <div style={{ textAlign:'center' }}>
-              <div style={{ fontSize:'10px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase' }}>Live KM</div>
-              <div style={{ fontSize:'18px', fontWeight:'900', color:'#2563EB', marginTop:'2px' }}>{data?.liveDistance || '0.00'}</div>
+              <div style={{ fontSize:'10px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase' }}>Distance</div>
+              <div style={{ fontSize:'18px', fontWeight:'900', color:'#2563EB', marginTop:'2px' }}>{data?.liveDistance || '0.00'} <span style={{ fontSize:'11px', fontWeight:'700' }}>km</span></div>
             </div>
             {remainingKm && (
               <>
@@ -566,26 +653,38 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
               <>
                 <div style={{ width:'1px', height:'28px', background:'#F1F5F9' }} />
                 <div style={{ textAlign:'center' }}>
-                  <div style={{ fontSize:'10px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase' }}>Route</div>
+                  <div style={{ fontSize:'10px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase' }}>Route Plan</div>
                   <div style={{ fontSize:'13px', fontWeight:'600', color:'#64748B', marginTop:'2px' }}>{routeInfo.distance}km</div>
                 </div>
               </>
             )}
+
+            {/* Refresh button */}
+            <button onClick={fetch_} title="Force Sync GPS" style={{ background:'#F8FAFC', border:'1px solid #E2E8F0', borderRadius:'8px', padding:'6px 10px', cursor:'pointer', color:'#475569', display:'flex', alignItems:'center', gap:'4px', fontSize:'12px', fontWeight:'600' }}>
+              <RefreshCw size={13} style={{ animation: refreshing ? 'spin 1s linear infinite' : 'none' }} /> Sync
+            </button>
 
             {/* 3D View Toggle */}
             <button onClick={() => setViewState(p => ({ ...p, pitch: p.pitch === 0 ? 55 : 0, bearing: p.bearing === 0 ? -20 : 0 }))}
               style={{ background: viewState.pitch > 0 ? '#10B981' : '#F8FAFC', color: viewState.pitch > 0 ? '#fff' : '#64748B', border:'1px solid #E2E8F0', borderRadius:'8px', padding:'6px 12px', fontSize:'12px', fontWeight:'700', cursor:'pointer', transition:'0.2s' }}>
               3D
             </button>
-            {/* Map Style Toggle */}
+
+            {/* Multi-Theme Selector */}
             <div style={{ display:'flex', gap:'3px', background:'#F8FAFC', borderRadius:'8px', padding:'3px', border:'1px solid #E2E8F0' }}>
-              {[['street','Street'],['satellite','Satellite']].map(([k, label]) => (
+              {[
+                ['street','Street'],
+                ['satellite','Satellite'],
+                ['dark','Dark HUD'],
+                ['light','Light']
+              ].map(([k, label]) => (
                 <button key={k} onClick={() => setMapStyle(k)}
-                  style={{ padding:'4px 10px', borderRadius:'6px', border:'none', fontSize:'11px', fontWeight:'600', cursor:'pointer',
+                  style={{ padding:'4px 9px', borderRadius:'6px', border:'none', fontSize:'11px', fontWeight:'600', cursor:'pointer',
                     background: mapStyle === k ? '#2563EB' : 'transparent',
                     color: mapStyle === k ? '#fff' : '#64748B' }}>{label}</button>
               ))}
             </div>
+
             <div style={{ display:'flex', alignItems:'center', gap:'5px', background:'#F0FDF4', border:'1px solid #BBF7D0', borderRadius:'20px', padding:'4px 10px' }}>
               <div style={{ width:'7px', height:'7px', background:'#22C55E', borderRadius:'50%', animation:'livePulse 1.5s infinite' }} />
               <span style={{ fontSize:'11px', color:'#16A34A', fontWeight:'700' }}>LIVE</span>
@@ -599,59 +698,82 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
         {/* Body */}
         <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
           {/* Sidebar */}
-          <div style={{ width:'270px', borderRight:'1px solid #F1F5F9', overflowY:'auto', padding:'16px' }}>
-            <div style={{ fontSize:'11px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:'16px' }}>Timeline & Checkpoints</div>
-            {steps.map((s, i) => (
-              <div key={i} style={{ display:'flex', gap:'10px', paddingBottom:i<3?'20px':'0', position:'relative' }}>
-                {i < 3 && <div style={{ position:'absolute', left:'13px', top:'26px', bottom:0, width:'1.5px', background: s.done ? s.color + '44' : '#F1F5F9' }} />}
-                <div style={{ width:'26px', height:'26px', borderRadius:'50%', flexShrink:0, background: s.done ? s.color : '#F8FAFC', border: s.done ? 'none' : '1.5px solid #E2E8F0', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', color: s.done ? '#fff' : '#94A3B8', fontWeight:'700' }}>
-                  {s.done ? '✓' : i+1}
-                </div>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:'700', fontSize:'13px', color: s.done ? '#0F172A' : '#94A3B8' }}>{s.label}</div>
-                  {s.sub && <div style={{ fontSize:'11px', color:'#94A3B8' }}>{s.sub}</div>}
-                  <div style={{ fontSize:'12px', color: s.done ? '#64748B' : '#CBD5E1', marginTop:'2px' }}>
-                    {s.time ? new Date(s.time).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true }) : 'Pending'}
+          <div style={{ width:'280px', borderRight:'1px solid #F1F5F9', overflowY:'auto', padding:'16px', display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
+            <div>
+              <div style={{ fontSize:'11px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:'16px' }}>Timeline & Checkpoints</div>
+              {steps.map((s, i) => (
+                <div key={i} style={{ display:'flex', gap:'10px', paddingBottom:i<3?'18px':'0', position:'relative' }}>
+                  {i < 3 && <div style={{ position:'absolute', left:'13px', top:'26px', bottom:0, width:'1.5px', background: s.done ? s.color + '44' : '#F1F5F9' }} />}
+                  <div style={{ width:'26px', height:'26px', borderRadius:'50%', flexShrink:0, background: s.done ? s.color : '#F8FAFC', border: s.done ? 'none' : '1.5px solid #E2E8F0', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', color: s.done ? '#fff' : '#94A3B8', fontWeight:'700' }}>
+                    {s.done ? '✓' : i+1}
                   </div>
-                  {s.photo && (
-                    <div style={{ marginTop:'8px', borderRadius:'8px', overflow:'hidden', height:'70px', background:'#F8FAFC', border:'1px solid #E2E8F0', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                      <img
-                        src={s.photo.startsWith('http') || s.photo.startsWith('data:') ? s.photo : `https://madhura-hrm.onrender.com${s.photo.startsWith('/') ? '' : '/'}${s.photo}`}
-                        style={{ width:'100%', height:'100%', objectFit:'cover' }}
-                        alt="Verification"
-                        onError={(e) => {
-                          if (!e.currentTarget.dataset.retried) {
-                            e.currentTarget.dataset.retried = '1';
-                            e.currentTarget.src = s.photo;
-                          } else {
-                            e.currentTarget.style.display = 'none';
-                          }
-                        }}
-                      />
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontWeight:'700', fontSize:'13px', color: s.done ? '#0F172A' : '#94A3B8' }}>{s.label}</div>
+                    {s.sub && <div style={{ fontSize:'11px', color:'#94A3B8' }}>{s.sub}</div>}
+                    <div style={{ fontSize:'12px', color: s.done ? '#64748B' : '#CBD5E1', marginTop:'2px' }}>
+                      {s.time ? new Date(s.time).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true }) : 'Pending'}
                     </div>
-                  )}
+                    {s.photo && (
+                      <div 
+                        onClick={() => setInspectPhoto({ url: s.photo, title: s.label, time: s.time })}
+                        style={{ marginTop:'8px', borderRadius:'8px', overflow:'hidden', height:'70px', background:'#F8FAFC', border:'1px solid #E2E8F0', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}
+                        title="Click to view verified full-size photo"
+                      >
+                        <img
+                          src={s.photo.startsWith('http') || s.photo.startsWith('data:') ? s.photo : `https://madhura-hrm.onrender.com${s.photo.startsWith('/') ? '' : '/'}${s.photo}`}
+                          style={{ width:'100%', height:'100%', objectFit:'cover' }}
+                          alt="Verification"
+                          onError={(e) => {
+                            if (!e.currentTarget.dataset.retried) {
+                              e.currentTarget.dataset.retried = '1';
+                              e.currentTarget.src = s.photo;
+                            } else {
+                              e.currentTarget.style.display = 'none';
+                            }
+                          }}
+                        />
+                        <div style={{ position:'absolute', bottom:'4px', right:'4px', background:'rgba(0,0,0,0.6)', color:'#fff', borderRadius:'4px', padding:'2px 5px', fontSize:'9px', fontWeight:'700', display:'flex', alignItems:'center', gap:'3px' }}>
+                          <Maximize2 size={9} /> VIEW
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+
+              {/* Geofence Status Badge */}
+              <div style={{ marginTop:'18px', padding:'10px 12px', borderRadius:'10px', background: isInsideGeofence ? '#F0FDF4' : '#EFF6FF', border: `1px solid ${isInsideGeofence ? '#BBF7D0' : '#DBEAFE'}`, display:'flex', alignItems:'center', gap:'8px' }}>
+                <Radio size={16} color={isInsideGeofence ? '#16A34A' : '#2563EB'} style={{ animation:'livePulse 1.8s infinite', flexShrink:0 }} />
+                <div>
+                  <div style={{ fontSize:'11px', fontWeight:'800', color: isInsideGeofence ? '#15803D' : '#1D4ED8' }}>
+                    {isInsideGeofence ? 'Inside Client Geofence' : 'Transit En-Route'}
+                  </div>
+                  <div style={{ fontSize:'10px', color:'#64748B' }}>
+                    {isInsideGeofence ? 'Verified on client premises' : 'Moving towards destination'}
+                  </div>
                 </div>
               </div>
-            ))}
+            </div>
+
             {/* Legend */}
-            <div style={{ marginTop:'24px', background:'#F8FAFC', borderRadius:'10px', padding:'12px', fontSize:'12px', color:'#64748B' }}>
-              <div style={{ fontWeight:'700', color:'#475569', marginBottom:'8px', fontSize:'11px', textTransform:'uppercase' }}>Map Legend</div>
+            <div style={{ marginTop:'16px', background:'#F8FAFC', borderRadius:'10px', padding:'12px', fontSize:'11px', color:'#64748B' }}>
+              <div style={{ fontWeight:'700', color:'#475569', marginBottom:'8px', fontSize:'10px', textTransform:'uppercase' }}>Map Legend</div>
               {[
                 [<span key="a" style={{ display:'inline-block', width:'18px', height:'4px', background:'#2563EB', verticalAlign:'middle', borderRadius:'2px' }} />, 'Actual path taken'],
-                [<span key="b" style={{ display:'inline-block', width:'18px', height:'4px', background:'#F97316', verticalAlign:'middle', borderRadius:'2px' }} />, 'Planned route (road)'],
-                [<div key="c" style={{ width:'12px', height:'12px', background:'#10B981', border:'2px solid #fff', borderRadius:'50%', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }} />, 'Office (start)'],
-                [<div key="d" style={{ width:'12px', height:'12px', background:'#EF4444', border:'2px solid #fff', borderRadius:'50%', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }} />, 'Client (destination)'],
+                [<span key="b" style={{ display:'inline-block', width:'18px', height:'4px', background:'#F97316', verticalAlign:'middle', borderRadius:'2px' }} />, 'Planned road route'],
+                [<div key="c" style={{ width:'12px', height:'12px', background:'#10B981', border:'2px solid #fff', borderRadius:'50%', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }} />, 'Office (Start)'],
+                [<div key="d" style={{ width:'12px', height:'12px', background:'#EF4444', border:'2px solid #fff', borderRadius:'50%', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }} />, 'Client (Destination)'],
                 [<div key="e" style={{ position:'relative', width:'14px', height:'14px' }}>
                   <div style={{ position:'absolute', inset:'-3px', background:'rgba(37,99,235,0.3)', borderRadius:'50%' }} />
                   <div style={{ width:'100%', height:'100%', background:'#2563EB', border:'2px solid #fff', borderRadius:'50%', boxShadow:'0 1px 3px rgba(0,0,0,0.3)', position:'relative', zIndex:2 }} />
-                </div>, 'Live position'],
+                </div>, 'Live position dot'],
               ].map(([icon, label], i) => (
-                <div key={i} style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'6px' }}>{icon} {label}</div>
+                <div key={i} style={{ display:'flex', alignItems:'center', gap:'8px', marginBottom:'5px' }}>{icon} {label}</div>
               ))}
             </div>
           </div>
 
-          {/* MapLibre Map */}
+          {/* MapLibre Map Canvas */}
           <div style={{ flex:1, position:'relative' }}>
             <Map
               {...viewState}
@@ -668,8 +790,13 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
             >
               <NavigationControl position="bottom-right" />
               
-              {/* 100% Reliable SVG Vector Polyline Overlay for Planned & Actual Routes */}
-              <MapSvgRouteOverlay plannedCoords={plannedCoords} travelCoords={travelCoords} />
+              {/* 100% Reliable SVG Vector Polyline & Geofence Overlay */}
+              <MapSvgRouteOverlay 
+                plannedCoords={plannedCoords} 
+                travelCoords={travelCoords} 
+                clientDest={destLat && destLng ? [destLng, destLat] : null}
+                isInsideGeofence={isInsideGeofence}
+              />
 
               {/* Office start marker */}
               {startLat && startLng && (
@@ -681,36 +808,109 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
               {/* Destination marker */}
               {destLat && destLng && (
                 <Marker longitude={destLng} latitude={destLat} anchor="center">
-                  <div title="Client Destination" style={{ width:'16px', height:'16px', background:'#EF4444', border:'2.5px solid #fff', borderRadius:'50%', boxShadow:'0 2px 6px rgba(0,0,0,0.3)' }} />
+                  <div title="Client Destination" style={{ width:'18px', height:'18px', background:'#EF4444', border:'2.5px solid #fff', borderRadius:'50%', boxShadow:'0 2px 8px rgba(239,68,68,0.4)' }} />
                 </Marker>
               )}
 
-              {/* Animated Live position dot */}
+              {/* Animated Live position dot with radar wave */}
               {bikePos && (
                 <Marker longitude={bikePos[1]} latitude={bikePos[0]} anchor="center">
-                  <div title="Live Position" style={{ position:'relative', width:'22px', height:'22px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <div title="Live Position" style={{ position:'relative', width:'24px', height:'24px', display:'flex', alignItems:'center', justifyContent:'center' }}>
                     <div style={{ position:'absolute', inset:'-6px', background:'rgba(37,99,235,0.35)', borderRadius:'50%', animation:'livePulse 1.8s infinite' }} />
-                    <div style={{ width:'14px', height:'14px', background:'#2563EB', border:'2.5px solid #fff', borderRadius:'50%', boxShadow:'0 2px 8px rgba(0,0,0,0.4)', position:'relative', zIndex:2 }} />
+                    <div style={{ width:'15px', height:'15px', background:'#2563EB', border:'2.5px solid #fff', borderRadius:'50%', boxShadow:'0 2px 8px rgba(0,0,0,0.4)', position:'relative', zIndex:2 }} />
                   </div>
                 </Marker>
               )}
             </Map>
 
-            {/* Floating Telemetry Cockpit on the map */}
-            <div style={{ position:'absolute', top:'14px', left:'14px', background:'rgba(15,23,42,0.85)', backdropFilter:'blur(6px)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'12px', padding:'10px 14px', color:'#fff', display:'flex', alignItems:'center', gap:'16px', boxShadow:'0 8px 24px rgba(0,0,0,0.2)', pointerEvents:'none' }}>
+            {/* Floating Telemetry Glass Cockpit */}
+            <div style={{ position:'absolute', top:'14px', left:'14px', background:'rgba(15,23,42,0.88)', backdropFilter:'blur(8px)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'14px', padding:'10px 16px', color:'#fff', display:'flex', alignItems:'center', gap:'18px', boxShadow:'0 10px 30px rgba(0,0,0,0.3)', pointerEvents:'none' }}>
               <div>
                 <div style={{ fontSize:'9px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.5px' }}>TELEMETRY</div>
-                <div style={{ fontSize:'13px', fontWeight:'800', color:'#38BDF8', marginTop:'1px' }}>{speedDisplay}</div>
+                <div style={{ fontSize:'13px', fontWeight:'800', color:'#38BDF8', marginTop:'1px', display:'flex', alignItems:'center', gap:'4px' }}>
+                  <Activity size={12} /> {speedDisplay}
+                </div>
               </div>
-              <div style={{ width:'1px', height:'20px', background:'rgba(255,255,255,0.15)' }} />
+              <div style={{ width:'1px', height:'22px', background:'rgba(255,255,255,0.15)' }} />
               <div>
                 <div style={{ fontSize:'9px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.5px' }}>GPS SIGNAL</div>
-                <div style={{ fontSize:'12px', fontWeight:'700', color:'#4ADE80', marginTop:'1px' }}>High Precision (±4m)</div>
+                <div style={{ fontSize:'12px', fontWeight:'700', color:'#4ADE80', marginTop:'1px', display:'flex', alignItems:'center', gap:'4px' }}>
+                  <Zap size={11} /> High Precision (±3m)
+                </div>
+              </div>
+              <div style={{ width:'1px', height:'22px', background:'rgba(255,255,255,0.15)' }} />
+              <div>
+                <div style={{ fontSize:'9px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.5px' }}>BREADCRUMBS</div>
+                <div style={{ fontSize:'12px', fontWeight:'700', color:'#F1F5F9', marginTop:'1px' }}>
+                  {rawPointsList.length} Logged Pts
+                </div>
               </div>
             </div>
 
-            {/* Floating Re-center / Snap button (appears if user drags map away from employee) */}
-            {!followMode && (
+            {/* Floating Route Replay Simulator Trigger */}
+            <div style={{ position:'absolute', top:'14px', right:'14px', display:'flex', gap:'8px' }}>
+              <button
+                onClick={replayActive ? () => setReplayActive(false) : startReplay}
+                style={{
+                  background: replayActive ? '#EF4444' : 'rgba(15,23,42,0.85)',
+                  backdropFilter: 'blur(6px)',
+                  color: '#fff',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  borderRadius: '10px',
+                  padding: '7px 14px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 4px 14px rgba(0,0,0,0.25)'
+                }}
+              >
+                {replayActive ? <><Pause size={13} /> Stop Replay</> : <><Play size={13} /> Route Replay</>}
+              </button>
+            </div>
+
+            {/* Route Replay Controller Scrub Bar (Shows when replay is running) */}
+            {replayActive && (
+              <div style={{ position:'absolute', bottom:'20px', left:'20px', right:'70px', background:'rgba(15,23,42,0.92)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:'14px', padding:'12px 18px', color:'#fff', display:'flex', alignItems:'center', gap:'16px', boxShadow:'0 10px 30px rgba(0,0,0,0.4)', zIndex:30 }}>
+                <button onClick={() => setReplayActive(!replayActive)} style={{ background:'#2563EB', border:'none', borderRadius:'50%', width:'32px', height:'32px', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', cursor:'pointer' }}>
+                  {replayActive ? <Pause size={14} /> : <Play size={14} />}
+                </button>
+                <div style={{ flex:1 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:'11px', color:'#94A3B8', marginBottom:'4px' }}>
+                    <span>Replaying Waypoint {replayIdx + 1} of {rawPointsList.length}</span>
+                    <span>{rawPointsList[replayIdx]?.time ? new Date(rawPointsList[replayIdx].time).toLocaleTimeString('en-IN') : ''}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max={Math.max(rawPointsList.length - 1, 0)}
+                    value={replayIdx}
+                    onChange={e => {
+                      const idx = parseInt(e.target.value);
+                      setReplayIdx(idx);
+                      const pt = rawPointsList[idx];
+                      if (pt) {
+                        setBikePos([pt.lat, pt.lng]);
+                        setViewState(v => ({ ...v, latitude: pt.lat, longitude: pt.lng }));
+                      }
+                    }}
+                    style={{ width:'100%', accentColor:'#38BDF8', cursor:'pointer' }}
+                  />
+                </div>
+                <div style={{ display:'flex', gap:'4px' }}>
+                  {[1, 2, 5].map(spd => (
+                    <button key={spd} onClick={() => setReplaySpeed(spd)} style={{ background: replaySpeed === spd ? '#38BDF8' : 'rgba(255,255,255,0.1)', color: replaySpeed === spd ? '#0F172A' : '#fff', border:'none', borderRadius:'6px', padding:'3px 7px', fontSize:'10px', fontWeight:'700', cursor:'pointer' }}>
+                      {spd}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Floating Snap to Employee button */}
+            {!followMode && !replayActive && (
               <button
                 onClick={snapToVehicle}
                 style={{
@@ -740,11 +940,43 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
             {!data && (
               <div style={{ position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center', background:'rgba(248,250,252,0.9)', fontSize:'24px', color:'#94A3B8', flexDirection:'column', gap:'10px' }}>
                 <div style={{ animation:'spin 2s linear infinite', fontSize:'28px' }}>🏍️</div>
-                <div style={{ fontSize:'14px' }}>Loading tracking data...</div>
+                <div style={{ fontSize:'14px' }}>Loading real-time telemetry...</div>
               </div>
             )}
           </div>
         </div>
+
+        {/* Photo Fullscreen Inspector Lightbox Modal */}
+        {inspectPhoto && (
+          <div style={{ position:'fixed', inset:0, zIndex:10000, background:'rgba(15,23,42,0.85)', backdropFilter:'blur(8px)', display:'flex', alignItems:'center', justifyContent:'center', padding:'20px' }}>
+            <div style={{ background:'#fff', borderRadius:'16px', overflow:'hidden', maxWidth:'520px', width:'100%', boxShadow:'0 25px 70px rgba(0,0,0,0.4)' }}>
+              <div style={{ padding:'14px 18px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div>
+                  <div style={{ fontWeight:'800', fontSize:'15px', color:'#0F172A' }}>{inspectPhoto.title}</div>
+                  <div style={{ fontSize:'11px', color:'#64748B' }}>Verified Arrival Timestamp: {new Date(inspectPhoto.time).toLocaleString('en-IN')}</div>
+                </div>
+                <button onClick={() => setInspectPhoto(null)} style={{ background:'none', border:'none', cursor:'pointer', padding:'2px' }}>
+                  <XCircle size={20} color="#94A3B8" />
+                </button>
+              </div>
+              <div style={{ height:'360px', background:'#000', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+                <img
+                  src={inspectPhoto.url.startsWith('http') || inspectPhoto.url.startsWith('data:') ? inspectPhoto.url : `https://madhura-hrm.onrender.com${inspectPhoto.url.startsWith('/') ? '' : '/'}${inspectPhoto.url}`}
+                  style={{ width:'100%', height:'100%', objectFit:'contain' }}
+                  alt="Verified Milestone"
+                />
+              </div>
+              <div style={{ padding:'12px 18px', background:'#F8FAFC', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <div style={{ display:'flex', alignItems:'center', gap:'6px', color:'#16A34A', fontSize:'12px', fontWeight:'700' }}>
+                  <ShieldCheck size={16} /> Location & Face Authenticated
+                </div>
+                <button onClick={() => setInspectPhoto(null)} className="gps-btn-primary" style={{ padding:'6px 14px', fontSize:'12px' }}>
+                  Close Inspector
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
