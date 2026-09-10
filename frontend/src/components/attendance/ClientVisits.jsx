@@ -114,7 +114,7 @@ async function getOSRMRoute(fromLat, fromLng, toLat, toLng) {
             for (let i = 0; i < segCount; i++) {
               const startIdx = i * stepSize;
               const endIdx = (i === segCount - 1) ? totalPts - 1 : (i + 1) * stepSize;
-              const segCoords = coords.slice(startIdx, endIdx + 1).map(c => [c[1], c[0]]);
+              const segCoords = coords.slice(startIdx, endIdx + 1); // Exact GeoJSON [[lng, lat], ...]
               let trafficStatus = 'fast'; // Google Navigation Blue
               if (rIdx === 0) {
                 if (i === 1 && segCount >= 3) trafficStatus = 'moderate'; // Amber / Moderate slowdown
@@ -169,7 +169,7 @@ async function getOSRMRoute(fromLat, fromLng, toLat, toLng) {
     coordinatesGeoJson: [[fromLng, fromLat], [toLng, toLat]],
     distance: d.toFixed(1),
     duration: Math.max(1, Math.round(d * 2.5)),
-    trafficSegments: [{ coords: [[fromLat, fromLng], [toLat, toLng]], status: 'fast' }],
+    trafficSegments: [{ coords: [[fromLng, fromLat], [toLng, toLat]], status: 'fast' }],
     steps: [
       { type: 'depart', modifier: 'straight', instruction: 'Head towards destination', distance: Math.round(d * 1000), duration: Math.round(d * 150), name: 'Direct Route' },
       { type: 'arrive', modifier: 'straight', instruction: 'Arrive at destination', distance: 0, duration: 0, name: 'Destination' }
@@ -965,88 +965,7 @@ const NavigationManeuverIcon = ({ step, size = 22, color = '#FFFFFF' }) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SVG ROAD POLYLINE OVERLAY (Google Maps Multi-Route & Traffic Flow Overlay)
-// ═══════════════════════════════════════════════════════════════════════════
-const RouteSvgOverlay = ({ coordinates, alternativeRoutes = [], onSelectAlternative, trafficSegments = [] }) => {
-  const { current: map } = useMap();
-  const [, setTick] = useState(0);
-
-  useEffect(() => {
-    if (!map) return;
-    const onRender = () => setTick(t => t + 1);
-    map.on('move', onRender);
-    map.on('zoom', onRender);
-    map.on('rotate', onRender);
-    map.on('pitch', onRender);
-    map.on('resize', onRender);
-    return () => {
-      map.off('move', onRender);
-      map.off('zoom', onRender);
-      map.off('rotate', onRender);
-      map.off('pitch', onRender);
-      map.off('resize', onRender);
-    };
-  }, [map]);
-
-  if (!map) return null;
-
-  const projectCoords = (coords) => {
-    if (!coords || coords.length < 2) return '';
-    return coords.map(c => {
-      const p = map.project(c);
-      return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
-    }).join(' ');
-  };
-
-  const activePoints = projectCoords(coordinates);
-
-  return (
-    <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:10 }}>
-      {/* 1. Alternative Route Paths (Rendered in clean muted slate-gray underneath) */}
-      {alternativeRoutes && alternativeRoutes.map((alt, idx) => {
-        const altPoints = projectCoords(alt.coordinatesGeoJson);
-        if (!altPoints) return null;
-        return (
-          <g key={alt.id || idx} style={{ cursor:'pointer', pointerEvents:'auto' }} onClick={() => onSelectAlternative && onSelectAlternative(alt)}>
-            <polyline points={altPoints} fill="none" stroke="#FFFFFF" strokeWidth="9" strokeLinecap="round" strokeLinejoin="round" opacity="0.75" />
-            <polyline points={altPoints} fill="none" stroke="#94A3B8" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
-          </g>
-        );
-      })}
-
-      {/* 2. Active Primary Route Casing (Crisp White Glow) */}
-      {activePoints && (
-        <polyline points={activePoints} fill="none" stroke="#FFFFFF" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
-      )}
-
-      {/* 3. Active Primary Route Base (Vibrant Google Maps Blue) */}
-      {activePoints && (
-        <polyline points={activePoints} fill="none" stroke="#1A73E8" strokeWidth="7" strokeLinecap="round" strokeLinejoin="round" />
-      )}
-
-      {/* 4. Live Traffic Congestion Segments (Google Yellow/Amber & Red Overlays) */}
-      {trafficSegments && trafficSegments.map((seg, sIdx) => {
-        if (!seg.coords || seg.coords.length < 2 || seg.status === 'fast') return null;
-        const segGeoJson = seg.coords.map(([lat, lng]) => [lng, lat]);
-        const segPts = projectCoords(segGeoJson);
-        if (!segPts) return null;
-        const trafficColor = seg.status === 'slow' ? '#EF4444' : '#F59E0B';
-        return (
-          <polyline
-            key={sIdx}
-            points={segPts}
-            fill="none"
-            stroke={trafficColor}
-            strokeWidth="7"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        );
-      })}
-    </svg>
-  );
-};
-
+// RIDER GOOGLE MAPS LIVE TURN-BY-TURN NAVIGATION MODAL
 // ═══════════════════════════════════════════════════════════════════════════
 // RIDER GOOGLE MAPS LIVE TURN-BY-TURN NAVIGATION MODAL
 // ═══════════════════════════════════════════════════════════════════════════
@@ -1093,6 +1012,32 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
   const [destQuery, setDestQuery] = useState('');
   const [destResults, setDestResults] = useState([]);
   const [showSearchModal, setShowSearchModal] = useState(false);
+
+  // Memoized alternative routes and traffic features for 60 FPS GPU WebGL rendering
+  const alternativeRoutes = useMemo(() => {
+    return (routeData?.allRoutes || []).filter(r => r.id !== routeData?.id);
+  }, [routeData]);
+
+  const trafficGeoJson = useMemo(() => {
+    if (!routeData?.trafficSegments || routeData.trafficSegments.length === 0) {
+      return { type: 'FeatureCollection', features: [] };
+    }
+    const features = routeData.trafficSegments
+      .filter(seg => seg.status !== 'fast' && seg.coords && seg.coords.length > 1)
+      .map((seg, i) => ({
+        type: 'Feature',
+        id: `traffic-${i}`,
+        properties: {
+          status: seg.status,
+          color: seg.status === 'slow' ? '#EF4444' : '#F59E0B'
+        },
+        geometry: {
+          type: 'LineString',
+          coordinates: seg.coords // Exact GeoJSON [[lng, lat], ...]
+        }
+      }));
+    return { type: 'FeatureCollection', features };
+  }, [routeData]);
 
   // References for zero-jitter, single-flight route calculations
   const routeCalculatedRef = useRef(false);
@@ -1621,13 +1566,85 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         >
           <NavigationControl position="bottom-right" />
 
-          {/* Clean Solid Blue Road Route Line with Traffic Flow & Alternatives */}
-          <RouteSvgOverlay
-            coordinates={plannedCoords}
-            trafficSegments={routeData?.trafficSegments}
-            alternativeRoutes={(routeData?.allRoutes || []).filter(r => r.id !== routeData?.id)}
-            onSelectAlternative={handleSelectRoute}
-          />
+          {/* 1. Alternative Route Paths (GPU WebGL Muted Slate Lines) */}
+          {alternativeRoutes && alternativeRoutes.length > 0 && (
+            <Source
+              id="nav-alt-routes"
+              type="geojson"
+              data={{
+                type: 'FeatureCollection',
+                features: alternativeRoutes.map((alt, i) => ({
+                  type: 'Feature',
+                  properties: { id: alt.id || i },
+                  geometry: {
+                    type: 'LineString',
+                    coordinates: alt.coordinatesGeoJson || []
+                  }
+                }))
+              }}
+            >
+              <Layer
+                id="nav-alt-casing"
+                type="line"
+                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                paint={{ 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.8 }}
+              />
+              <Layer
+                id="nav-alt-line"
+                type="line"
+                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                paint={{ 'line-color': '#94A3B8', 'line-width': 5, 'line-opacity': 0.95 }}
+              />
+            </Source>
+          )}
+
+          {/* 2. Active Primary Route (GPU WebGL Vibrant Google Navigation Blue with White Casing) */}
+          {plannedCoords && plannedCoords.length > 1 && (
+            <Source
+              id="nav-primary-route"
+              type="geojson"
+              data={{
+                type: 'Feature',
+                geometry: {
+                  type: 'LineString',
+                  coordinates: plannedCoords
+                }
+              }}
+            >
+              <Layer
+                id="nav-primary-casing"
+                type="line"
+                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                paint={{ 'line-color': '#FFFFFF', 'line-width': 10, 'line-opacity': 0.95 }}
+              />
+              <Layer
+                id="nav-primary-line"
+                type="line"
+                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                paint={{ 'line-color': '#1A73E8', 'line-width': 6, 'line-opacity': 1.0 }}
+              />
+            </Source>
+          )}
+
+          {/* 3. Live Traffic Flow Delay Segments (Amber & Red Congestion Hotspots) */}
+          {trafficGeoJson && trafficGeoJson.features && trafficGeoJson.features.length > 0 && (
+            <Source
+              id="nav-traffic-segments"
+              type="geojson"
+              data={trafficGeoJson}
+            >
+              <Layer
+                id="nav-traffic-line"
+                type="line"
+                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
+                paint={{
+                  'line-color': ['get', 'color'],
+                  'line-width': 6,
+                  'line-opacity': 1.0
+                }}
+              />
+            </Source>
+          )}
 
           {/* Start Origin Pin */}
           {startLat && startLng && (
