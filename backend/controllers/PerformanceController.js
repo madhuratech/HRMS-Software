@@ -5,6 +5,7 @@ const AppraisalService = require('../services/AppraisalService');
 const ReviewService = require('../services/ReviewService');
 const FeedbackService = require('../services/FeedbackService');
 const PromotionService = require('../services/PromotionService');
+const PerformanceScopeService = require('../services/PerformanceScopeService');
 
 const response = require('../utils/response');
 const getPagination = require('../utils/pagination');
@@ -53,7 +54,8 @@ const GoalController = {
         search: req.query.search || '',
         branch_id: req.query.department_id || req.query.branch_id || null
       };
-      const result = await GoalService.list(filters, pagination);
+      const scope = await PerformanceScopeService.getScope(req);
+      const result = await GoalService.list(filters, pagination, scope);
       return response(res, true, 200, 'Goals list retrieved successfully', {
         goals: result.rows,
         total: result.total,
@@ -66,7 +68,8 @@ const GoalController = {
   },
   async getDashboard(req, res) {
     try {
-      const stats = await GoalService.getDashboardStats();
+      const scope = await PerformanceScopeService.getScope(req);
+      const stats = await GoalService.getDashboardStats(scope);
       return response(res, true, 200, 'Goal stats retrieved successfully', stats);
     } catch (e) {
       return response(res, false, 500, 'Failed to retrieve goal stats', null, e.message);
@@ -119,7 +122,8 @@ const KpiController = {
         department_id: req.query.department_id || null,
         kra_id: req.query.kra_id || null
       };
-      const result = await KpiService.list(filters, pagination);
+      const scope = await PerformanceScopeService.getScope(req);
+      const result = await KpiService.list(filters, pagination, scope);
       return response(res, true, 200, 'KPIs list retrieved successfully', {
         kpis: result.rows,
         total: result.total,
@@ -132,7 +136,8 @@ const KpiController = {
   },
   async getDashboard(req, res) {
     try {
-      const stats = await KpiService.getDashboardStats();
+      const scope = await PerformanceScopeService.getScope(req);
+      const stats = await KpiService.getDashboardStats(scope);
       return response(res, true, 200, 'KPI stats retrieved successfully', stats);
     } catch (e) {
       return response(res, false, 500, 'Failed to retrieve KPI stats', null, e.message);
@@ -185,7 +190,8 @@ const KraController = {
         department_id: req.query.department_id || null,
         goal_id: req.query.goal_id || null
       };
-      const result = await KraService.list(filters, pagination);
+      const scope = await PerformanceScopeService.getScope(req);
+      const result = await KraService.list(filters, pagination, scope);
       return response(res, true, 200, 'KRAs list retrieved successfully', {
         kras: result.rows,
         total: result.total,
@@ -198,7 +204,8 @@ const KraController = {
   },
   async getDashboard(req, res) {
     try {
-      const stats = await KraService.getDashboardStats();
+      const scope = await PerformanceScopeService.getScope(req);
+      const stats = await KraService.getDashboardStats(scope);
       return response(res, true, 200, 'KRA stats retrieved successfully', stats);
     } catch (e) {
       return response(res, false, 500, 'Failed to retrieve KRA stats', null, e.message);
@@ -247,7 +254,8 @@ const AppraisalController = {
     try {
       const pagination = getPagination(req);
       const filters = { search: req.query.search || '', department_id: req.query.department_id || null };
-      const result = await AppraisalService.list(filters, pagination);
+      const scope = await PerformanceScopeService.getScope(req);
+      const result = await AppraisalService.list(filters, pagination, scope);
       return response(res, true, 200, 'Appraisals list retrieved successfully', {
         appraisals: result.rows,
         total: result.total,
@@ -260,7 +268,8 @@ const AppraisalController = {
   },
   async getDashboard(req, res) {
     try {
-      const stats = await AppraisalService.getDashboardStats();
+      const scope = await PerformanceScopeService.getScope(req);
+      const stats = await AppraisalService.getDashboardStats(scope);
       return response(res, true, 200, 'Appraisal stats retrieved successfully', stats);
     } catch (e) {
       return response(res, false, 500, 'Failed to retrieve appraisal stats', null, e.message);
@@ -314,7 +323,8 @@ const ReviewController = {
         employee_id: req.query.employee_id || null,
         goal_id: req.query.goal_id || null
       };
-      const result = await ReviewService.list(filters, pagination);
+      const scope = await PerformanceScopeService.getScope(req);
+      const result = await ReviewService.list(filters, pagination, scope);
       return response(res, true, 200, 'Reviews list retrieved successfully', {
         reviews: result.rows,
         total: result.total,
@@ -329,7 +339,8 @@ const ReviewController = {
     try {
       const { employeeId } = req.params;
       const goalId = req.query.goal_id || null;
-      const result = await ReviewService.getEmployeePerformanceTree(employeeId, goalId);
+      const scope = await PerformanceScopeService.getScope(req);
+      const result = await ReviewService.getEmployeePerformanceTree(employeeId, goalId, scope);
       return response(res, true, 200, 'Employee performance hierarchy retrieved successfully', result);
     } catch (e) {
       return response(res, false, 500, 'Failed to retrieve performance hierarchy', null, e.message);
@@ -345,7 +356,8 @@ const ReviewController = {
   },
   async getDashboard(req, res) {
     try {
-      const stats = await ReviewService.getDashboardStats();
+      const scope = await PerformanceScopeService.getScope(req);
+      const stats = await ReviewService.getDashboardStats(scope);
       return response(res, true, 200, 'Review stats retrieved successfully', stats);
     } catch (e) {
       return response(res, false, 500, 'Failed to retrieve review stats', null, e.message);
@@ -394,7 +406,8 @@ const FeedbackController = {
     try {
       const pagination = getPagination(req);
       const filters = { search: req.query.search || '', department_id: req.query.department_id || null };
-      const result = await FeedbackService.list(filters, pagination);
+      const scope = await PerformanceScopeService.getScope(req);
+      const result = await FeedbackService.list(filters, pagination, scope);
       return response(res, true, 200, 'Feedback list retrieved successfully', {
         feedbacks: result.rows,
         total: result.total,
@@ -407,7 +420,8 @@ const FeedbackController = {
   },
   async getDashboard(req, res) {
     try {
-      const stats = await FeedbackService.getDashboardStats();
+      const scope = await PerformanceScopeService.getScope(req);
+      const stats = await FeedbackService.getDashboardStats(scope);
       return response(res, true, 200, 'Feedback stats retrieved successfully', stats);
     } catch (e) {
       return response(res, false, 500, 'Failed to retrieve feedback stats', null, e.message);
@@ -456,7 +470,8 @@ const PromotionController = {
     try {
       const pagination = getPagination(req);
       const filters = { search: req.query.search || '' };
-      const result = await PromotionService.list(filters, pagination);
+      const scope = await PerformanceScopeService.getScope(req);
+      const result = await PromotionService.list(filters, pagination, scope);
       return response(res, true, 200, 'Promotions list retrieved successfully', {
         promotions: result.rows,
         total: result.total,
@@ -469,7 +484,8 @@ const PromotionController = {
   },
   async getDashboard(req, res) {
     try {
-      const stats = await PromotionService.getDashboardStats();
+      const scope = await PerformanceScopeService.getScope(req);
+      const stats = await PromotionService.getDashboardStats(scope);
       return response(res, true, 200, 'Promotion stats retrieved successfully', stats);
     } catch (e) {
       return response(res, false, 500, 'Failed to retrieve promotion stats', null, e.message);

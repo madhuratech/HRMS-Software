@@ -89,7 +89,7 @@ router.get("/team-attendance", authenticateJWT, (req, res) => {
 // Location Master CRUD (Admin only or authorized roles could be checked via role check if needed, but JWT check is core security)
 router.get("/punch-locations", authenticateJWT, attendanceController.getPunchLocations);
 router.get("/punch-locations/:id", authenticateJWT, attendanceController.getPunchLocationById);
-router.post("/punch-locations", authenticateJWT, attendanceController.createPunchLocation);
+router.post("/punch-locations", authenticateJWT, checkPermission('attendance', 'punch_locations', 'create'), attendanceController.createPunchLocation);
 router.put("/punch-locations/:id", authenticateJWT, attendanceController.updatePunchLocation);
 router.delete("/punch-locations/:id", authenticateJWT, attendanceController.deletePunchLocation);
 router.patch("/punch-locations/:id/status", authenticateJWT, attendanceController.togglePunchLocationStatus);
@@ -127,7 +127,7 @@ router.get("/regularization", authenticateJWT, (req, res) => {
   });
 });
 
-router.post("/regularization", authenticateJWT, (req, res) => {
+router.post("/regularization", authenticateJWT, checkPermission('attendance', 'regularization', 'create'), (req, res) => {
   const db = require("../config/database");
   const { employee_id, date, type, reason, time } = req.body;
   const sql = `
@@ -168,7 +168,7 @@ router.get("/overtime", authenticateJWT, (req, res) => {
   });
 });
 
-router.post("/overtime", authenticateJWT, (req, res) => {
+router.post("/overtime", authenticateJWT, checkPermission('attendance', 'overtime', 'create'), (req, res) => {
   const db = require("../config/database");
   const { employee_id, employee_name, date, hours, reason } = req.body;
   const sql = `

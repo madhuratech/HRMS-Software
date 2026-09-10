@@ -25,10 +25,12 @@ export function Login({ onLogin, onRegisterClick }) {
     setErrorMsg('');
 
     try {
+      // Send selectedRole so the backend can validate it against the actual account role
+      const selectedRole = loginType === 'admin' ? 'admin' : loginType;
       // Attempt real backend authentication
       const data = await apiFetch('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password, loginType })
+        body: JSON.stringify({ email, password, selectedRole })
       });
 
       if (data && data.success && data.user) {
@@ -46,34 +48,11 @@ export function Login({ onLogin, onRegisterClick }) {
       }
     } catch (err) {
       console.error('Login error:', err);
-      // If it is a real authentication/verification error from backend, show it
-      if (err.message && (err.message.toLowerCase().includes('verify') || err.message.toLowerCase().includes('invalid') || err.message.toLowerCase().includes('denied'))) {
+      // Show the backend-returned error message (e.g., role mismatch, invalid credentials)
+      if (err.message) {
         setErrorMsg(err.message);
       } else {
-        // Offline / demo fallback — resolve role from email heuristics
-        const e2 = email.toLowerCase();
-        let finalRole = 'SUPER_ADMIN';
-        let finalName = 'Admin User';
-        let finalId = 1;
-
-        if (loginType === 'employee') {
-          if (e2.includes('leader') || e2.includes('alex') || e2.includes('kiruthi') || e2.includes('dhilipan')) {
-            finalRole = 'TEAM_LEADER';
-            finalName = 'Dhilipan P';
-            finalId = 11;
-          } else if (e2.includes('hr') || e2.includes('branch') || e2.includes('manager')) {
-            finalRole = 'HR_MANAGER';
-            finalName = 'HR Manager';
-            finalId = 2;
-          } else {
-            finalRole = 'EMPLOYEE';
-            finalName = 'Dhilipan P';
-            finalId = 11;
-          }
-        }
-
-        const fallbackUser = { id: finalId, name: finalName, email, role: finalRole };
-        onLogin(finalRole, finalName, fallbackUser);
+        setErrorMsg('Unable to connect to the server. Please try again later.');
       }
     } finally {
       setLoading(false);

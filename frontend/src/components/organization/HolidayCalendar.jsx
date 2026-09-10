@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
+import { canCreate, canEdit, canDelete, canExport } from '../../lib/permissions';
 import {
   CalendarDays,
   CalendarHeart,
@@ -349,8 +350,12 @@ export const HolidayCalendar = () => {
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold text-[#0A1629]">Holiday Calendar</h1><p className="text-sm text-slate-500 mt-1">Manage company holidays and observances.</p></div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"><Download size={16} /> Export</button>
-          <button onClick={handleAdd} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"><Plus size={16} /> Add Holiday</button>
+          {canExport('organization', 'holiday_calendar') && (
+            <button className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"><Download size={16} /> Export</button>
+          )}
+          {canCreate('organization', 'holiday_calendar') && (
+            <button onClick={handleAdd} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"><Plus size={16} /> Add Holiday</button>
+          )}
         </div>
       </div>
 
@@ -417,7 +422,9 @@ export const HolidayCalendar = () => {
             <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mb-4"><CalendarDays size={24} className="text-slate-400" /></div>
             <h3 className="text-lg font-semibold text-slate-700">No Holidays Found</h3>
             <p className="text-sm text-slate-500 mt-1">Add a new holiday to the calendar.</p>
-            <button onClick={handleAdd} className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"><Plus size={16} /> Add Holiday</button>
+            {canCreate('organization', 'holiday_calendar') && (
+              <button onClick={handleAdd} className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"><Plus size={16} /> Add Holiday</button>
+            )}
           </div>
         ) : (
           <table className="w-full">
@@ -445,8 +452,12 @@ export const HolidayCalendar = () => {
                     <td className="py-4 px-4 whitespace-nowrap text-left">
                       <div className="flex items-center justify-start gap-2">
                         <button onClick={() => handleOpenView(item)} className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"><Eye size={16} /></button>
-                        <button onClick={() => handleOpenEdit(item)} className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"><Edit2 size={16} /></button>
-                        <button onClick={() => handleOpenDelete(item)} className="p-1.5 border border-red-100 rounded-lg text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={16} /></button>
+                        {canEdit('organization', 'holiday_calendar') && (
+                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"><Edit2 size={16} /></button>
+                        )}
+                        {canDelete('organization', 'holiday_calendar') && (
+                          <button onClick={() => handleOpenDelete(item)} className="p-1.5 border border-red-100 rounded-lg text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={16} /></button>
+                        )}
                       </div>
                     </td>
                   </tr>

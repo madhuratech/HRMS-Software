@@ -422,32 +422,28 @@ export default function Goals() {
               size="sm"
             />
           </div>
-          <button 
-            disabled={!canCreate('goals')}
-            onClick={() => {
-              if (!checkActionPermission('goals', 'CREATE')) {
-                return;
-              }
-              setShowAddModal(true);
-            }} 
-            style={{ 
-              padding: '10px 20px', 
-              borderRadius: '8px', 
-              border: 'none', 
-              background: canCreate('goals') ? '#2952E3' : '#94A3B8', 
-              color: '#FFF', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px', 
-              cursor: canCreate('goals') ? 'pointer' : 'not-allowed', 
-              fontSize: '14px', 
-              fontWeight: '500',
-              whiteSpace: 'nowrap',
-              flexShrink: 0
-            }}
-          >
-            <Plus size={16} /> Add Goal
-          </button>
+          {canCreate('performance', 'goals') && (
+            <button 
+              onClick={() => setShowAddModal(true)} 
+              style={{ 
+                padding: '10px 20px', 
+                borderRadius: '8px', 
+                border: 'none', 
+                background: '#2952E3', 
+                color: '#FFF', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                cursor: 'pointer', 
+                fontSize: '14px', 
+                fontWeight: '500',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
+              }}
+            >
+              <Plus size={16} /> Add Goal
+            </button>
+          )}
         </div>
       </div>
 

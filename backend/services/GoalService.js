@@ -1,4 +1,5 @@
 const Performance = require('../models/Performance');
+const PerformanceScopeService = require('./PerformanceScopeService');
 
 class GoalService {
   static async create(data, userId) {
@@ -76,7 +77,7 @@ class GoalService {
     return rows[0] || null;
   }
 
-  static async list(filters, pagination) {
+  static async list(filters, pagination, scope = null) {
     let sql = `
       SELECT g.*, e.name as employee_name, COALESCE(dept.dept_name, b.branch_name, 'General') as department_name
       FROM goals g
@@ -96,6 +97,12 @@ class GoalService {
     if (filters.branch_id) {
       sql += ` AND (e.department_id = ? OR g.department_id = ? OR e.branch_id = ? OR dept.dept_name = ? OR b.branch_name = ?)`;
       params.push(filters.branch_id, filters.branch_id, filters.branch_id, filters.branch_id, filters.branch_id);
+    }
+
+    if (scope) {
+      const scopeFilter = PerformanceScopeService.getSqlFilter('g.employee_id', scope);
+      sql += scopeFilter.sqlFragment;
+      params.push(...scopeFilter.params);
     }
 
     sql += ` ORDER BY g.created_at DESC`;
@@ -124,18 +131,25 @@ class GoalService {
       countSql += ` AND (e.department_id = ? OR g.department_id = ? OR e.branch_id = ? OR dept.dept_name = ? OR b.branch_name = ?)`;
       countParams.push(filters.branch_id, filters.branch_id, filters.branch_id, filters.branch_id, filters.branch_id);
     }
+    if (scope) {
+      const scopeFilter = PerformanceScopeService.getSqlFilter('g.employee_id', scope);
+      countSql += scopeFilter.sqlFragment;
+      countParams.push(...scopeFilter.params);
+    }
 
     const totalRes = await Performance.query(countSql, countParams);
 
     return { rows, total: totalRes[0].count };
   }
 
-  static async getDashboardStats() {
-    const total = await Performance.query('SELECT COUNT(*) as count FROM goals');
-    const completed = await Performance.query("SELECT COUNT(*) as count FROM goals WHERE status = 'Completed'");
-    const inProgress = await Performance.query("SELECT COUNT(*) as count FROM goals WHERE status = 'On Track'");
-    const pending = await Performance.query("SELECT COUNT(*) as count FROM goals WHERE status = 'Not Started'");
-    const overdue = await Performance.query("SELECT COUNT(*) as count FROM goals WHERE status != 'Completed' AND target_date < CURDATE()");
+  static async getDashboardStats(scope = null) {
+    const scopeFilter = scope ? PerformanceScopeService.getSqlFilter('employee_id', scope) : { sqlFragment: '', params: [] };
+
+    const total = await Performance.query(`SELECT COUNT(*) as count FROM goals WHERE 1=1 ${scopeFilter.sqlFragment}`, scopeFilter.params);
+    const completed = await Performance.query(`SELECT COUNT(*) as count FROM goals WHERE status = 'Completed' ${scopeFilter.sqlFragment}`, scopeFilter.params);
+    const inProgress = await Performance.query(`SELECT COUNT(*) as count FROM goals WHERE status = 'On Track' ${scopeFilter.sqlFragment}`, scopeFilter.params);
+    const pending = await Performance.query(`SELECT COUNT(*) as count FROM goals WHERE status = 'Not Started' ${scopeFilter.sqlFragment}`, scopeFilter.params);
+    const overdue = await Performance.query(`SELECT COUNT(*) as count FROM goals WHERE status != 'Completed' AND target_date < CURDATE() ${scopeFilter.sqlFragment}`, scopeFilter.params);
 
     const totalVal = total[0].count || 0;
     const completedVal = completed[0].count || 0;
@@ -146,14 +160,16 @@ class GoalService {
     const rate = totalVal > 0 ? Math.round((completedVal / totalVal) * 100) : 0;
 
     // Use branches instead of departments (employees link to branch_id)
+    const deptScopeFilter = scope ? PerformanceScopeService.getSqlFilter('g.employee_id', scope) : { sqlFragment: '', params: [] };
     const deptSummary = await Performance.query(`
       SELECT b.branch_name as name, COUNT(g.id) as goals
       FROM branches b
       JOIN employees e ON e.branch_id = b.id
       JOIN goals g ON g.employee_id = e.id
+      WHERE 1=1 ${deptScopeFilter.sqlFragment}
       GROUP BY b.id, b.branch_name
       LIMIT 6
-    `);
+    `, deptScopeFilter.params);
 
     return {
       total: totalVal,

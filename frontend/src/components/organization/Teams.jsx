@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
+import { canCreate, canEdit, canDelete, canExport } from '../../lib/permissions';
 import {
   Users,
   UserCheck,
@@ -860,8 +861,12 @@ export const Teams = () => {
       <div className="flex items-center justify-between">
         <div><h1 className="text-2xl font-bold text-[#0A1629]">Teams</h1><p className="text-sm text-slate-500 mt-1">Manage all company teams and squads.</p></div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"><Download size={16} /> Export</button>
-          <button onClick={handleAdd} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"><Plus size={16} /> Add Team</button>
+          {canExport('organization', 'teams') && (
+            <button className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"><Download size={16} /> Export</button>
+          )}
+          {canCreate('organization', 'teams') && (
+            <button onClick={handleAdd} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors"><Plus size={16} /> Add Team</button>
+          )}
         </div>
       </div>
 
@@ -938,12 +943,14 @@ export const Teams = () => {
             </div>
             <h3 className="text-lg font-semibold text-slate-700">No Teams Found</h3>
             <p className="text-sm text-slate-500 mt-1 mb-6">Create your first team.</p>
-            <button
-              onClick={handleAdd}
-              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm mb-4"
-            >
-              <Plus size={16} /> Add Team
-            </button>
+            {canCreate('organization', 'teams') && (
+              <button
+                onClick={handleAdd}
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm mb-4"
+              >
+                <Plus size={16} /> Add Team
+              </button>
+            )}
           </div>
         ) : (
           <table className="w-full">
@@ -988,8 +995,12 @@ export const Teams = () => {
                     <td className="py-4 px-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
                         <button onClick={() => handleOpenView(item)} className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"><Eye size={16} /></button>
-                        <button onClick={() => handleOpenEdit(item)} className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"><Edit2 size={16} /></button>
-                        <button onClick={() => handleOpenDelete(item)} className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"><Trash2 size={16} /></button>
+                        {canEdit('organization', 'teams') && (
+                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"><Edit2 size={16} /></button>
+                        )}
+                        {canDelete('organization', 'teams') && (
+                          <button onClick={() => handleOpenDelete(item)} className="p-1.5 text-red-500 hover:bg-red-50 rounded transition-colors"><Trash2 size={16} /></button>
+                        )}
                       </div>
                     </td>
                   </tr>

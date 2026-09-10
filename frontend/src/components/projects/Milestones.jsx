@@ -281,11 +281,15 @@ export default function Milestones() {
                       <td style={{ padding:'0 14px', fontSize:13, color:'#374151', whiteSpace:'nowrap' }}>{m.owner_name || '—'}</td>
                       <td style={{ padding:'0 14px', whiteSpace:'nowrap' }}>
                         <div style={{ display:'flex', gap:4 }}>
-                          {m.status !== 'Completed' && (
+                          {m.status !== 'Completed' && hasPermission(null, null, 'projects', 'milestones', 'edit') && (
                             <button title="Mark Complete" onClick={() => handleComplete(m)} style={{ width:28,height:28,borderRadius:6,border:'none',background:'transparent',color:'#16A34A',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }} onMouseEnter={e=>e.currentTarget.style.background='#DCFCE7'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><CheckCircle2 size={13}/></button>
                           )}
-                          <button title="Edit" onClick={() => openEdit(m)} style={{ width:28,height:28,borderRadius:6,border:'none',background:'transparent',color:'#2563EB',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }} onMouseEnter={e=>e.currentTarget.style.background='#EFF6FF'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><Edit2 size={13}/></button>
-                          <button title="Delete" onClick={() => handleDelete(m)} style={{ width:28,height:28,borderRadius:6,border:'none',background:'transparent',color:'#DC2626',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }} onMouseEnter={e=>e.currentTarget.style.background='#FEE2E2'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><Trash2 size={13}/></button>
+                          {hasPermission(null, null, 'projects', 'milestones', 'edit') && (
+                            <button title="Edit" onClick={() => openEdit(m)} style={{ width:28,height:28,borderRadius:6,border:'none',background:'transparent',color:'#2563EB',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }} onMouseEnter={e=>e.currentTarget.style.background='#EFF6FF'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><Edit2 size={13}/></button>
+                          )}
+                          {hasPermission(null, null, 'projects', 'milestones', 'delete') && (
+                            <button title="Delete" onClick={() => handleDelete(m)} style={{ width:28,height:28,borderRadius:6,border:'none',background:'transparent',color:'#DC2626',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center' }} onMouseEnter={e=>e.currentTarget.style.background='#FEE2E2'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><Trash2 size={13}/></button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -343,7 +347,7 @@ export default function Milestones() {
       </div>
 
       {/* Add/Edit Milestone Modal */}
-      {showAddModal && (
+      {showAddModal && (editingId ? hasPermission(null, null, 'projects', 'milestones', 'edit') : hasPermission(null, null, 'projects', 'milestones', 'create')) && (
         <>
           <div 
             onClick={() => setShowAddModal(false)} 

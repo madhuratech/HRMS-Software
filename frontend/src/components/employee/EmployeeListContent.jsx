@@ -5,6 +5,7 @@ import {
   ChevronLeft, ChevronRight, CheckSquare, Square
 } from 'lucide-react';
 import EmployeeAvatar from './EmployeeAvatar';
+import { canCreate, canEdit, canExport, canImport } from '../../lib/permissions';
 import './employee-module.css';
 
 export default function EmployeeListContent() {
@@ -53,11 +54,17 @@ export default function EmployeeListContent() {
             </div>
           </div>
           <button className="hrms-secondary-btn" style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}><Filter size={16} /> Filters</button>
-          <button className="hrms-secondary-btn" style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}><CheckSquare size={16} /> Bulk Actions</button>
+          {canEdit('employees', 'employee_list') && (
+            <button className="hrms-secondary-btn" style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}><CheckSquare size={16} /> Bulk Actions</button>
+          )}
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
-          <button className="hrms-secondary-btn" style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}><Upload size={16} /> Import</button>
-          <button className="hrms-primary-btn" style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}><Download size={16} /> Export List</button>
+          {(canCreate('employees', 'add_employee') || canImport('employees', 'employee_list')) && (
+            <button className="hrms-secondary-btn" style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}><Upload size={16} /> Import</button>
+          )}
+          {canExport('employees', 'employee_list') && (
+            <button className="hrms-primary-btn" style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}><Download size={16} /> Export List</button>
+          )}
         </div>
       </div>
 

@@ -972,32 +972,28 @@ export default function Reviews() {
               size="sm"
             />
           </div>
-          <button 
-            disabled={!canCreate('reviews')}
-            onClick={() => {
-              if (!checkActionPermission('reviews', 'CREATE')) {
-                return;
-              }
-              setShowAddModal(true);
-            }} 
-            style={{ 
-              padding: '10px 20px', 
-              borderRadius: '8px', 
-              border: 'none', 
-              background: canCreate('reviews') ? '#2952E3' : '#94A3B8', 
-              color: '#FFF', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px', 
-              cursor: canCreate('reviews') ? 'pointer' : 'not-allowed', 
-              fontSize: '14px', 
-              fontWeight: '500',
-              whiteSpace: 'nowrap',
-              flexShrink: 0
-            }}
-          >
-            <Plus size={16} /> Add Review
-          </button>
+          {canCreate('performance', 'reviews') && (
+            <button 
+              onClick={() => setShowAddModal(true)} 
+              style={{ 
+                padding: '10px 20px', 
+                borderRadius: '8px', 
+                border: 'none', 
+                background: '#2952E3', 
+                color: '#FFF', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                cursor: 'pointer', 
+                fontSize: '14px', 
+                fontWeight: '500',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
+              }}
+            >
+              <Plus size={16} /> Add Review
+            </button>
+          )}
         </div>
       </div>
 

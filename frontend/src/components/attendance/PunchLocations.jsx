@@ -5,6 +5,7 @@ import {
   ArrowLeft, ChevronLeft, ChevronRight, CheckCircle2, XCircle
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import { canCreate } from '../../lib/permissions';
 import GeofenceMap from './GeofenceMap';
 
 export default function PunchLocations() {
@@ -228,12 +229,14 @@ export default function PunchLocations() {
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280' }}>Configure office geofences to validate employee punches</p>
         </div>
 
-        <button
-          onClick={openAddModal}
-          style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px', background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
-        >
-          <Plus size={16} /> Add Location
-        </button>
+        {canCreate('attendance', 'punch_locations') && (
+          <button
+            onClick={openAddModal}
+            style={{ display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px', background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}
+          >
+            <Plus size={16} /> Add Location
+          </button>
+        )}
       </div>
 
       {/* Filters Card */}

@@ -447,7 +447,7 @@ export function Sidebar({ userRole, onLogout, onClose }) {
                         : "custom-sidebar-btn"
                     )}
                   >
-                    {child.label}
+                    <span className="flex-1 text-left whitespace-nowrap overflow-hidden text-ellipsis">{child.label}</span>
                   </button>
                 );
               })}

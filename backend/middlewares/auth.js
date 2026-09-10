@@ -146,33 +146,45 @@ const checkPermission = (moduleKey, submoduleKey = null, action = 'view') => {
 
       if (submoduleKey) {
         const subClean = submoduleKey.toLowerCase().replace(/[-.]/g, '_');
-        const subAlias = subClean === 'gps_attendance' ? 'gps_attendance_punch' : (subClean === 'gps_attendance_punch' ? 'gps_attendance' : null);
+        const subAlias = subClean === 'gps_attendance' ? 'gps_attendance_punch' : (subClean === 'gps_attendance_punch' ? 'gps_attendance' : (subClean === 'tickets' ? 'support_tickets' : (subClean === 'support_tickets' ? 'tickets' : null)));
         const modClean = moduleKey ? moduleKey.toLowerCase().replace(/[-.]/g, '_') : null;
 
+        let explicitSubmoduleFound = false;
+        let submoduleVal = undefined;
+
         if (perms[subClean]) {
-          const val = extractVal(perms[subClean]);
-          if (val !== undefined) isAllowed = (val === true || val === 1 || val === '1' || val === 'true');
+          submoduleVal = extractVal(perms[subClean]);
+          if (submoduleVal !== undefined) explicitSubmoduleFound = true;
         }
-        if (!isAllowed && subAlias && perms[subAlias]) {
-          const val = extractVal(perms[subAlias]);
-          if (val !== undefined) isAllowed = (val === true || val === 1 || val === '1' || val === 'true');
+        if (!explicitSubmoduleFound && subAlias && perms[subAlias]) {
+          submoduleVal = extractVal(perms[subAlias]);
+          if (submoduleVal !== undefined) explicitSubmoduleFound = true;
         }
-        if (!isAllowed && modClean && perms[`${modClean}:${subClean}`]) {
-          const val = extractVal(perms[`${modClean}:${subClean}`]);
-          if (val !== undefined) isAllowed = (val === true || val === 1 || val === '1' || val === 'true');
+        if (!explicitSubmoduleFound && modClean && perms[`${modClean}:${subClean}`]) {
+          submoduleVal = extractVal(perms[`${modClean}:${subClean}`]);
+          if (submoduleVal !== undefined) explicitSubmoduleFound = true;
         }
-        if (!isAllowed && modClean && subAlias && perms[`${modClean}:${subAlias}`]) {
-          const val = extractVal(perms[`${modClean}:${subAlias}`]);
-          if (val !== undefined) isAllowed = (val === true || val === 1 || val === '1' || val === 'true');
+        if (!explicitSubmoduleFound && modClean && subAlias && perms[`${modClean}:${subAlias}`]) {
+          submoduleVal = extractVal(perms[`${modClean}:${subAlias}`]);
+          if (submoduleVal !== undefined) explicitSubmoduleFound = true;
         }
-        if (!isAllowed && modClean && perms[modClean] && perms[modClean].submodules) {
+        if (!explicitSubmoduleFound && modClean && perms[modClean] && perms[modClean].submodules) {
           if (perms[modClean].submodules[subClean]) {
-            const val = extractVal(perms[modClean].submodules[subClean]);
-            if (val !== undefined) isAllowed = (val === true || val === 1 || val === '1' || val === 'true');
+            submoduleVal = extractVal(perms[modClean].submodules[subClean]);
+            if (submoduleVal !== undefined) explicitSubmoduleFound = true;
+          } else if (subAlias && perms[modClean].submodules[subAlias]) {
+            submoduleVal = extractVal(perms[modClean].submodules[subAlias]);
+            if (submoduleVal !== undefined) explicitSubmoduleFound = true;
           }
-          if (!isAllowed && subAlias && perms[modClean].submodules[subAlias]) {
-            const val = extractVal(perms[modClean].submodules[subAlias]);
-            if (val !== undefined) isAllowed = (val === true || val === 1 || val === '1' || val === 'true');
+        }
+
+        if (explicitSubmoduleFound) {
+          isAllowed = (submoduleVal === true || submoduleVal === 1 || submoduleVal === '1' || submoduleVal === 'true');
+        } else if (modClean && perms[modClean]) {
+          // Graceful fallback to parent module permission if submodule was not explicitly configured
+          const parentVal = extractVal(perms[modClean]);
+          if (parentVal !== undefined) {
+            isAllowed = (parentVal === true || parentVal === 1 || parentVal === '1' || parentVal === 'true');
           }
         }
       } else if (moduleKey) {

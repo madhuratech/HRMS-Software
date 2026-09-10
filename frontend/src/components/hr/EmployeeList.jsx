@@ -6,6 +6,7 @@ import { getAvatarUrl } from '../../lib/utils';
 import { useToast } from '../ui/Toast';
 import { AddEmployeeModal } from './AddEmployeeModal';
 import { EmployeeProfile } from './EmployeeProfile';
+import { canCreate, canEdit } from '../../lib/permissions';
 
 export function EmployeeList() {
   const { addToast } = useToast();
@@ -167,12 +168,14 @@ export function EmployeeList() {
                 size="sm"
               />
 
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap">
-              
-              <Plus size={18} /> Add Employee
-            </button>
+            {canCreate('employees', 'add_employee') && (
+              <button
+                onClick={() => setIsModalOpen(true)}
+                className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-bold hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap">
+                
+                <Plus size={18} /> Add Employee
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -226,16 +229,18 @@ export function EmployeeList() {
             <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between text-sm">
               <span className="text-slate-500 font-medium">Joined {employee.joinDate}</span>
               <div className="flex items-center gap-3">
-                <button
-                  onClick={() => {
-                    setPasswordModalEmp(employee);
-                    setNewPassword('Employee@2026');
-                  }}
-                  title="Change / Reset Password"
-                  className="flex items-center gap-1.5 text-slate-600 hover:text-blue-600 font-semibold px-2.5 py-1 rounded-lg hover:bg-slate-200 transition-colors border border-slate-200 bg-white"
-                >
-                  <Key size={13} className="text-blue-600" /> Password
-                </button>
+                {(canEdit('employees', 'employee_profile') || canEdit('employees', 'employee_list')) && (
+                  <button
+                    onClick={() => {
+                      setPasswordModalEmp(employee);
+                      setNewPassword('Employee@2026');
+                    }}
+                    title="Change / Reset Password"
+                    className="flex items-center gap-1.5 text-slate-600 hover:text-blue-600 font-semibold px-2.5 py-1 rounded-lg hover:bg-slate-200 transition-colors border border-slate-200 bg-white"
+                  >
+                    <Key size={13} className="text-blue-600" /> Password
+                  </button>
+                )}
                 <button
                   onClick={() => setSelectedEmployee(employee)}
                   className="text-blue-600 font-semibold hover:text-blue-700"

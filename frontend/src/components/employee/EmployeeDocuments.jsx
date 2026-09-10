@@ -5,6 +5,7 @@ import { useToast } from '../ui/Toast';
 import EmployeeAvatar from './EmployeeAvatar';
 import './employee-module.css';
 import { apiFetch } from '../../lib/api';
+import { canCreate } from '../../lib/permissions';
 
 export default function EmployeeDocuments() {
   const { addToast } = useToast();
@@ -206,24 +207,26 @@ export default function EmployeeDocuments() {
             </div>
           )}
 
-          <button
-            type="button"
-            className="hrms-primary-btn"
-            onClick={() => setShowAddForm(!showAddForm)}
-            style={{
-              borderRadius: '10px',
-              padding: '9px 18px',
-              fontSize: '13px',
-              fontWeight: '600',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
-              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
-            }}
-          >
-            <Upload size={16} /> Register Document
-          </button>
+          {canCreate('employees', 'employee_documents') && (
+            <button
+              type="button"
+              className="hrms-primary-btn"
+              onClick={() => setShowAddForm(!showAddForm)}
+              style={{
+                borderRadius: '10px',
+                padding: '9px 18px',
+                fontSize: '13px',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+              }}
+            >
+              <Upload size={16} /> Register Document
+            </button>
+          )}
         </div>
       </div>
 

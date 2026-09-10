@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { canEdit, canDelete, canExport } from '../../lib/permissions';
 import {
   Building2,
   Users,
@@ -420,12 +421,14 @@ export function CompanyProfile() {
       </div>
       <h4 className="text-base font-semibold text-slate-800 mb-1">No {label} Available</h4>
       <p className="text-sm text-slate-500 max-w-sm mb-6">You haven't added {label.toLowerCase()} information yet.</p>
-      <button
-        onClick={onAdd}
-        className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm hover:shadow"
-      >
-        <Plus size={16} /> Add {label}
-      </button>
+      {canEdit('organization', 'company_profile') && (
+        <button
+          onClick={onAdd}
+          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 shadow-sm hover:shadow"
+        >
+          <Plus size={16} /> Add {label}
+        </button>
+      )}
     </div>
   );
 
@@ -453,26 +456,28 @@ export function CompanyProfile() {
           <p className="text-sm text-slate-500 mt-1">View and manage your organization information</p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleDownloadPDF}
-            disabled={exporting}
-            className={`px-5 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center gap-2 ${exporting ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {exporting ? (
-              <>
-                <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Exporting...
-              </>
-            ) : (
-              <>
-                <Download size={16} />
-                Export Profile
-              </>
-            )}
-          </button>
+          {canExport('organization', 'company_profile') && (
+            <button
+              onClick={handleDownloadPDF}
+              disabled={exporting}
+              className={`px-5 py-2.5 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600 transition-colors flex items-center gap-2 ${exporting ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {exporting ? (
+                <>
+                  <svg className="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Exporting...
+                </>
+              ) : (
+                <>
+                  <Download size={16} />
+                  Export Profile
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -1118,12 +1123,14 @@ export function CompanyProfile() {
                   <div className="space-y-6">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                       <h3 className="text-lg font-bold text-slate-800">Company Details</h3>
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
-                      >
-                        <Edit2 size={14} /> Edit
-                      </button>
+                      {canEdit('organization', 'company_profile') && (
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
+                        >
+                          <Edit2 size={14} /> Edit
+                        </button>
+                      )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
                       <div>
@@ -1171,12 +1178,14 @@ export function CompanyProfile() {
                   <div className="space-y-6">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                       <h3 className="text-lg font-bold text-slate-800">Contact Details</h3>
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
-                      >
-                        <Edit2 size={14} /> Edit
-                      </button>
+                      {canEdit('organization', 'company_profile') && (
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
+                        >
+                          <Edit2 size={14} /> Edit
+                        </button>
+                      )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
                       <div>
@@ -1216,12 +1225,14 @@ export function CompanyProfile() {
                   <div className="space-y-6">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                       <h3 className="text-lg font-bold text-slate-800">Address Details</h3>
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
-                      >
-                        <Edit2 size={14} /> Edit
-                      </button>
+                      {canEdit('organization', 'company_profile') && (
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
+                        >
+                          <Edit2 size={14} /> Edit
+                        </button>
+                      )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
                       <div>
@@ -1261,12 +1272,14 @@ export function CompanyProfile() {
                   <div className="space-y-6">
                     <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                       <h3 className="text-lg font-bold text-slate-800">Business Details</h3>
-                      <button
-                        onClick={() => setIsEditing(true)}
-                        className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
-                      >
-                        <Edit2 size={14} /> Edit
-                      </button>
+                      {canEdit('organization', 'company_profile') && (
+                        <button
+                          onClick={() => setIsEditing(true)}
+                          className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
+                        >
+                          <Edit2 size={14} /> Edit
+                        </button>
+                      )}
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
                       <div>
@@ -1303,12 +1316,14 @@ export function CompanyProfile() {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                     <h3 className="text-lg font-bold text-slate-800">HR Settings</h3>
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
-                    >
-                      <Edit2 size={14} /> Edit
-                    </button>
+                    {canEdit('organization', 'company_profile') && (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
+                      >
+                        <Edit2 size={14} /> Edit
+                      </button>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
                     <div>
@@ -1336,12 +1351,14 @@ export function CompanyProfile() {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                     <h3 className="text-lg font-bold text-slate-800">Payroll</h3>
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
-                    >
-                      <Edit2 size={14} /> Edit
-                    </button>
+                    {canEdit('organization', 'company_profile') && (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
+                      >
+                        <Edit2 size={14} /> Edit
+                      </button>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
                     <div>
@@ -1365,12 +1382,14 @@ export function CompanyProfile() {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                     <h3 className="text-lg font-bold text-slate-800">Banking</h3>
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
-                    >
-                      <Edit2 size={14} /> Edit
-                    </button>
+                    {canEdit('organization', 'company_profile') && (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
+                      >
+                        <Edit2 size={14} /> Edit
+                      </button>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
                     <div>
@@ -1394,12 +1413,14 @@ export function CompanyProfile() {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                     <h3 className="text-lg font-bold text-slate-800">Branding</h3>
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
-                    >
-                      <Edit2 size={14} /> Edit
-                    </button>
+                    {canEdit('organization', 'company_profile') && (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
+                      >
+                        <Edit2 size={14} /> Edit
+                      </button>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
                     <div>
@@ -1481,28 +1502,32 @@ export function CompanyProfile() {
                                       >
                                         <Download size={12} /> Download
                                       </button>
-                                      <button
-                                        className="btn-doc-action btn-doc-delete flex items-center gap-1"
-                                        onClick={() => handleDocDelete(docKey)}
-                                      >
-                                        <Trash2 size={12} /> Delete
-                                      </button>
+                                      {canDelete('organization', 'company_profile') && (
+                                        <button
+                                          className="btn-doc-action btn-doc-delete flex items-center gap-1"
+                                          onClick={() => handleDocDelete(docKey)}
+                                        >
+                                          <Trash2 size={12} /> Delete
+                                        </button>
+                                      )}
                                     </>
                                   ) : (
-                                    <div className="relative">
-                                      <input
-                                        type="file"
-                                        id={`upload-${docKey}`}
-                                        className="hidden"
-                                        onChange={(e) => handleDocUpload(docKey, e)}
-                                      />
-                                      <label
-                                        htmlFor={`upload-${docKey}`}
-                                        className="btn-doc-action btn-doc-upload flex items-center gap-1 cursor-pointer"
-                                      >
-                                        <Upload size={12} /> Upload
-                                      </label>
-                                    </div>
+                                    canEdit('organization', 'company_profile') && (
+                                      <div className="relative">
+                                        <input
+                                          type="file"
+                                          id={`upload-${docKey}`}
+                                          className="hidden"
+                                          onChange={(e) => handleDocUpload(docKey, e)}
+                                        />
+                                        <label
+                                          htmlFor={`upload-${docKey}`}
+                                          className="btn-doc-action btn-doc-upload flex items-center gap-1 cursor-pointer"
+                                        >
+                                          <Upload size={12} /> Upload
+                                        </label>
+                                      </div>
+                                    )
                                   )}
                                 </div>
                               </td>
@@ -1520,12 +1545,14 @@ export function CompanyProfile() {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-4">
                     <h3 className="text-lg font-bold text-slate-800">System Settings</h3>
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
-                    >
-                      <Edit2 size={14} /> Edit Settings
-                    </button>
+                    {canEdit('organization', 'company_profile') && (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="btn-doc-action btn-doc-view flex items-center gap-1.5 px-4 py-2"
+                      >
+                        <Edit2 size={14} /> Edit Settings
+                      </button>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8 text-sm">
                     <div>

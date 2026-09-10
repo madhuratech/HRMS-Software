@@ -133,15 +133,32 @@ export function SettingsUsers() {
     setPermissionsMatrix(prev =>
       prev.map(item => {
         if (item.module_key === moduleKey) {
-          const updated = { ...item, [field]: !item[field] };
-          if (field === 'can_view' && !updated.can_view) {
+          const targetVal = !item[field];
+          let updated = { ...item, [field]: targetVal };
+          if (field === 'can_view' && !targetVal) {
             updated.can_create = false;
             updated.can_edit = false;
             updated.can_delete = false;
           }
-          if ((field === 'can_create' || field === 'can_edit' || field === 'can_delete') && updated[field]) {
+          if ((field === 'can_create' || field === 'can_edit' || field === 'can_delete') && targetVal) {
             updated.can_view = true;
           }
+
+          if (Array.isArray(item.submodules)) {
+            updated.submodules = item.submodules.map(sub => {
+              let updatedSub = { ...sub, [field]: targetVal };
+              if (field === 'can_view' && !targetVal) {
+                updatedSub.can_create = false;
+                updatedSub.can_edit = false;
+                updatedSub.can_delete = false;
+              }
+              if ((field === 'can_create' || field === 'can_edit' || field === 'can_delete') && targetVal) {
+                updatedSub.can_view = true;
+              }
+              return updatedSub;
+            });
+          }
+
           return updated;
         }
         return item;
@@ -155,12 +172,23 @@ export function SettingsUsers() {
       prev.map(item => {
         if (item.module_key === moduleKey) {
           const allActive = item.can_view && item.can_create && item.can_edit && item.can_delete;
+          const targetVal = !allActive;
+          const updatedSubs = Array.isArray(item.submodules)
+            ? item.submodules.map(sub => ({
+                ...sub,
+                can_view: targetVal,
+                can_create: targetVal,
+                can_edit: targetVal,
+                can_delete: targetVal
+              }))
+            : [];
           return {
             ...item,
-            can_view: !allActive,
-            can_create: !allActive,
-            can_edit: !allActive,
-            can_delete: !allActive
+            can_view: targetVal,
+            can_create: targetVal,
+            can_edit: targetVal,
+            can_delete: targetVal,
+            submodules: updatedSubs
           };
         }
         return item;
@@ -189,6 +217,7 @@ export function SettingsUsers() {
       const data = await res.json();
       if (data.success) {
         addToast(`Permission matrix saved for ${selectedRole.role_name}!`, 'success');
+        window.dispatchEvent(new CustomEvent('permissionsUpdated', { detail: { roleKey: selectedRole.role_key } }));
       } else {
         addToast(data.message || 'Failed to save permissions', 'error');
       }

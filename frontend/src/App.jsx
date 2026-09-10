@@ -447,7 +447,7 @@ function App() {
             <Route path="/employees/dashboard" element={<Navigate to="/employees" replace />} />
             <Route path="/employees" element={<PermissionGuard moduleKey="employees" submoduleKey="employee_directory"><EmployeeDirectory /></PermissionGuard>} />
             <Route path="/employees/list" element={<PermissionGuard moduleKey="employees" submoduleKey="employee_list"><EmployeeListContent /></PermissionGuard>} />
-            <Route path="/employees/add" element={<PermissionGuard moduleKey="employees" submoduleKey="add_employee"><AddEmployeeForm /></PermissionGuard>} />
+            <Route path="/employees/add" element={<PermissionGuard moduleKey="employees" submoduleKey="add_employee" action="create"><AddEmployeeForm /></PermissionGuard>} />
             <Route path="/employees/profile" element={<PermissionGuard moduleKey="employees" submoduleKey="employee_profile"><EmployeeProfileContent /></PermissionGuard>} />
             <Route path="/employees/history" element={<PermissionGuard moduleKey="employees" submoduleKey="employment_history"><EmploymentHistory /></PermissionGuard>} />
             <Route path="/employees/promotions" element={<PermissionGuard moduleKey="employees" submoduleKey="promotions"><PromotionsContent /></PermissionGuard>} />

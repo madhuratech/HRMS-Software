@@ -655,29 +655,30 @@ export default function JobOpenings() {
           </button>
 
           {/* Create Opening */}
-          <button
-            disabled={!canCreate('job_openings')}
-            onClick={() => {
-              if (!checkActionPermission('job_openings', 'CREATE')) return;
-              setShowAddModal(true);
-            }}
-            style={{
-              padding: '10px 18px',
-              borderRadius: '10px',
-              border: 'none',
-              background: canCreate('job_openings') ? 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)' : '#94A3B8',
-              color: '#FFF',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              cursor: canCreate('job_openings') ? 'pointer' : 'not-allowed',
-              fontSize: '14px',
-              fontWeight: '600',
-              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
-            }}
-          >
-            <Plus size={16} /> Create Opening
-          </button>
+          {canCreate('job_openings') && (
+            <button
+              onClick={() => {
+                if (!checkActionPermission('job_openings', 'CREATE')) return;
+                setShowAddModal(true);
+              }}
+              style={{
+                padding: '10px 18px',
+                borderRadius: '10px',
+                border: 'none',
+                background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+                color: '#FFF',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                cursor: 'pointer',
+                fontSize: '14px',
+                fontWeight: '600',
+                boxShadow: '0 4px 12px rgba(37, 99, 255, 0.25)'
+              }}
+            >
+              <Plus size={16} /> Create Opening
+            </button>
+          )}
         </div>
       </div>
 
@@ -982,28 +983,30 @@ export default function JobOpenings() {
                               </button>
 
                               {/* Reopen Job Button */}
-                              <button
-                                disabled={!canEdit('job_openings')}
-                                onClick={() => {
-                                  setReopenModalJob(row);
-                                  setReopenChannels({ CAREER_PAGE: true, LINKEDIN: false, INDEED: false });
-                                }}
-                                style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: '#2563EB', color: '#FFF', fontSize: '12px', fontWeight: '600', cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed' }}
-                              >
-                                Reopen
-                              </button>
+                              {canEdit('job_openings') && (
+                                <button
+                                  onClick={() => {
+                                    setReopenModalJob(row);
+                                    setReopenChannels({ CAREER_PAGE: true, LINKEDIN: false, INDEED: false });
+                                  }}
+                                  style={{ padding: '6px 10px', borderRadius: '6px', border: 'none', background: '#2563EB', color: '#FFF', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
+                                >
+                                  Reopen
+                                </button>
+                              )}
                             </>
                           ) : (
                             <>
                               {/* Edit Job Button */}
-                              <button
-                                disabled={!canEdit('job_openings')}
-                                onClick={() => handleEditClick(row)}
-                                title="Edit Job Opening"
-                                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#334155', fontSize: '12px', fontWeight: '500', cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed' }}
-                              >
-                                Edit
-                              </button>
+                              {canEdit('job_openings') && (
+                                <button
+                                  onClick={() => handleEditClick(row)}
+                                  title="Edit Job Opening"
+                                  style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#334155', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+                                >
+                                  Edit
+                                </button>
+                              )}
 
                               {/* View Candidates */}
                               <button
@@ -1027,27 +1030,29 @@ export default function JobOpenings() {
                               </button>
 
                               {/* Close Job Flow Button */}
-                              <button
-                                disabled={!canEdit('job_openings')}
-                                onClick={() => {
-                                  setCloseModalJob(row);
-                                  setCloseScope('HRMS_ONLY');
-                                  setCloseChannels({ CAREER_PAGE: true, LINKEDIN: true, INDEED: true });
-                                  setCloseReason('Job Filled');
-                                }}
-                                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#475569', fontSize: '12px', fontWeight: '500', cursor: canEdit('job_openings') ? 'pointer' : 'not-allowed', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
-                              >
-                                Close <span style={{ fontSize: '9px' }}>▼</span>
-                              </button>
+                              {canEdit('job_openings') && (
+                                <button
+                                  onClick={() => {
+                                    setCloseModalJob(row);
+                                    setCloseScope('HRMS_ONLY');
+                                    setCloseChannels({ CAREER_PAGE: true, LINKEDIN: true, INDEED: true });
+                                    setCloseReason('Job Filled');
+                                  }}
+                                  style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #CBD5E1', background: '#F8FAFC', color: '#475569', fontSize: '12px', fontWeight: '500', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '3px' }}
+                                >
+                                  Close <span style={{ fontSize: '9px' }}>▼</span>
+                                </button>
+                              )}
 
                               {/* Delete Job Button */}
-                              <button
-                                disabled={!canDelete('job_openings')}
-                                onClick={() => setDeleteConfirmJob(row)}
-                                style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', fontSize: '12px', fontWeight: '500', cursor: canDelete('job_openings') ? 'pointer' : 'not-allowed' }}
-                              >
-                                Delete
-                              </button>
+                              {canDelete('job_openings') && (
+                                <button
+                                  onClick={() => setDeleteConfirmJob(row)}
+                                  style={{ padding: '6px 10px', borderRadius: '6px', border: '1px solid #FECACA', background: '#FEF2F2', color: '#EF4444', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+                                >
+                                  Delete
+                                </button>
+                              )}
                             </>
                           )}
 

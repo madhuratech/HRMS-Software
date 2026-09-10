@@ -374,8 +374,12 @@ export default function Projects() {
                         <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>{pill(r.priority, PRIORITY_S)}</td>
                         <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'flex', gap: 4 }}>
-                            <button style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', color: '#2563EB', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} onClick={() => openEdit(r)}><Edit2 size={13} /></button>
-                            <button style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', color: '#94A3B8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} onClick={() => handleDelete(r)}><Trash2 size={13} /></button>
+                            {hasPermission(null, null, 'projects', 'projects_list', 'edit') && (
+                              <button style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', color: '#2563EB', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} onClick={() => openEdit(r)}><Edit2 size={13} /></button>
+                            )}
+                            {hasPermission(null, null, 'projects', 'projects_list', 'delete') && (
+                              <button style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', color: '#94A3B8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} onClick={() => handleDelete(r)}><Trash2 size={13} /></button>
+                            )}
                           </div>
                         </td>
                       </tr>

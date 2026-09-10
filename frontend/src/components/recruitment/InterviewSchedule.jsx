@@ -258,41 +258,44 @@ export default function InterviewSchedule() {
           <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>View and manage interview schedules</p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <button
-            onClick={() => {
-              if (!checkActionPermission('interview_schedule', 'EDIT')) return;
-              setFeedbackForm({
-                schedule_id: '', candidate: '', interviewRound: 'Technical Round', interviewer: '', rating: '5',
-                strengths: '', weaknesses: '', recommendation: 'Hire', comments: '', status: 'Completed'
-              });
-              setShowFeedbackModal(true);
-            }}
-            style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}
-          >
-            <MessageSquare size={16} /> Interview Feedback
-          </button>
-          <button
-            disabled={!canCreate('interview_schedule')}
-            onClick={() => {
-              if (!checkActionPermission('interview_schedule', 'CREATE')) return;
-              setShowScheduleModal(true);
-            }}
-            style={{ 
-              padding: '10px 16px', 
-              borderRadius: '8px', 
-              border: 'none', 
-              background: canCreate('interview_schedule') ? '#2952E3' : '#94A3B8', 
-              color: '#FFF', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px', 
-              cursor: canCreate('interview_schedule') ? 'pointer' : 'not-allowed', 
-              fontSize: '14px', 
-              fontWeight: '500' 
-            }}
-          >
-            <Plus size={16} /> Schedule Interview
-          </button>
+          {canEdit('interview_schedule') && (
+            <button
+              onClick={() => {
+                if (!checkActionPermission('interview_schedule', 'EDIT')) return;
+                setFeedbackForm({
+                  schedule_id: '', candidate: '', interviewRound: 'Technical Round', interviewer: '', rating: '5',
+                  strengths: '', weaknesses: '', recommendation: 'Hire', comments: '', status: 'Completed'
+                });
+                setShowFeedbackModal(true);
+              }}
+              style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}
+            >
+              <MessageSquare size={16} /> Interview Feedback
+            </button>
+          )}
+          {canCreate('interview_schedule') && (
+            <button
+              onClick={() => {
+                if (!checkActionPermission('interview_schedule', 'CREATE')) return;
+                setShowScheduleModal(true);
+              }}
+              style={{ 
+                padding: '10px 16px', 
+                borderRadius: '8px', 
+                border: 'none', 
+                background: '#2952E3', 
+                color: '#FFF', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                cursor: 'pointer', 
+                fontSize: '14px', 
+                fontWeight: '500' 
+              }}
+            >
+              <Plus size={16} /> Schedule Interview
+            </button>
+          )}
         </div>
       </div>
 
@@ -341,21 +344,23 @@ export default function InterviewSchedule() {
                         {intv.interviewer}
                       </div>
                       <div style={{ width: '220px', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
-                        <button 
-                          onClick={() => { 
-                            setFeedbackForm({ 
-                              ...feedbackForm, 
-                              schedule_id: intv.id,
-                              candidate: intv.name, 
-                              interviewer: intv.interviewer, 
-                              interviewRound: intv.round 
-                            }); 
-                            setShowFeedbackModal(true); 
-                          }} 
-                          style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', color: '#334155', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
-                        >
-                          <MessageSquare size={14} /> Feedback
-                        </button>
+                        {canEdit('interview_schedule') && (
+                          <button 
+                            onClick={() => { 
+                              setFeedbackForm({ 
+                                ...feedbackForm, 
+                                schedule_id: intv.id,
+                                candidate: intv.name, 
+                                interviewer: intv.interviewer, 
+                                interviewRound: intv.round 
+                              }); 
+                              setShowFeedbackModal(true); 
+                            }} 
+                            style={{ padding: '6px 12px', borderRadius: '6px', border: '1px solid #E2E8F0', background: '#FFF', color: '#334155', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: '600' }}
+                          >
+                            <MessageSquare size={14} /> Feedback
+                          </button>
+                        )}
                         {intv.meetingLink && (
                           <a 
                             href={intv.meetingLink}

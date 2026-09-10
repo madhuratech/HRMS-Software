@@ -350,6 +350,10 @@ class RbacService {
       permMap[itemKey] = permObj;
       if (isSub) {
         permMap[p.submodule_key] = permObj;
+        if (p.submodule_key === 'tickets') permMap['support_tickets'] = permObj;
+        if (p.submodule_key === 'support_tickets') permMap['tickets'] = permObj;
+        if (p.submodule_key === 'gps_attendance') permMap['gps_attendance_punch'] = permObj;
+        if (p.submodule_key === 'gps_attendance_punch') permMap['gps_attendance'] = permObj;
       }
     });
 
@@ -596,6 +600,13 @@ class RbacService {
         } else if (s.submodule_key === 'gps_attendance_punch') {
           subMap['gps_attendance'] = pData;
           permObj['gps_attendance'] = pData;
+        }
+        if (s.submodule_key === 'tickets') {
+          subMap['support_tickets'] = pData;
+          permObj['support_tickets'] = pData;
+        } else if (s.submodule_key === 'support_tickets') {
+          subMap['tickets'] = pData;
+          permObj['tickets'] = pData;
         }
       });
       const modPerm = { view: m.can_view, create: m.can_create, edit: m.can_edit, delete: m.can_delete, submodules: subMap };

@@ -3,6 +3,7 @@ import { Download, Calendar, ChevronDown, Layers, FileText, CheckCircle, Clock, 
 import { BarChart, Bar, ResponsiveContainer, Tooltip, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { canExport } from '../../lib/permissions';
 
 export function ExpenseReports() {
   const { addToast } = useToast();
@@ -100,12 +101,14 @@ export function ExpenseReports() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button onClick={handleExport} style={{
-            display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px',
-            background: '#FFF', border: '1px solid #2563EB', color: '#2563EB', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-          }}>
-            <Download size={14} /> Export Report
-          </button>
+          {canExport('expenses', 'expense_reports') && (
+            <button onClick={handleExport} style={{
+              display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px',
+              background: '#FFF', border: '1px solid #2563EB', color: '#2563EB', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}>
+              <Download size={14} /> Export Report
+            </button>
+          )}
         </div>
       </div>
 

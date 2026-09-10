@@ -5,7 +5,7 @@ const bcrypt = require("bcryptjs");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-const { authenticateJWT } = require("../middlewares/auth");
+const { authenticateJWT, checkPermission } = require("../middlewares/auth");
 const EmployeeExperienceService = require("../services/EmployeeExperienceService");
 
 /**
@@ -108,7 +108,7 @@ function logHistory(employeeId, changeType, oldValue, newValue, date) {
 /**
  * CHANGE / RESET EMPLOYEE PASSWORD
  */
-router.put("/change-password", async (req, res) => {
+router.put("/change-password", authenticateJWT, checkPermission('employees', 'employee_profile', 'edit'), async (req, res) => {
   const { id, newPassword } = req.body;
   const empId = id || req.body.employee_id;
   if (!empId || !newPassword || newPassword.trim().length < 4) {
@@ -126,7 +126,7 @@ router.put("/change-password", async (req, res) => {
   }
 });
 
-router.put("/password/:id", async (req, res) => {
+router.put("/password/:id", authenticateJWT, checkPermission('employees', 'employee_profile', 'edit'), async (req, res) => {
   const { id } = req.params;
   const { newPassword } = req.body;
 
@@ -356,7 +356,7 @@ router.get("/check-email", (req, res) => {
 /**
  * CREATE EMPLOYEE & LINKED USER LOGIN ACCOUNT
  */
-router.post("/", async (req, res) => {
+router.post("/", authenticateJWT, checkPermission('employees', 'add_employee', 'create'), async (req, res) => {
   const {
     name,
     email,
@@ -880,7 +880,7 @@ router.get("/promotions", (req, res) => {
 /**
  * SUBMIT PROMOTION REQUEST
  */
-router.post("/promotions", (req, res) => {
+router.post("/promotions", authenticateJWT, checkPermission('employees', 'promotions', 'create'), (req, res) => {
   const { employeeId, newDesignationName, effectiveDate } = req.body;
   if (!employeeId || !newDesignationName) {
     return res.status(400).json({ error: "employeeId and newDesignationName are required" });
@@ -924,7 +924,7 @@ router.post("/promotions", (req, res) => {
 /**
  * APPROVE PROMOTION
  */
-router.put("/promotions/:id/approve", (req, res) => {
+router.put("/promotions/:id/approve", authenticateJWT, checkPermission('employees', 'promotions', 'edit'), (req, res) => {
   const { id } = req.params;
   const { approverId = 1 } = req.body; // Default fallback to Admin
 
@@ -978,7 +978,7 @@ router.get("/transfers", (req, res) => {
 /**
  * SUBMIT TRANSFER REQUEST
  */
-router.post("/transfers", (req, res) => {
+router.post("/transfers", authenticateJWT, checkPermission('employees', 'transfers', 'create'), (req, res) => {
   const { employeeId, transferType, newValueName, effectiveDate } = req.body;
 
   let oldValQuery = "";
@@ -1008,7 +1008,7 @@ router.post("/transfers", (req, res) => {
 /**
  * APPROVE TRANSFER
  */
-router.put("/transfers/:id/approve", (req, res) => {
+router.put("/transfers/:id/approve", authenticateJWT, checkPermission('employees', 'transfers', 'edit'), (req, res) => {
   const { id } = req.params;
   const { approverId = 1 } = req.body;
 
@@ -1055,7 +1055,7 @@ router.get("/exits", (req, res) => {
 /**
  * SUBMIT RESIGNATION / TERMINATION
  */
-router.post("/exits", (req, res) => {
+router.post("/exits", authenticateJWT, checkPermission('employees', 'exit_management', 'create'), (req, res) => {
   const { employeeId, exitType, noticeDate, exitDate, reason, clearanceChecklist } = req.body;
   const checklistStr = clearanceChecklist ? JSON.stringify(clearanceChecklist) : null;
 
@@ -1077,7 +1077,7 @@ router.post("/exits", (req, res) => {
 /**
  * APPROVE / SETTLE EXIT
  */
-router.put("/exits/:id/settle", (req, res) => {
+router.put("/exits/:id/settle", authenticateJWT, checkPermission('employees', 'exit_management', 'edit'), (req, res) => {
   const { id } = req.params;
 
   db.query("SELECT * FROM exit_management WHERE id = ?", [id], (err, results) => {
@@ -1122,7 +1122,7 @@ router.get("/:id/documents", (req, res) => {
 /**
  * UPLOAD EMPLOYEE DOCUMENT PATH
  */
-router.post("/:id/documents", uploadDoc.single('document'), (req, res) => {
+router.post("/:id/documents", authenticateJWT, checkPermission('employees', 'employee_documents', 'create'), uploadDoc.single('document'), (req, res) => {
   const { docType } = req.body;
   const fileName = req.file ? req.file.originalname : (req.body.fileName || 'Untitled');
   const filePath = req.file ? `/uploads/documents/${req.file.filename}` : req.body.filePath;
@@ -1143,7 +1143,7 @@ router.post("/:id/documents", uploadDoc.single('document'), (req, res) => {
 /**
  * DELETE DOCUMENT
  */
-router.delete("/documents/:docId", (req, res) => {
+router.delete("/documents/:docId", authenticateJWT, checkPermission('employees', 'employee_documents', 'delete'), (req, res) => {
   const sql = "DELETE FROM employee_documents WHERE id = ?";
   db.query(sql, [req.params.docId], (err) => {
     if (err) return res.status(500).json({ error: "Failed to delete document", details: err });
@@ -1190,77 +1190,6 @@ router.delete("/:id/photo", (req, res) => {
   });
 });
 
-module.exports = router;
-/**
- * UPLOAD EMPLOYEE DOCUMENT PATH
- */
-router.post("/:id/documents", uploadDoc.single('document'), (req, res) => {
-  const { docType } = req.body;
-  const fileName = req.file ? req.file.originalname : (req.body.fileName || 'Untitled');
-  const filePath = req.file ? `/uploads/documents/${req.file.filename}` : req.body.filePath;
-
-  const sql = `
-    INSERT INTO employee_documents (employee_id, document_type, document_name, file, status)
-    VALUES (?, ?, ?, ?, 'Pending')
-  `;
-  db.query(sql, [req.params.id, docType, fileName, filePath || `/uploads/docs/${fileName}`], (err, result) => {
-    if (err) {
-      console.error("Document upload DB error:", err);
-      return res.status(500).json({ error: "Failed to save document record", details: err.message, stack: err.stack });
-    }
-    res.json({ message: "Document uploaded successfully", id: result.insertId });
-  });
-});
-
-/**
- * DELETE DOCUMENT
- */
-router.delete("/documents/:docId", (req, res) => {
-  const sql = "DELETE FROM employee_documents WHERE id = ?";
-  db.query(sql, [req.params.docId], (err) => {
-    if (err) return res.status(500).json({ error: "Failed to delete document", details: err });
-    res.json({ message: "Document deleted successfully" });
-  });
-});
-
-/**
- * UPLOAD PROFILE PHOTO
- */
-router.post("/:id/photo", uploadPhoto.single('photo'), (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "No photo uploaded" });
-  }
-
-  const photoPath = `/uploads/photos/${req.file.filename}`;
-  const { id } = req.params;
-
-  db.query("UPDATE employees SET profile_photo = ? WHERE id = ?", [photoPath, id], (err) => {
-    if (err) return res.status(500).json({ error: "Failed to save photo", details: err });
-    res.json({ message: "Photo uploaded successfully", photoUrl: photoPath });
-  });
-});
-
-/**
- * DELETE PROFILE PHOTO
- */
-router.delete("/:id/photo", (req, res) => {
-  const { id } = req.params;
-
-  // Get current photo path to delete file
-  db.query("SELECT profile_photo FROM employees WHERE id = ?", [id], (err, rows) => {
-    if (err) return res.status(500).json({ error: "Failed" });
-
-    if (rows.length > 0 && rows[0].profile_photo) {
-      const filePath = path.join(__dirname, '..', rows[0].profile_photo);
-      if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    }
-
-    db.query("UPDATE employees SET profile_photo = NULL WHERE id = ?", [id], (err2) => {
-      if (err2) return res.status(500).json({ error: "Failed to remove photo" });
-      res.json({ message: "Photo removed successfully" });
-    });
-  });
-});
 
 /**
  * ============================================================================

@@ -1,4 +1,5 @@
 const Performance = require('../models/Performance');
+const PerformanceScopeService = require('./PerformanceScopeService');
 
 class KraService {
   static async create(data, userId) {
@@ -83,7 +84,7 @@ class KraService {
     return rows[0] || null;
   }
 
-  static async list(filters = {}, pagination = null) {
+  static async list(filters = {}, pagination = null, scope = null) {
     let sql = `
       SELECT k.id,
              k.goal_id,
@@ -118,6 +119,21 @@ class KraService {
       params.push(filters.goal_id);
     }
 
+    if (scope) {
+      if (scope.isUnrestricted) {
+        if (scope.requestedEmployeeId) {
+          sql += ` AND (k.employee_id = ? OR g.employee_id = ?)`;
+          params.push(scope.requestedEmployeeId, scope.requestedEmployeeId);
+        }
+      } else if (scope.isBlocked || !scope.allowedEmployeeIds || scope.allowedEmployeeIds.length === 0) {
+        sql += ` AND 1=0`;
+      } else {
+        const ph = scope.allowedEmployeeIds.map(() => '?').join(', ');
+        sql += ` AND (k.employee_id IN (${ph}) OR g.employee_id IN (${ph}))`;
+        params.push(...scope.allowedEmployeeIds, ...scope.allowedEmployeeIds);
+      }
+    }
+
     sql += ` ORDER BY k.created_at DESC`;
 
     if (pagination) {
@@ -148,15 +164,52 @@ class KraService {
       countParams.push(filters.goal_id);
     }
 
+    if (scope) {
+      if (scope.isUnrestricted) {
+        if (scope.requestedEmployeeId) {
+          countSql += ` AND (k.employee_id = ? OR g.employee_id = ?)`;
+          countParams.push(scope.requestedEmployeeId, scope.requestedEmployeeId);
+        }
+      } else if (scope.isBlocked || !scope.allowedEmployeeIds || scope.allowedEmployeeIds.length === 0) {
+        countSql += ` AND 1=0`;
+      } else {
+        const ph = scope.allowedEmployeeIds.map(() => '?').join(', ');
+        countSql += ` AND (k.employee_id IN (${ph}) OR g.employee_id IN (${ph}))`;
+        countParams.push(...scope.allowedEmployeeIds, ...scope.allowedEmployeeIds);
+      }
+    }
+
     const totalRes = await Performance.query(countSql, countParams);
 
     return { rows, total: totalRes[0].count };
   }
 
-  static async getDashboardStats() {
-    const total = await Performance.query('SELECT COUNT(*) as count FROM kras');
-    const active = await Performance.query("SELECT COUNT(*) as count FROM kras WHERE status = 'Active'");
-    const inactive = await Performance.query("SELECT COUNT(*) as count FROM kras WHERE status = 'Inactive'");
+  static async getDashboardStats(scope = null) {
+    let whereClause = '';
+    const whereParams = [];
+
+    if (scope) {
+      if (scope.isUnrestricted) {
+        if (scope.requestedEmployeeId) {
+          whereClause = ` LEFT JOIN goals g ON k.goal_id = g.id WHERE (k.employee_id = ? OR g.employee_id = ?)`;
+          whereParams.push(scope.requestedEmployeeId, scope.requestedEmployeeId);
+        }
+      } else if (scope.isBlocked || !scope.allowedEmployeeIds || scope.allowedEmployeeIds.length === 0) {
+        whereClause = ` WHERE 1=0`;
+      } else {
+        const ph = scope.allowedEmployeeIds.map(() => '?').join(', ');
+        whereClause = ` LEFT JOIN goals g ON k.goal_id = g.id WHERE (k.employee_id IN (${ph}) OR g.employee_id IN (${ph}))`;
+        whereParams.push(...scope.allowedEmployeeIds, ...scope.allowedEmployeeIds);
+      }
+    }
+
+    const totalSql = `SELECT COUNT(*) as count FROM kras k ${whereClause}`;
+    const activeSql = whereClause ? `${totalSql} AND k.status = 'Active'` : `SELECT COUNT(*) as count FROM kras WHERE status = 'Active'`;
+    const inactiveSql = whereClause ? `${totalSql} AND k.status = 'Inactive'` : `SELECT COUNT(*) as count FROM kras WHERE status = 'Inactive'`;
+
+    const total = await Performance.query(totalSql, whereParams);
+    const active = await Performance.query(activeSql, whereParams);
+    const inactive = await Performance.query(inactiveSql, whereParams);
 
     const totalVal = total[0].count || 0;
     const activeVal = active[0].count || 0;
@@ -168,9 +221,10 @@ class KraService {
       SELECT d.dept_name as name, COUNT(k.id) as kras
       FROM departments d
       JOIN kras k ON k.department_id = d.id
+      ${whereClause}
       GROUP BY d.dept_name
       LIMIT 6
-    `);
+    `, whereParams);
 
     return {
       total: totalVal,
@@ -178,8 +232,8 @@ class KraService {
       inactive: inactiveVal,
       rate: `${rate}%`,
       chartData: [
-        { name: 'Active', value: activeVal, color: '#10B981' },
-        { name: 'Inactive', value: inactiveVal, color: '#EF4444' }
+        { name: 'Active', value: activeVal, color: '#2563EB' },
+        { name: 'Inactive', value: inactiveVal, color: '#CBD5E1' }
       ],
       deptData: deptSummary
     };

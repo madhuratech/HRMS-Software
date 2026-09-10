@@ -265,23 +265,27 @@ export default function Tasks() {
                       <td style={{ padding: '0 14px', fontSize: 13, color: '#374151', whiteSpace: 'nowrap' }}>{formatDate(t.due_date)}</td>
                       <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>{pill(t.priority, PRIORITY_S)}</td>
                       <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>
-                        <CustomSelect
-                          options={TASK_STATUSES}
-                          value={t.status}
-                          onChange={val => handleStatusChange(t, val)}
-                          searchable={false}
-                          style={{ width: 130 }}
-                        />
+                        {hasPermission(null, null, 'projects', 'tasks', 'edit') ? (
+                          <CustomSelect
+                            options={TASK_STATUSES}
+                            value={t.status}
+                            onChange={val => handleStatusChange(t, val)}
+                            searchable={false}
+                            style={{ width: 130 }}
+                          />
+                        ) : (
+                          pill(t.status, STATUS_S)
+                        )}
                       </td>
                       <td style={{ padding: '0 14px', whiteSpace: 'nowrap' }}>
-                        {!isEmployeeRole ? (
-                          <div style={{ display: 'flex', gap: 4 }}>
-                            <button style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', color: '#2563EB', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} onClick={() => openEdit(t)}><Edit2 size={13} /></button>
-                            <button style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', color: '#94A3B8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} onClick={() => handleDelete(t)}><Trash2 size={13} /></button>
-                          </div>
-                        ) : (
-                          <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 600, whiteSpace: 'nowrap' }}>Status Only</span>
-                        )}
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          {hasPermission(null, null, 'projects', 'tasks', 'edit') && (
+                            <button title="Edit" style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', color: '#2563EB', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background = '#EFF6FF'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} onClick={() => openEdit(t)}><Edit2 size={13} /></button>
+                          )}
+                          {hasPermission(null, null, 'projects', 'tasks', 'delete') && (
+                            <button title="Delete" style={{ width: 28, height: 28, borderRadius: 6, border: 'none', background: 'transparent', color: '#94A3B8', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }} onMouseEnter={e => e.currentTarget.style.background = '#FEF2F2'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} onClick={() => handleDelete(t)}><Trash2 size={13} /></button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

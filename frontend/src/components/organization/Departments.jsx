@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { apiFetch } from '../../lib/api';
 import { useToast } from '../ui/Toast';
 import AppDropdown from '../ui/AppDropdown';
+import { canCreate, canEdit, canDelete, canExport } from '../../lib/permissions';
 import {
   Building2,
   Users,
@@ -292,18 +293,22 @@ export function Departments() {
           <p className="text-sm text-slate-500 mt-1">Manage company organizational units, hierarchy, and department heads.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button
-            onClick={handleExportData}
-            className="px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2 bg-white shadow-sm"
-          >
-            <Download size={16} /> Export
-          </button>
-          <button
-            onClick={handleOpenAddModal}
-            className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
-          >
-            <Plus size={18} /> Add Department
-          </button>
+          {canExport('organization', 'departments') && (
+            <button
+              onClick={handleExportData}
+              className="px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors flex items-center gap-2 bg-white shadow-sm"
+            >
+              <Download size={16} /> Export
+            </button>
+          )}
+          {canCreate('organization', 'departments') && (
+            <button
+              onClick={handleOpenAddModal}
+              className="px-5 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
+            >
+              <Plus size={18} /> Add Department
+            </button>
+          )}
         </div>
       </div>
 
@@ -408,12 +413,14 @@ export function Departments() {
               ? 'No departments match your current filter criteria. Try resetting your search.'
               : 'Create your first organizational department to get started.'}
           </p>
-          <button
-            onClick={handleOpenAddModal}
-            className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
-          >
-            <Plus size={16} /> Add Department
-          </button>
+          {canCreate('organization', 'departments') && (
+            <button
+              onClick={handleOpenAddModal}
+              className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center gap-2 shadow-sm"
+            >
+              <Plus size={16} /> Add Department
+            </button>
+          )}
         </div>
       ) : (
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden flex flex-col justify-between">
@@ -510,20 +517,24 @@ export function Departments() {
                           >
                             <Eye size={16} />
                           </button>
-                          <button
-                            onClick={() => handleOpenEditModal(dept)}
-                            className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
-                            title="Edit Department"
-                          >
-                            <Edit2 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleOpenDeleteModal(dept)}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                            title="Delete Department"
-                          >
-                            <Trash2 size={16} />
-                          </button>
+                          {canEdit('organization', 'departments') && (
+                            <button
+                              onClick={() => handleOpenEditModal(dept)}
+                              className="p-2 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors"
+                              title="Edit Department"
+                            >
+                              <Edit2 size={16} />
+                            </button>
+                          )}
+                          {canDelete('organization', 'departments') && (
+                            <button
+                              onClick={() => handleOpenDeleteModal(dept)}
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete Department"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

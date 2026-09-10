@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
+import { canCreate } from '../../lib/permissions';
 import { Search, ChevronDown, Plus, Eye, FileText, Clock, CheckCircle, AlertCircle, ArrowUpRight, ArrowDownRight, X } from 'lucide-react';
 
 const KpiCard = ({ label, value, subtext, isPositive, iconBg, iconColor, icon: Icon }) => (
@@ -132,12 +133,14 @@ export default function HelpDeskTickets() {
           </div>
 
           {/* Primary Action Button */}
-          <button onClick={() => setShowAddModal(true)} style={{
-            display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
-            background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
-          }}>
-            <Plus size={16} /> New Ticket
-          </button>
+          {canCreate('helpdesk', 'support_tickets') && (
+            <button onClick={() => setShowAddModal(true)} style={{
+              display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
+              background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
+            }}>
+              <Plus size={16} /> New Ticket
+            </button>
+          )}
         </div>
       </div>
 
@@ -198,16 +201,19 @@ export default function HelpDeskTickets() {
 
         {/* Table Footer Pagination */}
         <div style={{ padding: '12px 20px', borderTop: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFF' }}>
-          <span style={{ fontSize: 12, color: '#6B7280' }}>Showing 1 to 10 of 1,248 entries</span>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {[1, 2, 3, 4, 5, '...', 125].map((page, idx) => (
+          <span style={{ fontSize: 12, color: '#6B7280' }}>Showing 1 to {ticketsList.length} of {ticketsList.length} entries</span>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[1, 2, 3].map(page => (
               <button
-                key={idx}
-                onClick={() => typeof page === 'number' && setCurrentPage(page)}
+                key={page}
+                onClick={() => setCurrentPage(page)}
                 style={{
-                  minWidth: 28, height: 28, padding: '0 6px', borderRadius: 6, fontSize: 12, fontWeight: 500, border: 'none', cursor: 'pointer',
-                  background: currentPage === page ? '#2563EB' : '#F3F4F6',
-                  color: currentPage === page ? '#FFF' : '#374151',
+                  width: 30, height: 30, borderRadius: 6,
+                  border: page === currentPage ? 'none' : '1px solid #E5E7EB',
+                  background: page === currentPage ? '#2952E3' : '#FFF',
+                  color: page === currentPage ? '#FFF' : '#374151',
+                  fontSize: 12, fontWeight: page === currentPage ? 600 : 500,
+                  cursor: 'pointer',
                 }}
               >
                 {page}
@@ -218,7 +224,7 @@ export default function HelpDeskTickets() {
       </div>
 
       {/* Create Support Ticket Modal (1100px Standard) */}
-      {showAddModal && (
+      {showAddModal && canCreate('helpdesk', 'support_tickets') && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
           <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
@@ -234,65 +240,59 @@ export default function HelpDeskTickets() {
             <form onSubmit={handleSave} className="p-6 overflow-y-auto flex-1 space-y-6">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Ticket Title <span className="text-red-500">*</span></label>
-                  <input type="text" required value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. VPN Access & Login Error" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Subject / Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    placeholder="e.g. VPN Access Issue"
+                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Employee <span className="text-red-500">*</span></label>
-                  <input type="text" required value={formData.employee} onChange={e => setFormData({ ...formData, employee: e.target.value })} placeholder="e.g. Rohit Sharma" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Department <span className="text-red-500">*</span></label>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Category</label>
                   <AppDropdown
-                value={formData.department}
-                onChange={v => setFormData({ ...formData, department: v })}
-                options={[{value:'',label:'Select Department'},{value:'IT Support',label:'IT Support'},{value:'HR Support',label:'HR Support'},{value:'Payroll',label:'Payroll'},{value:'Facilities',label:'Facilities'}]}
-                size="sm"
-              />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Category <span className="text-red-500">*</span></label>
-                  <AppDropdown
-                value={formData.category}
-                onChange={v => setFormData({ ...formData, category: v })}
-                options={[{value:'',label:'Select Help Desk Category'},{value:'IT Support',label:'IT Hardware & Software'},{value:'Payroll',label:'Payroll & Tax Queries'},{value:'Leave & Attendance',label:'Leave & Attendance'},{value:'HR Support',label:'HR General Requests'}]}
-                size="sm"
-              />
+                    value={formData.category}
+                    onChange={v => setFormData({ ...formData, category: v })}
+                    options={[{value:'',label:'Select Category'},{value:'IT Support',label:'IT Support'},{value:'HR Support',label:'HR Support'},{value:'Payroll',label:'Payroll'},{value:'Facilities',label:'Facilities'}]}
+                    size="sm"
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">Priority</label>
                   <AppDropdown
-                value={formData.priority}
-                onChange={v => setFormData({ ...formData, priority: v })}
-                options={[{value:'High',label:'High'},{value:'Medium',label:'Medium'},{value:'Low',label:'Low'},{value:'Critical',label:'Critical'}]}
-                size="sm"
-              />
+                    value={formData.priority}
+                    onChange={v => setFormData({ ...formData, priority: v })}
+                    options={[{value:'Low',label:'Low'},{value:'Medium',label:'Medium'},{value:'High',label:'High'},{value:'Urgent',label:'Urgent'}]}
+                    size="sm"
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Assigned To <span className="text-red-500">*</span></label>
-                  <input type="text" required value={formData.assignedTo} onChange={e => setFormData({ ...formData, assignedTo: e.target.value })} placeholder="e.g. IT Admin / Help Desk Specialist" className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Attachment</label>
-                  <input type="file" className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <AppDropdown
-                value={formData.status}
-                onChange={v => setFormData({ ...formData, status: v })}
-                options={[{value:'Open',label:'Open'},{value:'In Progress',label:'In Progress'},{value:'Pending',label:'Pending'},{value:'Resolved',label:'Resolved'},{value:'Closed',label:'Closed'}]}
-                size="sm"
-              />
-                </div>
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Description <span className="text-red-500">*</span></label>
-                  <textarea required value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Describe error message and steps to reproduce..." style={{ height: '90px' }} className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none" />
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Requester / Employee Name</label>
+                  <input
+                    type="text"
+                    value={formData.employee}
+                    onChange={(e) => setFormData({ ...formData, employee: e.target.value })}
+                    placeholder="e.g. John Doe"
+                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  />
                 </div>
               </div>
-              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
-                <button type="button" onClick={() => setShowAddModal(false)} className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors">Cancel</button>
-                <button type="submit" className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md">Create Ticket</button>
+              <div className="flex justify-end gap-3 pt-6 border-t border-slate-200">
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-6 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors"
+                >
+                  Submit Ticket
+                </button>
               </div>
             </form>
           </div>
@@ -302,4 +302,3 @@ export default function HelpDeskTickets() {
     </div>
   );
 }
-

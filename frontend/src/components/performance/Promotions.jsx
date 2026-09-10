@@ -397,32 +397,28 @@ export default function Promotions() {
           <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>Track and manage career promotion recommendations</p>
         </div>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexShrink: 0 }}>
-          <button 
-            disabled={!canCreate('promotions')}
-            onClick={() => {
-              if (!checkActionPermission('promotions', 'CREATE')) {
-                return;
-              }
-              setShowAddModal(true);
-            }} 
-            style={{ 
-              padding: '10px 20px', 
-              borderRadius: '8px', 
-              border: 'none', 
-              background: canCreate('promotions') ? '#2952E3' : '#94A3B8', 
-              color: '#FFF', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px', 
-              cursor: canCreate('promotions') ? 'pointer' : 'not-allowed', 
-              fontSize: '14px', 
-              fontWeight: '500',
-              whiteSpace: 'nowrap',
-              flexShrink: 0
-            }}
-          >
-            <Plus size={16} /> Add Promotion
-          </button>
+          {canCreate('performance', 'performance_promotions') && (
+            <button 
+              onClick={() => setShowAddModal(true)} 
+              style={{ 
+                padding: '10px 20px', 
+                borderRadius: '8px', 
+                border: 'none', 
+                background: '#2952E3', 
+                color: '#FFF', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                cursor: 'pointer', 
+                fontSize: '14px', 
+                fontWeight: '500',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
+              }}
+            >
+              <Plus size={16} /> Add Promotion
+            </button>
+          )}
         </div>
       </div>
 

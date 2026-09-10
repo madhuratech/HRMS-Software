@@ -3,6 +3,7 @@ import AppDropdown from '../ui/AppDropdown';
 import { Clock, Briefcase, CheckCircle2, RefreshCw, DollarSign, FileText, Plus, Check, X, LogOut } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { getAvatarUrl } from '../../lib/utils';
+import { canCreate, canEdit } from '../../lib/permissions';
 import './employee-module.css';
 
 export default function ExitManagement() {
@@ -105,13 +106,15 @@ export default function ExitManagement() {
     <div className="hrms-content">
       <div className="hrms-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1>Exit Management</h1>
-        <button 
-          className="hrms-primary-btn" 
-          onClick={() => setShowAddForm(!showAddForm)}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-        >
-          <Plus size={16} /> File Resignation/Termination
-        </button>
+        {canCreate('employees', 'exit_management') && (
+          <button 
+            className="hrms-primary-btn" 
+            onClick={() => setShowAddForm(!showAddForm)}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <Plus size={16} /> File Resignation/Termination
+          </button>
+        )}
       </div>
 
       {showAddForm && (
@@ -398,7 +401,7 @@ export default function ExitManagement() {
               </span>
             </div>
 
-            {selectedExit.status === 'Pending' && (
+            {selectedExit.status === 'Pending' && canEdit('employees', 'exit_management') && (
               <button 
                 className="hrms-primary-btn" 
                 onClick={() => handleSettle(selectedExit.id)}

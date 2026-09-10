@@ -402,44 +402,48 @@ export default function SalaryStructure() {
                     </td>
                     <td style={{ padding: '14px 18px', textAlign: 'center' }}>
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                        <button
-                          onClick={() => openEditModal(row)}
-                          title="Edit Structure"
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: '8px',
-                            border: '1px solid #BFDBFE',
-                            background: '#EFF6FF',
-                            color: '#2563EB',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            fontSize: '12px',
-                            fontWeight: '600'
-                          }}
-                        >
-                          <Edit2 size={13} /> Edit
-                        </button>
-                        <button
-                          onClick={() => openDeleteModal(row)}
-                          title="Delete Structure"
-                          style={{
-                            padding: '6px 12px',
-                            borderRadius: '8px',
-                            border: '1px solid #FECACA',
-                            background: '#FEF2F2',
-                            color: '#EF4444',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            fontSize: '12px',
-                            fontWeight: '600'
-                          }}
-                        >
-                          <Trash2 size={13} /> Delete
-                        </button>
+                        {hasPermission('payroll', 'salary_structure', 'edit') && (
+                          <button
+                            onClick={() => openEditModal(row)}
+                            title="Edit Structure"
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: '8px',
+                              border: '1px solid #BFDBFE',
+                              background: '#EFF6FF',
+                              color: '#2563EB',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '12px',
+                              fontWeight: '600'
+                            }}
+                          >
+                            <Edit2 size={13} /> Edit
+                          </button>
+                        )}
+                        {hasPermission('payroll', 'salary_structure', 'delete') && (
+                          <button
+                            onClick={() => openDeleteModal(row)}
+                            title="Delete Structure"
+                            style={{
+                              padding: '6px 12px',
+                              borderRadius: '8px',
+                              border: '1px solid #FECACA',
+                              background: '#FEF2F2',
+                              color: '#EF4444',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontSize: '12px',
+                              fontWeight: '600'
+                            }}
+                          >
+                            <Trash2 size={13} /> Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

@@ -1,4 +1,5 @@
 const Performance = require('../models/Performance');
+const PerformanceScopeService = require('./PerformanceScopeService');
 
 class PromotionService {
   static async create(data, userId) {
@@ -110,7 +111,7 @@ class PromotionService {
     return rows[0] || null;
   }
 
-  static async list(filters, pagination) {
+  static async list(filters, pagination, scope = null) {
     let sql = `
       SELECT p.*, e.name as employee_name
       FROM promotions p
@@ -123,6 +124,12 @@ class PromotionService {
       sql += ` AND (e.name LIKE ? OR p.promoted_designation LIKE ? OR p.status LIKE ?)`;
       const term = `%${filters.search}%`;
       params.push(term, term, term);
+    }
+
+    if (scope) {
+      const scopeFilter = PerformanceScopeService.getSqlFilter('p.employee_id', scope);
+      sql += scopeFilter.sqlFragment;
+      params.push(...scopeFilter.params);
     }
 
     sql += ` ORDER BY p.created_at DESC`;
@@ -143,7 +150,14 @@ class PromotionService {
     const countParams = [];
     if (filters.search) {
       countSql += ` AND (e.name LIKE ? OR p.promoted_designation LIKE ? OR p.status LIKE ?)`;
+      const term = `%${filters.search}%`;
       countParams.push(term, term, term);
+    }
+
+    if (scope) {
+      const scopeFilter = PerformanceScopeService.getSqlFilter('p.employee_id', scope);
+      countSql += scopeFilter.sqlFragment;
+      countParams.push(...scopeFilter.params);
     }
 
     const totalRes = await Performance.query(countSql, countParams);
@@ -151,12 +165,14 @@ class PromotionService {
     return { rows, total: totalRes[0].count };
   }
 
-  static async getDashboardStats() {
-    const total = await Performance.query('SELECT COUNT(*) as count FROM promotions');
-    const approved = await Performance.query("SELECT COUNT(*) as count FROM promotions WHERE status = 'Approved'");
-    const pending = await Performance.query("SELECT COUNT(*) as count FROM promotions WHERE status = 'Pending'");
-    const today = await Performance.query("SELECT COUNT(*) as count FROM promotions WHERE promotion_date = CURDATE()");
-    const month = await Performance.query("SELECT COUNT(*) as count FROM promotions WHERE MONTH(promotion_date) = MONTH(CURDATE()) AND YEAR(promotion_date) = YEAR(CURDATE())");
+  static async getDashboardStats(scope = null) {
+    const scopeFilter = scope ? PerformanceScopeService.getSqlFilter('employee_id', scope) : { sqlFragment: '', params: [] };
+
+    const total = await Performance.query(`SELECT COUNT(*) as count FROM promotions WHERE 1=1 ${scopeFilter.sqlFragment}`, scopeFilter.params);
+    const approved = await Performance.query(`SELECT COUNT(*) as count FROM promotions WHERE status = 'Approved' ${scopeFilter.sqlFragment}`, scopeFilter.params);
+    const pending = await Performance.query(`SELECT COUNT(*) as count FROM promotions WHERE status = 'Pending' ${scopeFilter.sqlFragment}`, scopeFilter.params);
+    const today = await Performance.query(`SELECT COUNT(*) as count FROM promotions WHERE promotion_date = CURDATE() ${scopeFilter.sqlFragment}`, scopeFilter.params);
+    const month = await Performance.query(`SELECT COUNT(*) as count FROM promotions WHERE MONTH(promotion_date) = MONTH(CURDATE()) AND YEAR(promotion_date) = YEAR(CURDATE()) ${scopeFilter.sqlFragment}`, scopeFilter.params);
 
     const totalVal = total[0].count || 0;
     const approvedVal = approved[0].count || 0;
@@ -167,9 +183,10 @@ class PromotionService {
     const deptSummary = await Performance.query(`
       SELECT current_department as name, COUNT(*) as count
       FROM promotions
+      WHERE 1=1 ${scopeFilter.sqlFragment}
       GROUP BY current_department
       LIMIT 6
-    `);
+    `, scopeFilter.params);
 
     return {
       total: totalVal,

@@ -498,29 +498,30 @@ export default function OfferLetters() {
             Generate, preview, and issue candidate offer letters linked to Master Templates
           </p>
         </div>
-        <button
-          disabled={!canCreate('offer_letters')}
-          onClick={() => {
-            if (!checkActionPermission('offer_letters', 'CREATE')) return;
-            openCreateModal();
-          }}
-          style={{ 
-            padding: '10px 18px', 
-            borderRadius: '8px', 
-            border: 'none', 
-            background: canCreate('offer_letters') ? '#2952E3' : '#94A3B8', 
-            color: '#FFF', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px', 
-            cursor: canCreate('offer_letters') ? 'pointer' : 'not-allowed', 
-            fontSize: '14px', 
-            fontWeight: '600',
-            boxShadow: '0 2px 6px rgba(41,82,227,0.25)'
-          }}
-        >
-          <Plus size={16} /> Create Offer
-        </button>
+        {canCreate('offer_letters') && (
+          <button
+            onClick={() => {
+              if (!checkActionPermission('offer_letters', 'CREATE')) return;
+              openCreateModal();
+            }}
+            style={{ 
+              padding: '10px 18px', 
+              borderRadius: '8px', 
+              border: 'none', 
+              background: '#2952E3', 
+              color: '#FFF', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              cursor: 'pointer', 
+              fontSize: '14px', 
+              fontWeight: '600',
+              boxShadow: '0 2px 6px rgba(41,82,227,0.25)'
+            }}
+          >
+            <Plus size={16} /> Create Offer
+          </button>
+        )}
       </div>
 
       <div style={{ ...cardStyle, padding: 0, overflow: 'visible' }}>
@@ -670,13 +671,15 @@ export default function OfferLetters() {
                                     padding: '4px 0',
                                     textAlign: 'left'
                                   }}>
-                                    <button
-                                      onClick={() => handleSendEmail(row)}
-                                      disabled={sendingEmailId === row.id}
-                                      style={{ width: '100%', padding: '8px 14px', background: 'none', border: 'none', textAlign: 'left', fontSize: 13, color: '#2563EB', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
-                                    >
-                                      <Send size={14} /> {sendingEmailId === row.id ? 'Sending...' : 'Send via Email'}
-                                    </button>
+                                    {canEdit('offer_letters') && (
+                                      <button
+                                        onClick={() => handleSendEmail(row)}
+                                        disabled={sendingEmailId === row.id}
+                                        style={{ width: '100%', padding: '8px 14px', background: 'none', border: 'none', textAlign: 'left', fontSize: 13, color: '#2563EB', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8 }}
+                                      >
+                                        <Send size={14} /> {sendingEmailId === row.id ? 'Sending...' : 'Send via Email'}
+                                      </button>
+                                    )}
 
                                     {canEdit('offer_letters') && (
                                       <button

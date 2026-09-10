@@ -3,6 +3,7 @@ import AppDropdown from '../ui/AppDropdown';
 import { Download, ChevronDown, Clock, CheckCircle, XCircle, Layers } from 'lucide-react';
 import { apiFetch, formatDate } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { canEdit } from '../../lib/permissions';
 
 export function ExpenseApproval() {
   const { addToast } = useToast();
@@ -155,18 +156,20 @@ export function ExpenseApproval() {
                     <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{formatDate(r.date)}</td>
                     <td style={{ padding: '0 16px', fontSize: 13, fontWeight: 600, color: '#111827', whiteSpace: 'nowrap' }}>₹ {parseFloat(r.amount).toLocaleString('en-IN')}</td>
                     <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button onClick={() => handleAction(r.id, 'Approved')} style={{
-                          background: '#10B981', border: 'none', color: '#FFF', padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                        }}>
-                          Approve
-                        </button>
-                        <button onClick={() => handleAction(r.id, 'Rejected')} style={{
-                          background: 'none', border: 'none', color: '#EF4444', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                        }}>
-                          Reject
-                        </button>
-                      </div>
+                      {canEdit('expenses', 'expense_approval') && (
+                        <div style={{ display: 'flex', gap: 8 }}>
+                          <button onClick={() => handleAction(r.id, 'Approved')} style={{
+                            background: '#10B981', border: 'none', color: '#FFF', padding: '4px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                          }}>
+                            Approve
+                          </button>
+                          <button onClick={() => handleAction(r.id, 'Rejected')} style={{
+                            background: 'none', border: 'none', color: '#EF4444', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                          }}>
+                            Reject
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))

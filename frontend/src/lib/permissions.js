@@ -47,9 +47,10 @@ export function getLocalRoleAndPermissions() {
   return { role, permissions };
 }
 
-export function resolveModuleKeys(modKey) {
+export function resolveModuleKeys(modKey, parentModule = null) {
   if (!modKey) return { moduleKey: null, submoduleKey: null };
   const cleanKey = String(modKey).toLowerCase().trim().replace(/[-.]/g, '_');
+  const parentClean = parentModule ? String(parentModule).toLowerCase().trim().replace(/[-.]/g, '_') : null;
 
   // Performance module submodules
   if (['goals', 'goal'].includes(cleanKey)) return { moduleKey: 'performance', submoduleKey: 'goals' };
@@ -58,7 +59,9 @@ export function resolveModuleKeys(modKey) {
   if (['appraisal', 'appraisals'].includes(cleanKey)) return { moduleKey: 'performance', submoduleKey: 'appraisals' };
   if (['review', 'reviews'].includes(cleanKey)) return { moduleKey: 'performance', submoduleKey: 'reviews' };
   if (['feedback'].includes(cleanKey)) return { moduleKey: 'performance', submoduleKey: 'feedback' };
-  if (['promotion', 'promotions', 'performance_promotions'].includes(cleanKey)) return { moduleKey: 'performance', submoduleKey: 'performance_promotions' };
+  if (cleanKey === 'performance_promotions' || (['promotion', 'promotions'].includes(cleanKey) && parentClean === 'performance')) {
+    return { moduleKey: 'performance', submoduleKey: 'performance_promotions' };
+  }
 
   // Leave module submodules
   if (['my_leave', 'myleave', 'leave_applications'].includes(cleanKey)) return { moduleKey: 'leave', submoduleKey: 'my_leave' };
@@ -85,6 +88,7 @@ export function resolveModuleKeys(modKey) {
   if (['employee_profile', 'employeeprofile', 'my_profile'].includes(cleanKey)) return { moduleKey: 'employees', submoduleKey: 'employee_profile' };
   if (['employment_history', 'employmenthistory'].includes(cleanKey)) return { moduleKey: 'employees', submoduleKey: 'employment_history' };
   if (['transfers', 'transfer'].includes(cleanKey)) return { moduleKey: 'employees', submoduleKey: 'transfers' };
+  if (['promotions', 'promotion', 'employee_promotions'].includes(cleanKey)) return { moduleKey: 'employees', submoduleKey: 'promotions' };
   if (['exit_management', 'exitmanagement', 'exit'].includes(cleanKey)) return { moduleKey: 'employees', submoduleKey: 'exit_management' };
   if (['employee_documents', 'employeedocuments'].includes(cleanKey)) return { moduleKey: 'employees', submoduleKey: 'employee_documents' };
 
@@ -139,7 +143,7 @@ export function resolveModuleKeys(modKey) {
   if (['doc_signatures', 'docsignatures', 'digital_signatures', 'signatures'].includes(cleanKey)) return { moduleKey: 'documents', submoduleKey: 'doc_signatures' };
 
   // Helpdesk submodules
-  if (['support_tickets', 'supporttickets', 'tickets', 'ticket'].includes(cleanKey)) return { moduleKey: 'helpdesk', submoduleKey: 'support_tickets' };
+  if (['support_tickets', 'supporttickets', 'tickets', 'ticket'].includes(cleanKey)) return { moduleKey: 'helpdesk', submoduleKey: 'tickets' };
   if (['knowledge_base', 'knowledgebase', 'kb'].includes(cleanKey)) return { moduleKey: 'helpdesk', submoduleKey: 'knowledge_base' };
   if (['helpdesk_categories', 'helpdeskcategories'].includes(cleanKey)) return { moduleKey: 'helpdesk', submoduleKey: 'helpdesk_categories' };
 
@@ -149,6 +153,7 @@ export function resolveModuleKeys(modKey) {
   if (['teams', 'team', 'org_teams'].includes(cleanKey)) return { moduleKey: 'organization', submoduleKey: 'teams' };
   if (['shift_management', 'shiftmanagement', 'shifts'].includes(cleanKey)) return { moduleKey: 'organization', submoduleKey: 'shift_management' };
   if (['holiday_calendar', 'holidaycalendar', 'calendar'].includes(cleanKey)) return { moduleKey: 'organization', submoduleKey: 'holiday_calendar' };
+  if (['company_profile', 'companyprofile'].includes(cleanKey)) return { moduleKey: 'organization', submoduleKey: 'company_profile' };
 
   // Settings submodules
   if (['user_roles', 'userroles', 'roles_matrix', 'rolesmatrix', 'roles'].includes(cleanKey)) return { moduleKey: 'settings', submoduleKey: 'user_roles' };
@@ -253,7 +258,7 @@ export function showPermissionDenied(customMsg = null) {
  * 6) hasPermission(null, null, 'projects', 'tasks', 'create')
  */
 export function hasPermission(...args) {
-  const ACTIONS = ['view', 'create', 'edit', 'update', 'delete', 'approve', 'reject'];
+  const ACTIONS = ['view', 'create', 'edit', 'update', 'delete', 'approve', 'reject', 'export', 'import'];
 
   let userPermissions = null;
   let userRole = null;
@@ -273,6 +278,13 @@ export function hasPermission(...args) {
     if (submoduleKey && ACTIONS.includes(String(submoduleKey).toLowerCase())) {
       action = submoduleKey;
       submoduleKey = null;
+    }
+    if (moduleKey && !submoduleKey) {
+      const resolved = resolveModuleKeys(moduleKey);
+      if (resolved.moduleKey) {
+        moduleKey = resolved.moduleKey;
+        submoduleKey = resolved.submoduleKey;
+      }
     }
   } else if (args.length === 1 && typeof args[0] === 'string') {
     // Single string format e.g. "employee.create" or "leave.approval.edit" or "tasks"
@@ -352,8 +364,8 @@ export function hasPermission(...args) {
   let actKey = String(action || 'view').toLowerCase();
   if (actKey === 'update' || actKey === 'approve' || actKey === 'reject') actKey = 'edit';
 
-  const actKeyAlt = actKey === 'view' ? 'canView' : actKey === 'create' ? 'canCreate' : actKey === 'edit' ? 'canEdit' : 'canDelete';
-  const actKeyDb = actKey === 'view' ? 'can_view' : actKey === 'create' ? 'can_create' : actKey === 'edit' ? 'can_edit' : 'can_delete';
+  const actKeyAlt = actKey === 'view' ? 'canView' : actKey === 'create' ? 'canCreate' : actKey === 'edit' ? 'canEdit' : actKey === 'delete' ? 'canDelete' : actKey === 'export' ? 'canExport' : 'canImport';
+  const actKeyDb = actKey === 'view' ? 'can_view' : actKey === 'create' ? 'can_create' : actKey === 'edit' ? 'can_edit' : actKey === 'delete' ? 'can_delete' : actKey === 'export' ? 'can_export' : 'can_import';
 
   const extractVal = (obj) => {
     if (!obj) return undefined;
@@ -364,6 +376,18 @@ export function hasPermission(...args) {
       if (obj.can_update !== undefined) return obj.can_update;
       if (obj.canUpdate !== undefined) return obj.canUpdate;
       if (obj.update !== undefined) return obj.update;
+    }
+    if (actKey === 'import') {
+      // Import requires create permission if no specific import permission is defined
+      if (obj.can_create !== undefined) return obj.can_create;
+      if (obj.canCreate !== undefined) return obj.canCreate;
+      if (obj.create !== undefined) return obj.create;
+    }
+    if (actKey === 'export') {
+      // Export requires view permission if no specific export permission is defined
+      if (obj.can_view !== undefined) return obj.can_view;
+      if (obj.canView !== undefined) return obj.canView;
+      if (obj.view !== undefined) return obj.view;
     }
     return undefined;
   };
@@ -379,8 +403,8 @@ export function hasPermission(...args) {
       if (val !== undefined) return normalizeBoolean(val);
     }
 
-    // Check alias keys if applicable (e.g. gps_attendance <-> gps_attendance_punch)
-    const subAlias = subClean === 'gps_attendance' ? 'gps_attendance_punch' : (subClean === 'gps_attendance_punch' ? 'gps_attendance' : null);
+    // Check alias keys if applicable (e.g. gps_attendance <-> gps_attendance_punch, tickets <-> support_tickets)
+    const subAlias = subClean === 'gps_attendance' ? 'gps_attendance_punch' : (subClean === 'gps_attendance_punch' ? 'gps_attendance' : (subClean === 'tickets' ? 'support_tickets' : (subClean === 'support_tickets' ? 'tickets' : null)));
     if (subAlias && userPermissions[subAlias] !== undefined && userPermissions[subAlias] !== null) {
       const val = extractVal(userPermissions[subAlias]);
       if (val !== undefined) return normalizeBoolean(val);
@@ -415,6 +439,11 @@ export function hasPermission(...args) {
           if (val !== undefined) return normalizeBoolean(val);
         }
       }
+    }
+    // Graceful fallback to parent module permission if submodule was not explicitly defined
+    if (modClean && userPermissions[modClean] !== undefined && userPermissions[modClean] !== null) {
+      const parentVal = extractVal(userPermissions[modClean]);
+      if (parentVal !== undefined) return normalizeBoolean(parentVal);
     }
     return false;
   }
@@ -481,6 +510,28 @@ export function canDelete(...args) {
 
 export function canApprove(...args) {
   return canEdit(...args);
+}
+
+export function canExport(...args) {
+  if (args.length === 1) return hasPermission(args[0], 'export');
+  if (args.length === 2 && typeof args[0] === 'string' && typeof args[1] === 'string') {
+    return hasPermission(args[0], args[1], 'export');
+  }
+  if (args.length >= 3 && typeof args[0] === 'object') {
+    return hasPermission(args[0], args[1], args[2], args[3] || null, 'export');
+  }
+  return hasPermission(...args, 'export');
+}
+
+export function canImport(...args) {
+  if (args.length === 1) return hasPermission(args[0], 'import');
+  if (args.length === 2 && typeof args[0] === 'string' && typeof args[1] === 'string') {
+    return hasPermission(args[0], args[1], 'import');
+  }
+  if (args.length >= 3 && typeof args[0] === 'object') {
+    return hasPermission(args[0], args[1], args[2], args[3] || null, 'import');
+  }
+  return hasPermission(...args, 'import');
 }
 
 /**

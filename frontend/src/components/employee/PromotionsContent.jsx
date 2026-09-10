@@ -3,6 +3,8 @@ import AppDropdown from '../ui/AppDropdown';
 import { MoreVertical, ChevronLeft, ChevronRight, Plus, Check, X, Award, CheckCircle2 } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { getAvatarUrl } from '../../lib/utils';
+import { apiFetch } from '../../lib/api';
+import { canCreate, canEdit } from '../../lib/permissions';
 import './employee-module.css';
 
 export default function PromotionsContent() {
@@ -19,86 +21,81 @@ export default function PromotionsContent() {
   const [effectiveDate, setEffectiveDate] = useState(new Date().toISOString().split('T')[0]);
 
   // Load promotions list, employees dropdown, and designations dropdown
-  const loadData = () => {
+  const loadData = async () => {
     setLoading(true);
-    fetch("/app/employees/promotions")
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setPromotions(data);
-        } else {
-          setPromotions([]);
-        }
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
+    try {
+      const data = await apiFetch("/employees/promotions");
+      if (Array.isArray(data)) {
+        setPromotions(data);
+      } else {
+        setPromotions([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setPromotions([]);
+    } finally {
+      setLoading(false);
+    }
 
-    fetch("/app/employees?status=Active")
-      .then(res => res.json())
-      .then(data => setEmployees(data))
-      .catch(err => console.error(err));
+    try {
+      const empData = await apiFetch("/employees?status=Active");
+      if (Array.isArray(empData)) setEmployees(empData);
+    } catch (err) {
+      console.error(err);
+    }
 
-    fetch("/app/organization/designations")
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) setDesignations(data);
-      })
-      .catch(err => console.error(err));
+    try {
+      const desigData = await apiFetch("/organization/designations");
+      if (Array.isArray(desigData)) setDesignations(desigData);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const handleRequestPromotion = (e) => {
+  const handleRequestPromotion = async (e) => {
     e.preventDefault();
     if (!employeeId) {
       addToast("Please select an employee", "error");
       return;
     }
 
-    fetch("/app/employees/promotions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ employeeId, newDesignationName, effectiveDate })
-    })
-    .then(res => {
-      if (!res.ok) throw new Error("Failed to submit request");
-      return res.json();
-    })
-    .then(() => {
+    try {
+      const res = await apiFetch("/employees/promotions", {
+        method: "POST",
+        body: JSON.stringify({ employeeId, newDesignationName, effectiveDate })
+      });
+      if (res && res.error) {
+        throw new Error(res.message || "Failed to submit request");
+      }
       addToast("Promotion request submitted successfully!", "success");
       setShowAddForm(false);
       setEmployeeId('');
       loadData();
-    })
-    .catch(err => {
+    } catch (err) {
       console.error(err);
       addToast("Failed to submit promotion request", "error");
-    });
+    }
   };
 
-  const handleApprove = (promoId) => {
-    fetch(`/app/employees/promotions/${promoId}/approve`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ approverId: 1 }) // Default Admin
-    })
-    .then(res => {
-      if (!res.ok) throw new Error("Approval failed");
-      return res.json();
-    })
-    .then(() => {
+  const handleApprove = async (promoId) => {
+    try {
+      const res = await apiFetch(`/employees/promotions/${promoId}/approve`, {
+        method: "PUT",
+        body: JSON.stringify({ approverId: 1 }) // Default Admin
+      });
+      if (res && res.error) {
+        throw new Error(res.message || "Approval failed");
+      }
       addToast("Promotion approved and employee record updated!", "success");
       loadData();
-    })
-    .catch(err => {
+    } catch (err) {
       console.error(err);
       addToast("Failed to approve promotion", "error");
-    });
+    }
   };
 
   const pendingCount = promotions.filter(p => p.status === 'Pending').length;
@@ -108,13 +105,15 @@ export default function PromotionsContent() {
     <div className="hrms-content">
       <div className="hrms-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1>Promotions</h1>
-        <button 
-          className="hrms-primary-btn" 
-          onClick={() => setShowAddForm(!showAddForm)}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-        >
-          <Plus size={16} /> Request Promotion
-        </button>
+        {canCreate('employees', 'promotions') && (
+          <button 
+            className="hrms-primary-btn" 
+            onClick={() => setShowAddForm(!showAddForm)}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <Plus size={16} /> Request Promotion
+          </button>
+        )}
       </div>
 
       {showAddForm && (
@@ -371,13 +370,17 @@ export default function PromotionsContent() {
                     </td>
                     <td>
                       {promo.status === 'Pending' ? (
-                        <button
-                          className="hrms-primary-btn"
-                          onClick={() => handleApprove(promo.id)}
-                          style={{ padding: '4px 8px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
-                        >
-                          <Check size={12} /> Approve
-                        </button>
+                        canEdit('employees', 'promotions') ? (
+                          <button
+                            className="hrms-primary-btn"
+                            onClick={() => handleApprove(promo.id)}
+                            style={{ padding: '4px 8px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                          >
+                            <Check size={12} /> Approve
+                          </button>
+                        ) : (
+                          <span style={{ fontSize: '12px', color: '#94a3b8' }}>Pending</span>
+                        )
                       ) : (
                         <button style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
                           <MoreVertical size={18} />

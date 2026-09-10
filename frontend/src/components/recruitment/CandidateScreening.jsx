@@ -1015,67 +1015,68 @@ export default function CandidateScreening() {
                 </button>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  {!isDecisionFinal ? (
-                    <>
-                      <button
-                        type="button"
-                        disabled={!canEdit('screening') || submitting || evaluatingLoading}
-                        onClick={() => {
-                          if (!checkActionPermission('screening', 'EDIT')) return;
-                          setShowRejectModal(true);
-                        }}
-                        style={{
-                          padding: '9px 22px', borderRadius: '10px', border: 'none',
-                          background: canEdit('screening') ? 'linear-gradient(135deg, #EF4444, #DC2626)' : '#E2E8F0',
-                          color: canEdit('screening') ? '#FFF' : '#94A3B8',
-                          fontSize: '12px', fontWeight: '700', cursor: canEdit('screening') ? 'pointer' : 'not-allowed',
-                          display: 'flex', alignItems: 'center', gap: '6px',
-                          boxShadow: canEdit('screening') ? '0 2px 8px rgba(239, 68, 68, 0.3)' : 'none',
-                          transition: 'all 0.15s'
-                        }}
-                      >
-                        <XCircle size={14} /> Reject Candidate
-                      </button>
+                  {canEdit('screening') && (
+                    !isDecisionFinal ? (
+                      <>
+                        <button
+                          type="button"
+                          disabled={submitting || evaluatingLoading}
+                          onClick={() => {
+                            if (!checkActionPermission('screening', 'EDIT')) return;
+                            setShowRejectModal(true);
+                          }}
+                          style={{
+                            padding: '9px 22px', borderRadius: '10px', border: 'none',
+                            background: 'linear-gradient(135deg, #EF4444, #DC2626)',
+                            color: '#FFF',
+                            fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            boxShadow: '0 2px 8px rgba(239, 68, 68, 0.3)',
+                            transition: 'all 0.15s'
+                          }}
+                        >
+                          <XCircle size={14} /> Reject Candidate
+                        </button>
 
-                      <button
-                        type="button"
-                        disabled={!canEdit('screening') || submitting || evaluatingLoading}
-                        onClick={() => {
-                          if (!checkActionPermission('screening', 'EDIT')) return;
-                          handleShortlist();
-                        }}
-                        style={{
-                          padding: '9px 22px', borderRadius: '10px', border: 'none',
-                          background: canEdit('screening') ? 'linear-gradient(135deg, #3B82F6, #2563EB)' : '#E2E8F0',
-                          color: canEdit('screening') ? '#FFF' : '#94A3B8',
-                          fontSize: '12px', fontWeight: '700', cursor: canEdit('screening') ? 'pointer' : 'not-allowed',
-                          display: 'flex', alignItems: 'center', gap: '6px',
-                          boxShadow: canEdit('screening') ? '0 2px 8px rgba(59, 130, 246, 0.3)' : 'none',
-                          transition: 'all 0.15s'
-                        }}
-                      >
-                        <CheckCircle2 size={14} /> {submitting ? 'Processing...' : 'Shortlist Candidate'}
-                      </button>
-                    </>
-                  ) : (
-                    selectedCandidate.status === 'Shortlisted' && (
-                      <button
-                        type="button"
-                        disabled={!canEdit('screening')}
-                        onClick={() => {
-                          if (!checkActionPermission('screening', 'EDIT')) return;
-                          handleMoveToInterview(selectedCandidate);
-                        }}
-                        style={{
-                          padding: '9px 22px', borderRadius: '10px', border: 'none',
-                          background: 'linear-gradient(135deg, #10B981, #059669)',
-                          color: '#FFF', fontSize: '12px', fontWeight: '700', cursor: 'pointer',
-                          display: 'flex', alignItems: 'center', gap: '6px',
-                          boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)', transition: 'all 0.15s'
-                        }}
-                      >
-                        <UserCheck size={14} /> Move to Interview
-                      </button>
+                        <button
+                          type="button"
+                          disabled={submitting || evaluatingLoading}
+                          onClick={() => {
+                            if (!checkActionPermission('screening', 'EDIT')) return;
+                            handleShortlist();
+                          }}
+                          style={{
+                            padding: '9px 22px', borderRadius: '10px', border: 'none',
+                            background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
+                            color: '#FFF',
+                            fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
+                            transition: 'all 0.15s'
+                          }}
+                        >
+                          <CheckCircle2 size={14} /> {submitting ? 'Processing...' : 'Shortlist Candidate'}
+                        </button>
+                      </>
+                    ) : (
+                      selectedCandidate.status === 'Shortlisted' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (!checkActionPermission('screening', 'EDIT')) return;
+                            handleMoveToInterview(selectedCandidate);
+                          }}
+                          style={{
+                            padding: '9px 22px', borderRadius: '10px', border: 'none',
+                            background: 'linear-gradient(135deg, #10B981, #059669)',
+                            color: '#FFF', fontSize: '12px', fontWeight: '700', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', gap: '6px',
+                            boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)', transition: 'all 0.15s'
+                          }}
+                        >
+                          <UserCheck size={14} /> Move to Interview
+                        </button>
+                      )
                     )
                   )}
                 </div>

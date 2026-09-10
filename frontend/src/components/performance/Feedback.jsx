@@ -403,32 +403,28 @@ export default function Feedback() {
               size="sm"
             />
           </div>
-          <button 
-            disabled={!canCreate('feedback')}
-            onClick={() => {
-              if (!checkActionPermission('feedback', 'CREATE')) {
-                return;
-              }
-              setShowAddModal(true);
-            }} 
-            style={{ 
-              padding: '10px 20px', 
-              borderRadius: '8px', 
-              border: 'none', 
-              background: canCreate('feedback') ? '#2952E3' : '#94A3B8', 
-              color: '#FFF', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px', 
-              cursor: canCreate('feedback') ? 'pointer' : 'not-allowed', 
-              fontSize: '14px', 
-              fontWeight: '500',
-              whiteSpace: 'nowrap',
-              flexShrink: 0
-            }}
-          >
-            <Plus size={16} /> Add Feedback
-          </button>
+          {canCreate('performance', 'feedback') && (
+            <button 
+              onClick={() => setShowAddModal(true)} 
+              style={{ 
+                padding: '10px 20px', 
+                borderRadius: '8px', 
+                border: 'none', 
+                background: '#2952E3', 
+                color: '#FFF', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                cursor: 'pointer', 
+                fontSize: '14px', 
+                fontWeight: '500',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
+              }}
+            >
+              <Plus size={16} /> Add Feedback
+            </button>
+          )}
         </div>
       </div>
 

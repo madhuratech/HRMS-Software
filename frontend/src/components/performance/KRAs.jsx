@@ -427,32 +427,28 @@ export default function KRAs() {
               size="sm"
             />
           </div>
-          <button 
-            disabled={!canCreate('kras')}
-            onClick={() => {
-              if (!checkActionPermission('kras', 'CREATE')) {
-                return;
-              }
-              setShowAddModal(true);
-            }} 
-            style={{ 
-              padding: '10px 20px', 
-              borderRadius: '8px', 
-              border: 'none', 
-              background: canCreate('kras') ? '#2952E3' : '#94A3B8', 
-              color: '#FFF', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '8px', 
-              cursor: canCreate('kras') ? 'pointer' : 'not-allowed', 
-              fontSize: '14px', 
-              fontWeight: '500',
-              whiteSpace: 'nowrap',
-              flexShrink: 0
-            }}
-          >
-            <Plus size={16} /> Add KRA
-          </button>
+          {canCreate('performance', 'kras') && (
+            <button 
+              onClick={() => setShowAddModal(true)} 
+              style={{ 
+                padding: '10px 20px', 
+                borderRadius: '8px', 
+                border: 'none', 
+                background: '#2952E3', 
+                color: '#FFF', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '8px', 
+                cursor: 'pointer', 
+                fontSize: '14px', 
+                fontWeight: '500',
+                whiteSpace: 'nowrap',
+                flexShrink: 0
+              }}
+            >
+              <Plus size={16} /> Add KRA
+            </button>
+          )}
         </div>
       </div>
 

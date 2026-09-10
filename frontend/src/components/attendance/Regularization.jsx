@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
+import { canCreate } from '../../lib/permissions';
 import { getAvatarUrl } from '../../lib/utils';
 import { Search, Filter, Download, Calendar as CalendarIcon, Edit2, Eye, ChevronDown, Check, X, Plus, CheckCircle2, Clock } from 'lucide-react';
 
@@ -104,13 +105,15 @@ export default function Regularization() {
           <div>
             <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#0f172a', margin: 0 }}>Attendance Regularization</h1>
           </div>
-          <button
-            onClick={() => setShowApplyModal(true)}
-            className="hrms-primary-btn"
-            style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#2563EB' }}
-          >
-            <Plus size={16} /> Apply Regularization
-          </button>
+          {canCreate('attendance', 'regularization') && (
+            <button
+              onClick={() => setShowApplyModal(true)}
+              className="hrms-primary-btn"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#2563EB' }}
+            >
+              <Plus size={16} /> Apply Regularization
+            </button>
+          )}
         </div>
 
         <div style={{ display: 'flex', gap: '24px', borderBottom: '1px solid #e2e8f0', width: '100%', justifyContent: 'flex-start' }}>

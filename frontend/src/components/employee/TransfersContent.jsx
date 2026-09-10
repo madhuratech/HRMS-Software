@@ -3,6 +3,8 @@ import AppDropdown from '../ui/AppDropdown';
 import { MoreVertical, ChevronLeft, ChevronRight, Plus, ArrowRight, Check, X, ArrowRightLeft } from 'lucide-react';
 import { useToast } from '../ui/Toast';
 import { getAvatarUrl } from '../../lib/utils';
+import { apiFetch } from '../../lib/api';
+import { canCreate, canEdit } from '../../lib/permissions';
 import './employee-module.css';
 
 export default function TransfersContent() {
@@ -19,82 +21,79 @@ export default function TransfersContent() {
   const [newValueName, setNewValueName] = useState('Marketing');
   const [effectiveDate, setEffectiveDate] = useState(new Date().toISOString().split('T')[0]);
 
-  const loadData = () => {
+  const loadData = async () => {
     setLoading(true);
-    fetch("/app/employees/transfers")
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setTransfers(data);
-          if (data.length > 0) {
-            setSelectedTransfer(data[0]);
-          }
-        } else {
-          setTransfers([]);
+    try {
+      const data = await apiFetch("/employees/transfers");
+      if (Array.isArray(data)) {
+        setTransfers(data);
+        if (data.length > 0) {
+          setSelectedTransfer(data[0]);
         }
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
-      });
+      } else {
+        setTransfers([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setTransfers([]);
+    } finally {
+      setLoading(false);
+    }
 
-    fetch("/app/employees?status=Active")
-      .then(res => res.json())
-      .then(data => setEmployees(data))
-      .catch(err => console.error(err));
+    try {
+      const empData = await apiFetch("/employees?status=Active");
+      if (Array.isArray(empData)) {
+        setEmployees(empData);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const handleRequestTransfer = (e) => {
+  const handleRequestTransfer = async (e) => {
     e.preventDefault();
     if (!employeeId || !newValueName) {
       addToast("Please fill all fields", "error");
       return;
     }
 
-    fetch("/app/employees/transfers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ employeeId, transferType, newValueName, effectiveDate })
-    })
-    .then(res => {
-      if (!res.ok) throw new Error("Failed to submit transfer");
-      return res.json();
-    })
-    .then(() => {
+    try {
+      const res = await apiFetch("/employees/transfers", {
+        method: "POST",
+        body: JSON.stringify({ employeeId, transferType, newValueName, effectiveDate })
+      });
+      if (res && res.error) {
+        throw new Error(res.message || "Failed to submit transfer");
+      }
       addToast("Transfer request submitted successfully!", "success");
       setShowAddForm(false);
       setEmployeeId('');
       loadData();
-    })
-    .catch(err => {
+    } catch (err) {
       console.error(err);
       addToast("Failed to submit transfer request", "error");
-    });
+    }
   };
 
-  const handleApprove = (transferId) => {
-    fetch(`/app/employees/transfers/${transferId}/approve`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ approverId: 1 }) // Default Admin
-    })
-    .then(res => {
-      if (!res.ok) throw new Error("Approval failed");
-      return res.json();
-    })
-    .then(() => {
+  const handleApprove = async (transferId) => {
+    try {
+      const res = await apiFetch(`/employees/transfers/${transferId}/approve`, {
+        method: "PUT",
+        body: JSON.stringify({ approverId: 1 }) // Default Admin
+      });
+      if (res && res.error) {
+        throw new Error(res.message || "Approval failed");
+      }
       addToast("Transfer approved and employee record updated!", "success");
       loadData();
-    })
-    .catch(err => {
+    } catch (err) {
       console.error(err);
       addToast("Failed to approve transfer", "error");
-    });
+    }
   };
 
   const totalCount = transfers.length;
@@ -104,13 +103,15 @@ export default function TransfersContent() {
     <div className="hrms-content">
       <div className="hrms-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1>Transfers</h1>
-        <button 
-          className="hrms-primary-btn" 
-          onClick={() => setShowAddForm(!showAddForm)}
-          style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-        >
-          <Plus size={16} /> Request Transfer
-        </button>
+        {canCreate('employees', 'transfers') && (
+          <button 
+            className="hrms-primary-btn" 
+            onClick={() => setShowAddForm(!showAddForm)}
+            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <Plus size={16} /> Request Transfer
+          </button>
+        )}
       </div>
 
       {showAddForm && (
@@ -423,7 +424,7 @@ export default function TransfersContent() {
                 <span className={`hrms-badge ${selectedTransfer.status === 'Approved' ? 'hrms-badge-active' : 'hrms-badge-pending'}`}>{selectedTransfer.status}</span>
               </div>
               
-              {selectedTransfer.status === 'Pending' && (
+              {selectedTransfer.status === 'Pending' && canEdit('employees', 'transfers') && (
                 <div style={{ gridColumn: '1 / -1', marginTop: '16px' }}>
                   <button 
                     className="hrms-primary-btn" 

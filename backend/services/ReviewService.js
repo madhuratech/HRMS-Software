@@ -1,4 +1,5 @@
 const Performance = require('../models/Performance');
+const PerformanceScopeService = require('./PerformanceScopeService');
 
 class ReviewService {
   static calculateReviewData(evaluations = []) {
@@ -329,14 +330,16 @@ class ReviewService {
     return review;
   }
 
-  static async list(filters = {}, pagination = null) {
+  static async list(filters, pagination, scope = null) {
     let sql = `
       SELECT r.id,
              r.employee_id,
-             COALESCE(e.name, 'Employee') as employee_name,
+             e.name as employee_name,
+             COALESCE(e.employee_id, CONCAT('EMP', LPAD(e.id, 4, '0'))) as employee_code,
+             e.department_id,
              COALESCE(d.dept_name, 'General') as department_name,
              r.goal_id,
-             COALESCE(g.goal_title, g.title, 'General Goal') as goal_title,
+             COALESCE(g.goal_title, 'Quarterly Objectives') as goal_title,
              COALESCE(r.review_period, 'Q2 2026') as review_period,
              COALESCE(r.reviewer_id, 'Manager') as reviewer_id,
              COALESCE(r.type, 'Manager Review') as type,
@@ -375,6 +378,12 @@ class ReviewService {
       params.push(filters.goal_id);
     }
 
+    if (scope) {
+      const scopeFilter = PerformanceScopeService.getSqlFilter('r.employee_id', scope);
+      sql += scopeFilter.sqlFragment;
+      params.push(...scopeFilter.params);
+    }
+
     sql += ` ORDER BY r.created_at DESC`;
 
     if (pagination) {
@@ -409,13 +418,27 @@ class ReviewService {
       countSql += ` AND r.goal_id = ?`;
       countParams.push(filters.goal_id);
     }
+    if (scope) {
+      const scopeFilter = PerformanceScopeService.getSqlFilter('r.employee_id', scope);
+      countSql += scopeFilter.sqlFragment;
+      countParams.push(...scopeFilter.params);
+    }
 
     const totalRes = await Performance.query(countSql, countParams);
 
     return { rows, total: totalRes[0].count };
   }
 
-  static async getEmployeePerformanceTree(employeeId, goalId = null) {
+  static async getEmployeePerformanceTree(employeeId, goalId = null, scope = null) {
+    if (scope && !scope.isUnrestricted) {
+      if (scope.scope === 'SELF' && Number(employeeId) !== Number(scope.employeeId)) {
+        return []; // Block access to another employee's performance tree
+      }
+      if (scope.scope === 'TEAM' && (!scope.allowedEmployeeIds || !scope.allowedEmployeeIds.includes(Number(employeeId)))) {
+        return []; // Block access to employee outside assigned team
+      }
+    }
+
     let goalsSql = `
       SELECT g.id, g.goal_title, g.goal_category, g.priority, g.status, g.start_date, g.target_date, g.completion_percentage,
              e.name as employee_name, e.department_id, d.dept_name as department_name
@@ -476,11 +499,13 @@ class ReviewService {
     return hierarchy;
   }
 
-  static async getDashboardStats() {
-    const total = await Performance.query('SELECT COUNT(*) as count FROM reviews');
-    const completed = await Performance.query("SELECT COUNT(*) as count FROM reviews WHERE status = 'Completed'");
-    const inProgress = await Performance.query("SELECT COUNT(*) as count FROM reviews WHERE status = 'In Progress'");
-    const pending = await Performance.query("SELECT COUNT(*) as count FROM reviews WHERE status = 'Pending'");
+  static async getDashboardStats(scope = null) {
+    const scopeFilter = scope ? PerformanceScopeService.getSqlFilter('employee_id', scope) : { sqlFragment: '', params: [] };
+
+    const total = await Performance.query(`SELECT COUNT(*) as count FROM reviews WHERE 1=1 ${scopeFilter.sqlFragment}`, scopeFilter.params);
+    const completed = await Performance.query(`SELECT COUNT(*) as count FROM reviews WHERE status = 'Completed' ${scopeFilter.sqlFragment}`, scopeFilter.params);
+    const inProgress = await Performance.query(`SELECT COUNT(*) as count FROM reviews WHERE status = 'In Progress' ${scopeFilter.sqlFragment}`, scopeFilter.params);
+    const pending = await Performance.query(`SELECT COUNT(*) as count FROM reviews WHERE status = 'Pending' ${scopeFilter.sqlFragment}`, scopeFilter.params);
 
     const totalVal = total[0].count || 0;
     const completedVal = completed[0].count || 0;

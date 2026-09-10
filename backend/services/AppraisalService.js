@@ -1,4 +1,5 @@
 const Performance = require('../models/Performance');
+const PerformanceScopeService = require('./PerformanceScopeService');
 
 class AppraisalService {
   static async create(data, userId) {
@@ -71,7 +72,7 @@ class AppraisalService {
     return rows[0] || null;
   }
 
-  static async list(filters, pagination) {
+  static async list(filters, pagination, scope = null) {
     let sql = `
       SELECT a.*, e.name as employee_name, d.dept_name as department_name
       FROM appraisals a
@@ -89,6 +90,16 @@ class AppraisalService {
     if (filters.department_id) {
       sql += ` AND e.department_id = ?`;
       params.push(filters.department_id);
+    }
+    if (filters.employee_id) {
+      sql += ` AND a.employee_id = ?`;
+      params.push(filters.employee_id);
+    }
+
+    if (scope) {
+      const scopeFilter = PerformanceScopeService.getSqlFilter('a.employee_id', scope);
+      sql += scopeFilter.sqlFragment;
+      params.push(...scopeFilter.params);
     }
 
     sql += ` ORDER BY a.created_at DESC`;
@@ -108,6 +119,7 @@ class AppraisalService {
     `;
     const countParams = [];
     if (filters.search) {
+      const term = `%${filters.search}%`;
       countSql += ` AND (e.name LIKE ? OR a.status LIKE ?)`;
       countParams.push(term, term);
     }
@@ -115,17 +127,28 @@ class AppraisalService {
       countSql += ` AND e.department_id = ?`;
       countParams.push(filters.department_id);
     }
+    if (filters.employee_id) {
+      countSql += ` AND a.employee_id = ?`;
+      countParams.push(filters.employee_id);
+    }
+    if (scope) {
+      const scopeFilter = PerformanceScopeService.getSqlFilter('a.employee_id', scope);
+      countSql += scopeFilter.sqlFragment;
+      countParams.push(...scopeFilter.params);
+    }
 
     const totalRes = await Performance.query(countSql, countParams);
 
     return { rows, total: totalRes[0].count };
   }
 
-  static async getDashboardStats() {
-    const total = await Performance.query('SELECT COUNT(*) as count FROM appraisals');
-    const approved = await Performance.query("SELECT COUNT(*) as count FROM appraisals WHERE status = 'Approved'");
-    const pending = await Performance.query("SELECT COUNT(*) as count FROM appraisals WHERE status = 'In Progress'");
-    const rejected = await Performance.query("SELECT COUNT(*) as count FROM appraisals WHERE status = 'Rejected'");
+  static async getDashboardStats(scope = null) {
+    const scopeFilter = scope ? PerformanceScopeService.getSqlFilter('employee_id', scope) : { sqlFragment: '', params: [] };
+
+    const total = await Performance.query(`SELECT COUNT(*) as count FROM appraisals WHERE 1=1 ${scopeFilter.sqlFragment}`, scopeFilter.params);
+    const approved = await Performance.query(`SELECT COUNT(*) as count FROM appraisals WHERE status = 'Approved' ${scopeFilter.sqlFragment}`, scopeFilter.params);
+    const pending = await Performance.query(`SELECT COUNT(*) as count FROM appraisals WHERE status = 'In Progress' ${scopeFilter.sqlFragment}`, scopeFilter.params);
+    const rejected = await Performance.query(`SELECT COUNT(*) as count FROM appraisals WHERE status = 'Rejected' ${scopeFilter.sqlFragment}`, scopeFilter.params);
 
     const totalVal = total[0].count || 0;
     const approvedVal = approved[0].count || 0;

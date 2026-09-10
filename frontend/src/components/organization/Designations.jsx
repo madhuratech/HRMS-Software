@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { apiFetch } from '../../lib/api';
 import AppDropdown from '../ui/AppDropdown';
+import { canCreate, canEdit, canDelete, canExport } from '../../lib/permissions';
 import {
   Award,
   Users,
@@ -370,12 +371,16 @@ export const Designations = () => {
           <p className="text-sm text-slate-500 mt-1">Manage all company designations.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
-            <Download size={16} /> Export
-          </button>
-          <button onClick={handleAdd} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors">
-            <Plus size={16} /> Add Designation
-          </button>
+          {canExport('organization', 'designations') && (
+            <button className="flex items-center gap-2 px-4 py-2.5 border border-slate-200 rounded-lg text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">
+              <Download size={16} /> Export
+            </button>
+          )}
+          {canCreate('organization', 'designations') && (
+            <button onClick={handleAdd} className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors">
+              <Plus size={16} /> Add Designation
+            </button>
+          )}
         </div>
       </div>
 
@@ -485,12 +490,14 @@ export const Designations = () => {
             </div>
             <h3 className="text-lg font-semibold text-slate-700">No Designations Found</h3>
             <p className="text-sm text-slate-500 mt-1 mb-6">Create your first designation.</p>
-            <button
-              onClick={handleAdd}
-              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm mb-4"
-            >
-              <Plus size={16} /> Add Designation
-            </button>
+            {canCreate('organization', 'designations') && (
+              <button
+                onClick={handleAdd}
+                className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm mb-4"
+              >
+                <Plus size={16} /> Add Designation
+              </button>
+            )}
           </div>
         ) : (
           <table className="w-full">
@@ -531,8 +538,12 @@ export const Designations = () => {
                     <td className="py-4 px-4 whitespace-nowrap text-left">
                       <div className="flex items-center justify-start gap-2">
                         <button onClick={() => handleOpenView(item)} className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"><Eye size={16} /></button>
-                        <button onClick={() => handleOpenEdit(item)} className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"><Edit2 size={16} /></button>
-                        <button onClick={() => handleOpenDelete(item)} className="p-1.5 border border-red-100 rounded-lg text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={16} /></button>
+                        {canEdit('organization', 'designations') && (
+                          <button onClick={() => handleOpenEdit(item)} className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors"><Edit2 size={16} /></button>
+                        )}
+                        {canDelete('organization', 'designations') && (
+                          <button onClick={() => handleOpenDelete(item)} className="p-1.5 border border-red-100 rounded-lg text-red-500 hover:bg-red-50 transition-colors"><Trash2 size={16} /></button>
+                        )}
                       </div>
                     </td>
                   </tr>

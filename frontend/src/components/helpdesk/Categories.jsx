@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
+import { canCreate, canEdit, canDelete } from '../../lib/permissions';
 import { Search, Plus, Eye, Edit2, Trash2, X } from 'lucide-react';
 
 export function Categories() {
@@ -69,12 +70,14 @@ export function Categories() {
           </div>
 
           {/* Primary Action Button */}
-          <button onClick={() => setShowAddModal(true)} style={{
-            display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
-            background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
-          }}>
-            <Plus size={16} /> Add Category
-          </button>
+          {canCreate('helpdesk', 'helpdesk_categories') && (
+            <button onClick={() => setShowAddModal(true)} style={{
+              display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px',
+              background: '#2952E3', color: '#FFF', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer', boxShadow: '0 2px 6px rgba(41,82,227,0.25)',
+            }}>
+              <Plus size={16} /> Add Category
+            </button>
+          )}
         </div>
       </div>
 
@@ -105,8 +108,12 @@ export function Categories() {
                   </td>
                   <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
                     <div style={{ display: 'flex', gap: 8, color: '#6B7280' }}>
-                      <button style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', padding: 4 }}><Edit2 size={16} /></button>
-                      <button style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4 }}><Trash2 size={16} /></button>
+                      {canEdit('helpdesk', 'helpdesk_categories') && (
+                        <button style={{ background: 'none', border: 'none', color: '#6B7280', cursor: 'pointer', padding: 4 }}><Edit2 size={16} /></button>
+                      )}
+                      {canDelete('helpdesk', 'helpdesk_categories') && (
+                        <button style={{ background: 'none', border: 'none', color: '#EF4444', cursor: 'pointer', padding: 4 }}><Trash2 size={16} /></button>
+                      )}
                     </div>
                   </td>
                 </tr>
@@ -117,12 +124,12 @@ export function Categories() {
 
         {/* Table Footer Pagination */}
         <div style={{ padding: '12px 20px', borderTop: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#FFF' }}>
-          <span style={{ fontSize: 12, color: '#6B7280' }}>Showing 1 to 8 of 8 entries</span>
+          <span style={{ fontSize: 12, color: '#6B7280' }}>Showing 1 to {categoryList.length} of {categoryList.length} entries</span>
         </div>
       </div>
 
       {/* Add Help Desk Category Modal (1100px Standard) */}
-      {showAddModal && (
+      {showAddModal && canCreate('helpdesk', 'helpdesk_categories') && (
         <>
           <div className="modal-backdrop-blur" onClick={() => setShowAddModal(false)} />
           <div className="modal-centered-content" style={{ width: '1100px', maxWidth: '90vw', maxHeight: '90vh' }}>
@@ -169,4 +176,3 @@ export function Categories() {
 }
 
 export default Categories;
-

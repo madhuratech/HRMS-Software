@@ -3,6 +3,7 @@ import { Download, Calendar, ChevronDown, FileText, CheckCircle, Clock, XCircle,
 import { LineChart, Line, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import { apiFetch, formatDate } from '../../lib/api';
 import { useToast } from '../ui/Toast';
+import { canEdit, canExport } from '../../lib/permissions';
 
 export function Reimbursements() {
   const { addToast } = useToast();
@@ -119,12 +120,14 @@ export function Reimbursements() {
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-          <button onClick={handleExport} style={{
-            display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px',
-            background: '#FFF', border: '1px solid #2563EB', color: '#2563EB', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
-          }}>
-            <Download size={14} /> Export Report
-          </button>
+          {canExport('expenses', 'expense_reimbursements') && (
+            <button onClick={handleExport} style={{
+              display: 'flex', alignItems: 'center', gap: 6, height: 38, padding: '0 16px',
+              background: '#FFF', border: '1px solid #2563EB', color: '#2563EB', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}>
+              <Download size={14} /> Export Report
+            </button>
+          )}
         </div>
       </div>
 
@@ -223,7 +226,7 @@ export function Reimbursements() {
                     <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{r.paid_date ? formatDate(r.paid_date) : '-'}</td>
                     <td style={{ padding: '0 16px', fontSize: 13, color: '#6B7280', whiteSpace: 'nowrap' }}>{r.transaction_id || '-'}</td>
                     <td style={{ padding: '0 16px', whiteSpace: 'nowrap' }}>
-                      {r.status === 'Pending' && (
+                      {r.status === 'Pending' && canEdit('expenses', 'expense_reimbursements') && (
                         <button onClick={() => handlePay(r.id)} style={{
                           background: '#2563EB', border: 'none', color: '#FFF', padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: 'pointer'
                         }}>

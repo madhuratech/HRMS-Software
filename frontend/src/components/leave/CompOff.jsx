@@ -5,6 +5,7 @@ import { BarChart, Bar, XAxis, Tooltip as RechartsTooltip, ResponsiveContainer, 
 import { apiFetch } from '../../lib/api';
 import { getAvatarUrl } from '../../lib/utils';
 import { useToast } from '../ui/Toast';
+import { canCreate, canEdit } from '../../lib/permissions';
 
 const trendData = [
   { name: 'Jan', used: 12, earned: 15 },
@@ -142,18 +143,20 @@ export default function CompOff() {
           <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#0f172a', margin: 0 }}>Compensatory Off Management</h1>
           <p style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>Track overtime credits, compensatory leave accruals, and approvals</p>
         </div>
-        <button 
-          onClick={() => setShowModal(true)} 
-          style={{ 
-            background: '#2563EB', color: '#fff', border: 'none', 
-            padding: '10px 18px', borderRadius: '8px', fontSize: '13px', 
-            fontWeight: '600', display: 'flex', alignItems: 'center', 
-            gap: '8px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
-            whiteSpace: 'nowrap'
-          }}
-        >
-          <Plus size={16} /> Request Comp Off
-        </button>
+        {canCreate('leave', 'comp_off') && (
+          <button 
+            onClick={() => setShowModal(true)} 
+            style={{ 
+              background: '#2563EB', color: '#fff', border: 'none', 
+              padding: '10px 18px', borderRadius: '8px', fontSize: '13px', 
+              fontWeight: '600', display: 'flex', alignItems: 'center', 
+              gap: '8px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(37,99,235,0.2)',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            <Plus size={16} /> Request Comp Off
+          </button>
+        )}
       </div>
 
       {/* Dynamic KPI Cards */}
@@ -253,32 +256,38 @@ export default function CompOff() {
                           <td style={{ padding: '16px 24px', fontSize: '13px', color: '#475569' }}>{req.approved_by}</td>
                           <td style={{ padding: '16px 24px', textAlign: 'center' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-                              {req.status === 'Pending' && (
+                              {canEdit('leave', 'comp_off') ? (
                                 <>
-                                  <button 
-                                    title="Approve"
-                                    onClick={() => handleUpdateStatus(req.id, 'Approved')}
-                                    style={{ background: '#ecfdf5', border: '1px solid #bbf7d0', cursor: 'pointer', color: '#10b981', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                  >
-                                    <Check size={14} /> Approve
-                                  </button>
-                                  <button 
-                                    title="Reject"
-                                    onClick={() => handleUpdateStatus(req.id, 'Rejected')}
-                                    style={{ background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', color: '#ef4444', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}
-                                  >
-                                    <X size={14} /> Reject
-                                  </button>
+                                  {req.status === 'Pending' && (
+                                    <>
+                                      <button 
+                                        title="Approve"
+                                        onClick={() => handleUpdateStatus(req.id, 'Approved')}
+                                        style={{ background: '#ecfdf5', border: '1px solid #bbf7d0', cursor: 'pointer', color: '#10b981', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                      >
+                                        <Check size={14} /> Approve
+                                      </button>
+                                      <button 
+                                        title="Reject"
+                                        onClick={() => handleUpdateStatus(req.id, 'Rejected')}
+                                        style={{ background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', color: '#ef4444', padding: '6px 10px', borderRadius: '6px', fontSize: '12px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                      >
+                                        <X size={14} /> Reject
+                                      </button>
+                                    </>
+                                  )}
+                                  {req.status !== 'Pending' && (
+                                    <button 
+                                      title="Reset Status"
+                                      onClick={() => handleUpdateStatus(req.id, 'Pending')}
+                                      style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', cursor: 'pointer', color: '#64748b', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600' }}
+                                    >
+                                      Reset
+                                    </button>
+                                  )}
                                 </>
-                              )}
-                              {req.status !== 'Pending' && (
-                                <button 
-                                  title="Reset Status"
-                                  onClick={() => handleUpdateStatus(req.id, 'Pending')}
-                                  style={{ background: '#f1f5f9', border: '1px solid #e2e8f0', cursor: 'pointer', color: '#64748b', padding: '4px 8px', borderRadius: '6px', fontSize: '11px', fontWeight: '600' }}
-                                >
-                                  Reset
-                                </button>
+                              ) : (
+                                <span style={{ fontSize: '12px', color: '#94a3b8' }}>—</span>
                               )}
                             </div>
                           </td>

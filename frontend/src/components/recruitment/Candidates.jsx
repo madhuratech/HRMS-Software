@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import AppDropdown from '../ui/AppDropdown';
 import { Search, Download, Plus, MoreVertical, Star, ChevronLeft, ChevronRight, X, Eye, Edit3, Trash2, Calendar, FileText, CheckCircle2, UserCheck, Briefcase, Mail, Phone, MapPin, DollarSign, Clock, Send, ShieldCheck, ArrowRightLeft } from 'lucide-react';
 import { useToast } from '../ui/Toast';
-import { canCreate, canEdit, canDelete, checkActionPermission } from '../../lib/permissions';
+import { canCreate, canEdit, canDelete, canExport, checkActionPermission } from '../../lib/permissions';
 import { apiFetch } from '../../lib/api';
 
 export default function Candidates() {
@@ -358,28 +358,29 @@ export default function Candidates() {
           <h1 style={{ margin: '0 0 4px 0', fontSize: '24px', fontWeight: '700', color: '#1E293B' }}>Candidates</h1>
           <p style={{ margin: 0, fontSize: '14px', color: '#64748B' }}>Manage and track candidates in the pipeline</p>
         </div>
-        <button
-          disabled={!canCreate('candidates')}
-          onClick={() => {
-            if (!checkActionPermission('candidates', 'CREATE')) return;
-            setShowAddModal(true);
-          }}
-          style={{ 
-            padding: '10px 16px', 
-            borderRadius: '8px', 
-            border: 'none', 
-            background: canCreate('candidates') ? '#2952E3' : '#94A3B8', 
-            color: '#FFF', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '8px', 
-            cursor: canCreate('candidates') ? 'pointer' : 'not-allowed', 
-            fontSize: '14px', 
-            fontWeight: '500' 
-          }}
-        >
-          <Plus size={16} /> Add Candidate
-        </button>
+        {canCreate('candidates') && (
+          <button
+            onClick={() => {
+              if (!checkActionPermission('candidates', 'CREATE')) return;
+              setShowAddModal(true);
+            }}
+            style={{ 
+              padding: '10px 16px', 
+              borderRadius: '8px', 
+              border: 'none', 
+              background: '#2952E3', 
+              color: '#FFF', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '8px', 
+              cursor: 'pointer', 
+              fontSize: '14px', 
+              fontWeight: '500' 
+            }}
+          >
+            <Plus size={16} /> Add Candidate
+          </button>
+        )}
       </div>
 
       <div style={{ background: '#FFFFFF', borderRadius: '16px', padding: 0, boxShadow: '0 8px 24px rgba(15,23,42,0.08)' }}>
@@ -416,11 +417,13 @@ export default function Candidates() {
                 size="sm"
               />
           </div>
-          <div>
-            <button style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
-              <Download size={16} /> Export
-            </button>
-          </div>
+          {canExport('recruitment', 'candidates') && (
+            <div>
+              <button style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #E2E8F0', background: '#FFF', color: '#334155', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '14px', fontWeight: '500' }}>
+                <Download size={16} /> Export
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Table Container */}
@@ -526,7 +529,7 @@ export default function Candidates() {
                                 Candidate Actions
                               </div>
 
-                              {['Applied', 'Pending', 'Under Review', 'Screening Completed'].includes(row.status) && (
+                              {['Applied', 'Pending', 'Under Review', 'Screening Completed'].includes(row.status) && canEdit('candidates') && (
                                 <button
                                   onClick={() => { setSelectedCandidate(row); setShowViewModal(true); setActiveMenuId(null); }}
                                   style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', fontSize: '13px', color: '#2563EB', fontWeight: '600', background: '#EFF6FF', border: 'none', borderRadius: '6px', cursor: 'pointer', marginBottom: '4px' }}
@@ -543,45 +546,52 @@ export default function Candidates() {
                                 <Eye size={15} color="#2563EB" /> View Profile & Details
                               </button>
 
-                              <button
-                                onClick={() => { setSelectedCandidate(row); setEditFormData(row); setShowEditModal(true); setActiveMenuId(null); }}
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', fontSize: '13px', color: '#334155', fontWeight: '500', background: 'none', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                                className="hover:bg-slate-50"
-                              >
-                                <Edit3 size={15} color="#8B5CF6" /> Edit Candidate Info
-                              </button>
+                              {canEdit('candidates') && (
+                                <button
+                                  onClick={() => { setSelectedCandidate(row); setEditFormData(row); setShowEditModal(true); setActiveMenuId(null); }}
+                                  style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', fontSize: '13px', color: '#334155', fontWeight: '500', background: 'none', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+                                  className="hover:bg-slate-50"
+                                >
+                                  <Edit3 size={15} color="#8B5CF6" /> Edit Candidate Info
+                                </button>
+                              )}
 
                               {row.status !== 'Rejected' && (
                                 <>
-                                  <button
-                                    onClick={() => { setSelectedCandidate(row); setShowScheduleModal(true); setActiveMenuId(null); }}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', fontSize: '13px', color: '#334155', fontWeight: '500', background: 'none', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                                    className="hover:bg-slate-50"
-                                  >
-                                    <Calendar size={15} color="#D97706" /> Schedule Interview
-                                  </button>
+                                  {canCreate('interview_schedule') && (
+                                    <button
+                                      onClick={() => { setSelectedCandidate(row); setShowScheduleModal(true); setActiveMenuId(null); }}
+                                      style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', fontSize: '13px', color: '#334155', fontWeight: '500', background: 'none', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+                                      className="hover:bg-slate-50"
+                                    >
+                                      <Calendar size={15} color="#D97706" /> Schedule Interview
+                                    </button>
+                                  )}
 
-                                  <button
-                                    onClick={() => { setSelectedCandidate(row); setShowOfferModal(true); setActiveMenuId(null); }}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', fontSize: '13px', color: '#334155', fontWeight: '500', background: 'none', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
-                                    className="hover:bg-slate-50"
-                                  >
-                                    <Send size={15} color="#059669" /> Issue Offer Letter
-                                  </button>
+                                  {canCreate('offer_letters') && (
+                                    <button
+                                      onClick={() => { setSelectedCandidate(row); setShowOfferModal(true); setActiveMenuId(null); }}
+                                      style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', fontSize: '13px', color: '#334155', fontWeight: '500', background: 'none', border: 'none', borderRadius: '6px', cursor: 'pointer' }}
+                                      className="hover:bg-slate-50"
+                                    >
+                                      <Send size={15} color="#059669" /> Issue Offer Letter
+                                    </button>
+                                  )}
 
-                                  <button
-                                    onClick={() => handleHireCandidate(row)}
-                                    style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', fontSize: '13px', color: '#059669', fontWeight: '600', background: '#ECFDF5', border: 'none', borderRadius: '6px', cursor: 'pointer', margin: '4px 0' }}
-                                  >
-                                    <UserCheck size={15} color="#059669" /> Hire & Move to Onboarding
-                                  </button>
+                                  {canEdit('candidates') && (
+                                    <button
+                                      onClick={() => handleHireCandidate(row)}
+                                      style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%', padding: '8px 10px', fontSize: '13px', color: '#059669', fontWeight: '600', background: '#ECFDF5', border: 'none', borderRadius: '6px', cursor: 'pointer', margin: '4px 0' }}
+                                    >
+                                      <UserCheck size={15} color="#059669" /> Hire & Move to Onboarding
+                                    </button>
+                                  )}
                                 </>
                               )}
 
-                              <div style={{ height: '1px', background: '#F1F5F9', margin: '4px 0' }} />
-
-                              {row.status !== 'Rejected' && (
+                              {row.status !== 'Rejected' && canEdit('candidates') && (
                                 <>
+                                  <div style={{ height: '1px', background: '#F1F5F9', margin: '4px 0' }} />
                                   <div style={{ padding: '4px 10px', fontSize: '11px', fontWeight: '700', color: '#94A3B8', textTransform: 'uppercase' }}>
                                     Move Stage
                                   </div>
@@ -607,20 +617,22 @@ export default function Candidates() {
                                 </>
                               )}
 
-
-                              <div style={{ height: '1px', background: '#F1F5F9', margin: '4px 0' }} />
-
-                              <button
-                                onClick={() => handleDeleteCandidate(row.id, row.candidate_name)}
-                                style={{
-                                  display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
-                                  padding: '8px 10px', fontSize: '13px', color: '#EF4444', fontWeight: '500',
-                                  background: 'none', border: 'none', borderRadius: '6px', cursor: 'pointer'
-                                }}
-                                className="hover:bg-red-50"
-                              >
-                                <Trash2 size={15} color="#EF4444" /> Delete Candidate
-                              </button>
+                              {canDelete('candidates') && (
+                                <>
+                                  <div style={{ height: '1px', background: '#F1F5F9', margin: '4px 0' }} />
+                                  <button
+                                    onClick={() => handleDeleteCandidate(row.id, row.candidate_name)}
+                                    style={{
+                                      display: 'flex', alignItems: 'center', gap: '8px', width: '100%',
+                                      padding: '8px 10px', fontSize: '13px', color: '#EF4444', fontWeight: '500',
+                                      background: 'none', border: 'none', borderRadius: '6px', cursor: 'pointer'
+                                    }}
+                                    className="hover:bg-red-50"
+                                  >
+                                    <Trash2 size={15} color="#EF4444" /> Delete Candidate
+                                  </button>
+                                </>
+                              )}
                             </div>
                           )}
                         </td>

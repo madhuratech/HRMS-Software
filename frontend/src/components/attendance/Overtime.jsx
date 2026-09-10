@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
+import { canCreate } from '../../lib/permissions';
 import { getAvatarUrl } from '../../lib/utils';
 import { Calendar as CalendarIcon, Filter, MoreHorizontal, ChevronDown, Plus, X, Check, Trash2, RotateCcw } from 'lucide-react';
 
@@ -158,12 +159,14 @@ export default function Overtime() {
             <Filter size={16} /> Filter
           </button>
         </div>
-        <button
-          onClick={() => setShowAddModal(true)}
-          style={{ height: 38, padding: '0 16px', background: '#2563EB', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flexShrink: 0 }}
-        >
-          <Plus size={15} /> Log Overtime
-        </button>
+        {canCreate('attendance', 'overtime') && (
+          <button
+            onClick={() => setShowAddModal(true)}
+            style={{ height: 38, padding: '0 16px', background: '#2563EB', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flexShrink: 0 }}
+          >
+            <Plus size={15} /> Log Overtime
+          </button>
+        )}
       </div>
 
       <div style={{ width: '100%', flex: 1, display: 'flex' }}>

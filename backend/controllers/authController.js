@@ -36,8 +36,26 @@ function getEmployeeRole(employee) {
   return 'EMPLOYEE';
 }
 
+/**
+ * Normalize a frontend-selected role label to the canonical role used by IdentityService.
+ * Supports: admin, ADMIN, SUPER_ADMIN  →  SUPER_ADMIN
+ *           employee, EMPLOYEE         →  EMPLOYEE
+ *           hr, HR, HR_MANAGER         →  HR_MANAGER
+ *           team_leader, TEAM_LEADER   →  TEAM_LEADER
+ * Returns null if the value is absent/empty (validation is skipped when no role is sent).
+ */
+function normalizeSelectedRole(raw) {
+  if (!raw) return null;
+  const upper = String(raw).trim().toUpperCase().replace(/[\s-]+/g, '_');
+  if (['ADMIN', 'SUPER_ADMIN', 'SUPERADMIN'].includes(upper)) return 'SUPER_ADMIN';
+  if (['EMPLOYEE', 'STAFF'].includes(upper)) return 'EMPLOYEE';
+  if (['HR', 'HR_MANAGER', 'HR_ADMIN', 'HRMANAGER'].includes(upper)) return 'HR_MANAGER';
+  if (['TEAM_LEADER', 'TEAMLEADER', 'TEAM_LEAD', 'TEAMLEAD', 'LEAD'].includes(upper)) return 'TEAM_LEADER';
+  return upper; // pass through unknowns for logging purposes
+}
+
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, selectedRole } = req.body;
   const IdentityService = require("../services/IdentityService");
 
   if (!email || !password) {
@@ -119,7 +137,22 @@ exports.login = async (req, res) => {
       console.log("EMPLOYEE NAME:", identity.name);
       console.log("USER ROLE:", identity.role);
       console.log("RESOLVED ROLE:", identity.role);
+      console.log("SELECTED ROLE (raw):", selectedRole);
       console.log("==========================================");
+
+      // 3. Role-mismatch check — compare selected role against the authoritative account role.
+      //    This is the central security gate; it runs on the backend so it cannot be bypassed
+      //    by modifying the request or disabling JS in the browser.
+      const normalizedSelected = normalizeSelectedRole(selectedRole);
+      if (normalizedSelected) {
+        if (normalizedSelected !== identity.role) {
+          console.warn(`[LOGIN] Role mismatch for ${cleanEmail}: selected=${normalizedSelected}, actual=${identity.role}`);
+          return res.status(401).json({
+            success: false,
+            message: "Invalid role. Please select the role assigned to your account."
+          });
+        }
+      }
 
       // 3. Generate authoritative JWT with complete identity
       const jwtPayload = {

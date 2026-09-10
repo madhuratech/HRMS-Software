@@ -146,7 +146,7 @@ export default function TeamMembers() {
     <div style={{ fontFamily:"'Inter',-apple-system,sans-serif", width:'100%', boxSizing:'border-box' }}>
 
       {/* ── ADD/EDIT MEMBER MODAL ── */}
-      {showAddModal && (
+      {showAddModal && (editingId ? hasPermission(null, null, 'projects', 'team_members', 'edit') : hasPermission(null, null, 'projects', 'team_members', 'create')) && (
         <>
           <div 
             style={{ position:'fixed', top:0, left:0, width:'100%', height:'100%', background:'rgba(15,23,42,0.65)', backdropFilter:'blur(4px)', zIndex:1000 }} 
@@ -359,8 +359,12 @@ export default function TeamMembers() {
                       <td style={{ padding:'0 16px', whiteSpace:'nowrap' }}><span style={{ display:'inline-block', padding:'3px 10px', borderRadius:999, background:s.bg, color:s.color, fontSize:11, fontWeight:600, whiteSpace:'nowrap' }}>{m.status}</span></td>
                       <td style={{ padding:'0 16px', whiteSpace:'nowrap' }}>
                         <div style={{ display:'flex', gap:4 }}>
-                          <button title="Edit" onClick={() => openEdit(m)} style={{ width:28,height:28,borderRadius:6,border:'none',background:'transparent',color:'#2563EB',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s' }} onMouseEnter={e=>e.currentTarget.style.background='#EFF6FF'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><Edit2 size={13}/></button>
-                          <button title="Remove" onClick={() => handleRemove(m)} style={{ width:28,height:28,borderRadius:6,border:'none',background:'transparent',color:'#DC2626',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s' }} onMouseEnter={e=>e.currentTarget.style.background='#FEE2E2'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><Trash2 size={13}/></button>
+                          {hasPermission(null, null, 'projects', 'team_members', 'edit') && (
+                            <button title="Edit" onClick={() => openEdit(m)} style={{ width:28,height:28,borderRadius:6,border:'none',background:'transparent',color:'#2563EB',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s' }} onMouseEnter={e=>e.currentTarget.style.background='#EFF6FF'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><Edit2 size={13}/></button>
+                          )}
+                          {hasPermission(null, null, 'projects', 'team_members', 'delete') && (
+                            <button title="Remove" onClick={() => handleRemove(m)} style={{ width:28,height:28,borderRadius:6,border:'none',background:'transparent',color:'#DC2626',cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',transition:'all 0.15s' }} onMouseEnter={e=>e.currentTarget.style.background='#FEE2E2'} onMouseLeave={e=>e.currentTarget.style.background='transparent'}><Trash2 size={13}/></button>
+                          )}
                         </div>
                       </td>
                     </tr>

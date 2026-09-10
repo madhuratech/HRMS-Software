@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
+import { canCreate } from '../../lib/permissions';
 import {
   LifeBuoy,
   MessageSquare,
@@ -122,12 +123,13 @@ export function SupportTickets() {
           </h2>
           <p className="text-sm text-slate-500 mt-1">Manage complaints and request salary slips</p>
         </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm">
-          
-          <Plus size={18} /> New Request
-        </button>
+        {canCreate('helpdesk', 'tickets') && (
+          <button
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-bold hover:bg-blue-700 transition-colors shadow-sm">
+            <Plus size={18} /> New Request
+          </button>
+        )}
       </div>
 
       {/* Stats Cards */}

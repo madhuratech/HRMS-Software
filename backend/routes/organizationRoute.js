@@ -1,11 +1,12 @@
 const express = require("express");
 const router = express.Router();
 const db = require("../config/database");
+const { authenticateJWT, checkPermission } = require("../middlewares/auth");
 
 /**
  * DEPARTMENTS CRUD
  */
-router.get("/departments", (req, res) => {
+router.get("/departments", authenticateJWT, checkPermission("organization", "departments", "view"), (req, res) => {
   const sql = `
     SELECT 
       d.id,
@@ -35,7 +36,7 @@ router.get("/departments", (req, res) => {
   });
 });
 
-router.post("/departments", (req, res) => {
+router.post("/departments", authenticateJWT, checkPermission("organization", "departments", "create"), (req, res) => {
   const { name, code, headName, branch, email, phone, extension, location, parentDepartment, description, status } = req.body;
   const sql = `
     INSERT INTO departments (dept_name, code, branch, status, email, phone, extension, location, parentDepartment, description, manager_id, createdDate)
@@ -47,7 +48,7 @@ router.post("/departments", (req, res) => {
   });
 });
 
-router.put("/departments/:id", (req, res) => {
+router.put("/departments/:id", authenticateJWT, checkPermission("organization", "departments", "edit"), (req, res) => {
   const { id } = req.params;
   const { name, code, headName, branch, status, email, phone, extension, location, parentDepartment, description } = req.body;
   const sql = `
@@ -62,7 +63,7 @@ router.put("/departments/:id", (req, res) => {
   });
 });
 
-router.delete("/departments/:id", (req, res) => {
+router.delete("/departments/:id", authenticateJWT, checkPermission("organization", "departments", "delete"), (req, res) => {
   const { id } = req.params;
   db.query("DELETE FROM departments WHERE id = ?", [id], (err, result) => {
     if (err) return res.status(500).json(err);
@@ -73,7 +74,7 @@ router.delete("/departments/:id", (req, res) => {
 /**
  * DESIGNATIONS CRUD
  */
-router.get("/designations", (req, res) => {
+router.get("/designations", authenticateJWT, checkPermission("organization", "designations", "view"), (req, res) => {
   const sql = `
     SELECT 
       des.id,
@@ -96,7 +97,7 @@ router.get("/designations", (req, res) => {
   });
 });
 
-router.post("/designations", (req, res) => {
+router.post("/designations", authenticateJWT, checkPermission("organization", "designations", "create"), (req, res) => {
   const { name, code, department, reportsTo, grade, level, status, description } = req.body;
   const sql = `
     INSERT INTO designations (role_name, role_code, department, reportsTo, grade, level, status, description, createdDate)
@@ -108,7 +109,7 @@ router.post("/designations", (req, res) => {
   });
 });
 
-router.put("/designations/:id", (req, res) => {
+router.put("/designations/:id", authenticateJWT, checkPermission("organization", "designations", "edit"), (req, res) => {
   const { id } = req.params;
   const { name, code, department, reportsTo, grade, level, status, description } = req.body;
   const sql = `
@@ -122,7 +123,7 @@ router.put("/designations/:id", (req, res) => {
   });
 });
 
-router.delete("/designations/:id", (req, res) => {
+router.delete("/designations/:id", authenticateJWT, checkPermission("organization", "designations", "delete"), (req, res) => {
   const { id } = req.params;
   db.query("DELETE FROM designations WHERE id = ?", [id], (err, result) => {
     if (err) return res.status(500).json(err);
@@ -300,7 +301,7 @@ router.get("/profile", (req, res) => {
 /**
  * UPDATE COMPANY PROFILE
  */
-router.put("/profile", (req, res) => {
+router.put("/profile", authenticateJWT, checkPermission("organization", "company_profile", "edit"), (req, res) => {
   const p = req.body;
   const sql = `
     UPDATE company_profile
@@ -522,21 +523,25 @@ router.get("/teams", (req, res) => {
       COALESCE(tl.name, NULLIF(t.teamLead, ''), 'Unassigned') as teamLead,
       t.team_lead_id,
       (SELECT COUNT(*) FROM employees e WHERE e.team_id = t.id AND e.status = 'Active') as members,
-      COALESCE(t.status, 'Active') as status,
+      t.code,
+      t.department,
+      t.teamLead,
+      t.members,
       t.description,
-      COALESCE(DATE_FORMAT(t.created_at, '%d %b %Y'), DATE_FORMAT(NOW(), '%d %b %Y')) as createdDate
+      t.createdDate,
+      t.status
     FROM teams t
-    LEFT JOIN departments d ON t.department_id = d.id
-    LEFT JOIN employees tl ON t.team_lead_id = tl.id
     ORDER BY t.id ASC
   `;
   db.query(sql, async (err, rows) => {
     if (err) return res.status(500).json(err);
+    
+    // Enrich with live teamMemberIds array from employees table
     try {
-      const teamsWithMembers = await Promise.all(rows.map(async (team) => {
-        const emps = await new Promise(r => db.query("SELECT id FROM employees WHERE team_id = ?", [team.id], (e, res) => r(res || [])));
+      const teamsWithMembers = await Promise.all((rows || []).map(async (t) => {
+        const emps = await new Promise(r => db.query("SELECT id FROM employees WHERE team_id = ?", [t.id], (e, res) => r(res || [])));
         return {
-          ...team,
+          ...t,
           teamMemberIds: emps.map(e => e.id)
         };
       }));
@@ -547,7 +552,7 @@ router.get("/teams", (req, res) => {
   });
 });
 
-router.post("/teams", async (req, res) => {
+router.post("/teams", authenticateJWT, checkPermission("organization", "teams", "create"), async (req, res) => {
   const { name, code, department, departmentId, teamLead, teamLeadId, members, status, description, teamMemberIds } = req.body;
   
   let deptId = departmentId;
@@ -582,7 +587,7 @@ router.post("/teams", async (req, res) => {
   });
 });
 
-router.put("/teams/:id", async (req, res) => {
+router.put("/teams/:id", authenticateJWT, checkPermission("organization", "teams", "edit"), async (req, res) => {
   const { id } = req.params;
   const { name, code, department, departmentId, teamLead, teamLeadId, members, status, description, teamMemberIds } = req.body;
 
@@ -620,7 +625,7 @@ router.put("/teams/:id", async (req, res) => {
   });
 });
 
-router.delete("/teams/:id", (req, res) => {
+router.delete("/teams/:id", authenticateJWT, checkPermission("organization", "teams", "delete"), (req, res) => {
   const { id } = req.params;
   db.query("UPDATE employees SET team_id = NULL WHERE team_id = ?", [id], () => {
     db.query("DELETE FROM teams WHERE id = ?", [id], (err, result) => {
@@ -633,12 +638,12 @@ router.delete("/teams/:id", (req, res) => {
 /**
  * HOLIDAYS CRUD
  */
-router.get("/holidays", (req, res) => {
+router.get("/holidays", authenticateJWT, checkPermission("organization", "holiday_calendar", "view"), (req, res) => {
   const sql = `
     SELECT 
       id,
       name,
-      COALESCE(date, DATE_FORMAT(holiday_date, '%d %b %Y')) as date,
+      DATE_FORMAT(holiday_date, '%d %b %Y') as date,
       type,
       branch,
       description,
@@ -652,7 +657,7 @@ router.get("/holidays", (req, res) => {
   });
 });
 
-router.post("/holidays", (req, res) => {
+router.post("/holidays", authenticateJWT, checkPermission("organization", "holiday_calendar", "create"), (req, res) => {
   const { name, date, type, branch, description, status } = req.body;
   const sql = `
     INSERT INTO holidays (name, date, holiday_date, type, branch, description, status)
@@ -664,7 +669,7 @@ router.post("/holidays", (req, res) => {
   });
 });
 
-router.put("/holidays/:id", (req, res) => {
+router.put("/holidays/:id", authenticateJWT, checkPermission("organization", "holiday_calendar", "edit"), (req, res) => {
   const { id } = req.params;
   const { name, date, type, branch, description, status } = req.body;
   const sql = `
@@ -678,7 +683,7 @@ router.put("/holidays/:id", (req, res) => {
   });
 });
 
-router.delete("/holidays/:id", (req, res) => {
+router.delete("/holidays/:id", authenticateJWT, checkPermission("organization", "holiday_calendar", "delete"), (req, res) => {
   const { id } = req.params;
   db.query("DELETE FROM holidays WHERE id = ?", [id], (err, result) => {
     if (err) return res.status(500).json(err);
@@ -689,7 +694,7 @@ router.delete("/holidays/:id", (req, res) => {
 /**
  * ORGANIZATION CHART
  */
-router.get("/org-chart", (req, res) => {
+router.get("/org-chart", authenticateJWT, checkPermission("organization", "organization_chart", "view"), (req, res) => {
   const sql = `
     SELECT 
       e.id,
@@ -730,7 +735,7 @@ router.get("/org-chart", (req, res) => {
  */
 const shiftExtraStore = {};
 
-router.get("/shifts", (req, res) => {
+router.get("/shifts", authenticateJWT, checkPermission("organization", "shift_management", "view"), (req, res) => {
   const sql = `
     SELECT 
       id,
@@ -764,7 +769,7 @@ router.get("/shifts", (req, res) => {
   });
 });
 
-router.post("/shifts", (req, res) => {
+router.post("/shifts", authenticateJWT, checkPermission("organization", "shift_management", "create"), (req, res) => {
   const { name, code, startTime, endTime, breakTime, graceTime, workingHours, employees, status, description, assignedEmployees, workingDays, offLabel, dayOffLabels } = req.body;
   const empCount = Array.isArray(assignedEmployees) ? assignedEmployees.length : (parseInt(employees) || 0);
   const sql = `
@@ -784,7 +789,7 @@ router.post("/shifts", (req, res) => {
   });
 });
 
-router.put("/shifts/:id", (req, res) => {
+router.put("/shifts/:id", authenticateJWT, checkPermission("organization", "shift_management", "edit"), (req, res) => {
   const { id } = req.params;
   const { name, code, startTime, endTime, breakTime, graceTime, workingHours, employees, status, description, assignedEmployees, workingDays, offLabel, dayOffLabels } = req.body;
   const empCount = Array.isArray(assignedEmployees) ? assignedEmployees.length : (parseInt(employees) || 0);
@@ -805,7 +810,7 @@ router.put("/shifts/:id", (req, res) => {
   });
 });
 
-router.delete("/shifts/:id", (req, res) => {
+router.delete("/shifts/:id", authenticateJWT, checkPermission("organization", "shift_management", "delete"), (req, res) => {
   const { id } = req.params;
   db.query("DELETE FROM shifts WHERE id = ?", [id], (err, result) => {
     if (err) return res.status(500).json(err);
@@ -815,4 +820,3 @@ router.delete("/shifts/:id", (req, res) => {
 });
 
 module.exports = router;
-
