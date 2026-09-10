@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import Map, { Marker, NavigationControl, Source, Layer } from 'react-map-gl/maplibre';
+import Map, { Marker, NavigationControl, Source, Layer, useMap } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { apiFetch } from '../../lib/api';
 import { MapPin, Navigation, Camera, CheckCircle2, XCircle, Play, Map as MapIcon, Building, LogOut, Search, Loader2, Link, Image } from 'lucide-react';
@@ -15,6 +15,90 @@ function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
+}
+
+// ─── Direct MapLibre Route Layer Hook & Component ─────────────────────────
+function MapRoutesOverlay({ routeGeoJSON, travelGeoJSON }) {
+  const { current: map } = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+
+    const renderRoutes = () => {
+      try {
+        // 1. PLANNED ROUTE (ORANGE ROAD / HIGHWAY)
+        if (routeGeoJSON && routeGeoJSON.features?.[0]?.geometry?.coordinates?.length > 1) {
+          if (map.getSource('planned-route-native')) {
+            map.getSource('planned-route-native').setData(routeGeoJSON);
+          } else {
+            map.addSource('planned-route-native', {
+              type: 'geojson',
+              data: routeGeoJSON
+            });
+            // White casing/shadow
+            map.addLayer({
+              id: 'planned-route-casing',
+              type: 'line',
+              source: 'planned-route-native',
+              layout: { 'line-cap': 'round', 'line-join': 'round' },
+              paint: { 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.9 }
+            });
+            // Main orange line
+            map.addLayer({
+              id: 'planned-route-core',
+              type: 'line',
+              source: 'planned-route-native',
+              layout: { 'line-cap': 'round', 'line-join': 'round' },
+              paint: { 'line-color': '#F97316', 'line-width': 5, 'line-opacity': 1.0 }
+            });
+          }
+        }
+
+        // 2. ACTUAL TRAVELLED PATH (BLUE BREADCRUMB TRAIL)
+        if (travelGeoJSON && travelGeoJSON.features?.[0]?.geometry?.coordinates?.length > 1) {
+          if (map.getSource('travel-route-native')) {
+            map.getSource('travel-route-native').setData(travelGeoJSON);
+          } else {
+            map.addSource('travel-route-native', {
+              type: 'geojson',
+              data: travelGeoJSON
+            });
+            // White casing/shadow
+            map.addLayer({
+              id: 'travel-route-casing',
+              type: 'line',
+              source: 'travel-route-native',
+              layout: { 'line-cap': 'round', 'line-join': 'round' },
+              paint: { 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.9 }
+            });
+            // Main blue line
+            map.addLayer({
+              id: 'travel-route-core',
+              type: 'line',
+              source: 'travel-route-native',
+              layout: { 'line-cap': 'round', 'line-join': 'round' },
+              paint: { 'line-color': '#2563EB', 'line-width': 5, 'line-opacity': 1.0 }
+            });
+          }
+        }
+      } catch (err) {
+        console.warn('MapLibre layer rendering notice:', err);
+      }
+    };
+
+    if (map.isStyleLoaded()) {
+      renderRoutes();
+    }
+    map.on('style.load', renderRoutes);
+    map.on('load', renderRoutes);
+
+    return () => {
+      map.off('style.load', renderRoutes);
+      map.off('load', renderRoutes);
+    };
+  }, [map, routeGeoJSON, travelGeoJSON]);
+
+  return null;
 }
 
 // ─── Parse Google Maps URL to lat/lng ──────────────────────────────────────
@@ -455,6 +539,9 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
               style={{ width:'100%', height:'100%' }}
             >
               <NavigationControl position="bottom-right" />
+              
+              {/* Direct MapLibre Route Renderer */}
+              <MapRoutesOverlay routeGeoJSON={routeGeoJSON} travelGeoJSON={travelGeoJSON} />
 
               {/* Planned Route (Road / Geometry Path) */}
               {routeGeoJSON && (
