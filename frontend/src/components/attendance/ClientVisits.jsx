@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Map, { Marker, NavigationControl, Source, Layer, useMap } from 'react-map-gl/maplibre';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { apiFetch } from '../../lib/api';
-import { MapPin, Navigation, Camera, CheckCircle2, XCircle, Play, Map as MapIcon, Building, LogOut, Search, Loader2, Link, Image } from 'lucide-react';
+import { MapPin, Navigation, Camera, CheckCircle2, XCircle, Play, Map as MapIcon, Building, LogOut, Search, Loader2, Link, Image, Crosshair, Eye, Clock, ShieldCheck } from 'lucide-react';
 
 // ─── Distance calculation helper ──────────────────────────────────────────
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
@@ -240,7 +240,7 @@ function injectStyles() {
   document.head.appendChild(s);
 }
 
-// Base MapLibre Styles (Static raster tile configurations)
+// Base MapLibre Styles (Crisp HD Google Hybrid & OpenStreetMap Vector/Raster Tiles)
 const MAP_STYLES = {
   street: {
     version: 8,
@@ -249,6 +249,7 @@ const MAP_STYLES = {
         type: 'raster',
         tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
         tileSize: 256,
+        maxzoom: 19,
         attribution: '© OpenStreetMap contributors'
       }
     },
@@ -257,21 +258,21 @@ const MAP_STYLES = {
   satellite: {
     version: 8,
     sources: {
-      'esri-sat-base': {
+      'google-hybrid-base': {
         type: 'raster',
-        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tiles: [
+          'https://mt0.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+          'https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+          'https://mt2.google.com/vt/lyrs=y&x={x}&y={y}&z={z}',
+          'https://mt3.google.com/vt/lyrs=y&x={x}&y={y}&z={z}'
+        ],
         tileSize: 256,
-        attribution: '© Esri'
-      },
-      'osm-overlay-base': {
-        type: 'raster',
-        tiles: ['https://tile.openstreetmap.org/{z}/{x}/{y}.png'],
-        tileSize: 256
+        maxzoom: 20,
+        attribution: '© Google Satellite Hybrid'
       }
     },
     layers: [
-      { id: 'esri-sat-tiles', source: 'esri-sat-base', type: 'raster', minzoom: 0, maxzoom: 19 },
-      { id: 'osm-labels', source: 'osm-overlay-base', type: 'raster', paint: { 'raster-opacity': 0.45 }, minzoom: 0, maxzoom: 19 }
+      { id: 'google-hybrid-tiles', source: 'google-hybrid-base', type: 'raster', minzoom: 0, maxzoom: 20 }
     ]
   }
 };
@@ -283,10 +284,11 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
   const [data, setData] = useState(null);
   const [routeInfo, setRouteInfo] = useState(null);
   const [bikePos, setBikePos] = useState(null);   // animated [lat, lng]
+  const [followMode, setFollowMode] = useState(true); // auto-follow employee
   const lastPt = useRef(null);
   const hasFitBounds = useRef(false);
   const [mapStyle, setMapStyle] = useState('street');
-  const [viewState, setViewState] = useState({ longitude: 77.0, latitude: 11.0, zoom: 12, pitch: 0, bearing: 0 });
+  const [viewState, setViewState] = useState({ longitude: 77.0, latitude: 11.0, zoom: 13, pitch: 0, bearing: 0 });
 
   // Projected route coordinate arrays for guaranteed SVG rendering
   const [plannedCoords, setPlannedCoords] = useState([]);
@@ -414,6 +416,15 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
         setBikePos(live);
       }
       lastPt.current = live;
+
+      // Auto-follow employee center if follow mode enabled
+      if (hasFitBounds.current && followMode) {
+        setViewState(prev => ({
+          ...prev,
+          longitude: liveLng,
+          latitude: liveLat
+        }));
+      }
     }
 
     // ─── 4. Auto-fit viewport bounds on initial load ─────────────────────────
@@ -446,12 +457,12 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
           ...prev,
           longitude: midLng,
           latitude: midLat,
-          zoom: calcZoom
+          zoom: Math.min(calcZoom, 17)
         }));
         hasFitBounds.current = true;
       }
     }
-  }, []);
+  }, [followMode]);
 
   const fetch_ = useCallback(async () => {
     const res = await apiFetch(`/client-visits/${visitId}/track`);
@@ -476,6 +487,32 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
   const destLat = v?.client_dest_lat ? parseFloat(v.client_dest_lat) : (v?.check_in_lat ? parseFloat(v.check_in_lat) : null);
   const destLng = v?.client_dest_lng ? parseFloat(v.client_dest_lng) : (v?.check_in_lng ? parseFloat(v.check_in_lng) : null);
 
+  // Compute live ETA & remaining distance
+  const remainingKm = useMemo(() => {
+    if (bikePos && destLat && destLng && v?.status === 'Travelling') {
+      return getDistanceFromLatLonInKm(bikePos[0], bikePos[1], destLat, destLng).toFixed(1);
+    }
+    return null;
+  }, [bikePos, destLat, destLng, v?.status]);
+
+  const etaMins = useMemo(() => {
+    if (!remainingKm) return null;
+    return Math.max(1, Math.round((parseFloat(remainingKm) / 30) * 60)); // ~30 km/h average speed
+  }, [remainingKm]);
+
+  // Recenter helper
+  const recenterOnEmployee = () => {
+    if (bikePos) {
+      setViewState(prev => ({
+        ...prev,
+        latitude: bikePos[0],
+        longitude: bikePos[1],
+        zoom: Math.max(prev.zoom, 14)
+      }));
+      setFollowMode(true);
+    }
+  };
+
   const steps = [
     { label: 'Journey Started', time: v?.start_journey_time, done: true, color: '#2563EB' },
     { label: 'Reached Client', sub: 'Meeting Start', time: v?.check_in_time, done: !!v?.check_in_time, color: '#10B981', photo: v?.photo_in_url },
@@ -484,16 +521,19 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
   ];
 
   return (
-    <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.4)', display:'flex', alignItems:'center', justifyContent:'center', padding:'16px', backdropFilter:'blur(3px)' }}>
-      <div style={{ background:'#fff', width:'100%', maxWidth:'1060px', borderRadius:'16px', overflow:'hidden', display:'flex', flexDirection:'column', height:'88vh', boxShadow:'0 20px 60px rgba(0,0,0,0.18)', border:'1px solid #E2E8F0' }}>
+    <div style={{ position:'fixed', inset:0, zIndex:9999, background:'rgba(0,0,0,0.45)', display:'flex', alignItems:'center', justifyContent:'center', padding:'16px', backdropFilter:'blur(4px)' }}>
+      <div style={{ background:'#fff', width:'100%', maxWidth:'1100px', borderRadius:'18px', overflow:'hidden', display:'flex', flexDirection:'column', height:'90vh', boxShadow:'0 25px 70px rgba(0,0,0,0.22)', border:'1px solid #E2E8F0' }}>
 
         {/* Header */}
         <div style={{ padding:'14px 20px', borderBottom:'1px solid #F1F5F9', display:'flex', justifyContent:'space-between', alignItems:'center', background:'#fff' }}>
           <div>
-            <div style={{ fontWeight:'800', fontSize:'16px', color:'#0F172A' }}>Live Tracking — {v?.employee_name || '...'}</div>
-            <div style={{ fontSize:'12px', color:'#64748B', marginTop:'2px' }}>Client: <b>{v?.client_name}</b></div>
+            <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
+              <span style={{ fontWeight:'800', fontSize:'17px', color:'#0F172A' }}>Live Tracking — {v?.employee_name || '...'}</span>
+              <span style={{ fontSize:'11px', background:'#EFF6FF', color:'#2563EB', fontWeight:'700', padding:'2px 8px', borderRadius:'6px' }}>SUPERVISOR HUD</span>
+            </div>
+            <div style={{ fontSize:'12px', color:'#64748B', marginTop:'2px' }}>Client: <b>{v?.client_name}</b> {v?.client_address ? `• ${v.client_address}` : ''}</div>
           </div>
-          <div style={{ display:'flex', gap:'16px', alignItems:'center' }}>
+          <div style={{ display:'flex', gap:'14px', alignItems:'center' }}>
             <div style={{ textAlign:'center' }}>
               <div style={{ fontSize:'10px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase' }}>Stage</div>
               <div style={{ fontSize:'13px', fontWeight:'700', color:stageColor, marginTop:'2px' }}>{v?.status || '...'}</div>
@@ -503,21 +543,61 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
               <div style={{ fontSize:'10px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase' }}>Live KM</div>
               <div style={{ fontSize:'18px', fontWeight:'900', color:'#2563EB', marginTop:'2px' }}>{data?.liveDistance || '0.00'}</div>
             </div>
-            {routeInfo && <>
-              <div style={{ width:'1px', height:'28px', background:'#F1F5F9' }} />
-              <div style={{ textAlign:'center' }}>
-                <div style={{ fontSize:'10px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase' }}>Route</div>
-                <div style={{ fontSize:'13px', fontWeight:'600', color:'#64748B', marginTop:'2px' }}>{routeInfo.distance}km</div>
-              </div>
-            </>}
+            {remainingKm && (
+              <>
+                <div style={{ width:'1px', height:'28px', background:'#F1F5F9' }} />
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ fontSize:'10px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase' }}>Est. Arrival</div>
+                  <div style={{ fontSize:'13px', fontWeight:'800', color:'#10B981', marginTop:'2px' }}>~{etaMins} min ({remainingKm}km)</div>
+                </div>
+              </>
+            )}
+            {routeInfo && !remainingKm && (
+              <>
+                <div style={{ width:'1px', height:'28px', background:'#F1F5F9' }} />
+                <div style={{ textAlign:'center' }}>
+                  <div style={{ fontSize:'10px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase' }}>Route</div>
+                  <div style={{ fontSize:'13px', fontWeight:'600', color:'#64748B', marginTop:'2px' }}>{routeInfo.distance}km</div>
+                </div>
+              </>
+            )}
+
+            {/* Recenter & Follow Toggle */}
+            <button
+              onClick={() => {
+                if (!followMode) {
+                  recenterOnEmployee();
+                } else {
+                  setFollowMode(false);
+                }
+              }}
+              title={followMode ? 'Auto-following employee (Click to unlock)' : 'Click to center on employee'}
+              style={{
+                background: followMode ? '#EFF6FF' : '#F8FAFC',
+                color: followMode ? '#2563EB' : '#64748B',
+                border: followMode ? '1.5px solid #3B82F6' : '1px solid #E2E8F0',
+                borderRadius: '8px',
+                padding: '6px 12px',
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '5px'
+              }}
+            >
+              <Crosshair size={14} color={followMode ? '#2563EB' : '#64748B'} />
+              {followMode ? 'Following' : 'Center'}
+            </button>
+
             {/* 3D View Toggle */}
-            <button onClick={() => setViewState(p => ({ ...p, pitch: p.pitch === 0 ? 60 : 0 }))}
-              style={{ background: viewState.pitch > 0 ? '#10B981' : '#F8FAFC', color: viewState.pitch > 0 ? '#fff' : '#64748B', border:'1px solid #E2E8F0', borderRadius:'8px', padding:'5px 12px', fontSize:'12px', fontWeight:'700', cursor:'pointer', transition:'0.2s' }}>
+            <button onClick={() => setViewState(p => ({ ...p, pitch: p.pitch === 0 ? 55 : 0, bearing: p.bearing === 0 ? -20 : 0 }))}
+              style={{ background: viewState.pitch > 0 ? '#10B981' : '#F8FAFC', color: viewState.pitch > 0 ? '#fff' : '#64748B', border:'1px solid #E2E8F0', borderRadius:'8px', padding:'6px 12px', fontSize:'12px', fontWeight:'700', cursor:'pointer', transition:'0.2s' }}>
               3D
             </button>
             {/* Map Style Toggle */}
-            <div style={{ display:'flex', gap:'4px', background:'#F8FAFC', borderRadius:'8px', padding:'3px', border:'1px solid #E2E8F0' }}>
-              {[['street','Street'],['satellite','Satellite']].map(([k, label]) => (
+            <div style={{ display:'flex', gap:'3px', background:'#F8FAFC', borderRadius:'8px', padding:'3px', border:'1px solid #E2E8F0' }}>
+              {[['street','Street'],['satellite','Satellite HD']].map(([k, label]) => (
                 <button key={k} onClick={() => setMapStyle(k)}
                   style={{ padding:'4px 10px', borderRadius:'6px', border:'none', fontSize:'11px', fontWeight:'600', cursor:'pointer',
                     background: mapStyle === k ? '#2563EB' : 'transparent',
@@ -537,12 +617,12 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
         {/* Body */}
         <div style={{ display:'flex', flex:1, overflow:'hidden' }}>
           {/* Sidebar */}
-          <div style={{ width:'260px', borderRight:'1px solid #F1F5F9', overflowY:'auto', padding:'16px' }}>
-            <div style={{ fontSize:'11px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:'16px' }}>Timeline</div>
+          <div style={{ width:'270px', borderRight:'1px solid #F1F5F9', overflowY:'auto', padding:'16px' }}>
+            <div style={{ fontSize:'11px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:'16px' }}>Timeline & Checkpoints</div>
             {steps.map((s, i) => (
               <div key={i} style={{ display:'flex', gap:'10px', paddingBottom:i<3?'20px':'0', position:'relative' }}>
                 {i < 3 && <div style={{ position:'absolute', left:'13px', top:'26px', bottom:0, width:'1.5px', background: s.done ? s.color + '44' : '#F1F5F9' }} />}
-                <div style={{ width:'26px', height:'26px', borderRadius:'50%', flexShrink:0, background: s.done ? s.color : '#F8FAFC', border: s.done ? 'none' : '1.5px solid #E2E8F0', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px' }}>
+                <div style={{ width:'26px', height:'26px', borderRadius:'50%', flexShrink:0, background: s.done ? s.color : '#F8FAFC', border: s.done ? 'none' : '1.5px solid #E2E8F0', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'12px', color: s.done ? '#fff' : '#94A3B8', fontWeight:'700' }}>
                   {s.done ? '✓' : i+1}
                 </div>
                 <div style={{ flex:1 }}>
@@ -593,7 +673,15 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
           <div style={{ flex:1, position:'relative' }}>
             <Map
               {...viewState}
-              onMove={evt => setViewState(evt.viewState)}
+              onMove={evt => {
+                setViewState(evt.viewState);
+                // If user drags manually, pause follow mode
+                if (evt.interactionState?.isDragging) {
+                  setFollowMode(false);
+                }
+              }}
+              minZoom={3}
+              maxZoom={18.5}
               mapStyle={MAP_STYLES[mapStyle] || MAP_STYLES.street}
               style={{ width:'100%', height:'100%' }}
             >
@@ -619,9 +707,9 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
               {/* Animated Live position dot */}
               {bikePos && (
                 <Marker longitude={bikePos[1]} latitude={bikePos[0]} anchor="center">
-                  <div title="Live Position" style={{ position:'relative', width:'18px', height:'18px' }}>
-                    <div style={{ position:'absolute', inset:'-6px', background:'rgba(37,99,235,0.3)', borderRadius:'50%', animation:'livePulse 2s infinite' }} />
-                    <div style={{ width:'100%', height:'100%', background:'#2563EB', border:'3px solid #fff', borderRadius:'50%', boxShadow:'0 2px 6px rgba(0,0,0,0.3)', position:'relative', zIndex:2 }} />
+                  <div title="Live Position" style={{ position:'relative', width:'22px', height:'22px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    <div style={{ position:'absolute', inset:'-6px', background:'rgba(37,99,235,0.35)', borderRadius:'50%', animation:'livePulse 1.8s infinite' }} />
+                    <div style={{ width:'14px', height:'14px', background:'#2563EB', border:'2.5px solid #fff', borderRadius:'50%', boxShadow:'0 2px 8px rgba(0,0,0,0.4)', position:'relative', zIndex:2 }} />
                   </div>
                 </Marker>
               )}
@@ -899,7 +987,9 @@ export default function ClientVisits() {
   const authRaw = localStorage.getItem('hrms_auth');
   let userRole = 'USER';
   try { if (authRaw) userRole = JSON.parse(authRaw).role || 'USER'; } catch(e){}
-  const isAdmin = userRole === 'SUPER ADMIN' || userRole === 'SUPERADMIN' || userRole === 'ADMIN' || userRole === 'SUPER_ADMIN';
+  
+  const normalizedRole = (userRole || '').toUpperCase().replace(/[\s_-]+/g, '');
+  const isManagement = ['SUPERADMIN', 'ADMIN', 'HR', 'HRMANAGER'].includes(normalizedRole);
 
   const [active, setActive] = useState([]);
   const [completed, setCompleted] = useState([]);
@@ -913,16 +1003,22 @@ export default function ClientVisits() {
 
   const fetchVisits = useCallback(async () => {
     const res = await apiFetch('/client-visits/active').catch(() => null);
-    if (res?.success) { setActive(res.visits || []); setCompleted(res.completedVisits || []); }
+    if (res?.success) {
+      // Strictly sort newest journeys first (by id descending)
+      const sortedActive = [...(res.visits || [])].sort((a, b) => (b.id || 0) - (a.id || 0));
+      const sortedCompleted = [...(res.completedVisits || [])].sort((a, b) => (b.id || 0) - (a.id || 0));
+      setActive(sortedActive);
+      setCompleted(sortedCompleted);
+    }
     setLoading(false);
   }, []);
 
   useEffect(() => { fetchVisits(); return () => clearInterval(trackTimer.current); }, [fetchVisits]);
 
-  // Background GPS ping — every 45 seconds
+  // Background GPS ping — every 45 seconds (only for field users)
   useEffect(() => {
     clearInterval(trackTimer.current);
-    if (active.length > 0) {
+    if (!isManagement && active.length > 0) {
       trackTimer.current = setInterval(() => {
         navigator.geolocation.getCurrentPosition(async pos => {
           if (pos.coords.accuracy > 400) return; // Skip highly inaccurate background pings
@@ -935,7 +1031,7 @@ export default function ClientVisits() {
       }, 45000);
     }
     return () => clearInterval(trackTimer.current);
-  }, [active]);
+  }, [active, isManagement]);
 
   const closeJourney = (visit) => {
     if (!confirm('Confirm you have returned to office?')) return;
@@ -982,12 +1078,27 @@ export default function ClientVisits() {
       {/* Page header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px' }}>
         <div>
-          <h2 style={{ margin:0, fontSize:'20px', fontWeight:'800', color:'#0F172A' }}>GPS Field Tracking</h2>
-          <p style={{ margin:'4px 0 0', fontSize:'13px', color:'#64748B' }}>Live journey tracking and client visit management</p>
+          <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+            <h2 style={{ margin:0, fontSize:'20px', fontWeight:'800', color:'#0F172A' }}>GPS Field Tracking</h2>
+            {isManagement && (
+              <span style={{ fontSize:'11px', fontWeight:'700', background:'#EFF6FF', color:'#2563EB', padding:'3px 10px', borderRadius:'20px', border:'1px solid #DBEAFE', display:'flex', alignItems:'center', gap:'4px' }}>
+                <ShieldCheck size={13} /> Live Supervisor Hub
+              </span>
+            )}
+          </div>
+          <p style={{ margin:'4px 0 0', fontSize:'13px', color:'#64748B' }}>
+            {isManagement
+              ? 'Real-time live monitoring of all field employee journeys and routes'
+              : 'Live journey tracking and client visit management'}
+          </p>
         </div>
-        <button className="gps-btn-primary" onClick={() => setShowStart(true)}>
-          <Navigation size={15} /> Start Journey
-        </button>
+
+        {/* Only field employees see Start Journey button; Super Admin / HR monitor live journeys */}
+        {!isManagement && (
+          <button className="gps-btn-primary" onClick={() => setShowStart(true)}>
+            <Navigation size={15} /> Start Journey
+          </button>
+        )}
       </div>
 
       {/* Active journeys */}
@@ -996,8 +1107,10 @@ export default function ClientVisits() {
       ) : active.length === 0 ? (
         <div style={{ background:'#F8FAFC', border:'1.5px dashed #CBD5E1', borderRadius:'14px', padding:'60px', textAlign:'center' }}>
           <div style={{ fontSize:'40px', marginBottom:'12px' }}>🏍️</div>
-          <div style={{ fontWeight:'700', color:'#0F172A', fontSize:'15px', marginBottom:'6px' }}>No active journeys</div>
-          <div style={{ color:'#64748B', fontSize:'13px' }}>Click "Start Journey" before leaving the office</div>
+          <div style={{ fontWeight:'700', color:'#0F172A', fontSize:'15px', marginBottom:'6px' }}>No active journeys right now</div>
+          <div style={{ color:'#64748B', fontSize:'13px' }}>
+            {isManagement ? 'Active employee journeys will appear here live when started.' : 'Click "Start Journey" before leaving the office'}
+          </div>
         </div>
       ) : (
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))', gap:'16px' }}>
@@ -1005,43 +1118,78 @@ export default function ClientVisits() {
             const badge = stageBadge[v.status] || { bg:'#F8FAFC', text:'#64748B' };
             const btn = stageBtn[v.status];
             return (
-              <div key={v.id} className="gps-card">
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'12px' }}>
-                  <div>
-                    <div style={{ fontWeight:'800', fontSize:'16px', color:'#0F172A' }}>{v.client_name}</div>
-                    {v.employee_name && <div style={{ fontSize:'12px', color:'#64748B', marginTop:'2px' }}>👤 {v.employee_name}</div>}
+              <div key={v.id} className="gps-card" style={{ display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
+                <div>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:'12px' }}>
+                    <div>
+                      <div style={{ fontWeight:'800', fontSize:'16px', color:'#0F172A' }}>{v.client_name}</div>
+                      {v.employee_name && <div style={{ fontSize:'12px', color:'#64748B', marginTop:'2px', fontWeight:'600' }}>👤 {v.employee_name}</div>}
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', gap: '8px' }}>
+                      <span style={{ fontSize:'11px', fontWeight:'700', background:badge.bg, color:badge.text, padding:'4px 10px', borderRadius:'20px', whiteSpace:'nowrap' }}>
+                        {v.status}
+                      </span>
+                      {isManagement && (
+                        <button onClick={() => deleteJourney(v.id)} style={{ background:'none', border:'none', cursor:'pointer', padding:'2px', color:'#94A3B8' }} onMouseEnter={e => e.currentTarget.style.color='#EF4444'} onMouseLeave={e => e.currentTarget.style.color='#94A3B8'} title="Delete Journey">
+                          <XCircle size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div style={{ display:'flex', alignItems:'center', gap: '8px' }}>
-                    <span style={{ fontSize:'11px', fontWeight:'700', background:badge.bg, color:badge.text, padding:'4px 10px', borderRadius:'20px', whiteSpace:'nowrap' }}>
-                      {v.status}
-                    </span>
-                    <button onClick={() => deleteJourney(v.id)} style={{ background:'none', border:'none', cursor:'pointer', padding:'2px', color:'#94A3B8' }} onMouseEnter={e => e.currentTarget.style.color='#EF4444'} onMouseLeave={e => e.currentTarget.style.color='#94A3B8'} title="Delete Journey">
-                      <XCircle size={16} />
+
+                  <div style={{ display:'flex', flexDirection:'column', gap:'5px', marginBottom:'16px' }}>
+                    <div style={{ fontSize:'12px', color:'#64748B', display:'flex', gap:'6px', alignItems:'center' }}>
+                      <Play size={11} color="#2563EB" /> Left: {new Date(v.start_journey_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})}
+                    </div>
+                    {v.check_in_time && <div style={{ fontSize:'12px', color:'#64748B', display:'flex', gap:'6px', alignItems:'center' }}><Building size={11} color="#10B981" /> Reached: {new Date(v.check_in_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})}</div>}
+                    {v.check_out_time && <div style={{ fontSize:'12px', color:'#64748B', display:'flex', gap:'6px', alignItems:'center' }}><LogOut size={11} color="#F59E0B" /> Meeting ended: {new Date(v.check_out_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})}</div>}
+                  </div>
+                </div>
+
+                <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+                  {/* For Super Admin / HR (Management): Primary action is Open Live Map */}
+                  {isManagement ? (
+                    <button
+                      onClick={() => setLiveId(v.id)}
+                      style={{
+                        width:'100%',
+                        padding:'11px',
+                        background:'#2563EB',
+                        color:'#fff',
+                        border:'none',
+                        borderRadius:'8px',
+                        cursor:'pointer',
+                        fontSize:'13px',
+                        fontWeight:'700',
+                        display:'flex',
+                        alignItems:'center',
+                        justifyContent:'center',
+                        gap:'7px',
+                        boxShadow:'0 2px 8px rgba(37,99,235,0.25)',
+                        transition:'background 0.15s'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background='#1D4ED8'}
+                      onMouseLeave={e => e.currentTarget.style.background='#2563EB'}
+                    >
+                      <MapIcon size={15} /> Track Live Map
                     </button>
-                  </div>
+                  ) : (
+                    /* For Field Employees: Show Live Map + Stage milestone button */
+                    <>
+                      <button onClick={() => setLiveId(v.id)} style={{ width:'100%', padding:'9px', background:'#F0F6FF', color:'#2563EB', border:'1px solid #DBEAFE', borderRadius:'8px', cursor:'pointer', fontSize:'13px', fontWeight:'600', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px' }}>
+                        <MapIcon size={14} /> Open Live Map
+                      </button>
+
+                      {btn && (
+                        <button
+                          onClick={() => btn.action === 'close' ? closeJourney(v) : setPhotoModal({ action:btn.action, visit:v })}
+                          style={{ width:'100%', padding:'10px', background:btn.bg, color:'#fff', border:'none', borderRadius:'8px', cursor:'pointer', fontSize:'13px', fontWeight:'700', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px' }}>
+                          {btn.label}
+                        </button>
+                      )}
+                    </>
+                  )}
                 </div>
-
-                <div style={{ display:'flex', flexDirection:'column', gap:'5px', marginBottom:'14px' }}>
-                  <div style={{ fontSize:'12px', color:'#64748B', display:'flex', gap:'6px', alignItems:'center' }}>
-                    <Play size={11} color="#2563EB" /> Left: {new Date(v.start_journey_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})}
-                  </div>
-                  {v.check_in_time && <div style={{ fontSize:'12px', color:'#64748B', display:'flex', gap:'6px', alignItems:'center' }}><Building size={11} color="#10B981" /> Reached: {new Date(v.check_in_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})}</div>}
-                  {v.check_out_time && <div style={{ fontSize:'12px', color:'#64748B', display:'flex', gap:'6px', alignItems:'center' }}><LogOut size={11} color="#F59E0B" /> Meeting ended: {new Date(v.check_out_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})}</div>}
-                </div>
-
-                {isAdmin && (
-                  <button onClick={() => setLiveId(v.id)} style={{ width:'100%', padding:'9px', background:'#F0F6FF', color:'#2563EB', border:'1px solid #DBEAFE', borderRadius:'8px', cursor:'pointer', fontSize:'13px', fontWeight:'600', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', marginBottom:'10px' }}>
-                    <MapIcon size={14} /> Open Live Map
-                  </button>
-                )}
-
-                {btn && (
-                  <button
-                    onClick={() => btn.action === 'close' ? closeJourney(v) : setPhotoModal({ action:btn.action, visit:v })}
-                    style={{ width:'100%', padding:'10px', background:btn.bg, color:'#fff', border:'none', borderRadius:'8px', cursor:'pointer', fontSize:'13px', fontWeight:'700', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px' }}>
-                    {btn.label}
-                  </button>
-                )}
               </div>
             );
           })}
@@ -1079,3 +1227,4 @@ export default function ClientVisits() {
     </div>
   );
 }
+

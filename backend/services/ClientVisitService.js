@@ -134,6 +134,7 @@ class ClientVisitService {
       FROM client_visits cv
       LEFT JOIN employees e ON cv.employee_id = e.id
       WHERE cv.employee_id = ? AND cv.status != 'Completed'
+      ORDER BY cv.id DESC
     `, [employeeId]);
     return visits;
   }
@@ -145,6 +146,7 @@ class ClientVisitService {
       FROM client_visits cv
       LEFT JOIN employees e ON cv.employee_id = e.id
       WHERE cv.employee_id = ? AND cv.status = 'Completed' AND cv.date = ?
+      ORDER BY cv.id DESC
     `, [employeeId, today]);
     return visits;
   }
@@ -159,6 +161,7 @@ class ClientVisitService {
       LEFT JOIN employees e ON cv.employee_id = e.id
       LEFT JOIN departments d ON e.department_id = d.id
       WHERE cv.status != 'Completed'
+      ORDER BY cv.id DESC
     `);
     
     const today = new Date().toISOString().split('T')[0];
@@ -168,6 +171,7 @@ class ClientVisitService {
       LEFT JOIN employees e ON cv.employee_id = e.id
       LEFT JOIN departments d ON e.department_id = d.id
       WHERE cv.date = ? AND cv.status = 'Completed'
+      ORDER BY cv.id DESC
     `, [today]);
 
     return { activeVisits, completedVisits };
