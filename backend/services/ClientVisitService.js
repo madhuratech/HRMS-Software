@@ -60,6 +60,14 @@ class ClientVisitService {
       SET check_in_time = ?, check_in_lat = ?, check_in_lng = ?, photo_in_url = ?, status = 'In Meeting'
       WHERE id = ?
     `, [now, lat, lng, photoUrl, visitId]);
+
+    const v = await query('SELECT employee_id FROM client_visits WHERE id = ?', [visitId]);
+    if (v && v.length > 0) {
+      await query(`
+        INSERT INTO LocationHistory (employee_id, latitude, longitude, visit_id, recorded_at)
+        VALUES (?, ?, ?, ?, ?)
+      `, [v[0].employee_id, lat, lng, visitId, now]);
+    }
   }
 
   static async endMeeting(visitId, lat, lng, photoUrl) {
@@ -69,6 +77,14 @@ class ClientVisitService {
       SET check_out_time = ?, check_out_lat = ?, check_out_lng = ?, photo_out_url = ?, status = 'Returning'
       WHERE id = ?
     `, [now, lat, lng, photoUrl, visitId]);
+
+    const v = await query('SELECT employee_id FROM client_visits WHERE id = ?', [visitId]);
+    if (v && v.length > 0) {
+      await query(`
+        INSERT INTO LocationHistory (employee_id, latitude, longitude, visit_id, recorded_at)
+        VALUES (?, ?, ?, ?, ?)
+      `, [v[0].employee_id, lat, lng, visitId, now]);
+    }
   }
 
   static async reachOffice(visitId, employeeId, lat, lng) {
@@ -168,14 +184,38 @@ class ClientVisitService {
     if (visits.length === 0) throw new Error("Visit not found");
     const visit = visits[0];
 
-    const rawPoints = await query(`
+    let rawPoints = await query(`
       SELECT latitude, longitude, recorded_at FROM LocationHistory
       WHERE visit_id = ?
       ORDER BY recorded_at ASC
     `, [visitId]);
 
+    // If starting office position was not recorded, add it at the start
+    if (visit.office_lat && visit.office_lng) {
+      const hasOffice = rawPoints.some(p => Math.abs(parseFloat(p.latitude) - parseFloat(visit.office_lat)) < 0.0001 && Math.abs(parseFloat(p.longitude) - parseFloat(visit.office_lng)) < 0.0001);
+      if (!hasOffice) {
+        rawPoints.unshift({ latitude: visit.office_lat, longitude: visit.office_lng, recorded_at: visit.start_journey_time });
+      }
+    }
+
+    // If check-in milestone was completed but not in history, append it
+    if (visit.check_in_lat && visit.check_in_lng) {
+      const hasCheckIn = rawPoints.some(p => Math.abs(parseFloat(p.latitude) - parseFloat(visit.check_in_lat)) < 0.0001 && Math.abs(parseFloat(p.longitude) - parseFloat(visit.check_in_lng)) < 0.0001);
+      if (!hasCheckIn) {
+        rawPoints.push({ latitude: visit.check_in_lat, longitude: visit.check_in_lng, recorded_at: visit.check_in_time });
+      }
+    }
+
+    // If check-out milestone was completed but not in history, append it
+    if (visit.check_out_lat && visit.check_out_lng) {
+      const hasCheckOut = rawPoints.some(p => Math.abs(parseFloat(p.latitude) - parseFloat(visit.check_out_lat)) < 0.0001 && Math.abs(parseFloat(p.longitude) - parseFloat(visit.check_out_lng)) < 0.0001);
+      if (!hasCheckOut) {
+        rawPoints.push({ latitude: visit.check_out_lat, longitude: visit.check_out_lng, recorded_at: visit.check_out_time });
+      }
+    }
+
     // Filter GPS noise: remove points that jump > 2km from previous (glitches)
-    // Keep only points that moved > 5m from previous (remove stationary noise)
+    // Keep only points that moved > 40m from previous (remove stationary noise)
     const filteredPoints = [];
     for (let i = 0; i < rawPoints.length; i++) {
       if (i === 0) { filteredPoints.push(rawPoints[i]); continue; }
@@ -184,18 +224,20 @@ class ClientVisitService {
         parseFloat(prev.latitude), parseFloat(prev.longitude),
         parseFloat(rawPoints[i].latitude), parseFloat(rawPoints[i].longitude)
       );
-      // Only include if moved between 40m and 2km from last kept point
-      if (d >= 0.04 && d < 2.0) {
+      if (d >= 0.04) {
         filteredPoints.push(rawPoints[i]);
       }
     }
 
-    const totalDistanceKm = calcRealDistance(filteredPoints);
+    // If only 1 point remained after filtering but rawPoints had more, keep rawPoints
+    const finalPoints = filteredPoints.length > 0 ? filteredPoints : rawPoints;
+
+    const totalDistanceKm = calcRealDistance(finalPoints);
     const currentFee = totalDistanceKm * 5;
 
     return {
       visit,
-      points: filteredPoints,
+      points: finalPoints,
       liveDistance: totalDistanceKm.toFixed(2),
       liveFee: currentFee.toFixed(2)
     };
