@@ -62,7 +62,7 @@ async function getOSRMRoute(fromLat, fromLng, toLat, toLng) {
       coordinatesGeoJson: [[fromLng, fromLat], [toLng, toLat]],
       distance: '0.0',
       duration: 0,
-      trafficSegments: [{ coords: [[fromLat, fromLng], [toLat, toLng]], status: 'fast' }],
+      trafficSegments: [{ coords: [[fromLng, fromLat], [toLng, toLat]], status: 'fast' }],
       steps: [{ type: 'arrive', modifier: 'straight', instruction: 'You have arrived at your destination', distance: 0, duration: 0, name: 'Destination' }],
       alternatives: [],
       allRoutes: []
@@ -260,6 +260,187 @@ const MAP_STYLES = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
+// HIGH-PERFORMANCE 60-120 FPS MAP ROUTE & TRAFFIC CANVAS OVERLAY
+// ═══════════════════════════════════════════════════════════════════════════
+const LiveMapRouteOverlay = ({ plannedCoords = [], trafficSegments = [], travelCoords = [], altRoutes = [] }) => {
+  const { current: map } = useMap();
+  const canvasRef = useRef(null);
+
+  useEffect(() => {
+    if (!map) return;
+
+    let animFrameId = null;
+
+    const render = () => {
+      const canvas = canvasRef.current;
+      if (!canvas || !map) return;
+      const ctx = canvas.getContext('2d');
+      const container = map.getContainer ? map.getContainer() : null;
+      const width = container ? container.clientWidth : map.getCanvas().clientWidth;
+      const height = container ? container.clientHeight : map.getCanvas().clientHeight;
+      const dpr = window.devicePixelRatio || 1;
+
+      if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
+        canvas.width = width * dpr;
+        canvas.height = height * dpr;
+        canvas.style.width = `${width}px`;
+        canvas.style.height = `${height}px`;
+      }
+
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, width, height);
+
+      const project = (pt) => {
+        try {
+          if (!pt || pt.length < 2) return null;
+          const p = map.project([pt[0], pt[1]]);
+          if (isNaN(p.x) || isNaN(p.y)) return null;
+          return p;
+        } catch {
+          return null;
+        }
+      };
+
+      // 1. Draw Travelled GPS Breadcrumb Path (Solid Royal Blue with White Casing)
+      if (travelCoords && travelCoords.length > 1) {
+        const pts = travelCoords.map(project).filter(Boolean);
+        if (pts.length > 1) {
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = 8;
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+          ctx.stroke();
+
+          ctx.strokeStyle = '#2563EB';
+          ctx.lineWidth = 5;
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+          ctx.stroke();
+        }
+      }
+
+      // 2. Draw Alternative Candidate Routes (Muted Slate Gray)
+      if (altRoutes && altRoutes.length > 0) {
+        altRoutes.forEach(alt => {
+          const coords = alt.coordinatesGeoJson || (alt.latlngs ? alt.latlngs.map(([la, ln]) => [ln, la]) : null);
+          if (!coords || coords.length < 2) return;
+          const pts = coords.map(project).filter(Boolean);
+          if (pts.length > 1) {
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = '#FFFFFF';
+            ctx.lineWidth = 8;
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+            ctx.stroke();
+
+            ctx.strokeStyle = '#94A3B8';
+            ctx.lineWidth = 5;
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+            ctx.stroke();
+          }
+        });
+      }
+
+      // 3. Draw Planned Primary Road Route (Google Navigation Blue with White Casing)
+      if (plannedCoords && plannedCoords.length > 1) {
+        const pts = plannedCoords.map(project).filter(Boolean);
+        if (pts.length > 1) {
+          ctx.lineCap = 'round';
+          ctx.lineJoin = 'round';
+          // Crisp White Casing
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = 10;
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+          ctx.stroke();
+
+          // Vibrant Google Blue Line
+          ctx.strokeStyle = '#1A73E8';
+          ctx.lineWidth = 6;
+          ctx.beginPath();
+          ctx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+          ctx.stroke();
+        }
+      }
+
+      // 4. Draw Traffic Delay Congestion Hotspots (Amber & Red Segments)
+      if (trafficSegments && trafficSegments.length > 0) {
+        trafficSegments.forEach(seg => {
+          if (!seg.coords || seg.coords.length < 2 || seg.status === 'fast') return;
+          const pts = seg.coords.map(project).filter(Boolean);
+          if (pts.length > 1) {
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = seg.status === 'slow' ? '#EF4444' : '#F59E0B';
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.moveTo(pts[0].x, pts[0].y);
+            for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+            ctx.stroke();
+          }
+        });
+      }
+
+      ctx.restore();
+    };
+
+    const scheduleRender = () => {
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      animFrameId = requestAnimationFrame(render);
+    };
+
+    map.on('render', render);
+    map.on('move', render);
+    map.on('zoom', render);
+    map.on('rotate', render);
+    map.on('pitch', render);
+    map.on('resize', render);
+    map.on('load', scheduleRender);
+    map.on('styledata', scheduleRender);
+
+    scheduleRender();
+
+    return () => {
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      map.off('render', render);
+      map.off('move', render);
+      map.off('zoom', render);
+      map.off('rotate', render);
+      map.off('pitch', render);
+      map.off('resize', render);
+      map.off('load', scheduleRender);
+      map.off('styledata', scheduleRender);
+    };
+  }, [map, plannedCoords, trafficSegments, travelCoords, altRoutes]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        pointerEvents: 'none',
+        zIndex: 5
+      }}
+    />
+  );
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
 // LIVE TRACKING MAP MODAL  (react-map-gl / MapLibre GL)
 // ═══════════════════════════════════════════════════════════════════════════
 const LiveTrackingMap = ({ visitId, onClose }) => {
@@ -276,13 +457,7 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
   // Photo Lightbox modal state
   const [inspectPhoto, setInspectPhoto] = useState(null);
 
-  // Route Replay Simulator State
-  const [replayActive, setReplayActive] = useState(false);
-  const [replayIdx, setReplayIdx] = useState(0);
-  const [replaySpeed, setReplaySpeed] = useState(1);
-  const replayTimer = useRef(null);
-
-  // Projected route coordinate arrays for guaranteed SVG rendering
+  // Projected route coordinate arrays for guaranteed rendering
   const [plannedCoords, setPlannedCoords] = useState([]);
   const [travelCoords, setTravelCoords] = useState([]);
 
@@ -371,7 +546,7 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
     }
 
     // ─── 3. Bike / Live Marker Animation ─────────────────────────────────────
-    if (!replayActive && liveLat && liveLng) {
+    if (liveLat && liveLng) {
       const live = [liveLat, liveLng];
       if (lastPt.current) {
         animateTo(lastPt.current, live, 2000, pos => setBikePos(pos));
@@ -425,7 +600,7 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
         hasFitBounds.current = true;
       }
     }
-  }, [followMode, replayActive]);
+  }, [followMode]);
 
   const fetch_ = useCallback(async () => {
     setRefreshing(true);
@@ -493,37 +668,6 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
       }));
       setFollowMode(true);
     }
-  };
-
-  // ─── Route Replay Simulator Controller ────────────────────────────────────
-  useEffect(() => {
-    if (replayActive && rawPointsList.length > 1) {
-      replayTimer.current = setInterval(() => {
-        setReplayIdx(prev => {
-          if (prev >= rawPointsList.length - 1) {
-            setReplayActive(false);
-            return prev;
-          }
-          const next = prev + 1;
-          const pt = rawPointsList[next];
-          if (pt) {
-            setBikePos([pt.lat, pt.lng]);
-            setViewState(v => ({ ...v, latitude: pt.lat, longitude: pt.lng }));
-          }
-          return next;
-        });
-      }, 1000 / replaySpeed);
-    } else {
-      clearInterval(replayTimer.current);
-    }
-    return () => clearInterval(replayTimer.current);
-  }, [replayActive, replaySpeed, rawPointsList]);
-
-  const startReplay = () => {
-    if (rawPointsList.length === 0) return alert('No recorded GPS points yet to replay.');
-    setReplayIdx(0);
-    setBikePos([rawPointsList[0].lat, rawPointsList[0].lng]);
-    setReplayActive(true);
   };
 
   const steps = [
@@ -704,55 +848,12 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
             >
               <NavigationControl position="bottom-right" />
               
-              {/* Planned Road Route (GPU WebGL - 60 FPS, Zero CPU Lag) */}
-              {plannedCoords && plannedCoords.length > 1 && (
-                <Source
-                  id="sup-planned-route"
-                  type="geojson"
-                  data={{
-                    type: 'Feature',
-                    geometry: { type: 'LineString', coordinates: plannedCoords }
-                  }}
-                >
-                  <Layer
-                    id="sup-planned-casing"
-                    type="line"
-                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                    paint={{ 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.9 }}
-                  />
-                  <Layer
-                    id="sup-planned-line"
-                    type="line"
-                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                    paint={{ 'line-color': '#F97316', 'line-width': 5, 'line-opacity': 1.0 }}
-                  />
-                </Source>
-              )}
-
-              {/* Actual Travelled Path (GPU WebGL) */}
-              {travelCoords && travelCoords.length > 1 && (
-                <Source
-                  id="sup-travel-route"
-                  type="geojson"
-                  data={{
-                    type: 'Feature',
-                    geometry: { type: 'LineString', coordinates: travelCoords }
-                  }}
-                >
-                  <Layer
-                    id="sup-travel-casing"
-                    type="line"
-                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                    paint={{ 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.9 }}
-                  />
-                  <Layer
-                    id="sup-travel-line"
-                    type="line"
-                    layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                    paint={{ 'line-color': '#2563EB', 'line-width': 5, 'line-opacity': 1.0 }}
-                  />
-                </Source>
-              )}
+              {/* High Performance 60-120 FPS Route, Traffic, and Travelled Breadcrumb Canvas Overlay */}
+              <LiveMapRouteOverlay
+                plannedCoords={plannedCoords}
+                trafficSegments={routeInfo?.trafficSegments}
+                travelCoords={travelCoords}
+              />
 
               {/* Office start marker */}
               {startLat && startLng && (
@@ -779,94 +880,8 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
               )}
             </Map>
 
-            {/* Floating Telemetry Glass Cockpit */}
-            <div style={{ position:'absolute', top:'14px', left:'14px', background:'rgba(15,23,42,0.88)', backdropFilter:'blur(8px)', border:'1px solid rgba(255,255,255,0.15)', borderRadius:'14px', padding:'10px 16px', color:'#fff', display:'flex', alignItems:'center', gap:'18px', boxShadow:'0 10px 30px rgba(0,0,0,0.3)', pointerEvents:'none' }}>
-              <div>
-                <div style={{ fontSize:'9px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.5px' }}>TELEMETRY</div>
-                <div style={{ fontSize:'13px', fontWeight:'800', color:'#38BDF8', marginTop:'1px', display:'flex', alignItems:'center', gap:'4px' }}>
-                  <Activity size={12} /> {speedDisplay}
-                </div>
-              </div>
-              <div style={{ width:'1px', height:'22px', background:'rgba(255,255,255,0.15)' }} />
-              <div>
-                <div style={{ fontSize:'9px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.5px' }}>GPS SIGNAL</div>
-                <div style={{ fontSize:'12px', fontWeight:'700', color:'#4ADE80', marginTop:'1px', display:'flex', alignItems:'center', gap:'4px' }}>
-                  <Zap size={11} /> High Precision (±3m)
-                </div>
-              </div>
-              <div style={{ width:'1px', height:'22px', background:'rgba(255,255,255,0.15)' }} />
-              <div>
-                <div style={{ fontSize:'9px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.5px' }}>BREADCRUMBS</div>
-                <div style={{ fontSize:'12px', fontWeight:'700', color:'#F1F5F9', marginTop:'1px' }}>
-                  {rawPointsList.length} Logged Pts
-                </div>
-              </div>
-            </div>
-
-            {/* Floating Route Replay Simulator Trigger */}
-            <div style={{ position:'absolute', top:'14px', right:'14px', display:'flex', gap:'8px' }}>
-              <button
-                onClick={replayActive ? () => setReplayActive(false) : startReplay}
-                style={{
-                  background: replayActive ? '#EF4444' : 'rgba(15,23,42,0.85)',
-                  backdropFilter: 'blur(6px)',
-                  color: '#fff',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                  borderRadius: '10px',
-                  padding: '7px 14px',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  boxShadow: '0 4px 14px rgba(0,0,0,0.25)'
-                }}
-              >
-                {replayActive ? <><Pause size={13} /> Stop Replay</> : <><Play size={13} /> Route Replay</>}
-              </button>
-            </div>
-
-            {/* Route Replay Controller Scrub Bar (Shows when replay is running) */}
-            {replayActive && (
-              <div style={{ position:'absolute', bottom:'20px', left:'20px', right:'70px', background:'rgba(15,23,42,0.92)', backdropFilter:'blur(10px)', border:'1px solid rgba(255,255,255,0.2)', borderRadius:'14px', padding:'12px 18px', color:'#fff', display:'flex', alignItems:'center', gap:'16px', boxShadow:'0 10px 30px rgba(0,0,0,0.4)', zIndex:30 }}>
-                <button onClick={() => setReplayActive(!replayActive)} style={{ background:'#2563EB', border:'none', borderRadius:'50%', width:'32px', height:'32px', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', cursor:'pointer' }}>
-                  {replayActive ? <Pause size={14} /> : <Play size={14} />}
-                </button>
-                <div style={{ flex:1 }}>
-                  <div style={{ display:'flex', justifyContent:'space-between', fontSize:'11px', color:'#94A3B8', marginBottom:'4px' }}>
-                    <span>Replaying Waypoint {replayIdx + 1} of {rawPointsList.length}</span>
-                    <span>{rawPointsList[replayIdx]?.time ? new Date(rawPointsList[replayIdx].time).toLocaleTimeString('en-IN') : ''}</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max={Math.max(rawPointsList.length - 1, 0)}
-                    value={replayIdx}
-                    onChange={e => {
-                      const idx = parseInt(e.target.value);
-                      setReplayIdx(idx);
-                      const pt = rawPointsList[idx];
-                      if (pt) {
-                        setBikePos([pt.lat, pt.lng]);
-                        setViewState(v => ({ ...v, latitude: pt.lat, longitude: pt.lng }));
-                      }
-                    }}
-                    style={{ width:'100%', accentColor:'#38BDF8', cursor:'pointer' }}
-                  />
-                </div>
-                <div style={{ display:'flex', gap:'4px' }}>
-                  {[1, 2, 5].map(spd => (
-                    <button key={spd} onClick={() => setReplaySpeed(spd)} style={{ background: replaySpeed === spd ? '#38BDF8' : 'rgba(255,255,255,0.1)', color: replaySpeed === spd ? '#0F172A' : '#fff', border:'none', borderRadius:'6px', padding:'3px 7px', fontSize:'10px', fontWeight:'700', cursor:'pointer' }}>
-                      {spd}x
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Floating Snap to Employee button */}
-            {!followMode && !replayActive && (
+            {!followMode && (
               <button
                 onClick={snapToVehicle}
                 style={{
@@ -1013,30 +1028,9 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
   const [destResults, setDestResults] = useState([]);
   const [showSearchModal, setShowSearchModal] = useState(false);
 
-  // Memoized alternative routes and traffic features for 60 FPS GPU WebGL rendering
+  // Memoized alternative routes for 60-120 FPS GPU overlay rendering
   const alternativeRoutes = useMemo(() => {
     return (routeData?.allRoutes || []).filter(r => r.id !== routeData?.id);
-  }, [routeData]);
-
-  const trafficGeoJson = useMemo(() => {
-    if (!routeData?.trafficSegments || routeData.trafficSegments.length === 0) {
-      return { type: 'FeatureCollection', features: [] };
-    }
-    const features = routeData.trafficSegments
-      .filter(seg => seg.status !== 'fast' && seg.coords && seg.coords.length > 1)
-      .map((seg, i) => ({
-        type: 'Feature',
-        id: `traffic-${i}`,
-        properties: {
-          status: seg.status,
-          color: seg.status === 'slow' ? '#EF4444' : '#F59E0B'
-        },
-        geometry: {
-          type: 'LineString',
-          coordinates: seg.coords // Exact GeoJSON [[lng, lat], ...]
-        }
-      }));
-    return { type: 'FeatureCollection', features };
   }, [routeData]);
 
   // References for zero-jitter, single-flight route calculations
@@ -1566,85 +1560,12 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         >
           <NavigationControl position="bottom-right" />
 
-          {/* 1. Alternative Route Paths (GPU WebGL Muted Slate Lines) */}
-          {alternativeRoutes && alternativeRoutes.length > 0 && (
-            <Source
-              id="nav-alt-routes"
-              type="geojson"
-              data={{
-                type: 'FeatureCollection',
-                features: alternativeRoutes.map((alt, i) => ({
-                  type: 'Feature',
-                  properties: { id: alt.id || i },
-                  geometry: {
-                    type: 'LineString',
-                    coordinates: alt.coordinatesGeoJson || []
-                  }
-                }))
-              }}
-            >
-              <Layer
-                id="nav-alt-casing"
-                type="line"
-                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                paint={{ 'line-color': '#FFFFFF', 'line-width': 8, 'line-opacity': 0.8 }}
-              />
-              <Layer
-                id="nav-alt-line"
-                type="line"
-                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                paint={{ 'line-color': '#94A3B8', 'line-width': 5, 'line-opacity': 0.95 }}
-              />
-            </Source>
-          )}
-
-          {/* 2. Active Primary Route (GPU WebGL Vibrant Google Navigation Blue with White Casing) */}
-          {plannedCoords && plannedCoords.length > 1 && (
-            <Source
-              id="nav-primary-route"
-              type="geojson"
-              data={{
-                type: 'Feature',
-                geometry: {
-                  type: 'LineString',
-                  coordinates: plannedCoords
-                }
-              }}
-            >
-              <Layer
-                id="nav-primary-casing"
-                type="line"
-                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                paint={{ 'line-color': '#FFFFFF', 'line-width': 10, 'line-opacity': 0.95 }}
-              />
-              <Layer
-                id="nav-primary-line"
-                type="line"
-                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                paint={{ 'line-color': '#1A73E8', 'line-width': 6, 'line-opacity': 1.0 }}
-              />
-            </Source>
-          )}
-
-          {/* 3. Live Traffic Flow Delay Segments (Amber & Red Congestion Hotspots) */}
-          {trafficGeoJson && trafficGeoJson.features && trafficGeoJson.features.length > 0 && (
-            <Source
-              id="nav-traffic-segments"
-              type="geojson"
-              data={trafficGeoJson}
-            >
-              <Layer
-                id="nav-traffic-line"
-                type="line"
-                layout={{ 'line-join': 'round', 'line-cap': 'round' }}
-                paint={{
-                  'line-color': ['get', 'color'],
-                  'line-width': 6,
-                  'line-opacity': 1.0
-                }}
-              />
-            </Source>
-          )}
+          {/* High-Performance 60-120 FPS Planned Route, Alternatives & Traffic Canvas Overlay */}
+          <LiveMapRouteOverlay
+            plannedCoords={plannedCoords}
+            trafficSegments={routeData?.trafficSegments}
+            altRoutes={alternativeRoutes}
+          />
 
           {/* Start Origin Pin */}
           {startLat && startLng && (
