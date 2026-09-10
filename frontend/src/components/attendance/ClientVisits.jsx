@@ -210,19 +210,39 @@ async function geocodeAddress(q) {
   } catch { return []; }
 }
 
-// ─── OSRM shortest-path route (road-following) ─────────────────────────────
+// ─── OSRM shortest-path route (road-following with turn-by-turn maneuvers) ──
 async function getOSRMRoute(fromLat, fromLng, toLat, toLng) {
   try {
     const res = await fetch(
-      `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`
+      `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson&steps=true`
     );
     const data = await res.json();
     if (data.code === 'Ok' && data.routes?.[0]) {
-      const coords = data.routes[0].geometry.coordinates;
+      const route = data.routes[0];
+      const coords = route.geometry.coordinates;
+      
+      // Parse detailed turn-by-turn steps
+      const steps = (route.legs?.[0]?.steps || []).map(s => {
+        let instruction = s.name ? `${s.maneuver.type === 'turn' ? 'Turn ' + (s.maneuver.modifier || '') : s.maneuver.type} onto ${s.name}` : (s.maneuver.modifier ? `Turn ${s.maneuver.modifier}` : 'Continue on road');
+        if (s.maneuver.type === 'arrive') instruction = 'Arrive at client destination';
+        if (s.maneuver.type === 'depart') instruction = s.name ? `Head on ${s.name}` : 'Start journey';
+        
+        return {
+          type: s.maneuver.type,
+          modifier: s.maneuver.modifier,
+          location: s.maneuver.location, // [lng, lat]
+          instruction: instruction.charAt(0).toUpperCase() + instruction.slice(1),
+          distance: Math.round(s.distance),
+          duration: Math.round(s.duration),
+          name: s.name || 'Road'
+        };
+      });
+
       return {
         latlngs: coords.map(c => [c[1], c[0]]),
-        distance: (data.routes[0].distance / 1000).toFixed(1),
-        duration: Math.round(data.routes[0].duration / 60)
+        distance: (route.distance / 1000).toFixed(1),
+        duration: Math.round(route.duration / 60),
+        steps: steps
       };
     }
   } catch (e) {
@@ -272,7 +292,7 @@ function injectStyles() {
   document.head.appendChild(s);
 }
 
-// ─── Multi-Theme Map Engine (100% Legal Open Cartography) ───────────────────
+// ─── Multi-Theme Map Engine (100% Legal Open Cartography: Street & Esri Satellite HD) ─
 const MAP_STYLES = {
   street: {
     version: 8,
@@ -308,38 +328,6 @@ const MAP_STYLES = {
       { id: 'esri-sat-layer', source: 'esri-sat-base', type: 'raster', minzoom: 0, maxzoom: 19 },
       { id: 'esri-labels-layer', source: 'esri-labels-base', type: 'raster', minzoom: 0, maxzoom: 19 }
     ]
-  },
-  dark: {
-    version: 8,
-    sources: {
-      'carto-dark': {
-        type: 'raster',
-        tiles: [
-          'https://a.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png',
-          'https://b.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}.png'
-        ],
-        tileSize: 256,
-        maxzoom: 19,
-        attribution: '© CARTO, OpenStreetMap'
-      }
-    },
-    layers: [{ id: 'carto-dark-layer', source: 'carto-dark', type: 'raster', minzoom: 0, maxzoom: 19 }]
-  },
-  light: {
-    version: 8,
-    sources: {
-      'carto-light': {
-        type: 'raster',
-        tiles: [
-          'https://a.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png',
-          'https://b.basemaps.cartocdn.com/rastertiles/light_all/{z}/{x}/{y}.png'
-        ],
-        tileSize: 256,
-        maxzoom: 19,
-        attribution: '© CARTO, OpenStreetMap'
-      }
-    },
-    layers: [{ id: 'carto-light-layer', source: 'carto-light', type: 'raster', minzoom: 0, maxzoom: 19 }]
   }
 };
 
@@ -981,7 +969,274 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// START JOURNEY MODAL — with Google Maps URL + address search
+// RIDER TURN-BY-TURN NAVIGATION MODAL (Swiggy / Zomato style Rider GPS)
+// ═══════════════════════════════════════════════════════════════════════════
+const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
+  const [currentPos, setCurrentPos] = useState(null);
+  const [routeData, setRouteData] = useState(null);
+  const [stepIdx, setStepIdx] = useState(0);
+  const [voiceOn, setVoiceOn] = useState(true);
+  const [viewState, setViewState] = useState({ longitude: 77.0, latitude: 11.0, zoom: 16, pitch: 60, bearing: 0 });
+  const [showStepList, setShowStepList] = useState(false);
+  const lastSpoken = useRef('');
+  const watchId = useRef(null);
+
+  const destLat = visit?.client_dest_lat ? parseFloat(visit.client_dest_lat) : (visit?.check_in_lat ? parseFloat(visit.check_in_lat) : null);
+  const destLng = visit?.client_dest_lng ? parseFloat(visit.client_dest_lng) : (visit?.check_in_lng ? parseFloat(visit.check_in_lng) : null);
+
+  // Text-to-Speech voice guidance
+  const speakInstruction = useCallback((text) => {
+    if (!voiceOn || !('speechSynthesis' in window) || !text || text === lastSpoken.current) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      utterance.lang = 'en-US';
+      window.speechSynthesis.speak(utterance);
+      lastSpoken.current = text;
+    } catch (e) {
+      console.warn('Speech synthesis notice:', e);
+    }
+  }, [voiceOn]);
+
+  // Fetch initial route and turn steps
+  const fetchRoute = useCallback(async (cLat, cLng) => {
+    if (!destLat || !destLng) return;
+    const r = await getOSRMRoute(cLat, cLng, destLat, destLng);
+    if (r) {
+      setRouteData(r);
+      if (r.steps && r.steps.length > 0) {
+        const first = r.steps[0];
+        speakInstruction(`${first.instruction} in ${first.distance} meters`);
+      }
+    }
+  }, [destLat, destLng, speakInstruction]);
+
+  // Live GPS tracking watcher for rider
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    watchId.current = navigator.geolocation.watchPosition(
+      pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const heading = pos.coords.heading || 0;
+        setCurrentPos([lat, lng]);
+
+        setViewState(prev => ({
+          ...prev,
+          latitude: lat,
+          longitude: lng,
+          bearing: heading || prev.bearing
+        }));
+
+        // Stream live location to backend for HR & Admin tracking
+        apiFetch('/client-visits/track', {
+          method: 'POST',
+          body: JSON.stringify({ visitId: visit.id, lat, lng })
+        }).catch(() => {});
+
+        // If no route yet, calculate it
+        if (!routeData) {
+          fetchRoute(lat, lng);
+        } else if (routeData.steps && routeData.steps.length > 0) {
+          // Check distance to next maneuver step
+          const currentStep = routeData.steps[stepIdx];
+          if (currentStep?.location) {
+            const dToTurn = getDistanceFromLatLonInKm(lat, lng, currentStep.location[1], currentStep.location[0]) * 1000;
+            if (dToTurn < 40 && stepIdx < routeData.steps.length - 1) {
+              const nextIdx = stepIdx + 1;
+              setStepIdx(nextIdx);
+              const nextStep = routeData.steps[nextIdx];
+              speakInstruction(`${nextStep.instruction}`);
+            }
+          }
+        }
+      },
+      err => console.warn('Navigator GPS watch error:', err),
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
+    );
+
+    return () => {
+      if (watchId.current !== null) navigator.geolocation.clearWatch(watchId.current);
+      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+    };
+  }, [visit.id, routeData, stepIdx, fetchRoute, speakInstruction]);
+
+  const currentStep = routeData?.steps?.[stepIdx] || routeData?.steps?.[0];
+  const nextStep = routeData?.steps?.[stepIdx + 1];
+
+  const maneuverIcons = {
+    turn: '↗️',
+    'turn right': '➡️',
+    'turn left': '⬅️',
+    'turn slight right': '↗️',
+    'turn slight left': '↖️',
+    'turn sharp right': '↪️',
+    'turn sharp left': '↩️',
+    straight: '⬆️',
+    roundabout: '🔄',
+    arrive: '🎯',
+    depart: '🏍️'
+  };
+
+  const getManeuverIcon = (step) => {
+    if (!step) return '⬆️';
+    const key = `${step.type} ${step.modifier || ''}`.trim().toLowerCase();
+    return maneuverIcons[key] || maneuverIcons[step.type] || '⬆️';
+  };
+
+  const openExternalMaps = () => {
+    if (destLat && destLng) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`, '_blank');
+    }
+  };
+
+  return (
+    <div style={{ position:'fixed', inset:0, zIndex:9999, background:'#0F172A', display:'flex', flexDirection:'column' }}>
+      
+      {/* Turn-by-Turn Swiggy/Zomato Style Top Navigation HUD */}
+      <div style={{ background:'#0F172A', color:'#fff', padding:'16px 20px', borderBottom:'1px solid rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'space-between', zIndex:20, boxShadow:'0 10px 30px rgba(0,0,0,0.5)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:'16px', flex:1 }}>
+          <div style={{ width:'56px', height:'56px', background:'#10B981', borderRadius:'14px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', flexShrink:0, boxShadow:'0 4px 14px rgba(16,185,129,0.4)' }}>
+            {getManeuverIcon(currentStep)}
+          </div>
+          <div style={{ flex:1 }}>
+            <div style={{ fontSize:'13px', color:'#A7F3D0', fontWeight:'800', textTransform:'uppercase', letterSpacing:'0.5px' }}>
+              {currentStep ? `In ${currentStep.distance} m` : 'Calculating route...'}
+            </div>
+            <div style={{ fontSize:'18px', fontWeight:'900', color:'#fff', marginTop:'2px', lineHeight:'1.2' }}>
+              {currentStep ? currentStep.instruction : 'Follow highlighted road path'}
+            </div>
+            {nextStep && (
+              <div style={{ fontSize:'11px', color:'#94A3B8', marginTop:'4px' }}>
+                Then {nextStep.instruction} ({nextStep.distance}m)
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
+          {/* Voice guidance toggle */}
+          <button
+            onClick={() => setVoiceOn(!voiceOn)}
+            style={{ background: voiceOn ? '#10B981' : 'rgba(255,255,255,0.1)', color:'#fff', border:'none', borderRadius:'10px', padding:'8px 12px', fontSize:'12px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', gap:'5px' }}
+          >
+            {voiceOn ? '🔊 Voice ON' : '🔇 Voice OFF'}
+          </button>
+
+          {/* Turn List Toggle */}
+          <button
+            onClick={() => setShowStepList(!showStepList)}
+            style={{ background:'rgba(255,255,255,0.1)', color:'#fff', border:'none', borderRadius:'10px', padding:'8px 12px', fontSize:'12px', fontWeight:'700', cursor:'pointer' }}
+          >
+            📋 Steps
+          </button>
+
+          {/* Close button */}
+          <button onClick={onClose} style={{ background:'none', border:'none', color:'#94A3B8', cursor:'pointer', padding:'4px' }}>
+            <XCircle size={26} />
+          </button>
+        </div>
+      </div>
+
+      {/* Main Map View */}
+      <div style={{ flex:1, position:'relative' }}>
+        <Map
+          {...viewState}
+          onMove={evt => setViewState(evt.viewState)}
+          minZoom={3}
+          maxZoom={18.5}
+          mapStyle={MAP_STYLES.street}
+          style={{ width:'100%', height:'100%' }}
+        >
+          <NavigationControl position="bottom-right" />
+          
+          {/* Planned Road Route */}
+          {routeData && (
+            <MapSvgRouteOverlay 
+              plannedCoords={routeData.latlngs.map(([la, ln]) => [ln, la])}
+              travelCoords={currentPos ? [[currentPos[1], currentPos[0]]] : []}
+              clientDest={destLat && destLng ? [destLng, destLat] : null}
+              isInsideGeofence={false}
+            />
+          )}
+
+          {/* Destination Pin */}
+          {destLat && destLng && (
+            <Marker longitude={destLng} latitude={destLat} anchor="center">
+              <div title="Client Destination" style={{ width:'22px', height:'22px', background:'#EF4444', border:'3px solid #fff', borderRadius:'50%', boxShadow:'0 4px 12px rgba(239,68,68,0.5)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontSize:'10px', fontWeight:'900' }}>
+                🎯
+              </div>
+            </Marker>
+          )}
+
+          {/* Rider Bike Pin */}
+          {currentPos && (
+            <Marker longitude={currentPos[1]} latitude={currentPos[0]} anchor="center">
+              <div style={{ position:'relative', width:'28px', height:'28px', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <div style={{ position:'absolute', inset:'-8px', background:'rgba(16,185,129,0.35)', borderRadius:'50%', animation:'livePulse 1.5s infinite' }} />
+                <div style={{ width:'18px', height:'18px', background:'#10B981', border:'3px solid #fff', borderRadius:'50%', boxShadow:'0 2px 10px rgba(0,0,0,0.4)', position:'relative', zIndex:2 }} />
+              </div>
+            </Marker>
+          )}
+        </Map>
+
+        {/* Step-by-Step Maneuver Dropdown Drawer */}
+        {showStepList && routeData?.steps && (
+          <div style={{ position:'absolute', top:'10px', left:'10px', bottom:'10px', width:'320px', background:'rgba(15,23,42,0.95)', backdropFilter:'blur(10px)', borderRadius:'16px', border:'1px solid rgba(255,255,255,0.15)', padding:'16px', overflowY:'auto', color:'#fff', zIndex:30 }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px' }}>
+              <div style={{ fontWeight:'800', fontSize:'14px' }}>Turn-by-Turn Route</div>
+              <button onClick={() => setShowStepList(false)} style={{ background:'none', border:'none', color:'#94A3B8', cursor:'pointer' }}>✕</button>
+            </div>
+            {routeData.steps.map((s, idx) => (
+              <div key={idx} style={{ display:'flex', gap:'12px', padding:'10px 0', borderBottom:'1px solid rgba(255,255,255,0.08)', opacity: idx < stepIdx ? 0.4 : 1 }}>
+                <div style={{ fontSize:'18px' }}>{getManeuverIcon(s)}</div>
+                <div style={{ flex:1 }}>
+                  <div style={{ fontSize:'13px', fontWeight: idx === stepIdx ? '800' : '600', color: idx === stepIdx ? '#38BDF8' : '#F1F5F9' }}>
+                    {s.instruction}
+                  </div>
+                  <div style={{ fontSize:'11px', color:'#94A3B8', marginTop:'2px' }}>{s.distance} meters</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Bottom Bar — Quick Telemetry & Actions */}
+      <div style={{ background:'#0F172A', padding:'14px 20px', borderTop:'1px solid rgba(255,255,255,0.1)', display:'flex', alignItems:'center', justifyContent:'space-between', color:'#fff', zIndex:20 }}>
+        <div>
+          <div style={{ fontSize:'11px', color:'#94A3B8', fontWeight:'700', textTransform:'uppercase' }}>Remaining Trip</div>
+          <div style={{ fontSize:'20px', fontWeight:'900', color:'#38BDF8', marginTop:'2px' }}>
+            {routeData?.distance || '0.0'} km <span style={{ fontSize:'13px', fontWeight:'600', color:'#94A3B8' }}>• ~{routeData?.duration || 0} mins</span>
+          </div>
+        </div>
+
+        <div style={{ display:'flex', gap:'10px' }}>
+          {/* Open in Google Maps app */}
+          <button
+            onClick={openExternalMaps}
+            style={{ background:'rgba(255,255,255,0.1)', color:'#fff', border:'1px solid rgba(255,255,255,0.2)', borderRadius:'10px', padding:'10px 16px', fontSize:'13px', fontWeight:'700', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px' }}
+          >
+            <Navigation size={15} /> Open in Google Maps
+          </button>
+
+          {/* Reached Client Action Trigger */}
+          {onReachClient && (
+            <button
+              onClick={() => { onClose(); onReachClient(); }}
+              style={{ background:'#10B981', color:'#fff', border:'none', borderRadius:'10px', padding:'10px 20px', fontSize:'13px', fontWeight:'800', cursor:'pointer', display:'flex', alignItems:'center', gap:'6px', boxShadow:'0 4px 14px rgba(16,185,129,0.4)' }}
+            >
+              <Camera size={16} /> Reached Client — Take Photo
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 // ═══════════════════════════════════════════════════════════════════════════
 const StartJourneyModal = ({ onStart, onClose }) => {
   const [clientName, setClientName] = useState('');
@@ -1249,6 +1504,7 @@ export default function ClientVisits() {
   const [showStart, setShowStart] = useState(false);
   const [photoModal, setPhotoModal] = useState(null); // { action, visit }
   const [liveId, setLiveId] = useState(null);
+  const [navigatingVisit, setNavigatingVisit] = useState(null);
   const trackTimer = useRef(null);
 
   useEffect(() => { injectStyles(); }, []);
@@ -1326,6 +1582,17 @@ export default function ClientVisits() {
       {showStart && <StartJourneyModal onStart={() => { setShowStart(false); fetchVisits(); }} onClose={() => setShowStart(false)} />}
       {photoModal && <PhotoModal action={photoModal.action} visit={photoModal.visit} onSubmit={() => { setPhotoModal(null); fetchVisits(); }} onClose={() => setPhotoModal(null)} />}
       {liveId && <LiveTrackingMap visitId={liveId} onClose={() => setLiveId(null)} />}
+      {navigatingVisit && (
+        <RiderNavigatorModal
+          visit={navigatingVisit}
+          onClose={() => setNavigatingVisit(null)}
+          onReachClient={() => {
+            const v = navigatingVisit;
+            setNavigatingVisit(null);
+            setPhotoModal({ action: 'reachClient', visit: v });
+          }}
+        />
+      )}
 
       {/* Page header */}
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'24px' }}>
@@ -1426,14 +1693,42 @@ export default function ClientVisits() {
                       <MapIcon size={15} /> Track Live Map
                     </button>
                   ) : (
-                    /* For Team Leader & Field Employees: Only show stage milestone action buttons (NO live map tracking) */
-                    btn && (
-                      <button
-                        onClick={() => btn.action === 'close' ? closeJourney(v) : setPhotoModal({ action:btn.action, visit:v })}
-                        style={{ width:'100%', padding:'11px', background:btn.bg, color:'#fff', border:'none', borderRadius:'8px', cursor:'pointer', fontSize:'13px', fontWeight:'700', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', boxShadow:'0 2px 6px rgba(0,0,0,0.1)' }}>
-                        {btn.label}
-                      </button>
-                    )
+                    /* For Team Leader & Field Employees: Swiggy/Zomato Turn-by-Turn Navigation + Stage Milestones */
+                    <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
+                      {['Travelling', 'Returning'].includes(v.status) && (
+                        <button
+                          onClick={() => setNavigatingVisit(v)}
+                          style={{
+                            width:'100%',
+                            padding:'11px',
+                            background:'#0F172A',
+                            color:'#fff',
+                            border:'1px solid #334155',
+                            borderRadius:'8px',
+                            cursor:'pointer',
+                            fontSize:'13px',
+                            fontWeight:'700',
+                            display:'flex',
+                            alignItems:'center',
+                            justifyContent:'center',
+                            gap:'7px',
+                            boxShadow:'0 2px 8px rgba(15,23,42,0.25)',
+                            transition:'background 0.15s'
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background='#1E293B'}
+                          onMouseLeave={e => e.currentTarget.style.background='#0F172A'}
+                        >
+                          <Compass size={15} color="#38BDF8" /> 🧭 Live Turn-by-Turn Navigation
+                        </button>
+                      )}
+                      {btn && (
+                        <button
+                          onClick={() => btn.action === 'close' ? closeJourney(v) : setPhotoModal({ action:btn.action, visit:v })}
+                          style={{ width:'100%', padding:'11px', background:btn.bg, color:'#fff', border:'none', borderRadius:'8px', cursor:'pointer', fontSize:'13px', fontWeight:'700', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', boxShadow:'0 2px 6px rgba(0,0,0,0.1)' }}>
+                          {btn.label}
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
