@@ -153,7 +153,7 @@ class ClientVisitService {
 
   static async getLiveVisits() {
     const activeVisits = await query(`
-      SELECT cv.id, cv.employee_id, cv.client_name, cv.start_journey_time, cv.check_in_time, cv.photo_in_url, cv.check_out_time, cv.photo_out_url, cv.status, cv.office_lat, cv.office_lng, cv.client_address, e.name as employee_name,
+      SELECT cv.*, e.name as employee_name,
              (SELECT latitude FROM LocationHistory lh WHERE lh.visit_id = cv.id ORDER BY recorded_at DESC LIMIT 1) as last_lat,
              (SELECT longitude FROM LocationHistory lh WHERE lh.visit_id = cv.id ORDER BY recorded_at DESC LIMIT 1) as last_lng,
              (SELECT recorded_at FROM LocationHistory lh WHERE lh.visit_id = cv.id ORDER BY recorded_at DESC LIMIT 1) as last_update
