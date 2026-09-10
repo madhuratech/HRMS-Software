@@ -20,6 +20,8 @@ module.exports = {
       user: process.env.DB_USER || 'Madhura',
       password: process.env.DB_PASSWORD || 'Madhura2026',
       database: process.env.DB_NAME || 'madhurahrms',
+      connectTimeout: 60000,
+      enableKeepAlive: true
     },
     pool: poolConfig,
     migrations: {
@@ -35,6 +37,8 @@ module.exports = {
       user: process.env.DB_USER || 'Madhura',
       password: process.env.DB_PASSWORD || 'Madhura2026',
       database: process.env.DB_NAME || 'madhurahrms',
+      connectTimeout: 60000,
+      enableKeepAlive: true
     },
     pool: poolConfig,
     migrations: {

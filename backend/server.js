@@ -22,32 +22,43 @@ process.on('uncaughtException', (err) => {
   } catch (e) { }
 });
 
-// Programmatic Knex Migration Runner on Startup
+// Programmatic Knex Migration Runner on Startup with Retry
 const knex = require('knex');
 const knexConfig = require('./knexfile');
-const knexInstance = knex(knexConfig.development);
 
-async function runMigrationsSafely() {
-  try {
-    const hasTable = await knexInstance.schema.hasTable('knex_migrations');
-    if (hasTable) {
-      const migrationsDir = path.join(__dirname, 'migrations');
-      const filesOnDisk = fs.existsSync(migrationsDir)
-        ? fs.readdirSync(migrationsDir).filter(f => f.endsWith('.js'))
-        : [];
-      const dbRecords = await knexInstance('knex_migrations').select('id', 'name');
-      const missingIds = dbRecords.filter(r => !filesOnDisk.includes(r.name)).map(r => r.id);
-      if (missingIds.length > 0) {
-        await knexInstance('knex_migrations').whereIn('id', missingIds).del();
-        console.log(`🧹 Cleaned ${missingIds.length} orphan migration record(s) from database.`);
+async function runMigrationsSafely(retries = 3) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    let knexInstance = null;
+    try {
+      knexInstance = knex(knexConfig.production || knexConfig.development);
+      const hasTable = await knexInstance.schema.hasTable('knex_migrations');
+      if (hasTable) {
+        const migrationsDir = path.join(__dirname, 'migrations');
+        const filesOnDisk = fs.existsSync(migrationsDir)
+          ? fs.readdirSync(migrationsDir).filter(f => f.endsWith('.js'))
+          : [];
+        const dbRecords = await knexInstance('knex_migrations').select('id', 'name');
+        const missingIds = dbRecords.filter(r => !filesOnDisk.includes(r.name)).map(r => r.id);
+        if (missingIds.length > 0) {
+          await knexInstance('knex_migrations').whereIn('id', missingIds).del();
+          console.log(`🧹 Cleaned ${missingIds.length} orphan migration record(s) from database.`);
+        }
+      }
+      await knexInstance.migrate.latest();
+      console.log('✅ Cloud database schemas/migrations verified and updated.');
+      await knexInstance.destroy();
+      break;
+    } catch (err) {
+      if (knexInstance) {
+        try { await knexInstance.destroy(); } catch (e) {}
+      }
+      if (attempt < retries) {
+        console.warn(`[Migration Warning] Attempt ${attempt} failed: ${err.message}. Retrying in 3s...`);
+        await new Promise(r => setTimeout(r, 3000));
+      } else {
+        console.warn('⚠️ Knex migration runner finished with warning (non-fatal):', err.message);
       }
     }
-    await knexInstance.migrate.latest();
-    console.log('✅ Cloud database schemas/migrations verified and updated.');
-  } catch (err) {
-    console.error('❌ Programmatic Knex migration runner failed:', err);
-  } finally {
-    await knexInstance.destroy();
   }
 }
 
