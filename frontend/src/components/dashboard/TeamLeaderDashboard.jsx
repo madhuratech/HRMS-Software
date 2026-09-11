@@ -396,7 +396,7 @@ export function TeamLeaderDashboard() {
         </div>
 
         {/* Card 2 — Team Members */}
-        <div style={cardStyle} className="cursor-pointer hover:border-blue-300 transition-colors" onClick={() => navigate('/team-leader/my-team')}>
+        <div style={cardStyle} className="cursor-pointer hover:border-blue-300 transition-colors" onClick={() => navigate('/team-leader/team-attendance')}>
           <div className="flex items-center justify-between mb-4">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Team Members</span>
             <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
@@ -635,11 +635,11 @@ export function TeamLeaderDashboard() {
           <div style={cardStyle}>
             <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
               <div>
-                <h3 className="text-base font-extrabold text-slate-900">My Team Roster</h3>
+                <h3 className="text-base font-extrabold text-slate-900">Team Roster</h3>
                 <p className="text-xs text-slate-500 font-medium mt-0.5">Active team members list</p>
               </div>
               <button
-                onClick={() => navigate('/team-leader/my-team')}
+                onClick={() => navigate('/team-leader/team-attendance')}
                 className="text-xs text-blue-600 font-extrabold hover:text-blue-800 transition-colors flex items-center gap-1"
               >
                 View All <ChevronRight size={14} />

@@ -10,15 +10,7 @@ import { PermissionGuard } from './components/auth/PermissionGuard';
 import { AdminManagerRegister } from './components/auth/AdminManagerRegister';
 import { NotificationsPage } from './components/notifications/NotificationsPage';
 import { SuperAdminDashboard } from './components/dashboard/SuperAdminDashboard';
-import { StaffDashboard } from './components/dashboard/StaffDashboard';
 import { EmployeeDashboard } from './components/dashboard/EmployeeDashboard';
-import { AttendanceModule } from './components/attendance/AttendanceModule';
-import { SalesEntry } from './components/sales/SalesEntry';
-import { SalesEnquiries } from './components/sales/SalesEnquiries';
-import { CustomerSalesDetails } from './components/sales/CustomerSalesDetails';
-import { TaskBoard } from './components/service/TaskBoard';
-import { EmployeeList } from './components/hr/EmployeeList';
-import { ShiftScheduler } from './components/hr/ShiftScheduler';
 import SalaryStructure from './components/payroll/SalaryStructure';
 import SalaryComponents from './components/payroll/SalaryComponents';
 import PayrollProcessing from './components/payroll/PayrollProcessing';
@@ -28,8 +20,6 @@ import Reimbursements from './components/payroll/Reimbursements';
 import LoansAdvances from './components/payroll/LoansAdvances';
 import TaxManagement from './components/payroll/TaxManagement';
 import PayrollReports from './components/payroll/PayrollReports';
-import { DocumentManager } from './components/hr/DocumentManager';
-import { SupportTickets } from './components/support/SupportTickets';
 import { NewsFeed } from './components/communication/NewsFeed';
 import { EmployeeReports } from './components/reports/EmployeeReports';
 import { ReportsDirectory } from './components/reports/ReportsDirectory';
@@ -59,8 +49,6 @@ import TransfersContent from './components/employee/TransfersContent';
 import ExitManagement from './components/employee/ExitManagement';
 import EmployeeDocuments from './components/employee/EmployeeDocuments';
 import { MyShift } from './components/employee/MyShift';
-import { MyPayroll } from './components/employee/MyPayroll';
-import { MyTeam } from './components/employee/MyTeam';
 import { MyPerformance } from './components/employee/MyPerformance';
 import { TeamLeaderDashboard } from './components/dashboard/TeamLeaderDashboard';
 import { TeamAttendanceModule } from './components/team-leader/TeamAttendanceModule';
@@ -352,17 +340,13 @@ function App() {
 
     switch (currentView) {
       case 'dashboard':
-        if (userRole === 'SERVICE_STAFF' || userRole === 'SALES_MANAGER') {
-          return <StaffDashboard />;
-        }
         if (userRole === 'EMPLOYEE') {
           return <EmployeeDashboard />;
         }
+        if (userRole === 'TEAM_LEADER') {
+          return <TeamLeaderDashboard />;
+        }
         return <SuperAdminDashboard />;
-      case 'schedule':
-        return <ShiftScheduler />;
-      case 'documents':
-        return <DocumentManager />;
       case 'settings':
         return (
           <div className="flex flex-col items-center justify-center h-[60vh] text-center">
@@ -398,44 +382,42 @@ function App() {
 
             <Route element={<AppLayout userRole={userRole} onLogout={handleLogout} />}>
               {/* Dashboard Route */}
-              <Route path="/dashboard" element={userRole === 'SERVICE_STAFF' || userRole === 'SALES_MANAGER' ? <StaffDashboard /> : userRole === 'EMPLOYEE' ? <EmployeeDashboard /> : userRole === 'TEAM_LEADER' ? <TeamLeaderDashboard /> : <SuperAdminDashboard />} />
+              <Route path="/dashboard" element={userRole === 'EMPLOYEE' ? <EmployeeDashboard /> : userRole === 'TEAM_LEADER' ? <TeamLeaderDashboard /> : <SuperAdminDashboard />} />
 
               {/* Dedicated Employee Module Routes */}
               <Route path="/employee" element={<Navigate to="/employee/dashboard" replace />} />
               <Route path="/employee/dashboard" element={<PermissionGuard moduleKey="dashboard" submoduleKey="dashboard_overview"><EmployeeDashboard /></PermissionGuard>} />
-              <Route path="/employee/profile" element={<PermissionGuard moduleKey="employees" submoduleKey="employee_profile"><EmployeeProfileContent /></PermissionGuard>} />
+              <Route path="/employee/profile" element={<Navigate to="/employees/profile" replace />} />
               <Route path="/employee/attendance" element={<PermissionGuard moduleKey="attendance" submoduleKey="daily_attendance"><GPSAttendance /></PermissionGuard>} />
-            <Route path="/employee/shift" element={<PermissionGuard moduleKey="attendance" submoduleKey="shift_roster"><MyShift /></PermissionGuard>} />
-            <Route path="/employee/leave" element={<PermissionGuard moduleKey="leave" submoduleKey="my_leave"><LeaveApplications /></PermissionGuard>} />
-            <Route path="/employee/leave-balance" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_balance"><LeaveBalance /></PermissionGuard>} />
-            <Route path="/employee/leave-requests" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_approval"><LeaveApplications activeTab="approval" /></PermissionGuard>} />
-            <Route path="/employee/leave-types" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_types"><LeaveTypes /></PermissionGuard>} />
-            <Route path="/employee/holidays" element={<PermissionGuard moduleKey="leave" submoduleKey="holiday_list"><HolidayList /></PermissionGuard>} />
-            <Route path="/employee/payroll" element={<PermissionGuard moduleKey="payroll" submoduleKey="salary_structure"><MyPayroll /></PermissionGuard>} />
-            <Route path="/employee/tasks" element={<PermissionGuard moduleKey="projects" submoduleKey="tasks"><Tasks /></PermissionGuard>} />
-            <Route path="/employee/team" element={<PermissionGuard moduleKey="employees" submoduleKey="employee_directory"><MyTeam /></PermissionGuard>} />
-            <Route path="/employee/performance" element={<PermissionGuard moduleKey="performance" submoduleKey="reviews"><MyPerformance /></PermissionGuard>} />
-            <Route path="/employee/documents" element={<PermissionGuard moduleKey="documents" submoduleKey="doc_employee"><EmployeeDocuments /></PermissionGuard>} />
-            <Route path="/employee/announcements" element={<PermissionGuard moduleKey="organization" submoduleKey="company_profile"><NewsFeed /></PermissionGuard>} />
-            <Route path="/employee/help" element={<PermissionGuard moduleKey="helpdesk" submoduleKey="tickets"><SupportTickets /></PermissionGuard>} />
+              <Route path="/employee/shift" element={<PermissionGuard moduleKey="attendance" submoduleKey="shift_roster"><MyShift /></PermissionGuard>} />
+              <Route path="/employee/leave" element={<PermissionGuard moduleKey="leave" submoduleKey="my_leave"><LeaveApplications /></PermissionGuard>} />
+              <Route path="/employee/leave-balance" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_balance"><LeaveBalance /></PermissionGuard>} />
+              <Route path="/employee/leave-requests" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_approval"><LeaveApplications activeTab="approval" /></PermissionGuard>} />
+              <Route path="/employee/leave-types" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_types"><LeaveTypes /></PermissionGuard>} />
+              <Route path="/employee/holidays" element={<PermissionGuard moduleKey="leave" submoduleKey="holiday_list"><HolidayList /></PermissionGuard>} />
+              <Route path="/employee/payroll" element={<Navigate to="/payroll/payslips" replace />} />
+              <Route path="/employee/tasks" element={<PermissionGuard moduleKey="projects" submoduleKey="tasks"><Tasks /></PermissionGuard>} />
+              <Route path="/employee/performance" element={<PermissionGuard moduleKey="performance" submoduleKey="reviews"><MyPerformance /></PermissionGuard>} />
+              <Route path="/employee/documents" element={<PermissionGuard moduleKey="documents" submoduleKey="doc_employee"><EmployeeDocuments /></PermissionGuard>} />
+              <Route path="/employee/announcements" element={<PermissionGuard moduleKey="organization" submoduleKey="company_profile"><NewsFeed /></PermissionGuard>} />
+              <Route path="/employee/help" element={<PermissionGuard moduleKey="helpdesk" submoduleKey="tickets"><Tickets /></PermissionGuard>} />
 
-            {/* Dedicated Team Leader Routes */}
-            <Route path="/team-leader" element={<Navigate to="/team-leader/dashboard" replace />} />
-            <Route path="/team-leader/dashboard" element={<PermissionGuard moduleKey="dashboard" submoduleKey="dashboard_overview"><TeamLeaderDashboard /></PermissionGuard>} />
-            <Route path="/team-leader/profile" element={<PermissionGuard moduleKey="employees" submoduleKey="employee_profile"><EmployeeProfileContent /></PermissionGuard>} />
-            <Route path="/team-leader/my-attendance" element={<PermissionGuard moduleKey="attendance" submoduleKey="gps_attendance"><GPSAttendance /></PermissionGuard>} />
-            <Route path="/team-leader/my-shift" element={<PermissionGuard moduleKey="attendance" submoduleKey="shift_roster"><MyShift /></PermissionGuard>} />
-            <Route path="/team-leader/my-team" element={<PermissionGuard moduleKey="employees" submoduleKey="employee_directory"><MyTeam /></PermissionGuard>} />
-            <Route path="/team-leader/team-attendance" element={<PermissionGuard moduleKey="attendance" submoduleKey="daily_attendance"><TeamAttendanceModule /></PermissionGuard>} />
-            <Route path="/team-leader/projects" element={<PermissionGuard moduleKey="projects" submoduleKey="projects_list"><ProjectsList /></PermissionGuard>} />
-            <Route path="/team-leader/team-tasks" element={<PermissionGuard moduleKey="projects" submoduleKey="tasks"><Tasks /></PermissionGuard>} />
-            <Route path="/team-leader/team-performance" element={<PermissionGuard moduleKey="performance" submoduleKey="reviews"><TeamPerformanceModule /></PermissionGuard>} />
-            <Route path="/team-leader/my-leave" element={<PermissionGuard moduleKey="leave" submoduleKey="my_leave"><LeaveApplications /></PermissionGuard>} />
-            <Route path="/team-leader/team-leave" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_approval"><TeamLeaveModule /></PermissionGuard>} />
-            <Route path="/team-leader/holidays" element={<PermissionGuard moduleKey="leave" submoduleKey="holiday_list"><HolidayList /></PermissionGuard>} />
-            <Route path="/team-leader/leave-types" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_types"><LeaveTypes /></PermissionGuard>} />
-            <Route path="/team-leader/my-payroll" element={<PermissionGuard moduleKey="payroll" submoduleKey="salary_structure"><MyPayroll /></PermissionGuard>} />
-            <Route path="/team-leader/help" element={<PermissionGuard moduleKey="helpdesk" submoduleKey="tickets"><SupportTickets /></PermissionGuard>} />
+              {/* Dedicated Team Leader Routes */}
+              <Route path="/team-leader" element={<Navigate to="/team-leader/dashboard" replace />} />
+              <Route path="/team-leader/dashboard" element={<PermissionGuard moduleKey="dashboard" submoduleKey="dashboard_overview"><TeamLeaderDashboard /></PermissionGuard>} />
+              <Route path="/team-leader/profile" element={<Navigate to="/employees/profile" replace />} />
+              <Route path="/team-leader/my-attendance" element={<PermissionGuard moduleKey="attendance" submoduleKey="gps_attendance"><GPSAttendance /></PermissionGuard>} />
+              <Route path="/team-leader/my-shift" element={<PermissionGuard moduleKey="attendance" submoduleKey="shift_roster"><MyShift /></PermissionGuard>} />
+              <Route path="/team-leader/team-attendance" element={<PermissionGuard moduleKey="attendance" submoduleKey="daily_attendance"><TeamAttendanceModule /></PermissionGuard>} />
+              <Route path="/team-leader/projects" element={<PermissionGuard moduleKey="projects" submoduleKey="projects_list"><ProjectsList /></PermissionGuard>} />
+              <Route path="/team-leader/team-tasks" element={<PermissionGuard moduleKey="projects" submoduleKey="tasks"><TeamTasksModule /></PermissionGuard>} />
+              <Route path="/team-leader/team-performance" element={<PermissionGuard moduleKey="performance" submoduleKey="reviews"><TeamPerformanceModule /></PermissionGuard>} />
+              <Route path="/team-leader/my-leave" element={<PermissionGuard moduleKey="leave" submoduleKey="my_leave"><LeaveApplications /></PermissionGuard>} />
+              <Route path="/team-leader/team-leave" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_approval"><TeamLeaveModule /></PermissionGuard>} />
+              <Route path="/team-leader/holidays" element={<PermissionGuard moduleKey="leave" submoduleKey="holiday_list"><HolidayList /></PermissionGuard>} />
+              <Route path="/team-leader/leave-types" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_types"><LeaveTypes /></PermissionGuard>} />
+              <Route path="/team-leader/my-payroll" element={<Navigate to="/payroll/payslips" replace />} />
+              <Route path="/team-leader/help" element={<PermissionGuard moduleKey="helpdesk" submoduleKey="tickets"><Tickets /></PermissionGuard>} />
 
             {/* AI Assistant Route */}
             <Route path="/ai-assistant" element={<PermissionGuard moduleKey="ai_assistant"><AIAssistantDashboard /></PermissionGuard>} />
@@ -490,13 +472,6 @@ function App() {
 
             {/* Other Existing Modules */}
             <Route path="/news" element={<NewsFeed />} />
-            <Route path="/schedule" element={<ShiftScheduler />} />
-            <Route path="/documents" element={<DocumentManager />} />
-            <Route path="/support" element={<SupportTickets />} />
-            <Route path="/sales" element={<SalesEntry />} />
-            <Route path="/leads" element={<SalesEnquiries />} />
-            <Route path="/customer-sales" element={<CustomerSalesDetails />} />
-            <Route path="/service" element={<TaskBoard />} />
             {/* Global Centralized Reports Module */}
             <Route path="/reports" element={<ReportsDirectory />} />
             <Route path="/reports/employees" element={<EmployeeReports />} />

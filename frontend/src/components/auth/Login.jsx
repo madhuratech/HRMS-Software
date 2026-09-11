@@ -14,8 +14,11 @@ export function Login({ onLogin, onRegisterClick }) {
 
   const handleRoleClick = (type, emailPreset) => {
     setLoginType(type);
-    setEmail(emailPreset);
-    setPassword('Admin@123');
+    const knownPresets = ['admin@hawkeye.com', 'madhuratechcbe@gmail.com', 'dhilipanmadhuratech@gmail.com', 'muthu@gmail.com'];
+    if (!email || knownPresets.includes(email.trim().toLowerCase())) {
+      setEmail(emailPreset);
+      setPassword('Admin@123');
+    }
     setErrorMsg('');
   };
 
@@ -109,13 +112,13 @@ export function Login({ onLogin, onRegisterClick }) {
           )}
 
           <form onSubmit={handleLogin} className="space-y-6">
-            {/* Role — ONLY Admin and Employee */}
+            {/* Role — Admin and Employee (includes Team Leaders & Staff) */}
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-700">Role</label>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
-                  onClick={() => handleRoleClick('admin', 'admin@hawkeye.com')}
+                  onClick={() => handleRoleClick('admin', 'madhuratechcbe@gmail.com')}
                   className={`w-full py-3 px-4 rounded-xl border-2 text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${
                     selectedRole === 'SUPER_ADMIN'
                       ? 'border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-200'
@@ -126,7 +129,7 @@ export function Login({ onLogin, onRegisterClick }) {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleRoleClick('employee', 'Madhuratechcbe@gmail.com')}
+                  onClick={() => handleRoleClick('employee', 'dhilipanmadhuratech@gmail.com')}
                   className={`w-full py-3 px-4 rounded-xl border-2 text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${
                     selectedRole === 'EMPLOYEE'
                       ? 'border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-200'
@@ -136,6 +139,9 @@ export function Login({ onLogin, onRegisterClick }) {
                   Employee
                 </button>
               </div>
+              <p className="text-xs text-slate-400 text-center">
+                Employee option supports Staff and Team Leader logins
+              </p>
             </div>
 
             <div className="space-y-4">

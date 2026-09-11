@@ -145,7 +145,25 @@ exports.login = async (req, res) => {
       //    by modifying the request or disabling JS in the browser.
       const normalizedSelected = normalizeSelectedRole(selectedRole);
       if (normalizedSelected) {
-        if (normalizedSelected !== identity.role) {
+        let isRoleAllowed = (normalizedSelected === identity.role);
+
+        // When "EMPLOYEE" is selected in the login UI, allow all employee-tier roles:
+        // regular EMPLOYEE, TEAM_LEADER, and HR_MANAGER
+        if (normalizedSelected === 'EMPLOYEE' && ['EMPLOYEE', 'TEAM_LEADER', 'HR_MANAGER'].includes(identity.role)) {
+          isRoleAllowed = true;
+        }
+
+        // When "TEAM_LEADER" is selected, allow TEAM_LEADER and EMPLOYEE
+        if (normalizedSelected === 'TEAM_LEADER' && ['TEAM_LEADER', 'EMPLOYEE'].includes(identity.role)) {
+          isRoleAllowed = true;
+        }
+
+        // When "SUPER_ADMIN" is selected, allow SUPER_ADMIN and ADMIN
+        if (normalizedSelected === 'SUPER_ADMIN' && ['SUPER_ADMIN', 'ADMIN'].includes(identity.role)) {
+          isRoleAllowed = true;
+        }
+
+        if (!isRoleAllowed) {
           console.warn(`[LOGIN] Role mismatch for ${cleanEmail}: selected=${normalizedSelected}, actual=${identity.role}`);
           return res.status(401).json({
             success: false,

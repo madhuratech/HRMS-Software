@@ -379,18 +379,7 @@ export function EmployeeDashboard() {
             }));
             setTasks(displayTasks);
           } else {
-            // Service tasks fallback
-            const stRes = await apiFetch('/tickets/service-tasks');
-            if (Array.isArray(stRes) && stRes.length > 0) {
-              setTasks(stRes.slice(0, 5).map(t => ({
-                id: t.id,
-                name: t.issue || 'Service Task',
-                project: t.customerName || 'Service',
-                dueDate: t.date || 'Today',
-                priority: 'Medium',
-                status: t.status || 'PENDING'
-              })));
-            }
+            setTasks([]);
           }
         } catch (e) {
           console.error("Failed to load tasks:", e);
@@ -776,7 +765,7 @@ export function EmployeeDashboard() {
               <div className="flex justify-between"><span>Joined:</span><strong className="text-slate-800">{employee.joined || 'N/A'}</strong></div>
               <div className="flex justify-between"><span>Email:</span><strong className="text-slate-800 truncate max-w-[140px]">{employee.email || 'N/A'}</strong></div>
             </div>
-            <button onClick={() => navigate('/employee/profile')} className="w-full h-10 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition-colors mt-2">
+            <button onClick={() => navigate('/employees/profile')} className="w-full h-10 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-semibold transition-colors mt-2">
               View Full Profile
             </button>
           </div>
@@ -793,7 +782,7 @@ export function EmployeeDashboard() {
                 <CalendarCheck size={18} className="text-emerald-500 mb-1.5" />
                 <span className="block text-xs font-bold text-slate-800 group-hover:text-blue-600">My Attendance</span>
               </button>
-              <button onClick={() => navigate('/employee/payroll')} className="p-3 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition-colors text-left group">
+              <button onClick={() => navigate('/payroll/payslips')} className="p-3 rounded-xl border border-slate-200 hover:border-blue-300 hover:bg-blue-50/50 transition-colors text-left group">
                 <FileText size={18} className="text-indigo-500 mb-1.5" />
                 <span className="block text-xs font-bold text-slate-800 group-hover:text-blue-600">My Payslip</span>
               </button>
@@ -822,10 +811,10 @@ export function EmployeeDashboard() {
                   <FileText size={32} className="text-blue-200" />
                 </div>
                 <div className="grid grid-cols-2 gap-2">
-                  <button onClick={() => navigate('/employee/payroll')} className="h-9 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5">
+                  <button onClick={() => navigate('/payroll/payslips')} className="h-9 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center justify-center gap-1.5">
                     <Eye size={14} /> View
                   </button>
-                  <button onClick={() => navigate('/employee/payroll')} className="h-9 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5">
+                  <button onClick={() => navigate('/payroll/payslips')} className="h-9 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5">
                     <Download size={14} /> Download
                   </button>
                 </div>

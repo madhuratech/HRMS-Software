@@ -83,8 +83,8 @@ export function SuperAdminDashboard() {
       case 'Add Client':
         navigate('/clients/add');
         break;
-      case 'Create Invoice':
-        navigate('/payroll/payslips');
+      case 'Process Payroll':
+        navigate('/payroll/processing');
         break;
       case 'System Settings':
         navigate('/settings/system');
@@ -603,7 +603,7 @@ export function SuperAdminDashboard() {
               { icon: <UserPlus size={22} />, label: 'Add User' },
               { icon: <FolderPlus size={22} />, label: 'Add Project' },
               { icon: <Building2 size={22} />, label: 'Add Client' },
-              { icon: <FileText size={22} />, label: 'Create Invoice' },
+              { icon: <DollarSign size={22} />, label: 'Process Payroll' },
               { icon: <Settings size={22} />, label: 'System Settings' },
               { icon: <Upload size={22} />, label: 'Backup Now' },
               { icon: <BarChart2 size={22} />, label: 'Generate Report' },

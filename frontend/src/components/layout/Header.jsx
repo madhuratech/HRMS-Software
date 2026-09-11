@@ -228,7 +228,7 @@ export function Header({ title, userRole, currentView }) {
       // Employee Self-Service Portal
       'employee': ['Employee Portal', 'Dashboard'],
       'employee-dashboard': ['Employee Portal', 'Dashboard'],
-      'employee-profile': ['Employee Portal', 'My Profile'],
+      'employee-profile': ['Employees', 'Employee Profile'],
       'employee-attendance': ['Employee Portal', 'My Attendance'],
       'employee-shift': ['Employee Portal', 'My Shift'],
       'employee-leave': ['Employee Portal', 'Leave Applications'],
@@ -236,9 +236,8 @@ export function Header({ title, userRole, currentView }) {
       'employee-leave-requests': ['Employee Portal', 'Leave Requests'],
       'employee-leave-types': ['Employee Portal', 'Leave Types'],
       'employee-holidays': ['Employee Portal', 'Holidays'],
-      'employee-payroll': ['Employee Portal', 'My Payroll'],
+      'employee-payroll': ['Payroll', 'Generate Payslips'],
       'employee-tasks': ['Employee Portal', 'My Tasks'],
-      'employee-team': ['Employee Portal', 'My Team'],
       'employee-performance': ['Employee Portal', 'My Performance'],
       'employee-documents': ['Employee Portal', 'My Documents'],
       'employee-announcements': ['Employee Portal', 'Announcements'],
@@ -247,10 +246,9 @@ export function Header({ title, userRole, currentView }) {
       // Team Leader Portal
       'team-leader': ['Team Leader Portal', 'Dashboard'],
       'team-leader-dashboard': ['Team Leader Portal', 'Dashboard'],
-      'team-leader-profile': ['Team Leader Portal', 'My Profile'],
+      'team-leader-profile': ['Employees', 'Employee Profile'],
       'team-leader-my-attendance': ['Team Leader Portal', 'My Attendance'],
       'team-leader-my-shift': ['Team Leader Portal', 'My Shift'],
-      'team-leader-my-team': ['Team Leader Portal', 'My Team'],
       'team-leader-team-attendance': ['Team Leader Portal', 'Team Attendance'],
       'team-leader-projects': ['Team Leader Portal', 'Projects'],
       'team-leader-team-tasks': ['Team Leader Portal', 'Team Tasks'],
@@ -259,7 +257,7 @@ export function Header({ title, userRole, currentView }) {
       'team-leader-team-leave': ['Team Leader Portal', 'Team Leave Approval'],
       'team-leader-holidays': ['Team Leader Portal', 'Holidays'],
       'team-leader-leave-types': ['Team Leader Portal', 'Leave Types'],
-      'team-leader-my-payroll': ['Team Leader Portal', 'My Payroll'],
+      'team-leader-my-payroll': ['Payroll', 'Generate Payslips'],
       'team-leader-help': ['Team Leader Portal', 'Help Desk'],
 
       // Attendance
