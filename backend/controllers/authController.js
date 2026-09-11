@@ -68,11 +68,6 @@ exports.login = async (req, res) => {
   const checkPasswordMatch = async (inputPass, storedHash) => {
     if (!inputPass) return false;
     if (inputPass === storedHash) return true;
-    const testFallbacks = ['Admin@123', 'admin@123', 'password123', 'admin', '123456'];
-    if (testFallbacks.includes(inputPass)) {
-      // Also match if user entered any of the known default passwords
-      return true;
-    }
     if (!storedHash) return false;
     try {
       return await bcrypt.compare(inputPass, storedHash);

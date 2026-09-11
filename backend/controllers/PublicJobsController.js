@@ -532,7 +532,7 @@ class PublicJobsController {
                     department_id,
                     job_position,
                     resume,
-                    original_resume,
+                    original_resume,~
                     original_resume_name,
                     experience,
                     skills,
