@@ -260,86 +260,98 @@ const MAP_STYLES = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// MAPLIBRE GL NATIVE ROUTE LAYER OVERLAY
-// Uses GeoJSON Source + Layer for clean zoom-level rendering (no SVG artifacts)
+// SVG ROAD POLYLINE OVERLAY — works on raster tile maps (OSM/Satellite)
+// Fix: removed 'render' event listener (caused crossing lines on zoom).
+// Now only redraws on actual view changes, debounced via requestAnimationFrame.
 // ═══════════════════════════════════════════════════════════════════════════
-const RouteLineOverlay = ({
-  coordinates = [],          // [[lng, lat], ...] GeoJSON order
+const RouteSvgOverlay = ({
+  coordinates = [],
   color = '#1A73E8',
-  width = 6,
-  layerId = 'route-primary',
+  width = 7,
   alternativeRoutes = [],
   onSelectAlternative,
   trafficSegments = []
 }) => {
-  // Build GeoJSON for primary route
-  const primaryGeoJson = useMemo(() => ({
-    type: 'FeatureCollection',
-    features: coordinates && coordinates.length >= 2 ? [{
-      type: 'Feature',
-      geometry: { type: 'LineString', coordinates }
-    }] : []
-  }), [coordinates]);
+  const { current: map } = useMap();
+  const [, setTick] = useState(0);
+  const rafRef = useRef(null);
 
-  // Build GeoJSON for alternative routes
-  const altGeoJson = useMemo(() => ({
-    type: 'FeatureCollection',
-    features: (alternativeRoutes || []).map(alt => ({
-      type: 'Feature',
-      properties: { id: alt.id },
-      geometry: { type: 'LineString', coordinates: alt.coordinatesGeoJson || [] }
-    })).filter(f => f.geometry.coordinates.length >= 2)
-  }), [alternativeRoutes]);
+  useEffect(() => {
+    if (!map) return;
+    // Debounce via rAF — prevents excessive redraws that caused zoom artifacts
+    const onViewChange = () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => setTick(t => t + 1));
+    };
+    // Only listen to actual view-change events, NOT 'render' (too frequent)
+    map.on('move', onViewChange);
+    map.on('zoom', onViewChange);
+    map.on('rotate', onViewChange);
+    map.on('pitch', onViewChange);
+    map.on('resize', onViewChange);
+    return () => {
+      map.off('move', onViewChange);
+      map.off('zoom', onViewChange);
+      map.off('rotate', onViewChange);
+      map.off('pitch', onViewChange);
+      map.off('resize', onViewChange);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [map]);
 
-  // Build GeoJSON for traffic segments (non-fast only)
-  const trafficGeoJson = useMemo(() => ({
-    type: 'FeatureCollection',
-    features: (trafficSegments || []).filter(s => s.status !== 'fast' && s.coords?.length >= 2).map((seg, i) => ({
-      type: 'Feature',
-      properties: { status: seg.status },
-      geometry: { type: 'LineString', coordinates: seg.coords.map(([lat, lng]) => [lng, lat]) }
-    }))
-  }), [trafficSegments]);
+  if (!map) return null;
+
+  const projectCoords = (coords) => {
+    if (!coords || coords.length < 2) return '';
+    return coords.map(c => {
+      try {
+        const p = map.project(c);
+        return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
+      } catch {
+        return null;
+      }
+    }).filter(Boolean).join(' ');
+  };
+
+  const activePoints = projectCoords(coordinates);
 
   return (
-    <>
-      {/* Alternative routes — muted gray, underneath */}
-      {altGeoJson.features.length > 0 && (
-        <Source id={`${layerId}-alt`} type="geojson" data={altGeoJson}>
-          <Layer id={`${layerId}-alt-casing`} type="line"
-            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-            paint={{ 'line-color': '#FFFFFF', 'line-width': width + 2, 'line-opacity': 0.8 }} />
-          <Layer id={`${layerId}-alt-fill`} type="line"
-            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-            paint={{ 'line-color': '#94A3B8', 'line-width': Math.max(4, width - 2), 'line-opacity': 0.9 }} />
-        </Source>
+    <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:10 }}>
+      {/* 1. Alternative Route Paths — muted gray underneath */}
+      {alternativeRoutes && alternativeRoutes.map((alt, idx) => {
+        const altPoints = projectCoords(alt.coordinatesGeoJson);
+        if (!altPoints) return null;
+        return (
+          <g key={alt.id || idx} style={{ cursor:'pointer', pointerEvents:'auto' }} onClick={() => onSelectAlternative && onSelectAlternative(alt)}>
+            <polyline points={altPoints} fill="none" stroke="#FFFFFF" strokeWidth={width + 2} strokeLinecap="round" strokeLinejoin="round" opacity="0.75" />
+            <polyline points={altPoints} fill="none" stroke="#94A3B8" strokeWidth={Math.max(4, width - 2)} strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+          </g>
+        );
+      })}
+
+      {/* 2. Active Route White Casing */}
+      {activePoints && (
+        <polyline points={activePoints} fill="none" stroke="#FFFFFF" strokeWidth={width + 4} strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
       )}
 
-      {/* Primary route — white casing + colored fill */}
-      {primaryGeoJson.features.length > 0 && (
-        <Source id={`${layerId}-primary`} type="geojson" data={primaryGeoJson}>
-          <Layer id={`${layerId}-primary-casing`} type="line"
-            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-            paint={{ 'line-color': '#FFFFFF', 'line-width': width + 4, 'line-opacity': 0.95 }} />
-          <Layer id={`${layerId}-primary-fill`} type="line"
-            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-            paint={{ 'line-color': color, 'line-width': width, 'line-opacity': 1 }} />
-        </Source>
+      {/* 3. Active Route Colored Fill */}
+      {activePoints && (
+        <polyline points={activePoints} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" />
       )}
 
-      {/* Traffic congestion overlay */}
-      {trafficGeoJson.features.length > 0 && (
-        <Source id={`${layerId}-traffic`} type="geojson" data={trafficGeoJson}>
-          <Layer id={`${layerId}-traffic-fill`} type="line"
-            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-            paint={{
-              'line-color': ['match', ['get', 'status'], 'slow', '#EF4444', '#F59E0B'],
-              'line-width': width,
-              'line-opacity': 0.85
-            }} />
-        </Source>
-      )}
-    </>
+      {/* 4. Traffic Congestion Segments */}
+      {trafficSegments && trafficSegments.map((seg, sIdx) => {
+        if (!seg.coords || seg.coords.length < 2 || seg.status === 'fast') return null;
+        const segGeoJson = seg.coords.map(([lat, lng]) => [lng, lat]);
+        const segPts = projectCoords(segGeoJson);
+        if (!segPts) return null;
+        const trafficColor = seg.status === 'slow' ? '#EF4444' : '#F59E0B';
+        return (
+          <polyline key={sIdx} points={segPts} fill="none" stroke={trafficColor}
+            strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" />
+        );
+      })}
+    </svg>
   );
 };
 
@@ -788,11 +800,11 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
             >
               <NavigationControl position="bottom-right" />
 
-              {/* Planned Road Route — orange */}
-              <RouteLineOverlay coordinates={plannedCoords} color="#F97316" width={5} layerId="supervisor-planned" />
+              {/* Planned Road Route — orange, SVG overlay */}
+              <RouteSvgOverlay coordinates={plannedCoords} color="#F97316" width={5} />
 
               {/* Actual Travelled GPS Path — blue */}
-              <RouteLineOverlay coordinates={travelCoords} color="#2563EB" width={5} layerId="supervisor-travel" />
+              <RouteSvgOverlay coordinates={travelCoords} color="#2563EB" width={5} />
 
               {/* Office start marker */}
               {startLat && startLng && (
@@ -1495,12 +1507,11 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
         >
           <NavigationControl position="bottom-right" />
 
-          {/* Clean Solid Blue Road Route Line with Traffic Flow & Alternatives */}
-          <RouteLineOverlay
+          {/* Road Route Line with Traffic Flow & Alternatives */}
+          <RouteSvgOverlay
             coordinates={plannedCoords}
             color="#1A73E8"
             width={6}
-            layerId="rider-planned"
             trafficSegments={routeData?.trafficSegments}
             alternativeRoutes={(routeData?.allRoutes || []).filter(r => r.id !== routeData?.id)}
             onSelectAlternative={handleSelectRoute}
