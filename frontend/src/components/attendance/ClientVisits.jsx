@@ -50,6 +50,43 @@ async function geocodeAddress(q) {
   } catch { return []; }
 }
 
+// ─── IST time-of-day traffic status (India rush-hour aware) ──────────────────
+// Returns 'fast' (green), 'moderate' (amber), or 'slow' (red)
+// Uses deterministic pseudo-randomness per segment so colors are stable
+function getTrafficStatus(segIdx, totalSegs, routeIdx) {
+  // Get current IST hour
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+  const h = now.getHours() + now.getMinutes() / 60;
+
+  // India rush hour windows
+  const isMorningRush = h >= 7.5 && h <= 10.5;   // 7:30–10:30 AM
+  const isEveningRush = h >= 17.0 && h <= 20.5;  // 5:00–8:30 PM
+  const isLunchHour   = h >= 12.5 && h <= 14.0;  // 12:30–2:00 PM
+  const isNight       = h >= 22.0 || h <= 5.5;   // 10 PM–5:30 AM
+
+  // Deterministic "random" per segment using sine hash
+  const seed = Math.sin((segIdx + routeIdx * 17) * 9.3746) * 43758.5453;
+  const r = seed - Math.floor(seed); // 0..1
+
+  if (isNight) {
+    return r > 0.93 ? 'moderate' : 'fast';
+  }
+  if (isMorningRush || isEveningRush) {
+    // Dense traffic — roughly 40% red, 40% amber, 20% green
+    if (r > 0.60) return 'slow';
+    if (r > 0.20) return 'moderate';
+    return 'fast';
+  }
+  if (isLunchHour) {
+    if (r > 0.75) return 'moderate';
+    return 'fast';
+  }
+  // Normal daytime — mostly green with some amber patches
+  if (r > 0.78) return 'moderate';
+  if (r > 0.95) return 'slow';
+  return 'fast';
+}
+
 // ─── OSRM shortest-path route (road-following with turn-by-turn maneuvers & traffic) ──
 async function getOSRMRoute(fromLat, fromLng, toLat, toLng) {
   if (!fromLat || !fromLng || !toLat || !toLng) return null;
@@ -105,27 +142,23 @@ async function getOSRMRoute(fromLat, fromLng, toLat, toLng) {
             };
           });
 
-          // Generate simulated Google Maps live traffic status segments
+          // Generate granular IST-aware traffic segments (~20 per route = Google Maps style)
           const trafficSegments = [];
           const totalPts = coords.length;
           if (totalPts > 1) {
-            const segCount = Math.min(5, Math.max(2, Math.floor(totalPts / 10)));
-            const stepSize = Math.floor(totalPts / segCount);
-            for (let i = 0; i < segCount; i++) {
-              const startIdx = i * stepSize;
-              const endIdx = (i === segCount - 1) ? totalPts - 1 : (i + 1) * stepSize;
-              const segCoords = coords.slice(startIdx, endIdx + 1).map(c => [c[1], c[0]]);
-              let trafficStatus = 'fast'; // Google Navigation Blue
-              if (rIdx === 0) {
-                if (i === 1 && segCount >= 3) trafficStatus = 'moderate'; // Amber / Moderate slowdown
-                if (i === 3 && segCount >= 5) trafficStatus = 'slow'; // Red / Heavy congestion
-              } else {
-                if (i % 2 === 1) trafficStatus = 'moderate';
+            // Aim for ~20 segments; each segment covers ~5% of route for smooth coloring
+            const segSize = Math.max(2, Math.floor(totalPts / 20));
+            let segIdx = 0;
+            for (let i = 0; i < totalPts - 1; i += segSize) {
+              const endIdx = Math.min(i + segSize + 1, totalPts);
+              const segCoords = coords.slice(i, endIdx).map(c => [c[1], c[0]]);
+              if (segCoords.length >= 2) {
+                trafficSegments.push({
+                  coords: segCoords,
+                  status: getTrafficStatus(segIdx, Math.ceil(totalPts / segSize), rIdx)
+                });
               }
-              trafficSegments.push({
-                coords: segCoords,
-                status: trafficStatus
-              });
+              segIdx++;
             }
           }
 
@@ -261,16 +294,16 @@ const MAP_STYLES = {
 
 // ═══════════════════════════════════════════════════════════════════════════
 // SVG ROAD POLYLINE OVERLAY — works on raster tile maps (OSM/Satellite)
-// Fix: removed 'render' event listener (caused crossing lines on zoom).
-// Now only redraws on actual view changes, debounced via requestAnimationFrame.
+// Renders Google Maps-style traffic coloring: green/amber/red segments.
+// Fix: removed 'render' event — only redraws on real view changes via rAF.
 // ═══════════════════════════════════════════════════════════════════════════
 const RouteSvgOverlay = ({
   coordinates = [],
-  color = '#1A73E8',
+  color = '#22C55E',          // fallback solid color (used only when no traffic data)
   width = 7,
   alternativeRoutes = [],
   onSelectAlternative,
-  trafficSegments = []
+  trafficSegments = []        // [{coords:[[lat,lng],...], status:'fast'|'moderate'|'slow'}]
 }) => {
   const { current: map } = useMap();
   const [, setTick] = useState(0);
@@ -278,12 +311,10 @@ const RouteSvgOverlay = ({
 
   useEffect(() => {
     if (!map) return;
-    // Debounce via rAF — prevents excessive redraws that caused zoom artifacts
     const onViewChange = () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(() => setTick(t => t + 1));
     };
-    // Only listen to actual view-change events, NOT 'render' (too frequent)
     map.on('move', onViewChange);
     map.on('zoom', onViewChange);
     map.on('rotate', onViewChange);
@@ -307,50 +338,74 @@ const RouteSvgOverlay = ({
       try {
         const p = map.project(c);
         return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
-      } catch {
-        return null;
-      }
+      } catch { return null; }
     }).filter(Boolean).join(' ');
   };
 
-  const activePoints = projectCoords(coordinates);
+  // Traffic color map — Google Maps palette
+  const trafficColor = (status) => {
+    if (status === 'slow')     return '#EF4444'; // Red   — heavy congestion
+    if (status === 'moderate') return '#F59E0B'; // Amber — moderate slowdown
+    return '#22C55E';                            // Green — free flow
+  };
+
+  const hasTraffic = trafficSegments && trafficSegments.length > 0;
 
   return (
     <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:10 }}>
-      {/* 1. Alternative Route Paths — muted gray underneath */}
+
+      {/* ── Alternative Routes (muted gray, clickable) ── */}
       {alternativeRoutes && alternativeRoutes.map((alt, idx) => {
-        const altPoints = projectCoords(alt.coordinatesGeoJson);
-        if (!altPoints) return null;
+        const pts = projectCoords(alt.coordinatesGeoJson);
+        if (!pts) return null;
         return (
-          <g key={alt.id || idx} style={{ cursor:'pointer', pointerEvents:'auto' }} onClick={() => onSelectAlternative && onSelectAlternative(alt)}>
-            <polyline points={altPoints} fill="none" stroke="#FFFFFF" strokeWidth={width + 2} strokeLinecap="round" strokeLinejoin="round" opacity="0.75" />
-            <polyline points={altPoints} fill="none" stroke="#94A3B8" strokeWidth={Math.max(4, width - 2)} strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+          <g key={alt.id || idx} style={{ cursor:'pointer', pointerEvents:'auto' }}
+            onClick={() => onSelectAlternative && onSelectAlternative(alt)}>
+            <polyline points={pts} fill="none" stroke="#FFFFFF"
+              strokeWidth={width + 2} strokeLinecap="round" strokeLinejoin="round" opacity="0.7" />
+            <polyline points={pts} fill="none" stroke="#94A3B8"
+              strokeWidth={Math.max(4, width - 2)} strokeLinecap="round" strokeLinejoin="round" opacity="0.85" />
           </g>
         );
       })}
 
-      {/* 2. Active Route White Casing */}
-      {activePoints && (
-        <polyline points={activePoints} fill="none" stroke="#FFFFFF" strokeWidth={width + 4} strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
+      {hasTraffic ? (
+        // ── Google Maps-style: whole route as colored traffic segments ──
+        <>
+          {/* White casing underneath all segments for separation */}
+          {trafficSegments.map((seg, i) => {
+            if (!seg.coords || seg.coords.length < 2) return null;
+            const pts = projectCoords(seg.coords.map(([lat, lng]) => [lng, lat]));
+            if (!pts) return null;
+            return (
+              <polyline key={`casing-${i}`} points={pts} fill="none"
+                stroke="#FFFFFF" strokeWidth={width + 4}
+                strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
+            );
+          })}
+          {/* Traffic-colored fill for each segment */}
+          {trafficSegments.map((seg, i) => {
+            if (!seg.coords || seg.coords.length < 2) return null;
+            const pts = projectCoords(seg.coords.map(([lat, lng]) => [lng, lat]));
+            if (!pts) return null;
+            return (
+              <polyline key={`traffic-${i}`} points={pts} fill="none"
+                stroke={trafficColor(seg.status)}
+                strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" />
+            );
+          })}
+        </>
+      ) : (
+        // ── Fallback: solid color route when no traffic data ──
+        <>
+          <polyline points={projectCoords(coordinates)} fill="none"
+            stroke="#FFFFFF" strokeWidth={width + 4}
+            strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
+          <polyline points={projectCoords(coordinates)} fill="none"
+            stroke={color} strokeWidth={width}
+            strokeLinecap="round" strokeLinejoin="round" />
+        </>
       )}
-
-      {/* 3. Active Route Colored Fill */}
-      {activePoints && (
-        <polyline points={activePoints} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" />
-      )}
-
-      {/* 4. Traffic Congestion Segments */}
-      {trafficSegments && trafficSegments.map((seg, sIdx) => {
-        if (!seg.coords || seg.coords.length < 2 || seg.status === 'fast') return null;
-        const segGeoJson = seg.coords.map(([lat, lng]) => [lng, lat]);
-        const segPts = projectCoords(segGeoJson);
-        if (!segPts) return null;
-        const trafficColor = seg.status === 'slow' ? '#EF4444' : '#F59E0B';
-        return (
-          <polyline key={sIdx} points={segPts} fill="none" stroke={trafficColor}
-            strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" />
-        );
-      })}
     </svg>
   );
 };
@@ -770,7 +825,11 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
               <div style={{ fontWeight:'700', color:'#475569', marginBottom:'8px', fontSize:'10px', textTransform:'uppercase' }}>Map Legend</div>
               {[
                 [<span key="a" style={{ display:'inline-block', width:'18px', height:'4px', background:'#2563EB', verticalAlign:'middle', borderRadius:'2px' }} />, 'Actual path taken'],
-                [<span key="b" style={{ display:'inline-block', width:'18px', height:'4px', background:'#F97316', verticalAlign:'middle', borderRadius:'2px' }} />, 'Planned road route'],
+                [<div key="tc" style={{ display:'flex', gap:'2px', alignItems:'center' }}>
+                  <span style={{ display:'inline-block', width:'6px', height:'4px', background:'#22C55E', borderRadius:'1px' }} />
+                  <span style={{ display:'inline-block', width:'6px', height:'4px', background:'#F59E0B', borderRadius:'1px' }} />
+                  <span style={{ display:'inline-block', width:'6px', height:'4px', background:'#EF4444', borderRadius:'1px' }} />
+                </div>, 'Traffic: free / moderate / heavy'],
                 [<div key="c" style={{ width:'12px', height:'12px', background:'#10B981', border:'2px solid #fff', borderRadius:'50%', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }} />, 'Office (Start)'],
                 [<div key="d" style={{ width:'12px', height:'12px', background:'#EF4444', border:'2px solid #fff', borderRadius:'50%', boxShadow:'0 1px 3px rgba(0,0,0,0.3)' }} />, 'Client (Destination)'],
                 [<div key="e" style={{ position:'relative', width:'14px', height:'14px' }}>
@@ -800,8 +859,13 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
             >
               <NavigationControl position="bottom-right" />
 
-              {/* Planned Road Route — orange, SVG overlay */}
-              <RouteSvgOverlay coordinates={plannedCoords} color="#F97316" width={5} />
+              {/* Planned Road Route — traffic colored (green/amber/red) */}
+              <RouteSvgOverlay
+                coordinates={plannedCoords}
+                color="#22C55E"
+                width={5}
+                trafficSegments={routeInfo?.trafficSegments}
+              />
 
               {/* Actual Travelled GPS Path — blue */}
               <RouteSvgOverlay coordinates={travelCoords} color="#2563EB" width={5} />
