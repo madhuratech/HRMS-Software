@@ -260,98 +260,86 @@ const MAP_STYLES = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// SVG ROAD POLYLINE OVERLAY (Google Maps Multi-Route, Custom Colors & Traffic Flow)
+// MAPLIBRE GL NATIVE ROUTE LAYER OVERLAY
+// Uses GeoJSON Source + Layer for clean zoom-level rendering (no SVG artifacts)
 // ═══════════════════════════════════════════════════════════════════════════
-const RouteSvgOverlay = ({ 
-  coordinates = [], 
-  color = '#1A73E8', 
-  width = 7, 
-  alternativeRoutes = [], 
-  onSelectAlternative, 
-  trafficSegments = [] 
+const RouteLineOverlay = ({
+  coordinates = [],          // [[lng, lat], ...] GeoJSON order
+  color = '#1A73E8',
+  width = 6,
+  layerId = 'route-primary',
+  alternativeRoutes = [],
+  onSelectAlternative,
+  trafficSegments = []
 }) => {
-  const { current: map } = useMap();
-  const [, setTick] = useState(0);
+  // Build GeoJSON for primary route
+  const primaryGeoJson = useMemo(() => ({
+    type: 'FeatureCollection',
+    features: coordinates && coordinates.length >= 2 ? [{
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates }
+    }] : []
+  }), [coordinates]);
 
-  useEffect(() => {
-    if (!map) return;
-    const onRender = () => setTick(t => t + 1);
-    map.on('move', onRender);
-    map.on('zoom', onRender);
-    map.on('rotate', onRender);
-    map.on('pitch', onRender);
-    map.on('resize', onRender);
-    map.on('render', onRender);
-    return () => {
-      map.off('move', onRender);
-      map.off('zoom', onRender);
-      map.off('rotate', onRender);
-      map.off('pitch', onRender);
-      map.off('resize', onRender);
-      map.off('render', onRender);
-    };
-  }, [map]);
+  // Build GeoJSON for alternative routes
+  const altGeoJson = useMemo(() => ({
+    type: 'FeatureCollection',
+    features: (alternativeRoutes || []).map(alt => ({
+      type: 'Feature',
+      properties: { id: alt.id },
+      geometry: { type: 'LineString', coordinates: alt.coordinatesGeoJson || [] }
+    })).filter(f => f.geometry.coordinates.length >= 2)
+  }), [alternativeRoutes]);
 
-  if (!map) return null;
-
-  const projectCoords = (coords) => {
-    if (!coords || coords.length < 2) return '';
-    return coords.map(c => {
-      try {
-        const p = map.project(c);
-        return `${p.x.toFixed(1)},${p.y.toFixed(1)}`;
-      } catch {
-        return null;
-      }
-    }).filter(Boolean).join(' ');
-  };
-
-  const activePoints = projectCoords(coordinates);
+  // Build GeoJSON for traffic segments (non-fast only)
+  const trafficGeoJson = useMemo(() => ({
+    type: 'FeatureCollection',
+    features: (trafficSegments || []).filter(s => s.status !== 'fast' && s.coords?.length >= 2).map((seg, i) => ({
+      type: 'Feature',
+      properties: { status: seg.status },
+      geometry: { type: 'LineString', coordinates: seg.coords.map(([lat, lng]) => [lng, lat]) }
+    }))
+  }), [trafficSegments]);
 
   return (
-    <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:10 }}>
-      {/* 1. Alternative Route Paths (Rendered in clean muted slate-gray underneath) */}
-      {alternativeRoutes && alternativeRoutes.map((alt, idx) => {
-        const altPoints = projectCoords(alt.coordinatesGeoJson);
-        if (!altPoints) return null;
-        return (
-          <g key={alt.id || idx} style={{ cursor:'pointer', pointerEvents:'auto' }} onClick={() => onSelectAlternative && onSelectAlternative(alt)}>
-            <polyline points={altPoints} fill="none" stroke="#FFFFFF" strokeWidth={width + 2} strokeLinecap="round" strokeLinejoin="round" opacity="0.75" />
-            <polyline points={altPoints} fill="none" stroke="#94A3B8" strokeWidth={Math.max(4, width - 2)} strokeLinecap="round" strokeLinejoin="round" opacity="0.9" />
-          </g>
-        );
-      })}
-
-      {/* 2. Active Primary Route Casing (Crisp White Glow) */}
-      {activePoints && (
-        <polyline points={activePoints} fill="none" stroke="#FFFFFF" strokeWidth={width + 4} strokeLinecap="round" strokeLinejoin="round" opacity="0.95" />
+    <>
+      {/* Alternative routes — muted gray, underneath */}
+      {altGeoJson.features.length > 0 && (
+        <Source id={`${layerId}-alt`} type="geojson" data={altGeoJson}>
+          <Layer id={`${layerId}-alt-casing`} type="line"
+            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+            paint={{ 'line-color': '#FFFFFF', 'line-width': width + 2, 'line-opacity': 0.8 }} />
+          <Layer id={`${layerId}-alt-fill`} type="line"
+            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+            paint={{ 'line-color': '#94A3B8', 'line-width': Math.max(4, width - 2), 'line-opacity': 0.9 }} />
+        </Source>
       )}
 
-      {/* 3. Active Primary Route Base */}
-      {activePoints && (
-        <polyline points={activePoints} fill="none" stroke={color} strokeWidth={width} strokeLinecap="round" strokeLinejoin="round" />
+      {/* Primary route — white casing + colored fill */}
+      {primaryGeoJson.features.length > 0 && (
+        <Source id={`${layerId}-primary`} type="geojson" data={primaryGeoJson}>
+          <Layer id={`${layerId}-primary-casing`} type="line"
+            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+            paint={{ 'line-color': '#FFFFFF', 'line-width': width + 4, 'line-opacity': 0.95 }} />
+          <Layer id={`${layerId}-primary-fill`} type="line"
+            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+            paint={{ 'line-color': color, 'line-width': width, 'line-opacity': 1 }} />
+        </Source>
       )}
 
-      {/* 4. Live Traffic Congestion Segments (Google Yellow/Amber & Red Overlays) */}
-      {trafficSegments && trafficSegments.map((seg, sIdx) => {
-        if (!seg.coords || seg.coords.length < 2 || seg.status === 'fast') return null;
-        const segGeoJson = seg.coords.map(([lat, lng]) => [lng, lat]);
-        const segPts = projectCoords(segGeoJson);
-        if (!segPts) return null;
-        const trafficColor = seg.status === 'slow' ? '#EF4444' : '#F59E0B';
-        return (
-          <polyline
-            key={sIdx}
-            points={segPts}
-            fill="none"
-            stroke={trafficColor}
-            strokeWidth={width}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        );
-      })}
-    </svg>
+      {/* Traffic congestion overlay */}
+      {trafficGeoJson.features.length > 0 && (
+        <Source id={`${layerId}-traffic`} type="geojson" data={trafficGeoJson}>
+          <Layer id={`${layerId}-traffic-fill`} type="line"
+            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
+            paint={{
+              'line-color': ['match', ['get', 'status'], 'slow', '#EF4444', '#F59E0B'],
+              'line-width': width,
+              'line-opacity': 0.85
+            }} />
+        </Source>
+      )}
+    </>
   );
 };
 
@@ -721,7 +709,7 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
                     <div style={{ fontWeight:'700', fontSize:'13px', color: s.done ? '#0F172A' : '#94A3B8' }}>{s.label}</div>
                     {s.sub && <div style={{ fontSize:'11px', color:'#94A3B8' }}>{s.sub}</div>}
                     <div style={{ fontSize:'12px', color: s.done ? '#64748B' : '#CBD5E1', marginTop:'2px' }}>
-                      {s.time ? new Date(s.time).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true }) : 'Pending'}
+                      {s.time ? new Date(s.time).toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true, timeZone:'Asia/Kolkata' }) : 'Pending'}
                     </div>
                     {s.photo && (
                       <div 
@@ -800,11 +788,11 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
             >
               <NavigationControl position="bottom-right" />
 
-              {/* Planned Road Route — orange, SVG (works on raster tiles) */}
-              <RouteSvgOverlay coordinates={plannedCoords} color="#F97316" width={5} />
+              {/* Planned Road Route — orange */}
+              <RouteLineOverlay coordinates={plannedCoords} color="#F97316" width={5} layerId="supervisor-planned" />
 
               {/* Actual Travelled GPS Path — blue */}
-              <RouteSvgOverlay coordinates={travelCoords} color="#2563EB" width={5} />
+              <RouteLineOverlay coordinates={travelCoords} color="#2563EB" width={5} layerId="supervisor-travel" />
 
               {/* Office start marker */}
               {startLat && startLng && (
@@ -877,7 +865,7 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
               <div style={{ padding:'14px 18px', borderBottom:'1px solid #E2E8F0', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                 <div>
                   <div style={{ fontWeight:'800', fontSize:'15px', color:'#0F172A' }}>{inspectPhoto.title}</div>
-                  <div style={{ fontSize:'11px', color:'#64748B' }}>Verified Arrival Timestamp: {new Date(inspectPhoto.time).toLocaleString('en-IN')}</div>
+                  <div style={{ fontSize:'11px', color:'#64748B' }}>Verified Arrival Timestamp: {new Date(inspectPhoto.time).toLocaleString('en-IN', { timeZone:'Asia/Kolkata' })}</div>
                 </div>
                 <button onClick={() => setInspectPhoto(null)} style={{ background:'none', border:'none', cursor:'pointer', padding:'2px' }}>
                   <XCircle size={20} color="#94A3B8" />
@@ -1218,11 +1206,11 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
     return Math.max(1, Math.round(km * 2.2));
   }, [liveRemainingDistanceKm]);
 
-  // Estimated clock arrival time (e.g. "1:06 pm")
+  // Estimated clock arrival time — always shown in IST (Asia/Kolkata)
   const estimatedArrivalTime = useMemo(() => {
     const min = liveRemainingDurationMin || 1;
     const target = new Date(Date.now() + min * 60000);
-    return target.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true }).toLowerCase();
+    return target.toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' }).toLowerCase();
   }, [liveRemainingDurationMin]);
 
   const recenterMap = () => {
@@ -1508,8 +1496,11 @@ const RiderNavigatorModal = ({ visit, onClose, onReachClient }) => {
           <NavigationControl position="bottom-right" />
 
           {/* Clean Solid Blue Road Route Line with Traffic Flow & Alternatives */}
-          <RouteSvgOverlay
+          <RouteLineOverlay
             coordinates={plannedCoords}
+            color="#1A73E8"
+            width={6}
+            layerId="rider-planned"
             trafficSegments={routeData?.trafficSegments}
             alternativeRoutes={(routeData?.allRoutes || []).filter(r => r.id !== routeData?.id)}
             onSelectAlternative={handleSelectRoute}
@@ -2293,10 +2284,10 @@ export default function ClientVisits() {
 
                   <div style={{ display:'flex', flexDirection:'column', gap:'5px', marginBottom:'16px' }}>
                     <div style={{ fontSize:'12px', color:'#64748B', display:'flex', gap:'6px', alignItems:'center' }}>
-                      <Play size={11} color="#2563EB" /> Left: {new Date(v.start_journey_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})}
+                      <Play size={11} color="#2563EB" /> Left: {new Date(v.start_journey_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true,timeZone:'Asia/Kolkata'})}
                     </div>
-                    {v.check_in_time && <div style={{ fontSize:'12px', color:'#64748B', display:'flex', gap:'6px', alignItems:'center' }}><Building size={11} color="#10B981" /> Reached: {new Date(v.check_in_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})}</div>}
-                    {v.check_out_time && <div style={{ fontSize:'12px', color:'#64748B', display:'flex', gap:'6px', alignItems:'center' }}><LogOut size={11} color="#F59E0B" /> Meeting ended: {new Date(v.check_out_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true})}</div>}
+                    {v.check_in_time && <div style={{ fontSize:'12px', color:'#64748B', display:'flex', gap:'6px', alignItems:'center' }}><Building size={11} color="#10B981" /> Reached: {new Date(v.check_in_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true,timeZone:'Asia/Kolkata'})}</div>}
+                    {v.check_out_time && <div style={{ fontSize:'12px', color:'#64748B', display:'flex', gap:'6px', alignItems:'center' }}><LogOut size={11} color="#F59E0B" /> Meeting ended: {new Date(v.check_out_time).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true,timeZone:'Asia/Kolkata'})}</div>}
                   </div>
                 </div>
 
