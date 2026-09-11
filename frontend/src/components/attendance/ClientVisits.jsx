@@ -293,12 +293,11 @@ const MAP_STYLES = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// MAPLIBRE GL NATIVE VECTOR ROUTE LAYER
-// True WebGL vector rendering — perfect 3D pitch perspective & zoom levels.
-// Zero SVG projection artifacts or stray lines on zoom.
-// Renders Google Maps-style traffic coloring: green/amber/red segments.
+// ROAD ROUTE SVG OVERLAY (100% Reliable on all raster/street/satellite maps)
+// Uses path-based projection with horizon-jump clipping to eliminate stray lines.
+// Renders Google Maps-style traffic colors: 🟢 Green, 🟡 Amber, 🔴 Red.
 // ═══════════════════════════════════════════════════════════════════════════
-const RouteLineOverlay = ({
+const RouteSvgOverlay = ({
   idPrefix = 'route',
   coordinates = [],           // [[lng, lat], ...] GeoJSON order
   color = '#22C55E',         // fallback solid color
@@ -308,6 +307,96 @@ const RouteLineOverlay = ({
   trafficSegments = [],       // [{coords:[[lat,lng],...], status:'fast'|'moderate'|'slow'}]
   showCasing = true
 }) => {
+  const { current: map } = useMap();
+  const [, setTick] = useState(0);
+  const rafRef = useRef(null);
+
+  useEffect(() => {
+    if (!map) return;
+    const onViewChange = () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => setTick(t => t + 1));
+    };
+    map.on('move', onViewChange);
+    map.on('zoom', onViewChange);
+    map.on('rotate', onViewChange);
+    map.on('pitch', onViewChange);
+    map.on('resize', onViewChange);
+    return () => {
+      map.off('move', onViewChange);
+      map.off('zoom', onViewChange);
+      map.off('rotate', onViewChange);
+      map.off('pitch', onViewChange);
+      map.off('resize', onViewChange);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, [map]);
+
+  if (!map) return null;
+
+  // Project geographic coordinates into SVG path with horizon-jump clipping
+  // This completely eliminates the bug where distant/horizon points drew long straight lines across the screen.
+  const projectToPath = (coords) => {
+    if (!coords || coords.length < 2) return '';
+    const container = map.getContainer();
+    const W = container?.clientWidth || 1000;
+    const H = container?.clientHeight || 800;
+    const maxJump = Math.max(W, H) * 0.9; // screen jump threshold
+
+    let path = '';
+    let isDrawing = false;
+    let prevPt = null;
+
+    for (let i = 0; i < coords.length; i++) {
+      const c = coords[i];
+      if (!c || isNaN(c[0]) || isNaN(c[1])) {
+        isDrawing = false;
+        prevPt = null;
+        continue;
+      }
+      try {
+        const p = map.project(c);
+        if (!p || isNaN(p.x) || isNaN(p.y)) {
+          isDrawing = false;
+          prevPt = null;
+          continue;
+        }
+
+        // Clip points that are drastically off-screen
+        const isExtremelyOffscreen = (p.x < -W * 1.5 || p.x > W * 2.5 || p.y < -H * 1.5 || p.y > H * 2.5);
+        if (isExtremelyOffscreen) {
+          isDrawing = false;
+          prevPt = null;
+          continue;
+        }
+
+        // Detect 3D horizon wrap jump (when map is pitched or zoomed close)
+        if (prevPt) {
+          const dist = Math.hypot(p.x - prevPt.x, p.y - prevPt.y);
+          if (dist > maxJump) {
+            // Start a new sub-path to avoid drawing a streak across the screen
+            isDrawing = false;
+          }
+        }
+
+        const px = p.x.toFixed(1);
+        const py = p.y.toFixed(1);
+
+        if (!isDrawing) {
+          path += ` M ${px} ${py}`;
+          isDrawing = true;
+        } else {
+          path += ` L ${px} ${py}`;
+        }
+        prevPt = p;
+      } catch {
+        isDrawing = false;
+        prevPt = null;
+      }
+    }
+    return path.trim();
+  };
+
   const trafficColor = (status) => {
     if (status === 'slow')     return '#EF4444'; // Red   — heavy congestion
     if (status === 'moderate') return '#F59E0B'; // Amber — moderate slowdown
@@ -316,169 +405,63 @@ const RouteLineOverlay = ({
 
   const hasTraffic = Array.isArray(trafficSegments) && trafficSegments.length > 0;
 
-  // 1. Alternative routes GeoJSON FeatureCollection
-  const altGeoJson = useMemo(() => {
-    if (!alternativeRoutes || !alternativeRoutes.length) {
-      return { type: 'FeatureCollection', features: [] };
-    }
-    const features = alternativeRoutes.map((alt, idx) => {
-      const valid = (alt.coordinatesGeoJson || []).filter(c => 
-        Array.isArray(c) && c.length >= 2 && !isNaN(c[0]) && !isNaN(c[1])
-      );
-      if (valid.length < 2) return null;
-      return {
-        type: 'Feature',
-        id: alt.id || `alt-${idx}`,
-        properties: {
-          altId: alt.id,
-          color: '#94A3B8'
-        },
-        geometry: {
-          type: 'LineString',
-          coordinates: valid
-        }
-      };
-    }).filter(Boolean);
-    return { type: 'FeatureCollection', features };
-  }, [alternativeRoutes]);
-
-  // 2. Primary Route (Traffic colored segments or fallback solid line)
-  const primaryGeoJson = useMemo(() => {
-    if (hasTraffic) {
-      const features = trafficSegments.map((seg, idx) => {
-        // seg.coords is [[lat, lng], ...] -> map to [[lng, lat], ...]
-        const valid = (seg.coords || []).map(pt => [pt[1], pt[0]]).filter(c => 
-          Array.isArray(c) && c.length >= 2 && !isNaN(c[0]) && !isNaN(c[1])
-        );
-        if (valid.length < 2) return null;
-        return {
-          type: 'Feature',
-          id: `${idPrefix}-seg-${idx}`,
-          properties: {
-            color: trafficColor(seg.status)
-          },
-          geometry: {
-            type: 'LineString',
-            coordinates: valid
-          }
-        };
-      }).filter(Boolean);
-      return { type: 'FeatureCollection', features };
-    }
-
-    const valid = (coordinates || []).filter(c => 
-      Array.isArray(c) && c.length >= 2 && !isNaN(c[0]) && !isNaN(c[1])
-    );
-    if (valid.length < 2) {
-      return { type: 'FeatureCollection', features: [] };
-    }
-
-    return {
-      type: 'FeatureCollection',
-      features: [{
-        type: 'Feature',
-        id: `${idPrefix}-primary`,
-        properties: {
-          color: color
-        },
-        geometry: {
-          type: 'LineString',
-          coordinates: valid
-        }
-      }]
-    };
-  }, [hasTraffic, trafficSegments, coordinates, color, idPrefix]);
-
-  // 3. Casing Outline (White line underneath for contrast)
-  const casingGeoJson = useMemo(() => {
-    if (!showCasing) return { type: 'FeatureCollection', features: [] };
-
-    let pts = (coordinates || []).filter(c => Array.isArray(c) && c.length >= 2 && !isNaN(c[0]) && !isNaN(c[1]));
-    if (pts.length < 2 && hasTraffic) {
-      pts = [];
-      trafficSegments.forEach(seg => {
-        (seg.coords || []).forEach(pt => {
-          if (Array.isArray(pt) && !isNaN(pt[0]) && !isNaN(pt[1])) pts.push([pt[1], pt[0]]);
-        });
-      });
-    }
-    if (pts.length < 2) return { type: 'FeatureCollection', features: [] };
-
-    return {
-      type: 'FeatureCollection',
-      features: [{
-        type: 'Feature',
-        id: `${idPrefix}-casing`,
-        properties: {},
-        geometry: {
-          type: 'LineString',
-          coordinates: pts
-        }
-      }]
-    };
-  }, [showCasing, coordinates, hasTraffic, trafficSegments, idPrefix]);
+  // Compute primary route path
+  const fullRoutePath = coordinates && coordinates.length >= 2 ? projectToPath(coordinates) : '';
 
   return (
-    <>
-      {/* ── Alternative Routes (muted gray with white casing) ── */}
-      {altGeoJson.features.length > 0 && (
-        <Source id={`${idPrefix}-alts-source`} type="geojson" data={altGeoJson}>
-          <Layer
-            id={`${idPrefix}-alts-casing-layer`}
-            type="line"
-            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-            paint={{
-              'line-color': '#FFFFFF',
-              'line-width': width + 2,
-              'line-opacity': 0.7
-            }}
-          />
-          <Layer
-            id={`${idPrefix}-alts-line-layer`}
-            type="line"
-            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-            paint={{
-              'line-color': ['get', 'color'],
-              'line-width': Math.max(3, width - 2),
-              'line-opacity': 0.85
-            }}
-          />
-        </Source>
+    <svg style={{ position:'absolute', inset:0, width:'100%', height:'100%', pointerEvents:'none', zIndex:10 }}>
+      {/* ── White Casing Outline for High Visibility ── */}
+      {showCasing && fullRoutePath && (
+        <path
+          d={fullRoutePath}
+          fill="none"
+          stroke="#FFFFFF"
+          strokeWidth={width + 4}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          opacity="0.95"
+        />
       )}
 
-      {/* ── White Casing Underneath Main Route ── */}
-      {showCasing && casingGeoJson.features.length > 0 && (
-        <Source id={`${idPrefix}-casing-source`} type="geojson" data={casingGeoJson}>
-          <Layer
-            id={`${idPrefix}-casing-layer`}
-            type="line"
-            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-            paint={{
-              'line-color': '#FFFFFF',
-              'line-width': width + 4,
-              'line-opacity': 0.95
-            }}
+      {/* ── Route Rendering: Traffic Colors or Solid Color ── */}
+      {hasTraffic ? (
+        // Google Maps style: Colored Traffic Segments
+        trafficSegments.map((seg, i) => {
+          if (!seg.coords || seg.coords.length < 2) return null;
+          // seg.coords is [[lat, lng], ...] -> map to [[lng, lat], ...] for projectToPath
+          const pathD = projectToPath(seg.coords.map(([lat, lng]) => [lng, lat]));
+          if (!pathD) return null;
+          return (
+            <path
+              key={`traffic-${i}`}
+              d={pathD}
+              fill="none"
+              stroke={trafficColor(seg.status)}
+              strokeWidth={width}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          );
+        })
+      ) : (
+        // Fallback Solid Color (e.g. for GPS breadcrumbs path)
+        fullRoutePath && (
+          <path
+            d={fullRoutePath}
+            fill="none"
+            stroke={color}
+            strokeWidth={width}
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
-        </Source>
+        )
       )}
-
-      {/* ── Primary Route Line (Traffic Colors or Solid) ── */}
-      {primaryGeoJson.features.length > 0 && (
-        <Source id={`${idPrefix}-primary-source`} type="geojson" data={primaryGeoJson}>
-          <Layer
-            id={`${idPrefix}-primary-layer`}
-            type="line"
-            layout={{ 'line-cap': 'round', 'line-join': 'round' }}
-            paint={{
-              'line-color': ['get', 'color'],
-              'line-width': width
-            }}
-          />
-        </Source>
-      )}
-    </>
+    </svg>
   );
 };
+
+// Alias for compatibility
+const RouteLineOverlay = RouteSvgOverlay;
 
 // ═══════════════════════════════════════════════════════════════════════════
 // LIVE TRACKING MAP MODAL  (react-map-gl / MapLibre GL)
