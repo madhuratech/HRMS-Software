@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
+import { useToast } from '../ui/Toast';
 import { apiFetch } from '../../lib/api';
 import { canCreate, canEdit, canDelete } from '../../lib/permissions';
 import { Search, Plus, Edit2, Trash2, X, Loader2, Zap, RefreshCw, Check } from 'lucide-react';
@@ -20,6 +21,7 @@ const TIME_PRESETS = [
 ];
 
 export function Priorities() {
+  const { addToast } = useToast();
   const [prioritiesList, setPrioritiesList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -73,8 +75,9 @@ export function Priorities() {
       await fetchPriorities();
       setShowAddModal(false);
       setFormData({ name: '', description: '', responseTime: '4 Hours', color: '#2563EB', status: 'Active' });
+      addToast('Priority created successfully!', 'success');
     } catch (err) {
-      alert(err.message || "Failed to create priority");
+      addToast(err.message || "Failed to create priority", 'error');
     }
     setIsSubmitting(false);
   };
@@ -97,8 +100,9 @@ export function Priorities() {
       await fetchPriorities();
       setEditingPriority(null);
       setFormData({ name: '', description: '', responseTime: '4 Hours', color: '#2563EB', status: 'Active' });
+      addToast('Priority updated successfully!', 'success');
     } catch (err) {
-      alert(err.message || "Failed to update priority");
+      addToast(err.message || "Failed to update priority", 'error');
     }
     setIsSubmitting(false);
   };
@@ -108,8 +112,9 @@ export function Priorities() {
     try {
       await apiFetch(`/tickets/priorities/${id}`, { method: 'DELETE' });
       await fetchPriorities();
+      addToast('Priority deleted successfully', 'success');
     } catch (err) {
-      alert(err.message || "Failed to delete priority");
+      addToast(err.message || "Failed to delete priority", 'error');
     }
   };
 

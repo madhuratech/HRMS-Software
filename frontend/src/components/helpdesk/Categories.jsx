@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
+import { useToast } from '../ui/Toast';
 import { apiFetch } from '../../lib/api';
 import { canCreate, canEdit, canDelete } from '../../lib/permissions';
 import { Search, Plus, Edit2, Trash2, X, Loader2, FolderTree, RefreshCw } from 'lucide-react';
 
 export function Categories() {
+  const { addToast } = useToast();
   const [categoryList, setCategoryList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,8 +56,9 @@ export function Categories() {
       await fetchCategories();
       setShowAddModal(false);
       setFormData({ categoryName: '', description: '', status: 'Active' });
+      addToast('Category created successfully!', 'success');
     } catch (err) {
-      alert(err.message || "Failed to create category");
+      addToast(err.message || "Failed to create category", 'error');
     }
     setIsSubmitting(false);
   };
@@ -76,8 +79,9 @@ export function Categories() {
       await fetchCategories();
       setEditingCategory(null);
       setFormData({ categoryName: '', description: '', status: 'Active' });
+      addToast('Category updated successfully!', 'success');
     } catch (err) {
-      alert(err.message || "Failed to update category");
+      addToast(err.message || "Failed to update category", 'error');
     }
     setIsSubmitting(false);
   };
@@ -87,8 +91,9 @@ export function Categories() {
     try {
       await apiFetch(`/tickets/categories/${id}`, { method: 'DELETE' });
       await fetchCategories();
+      addToast('Category deleted successfully', 'success');
     } catch (err) {
-      alert(err.message || "Failed to delete category");
+      addToast(err.message || "Failed to delete category", 'error');
     }
   };
 

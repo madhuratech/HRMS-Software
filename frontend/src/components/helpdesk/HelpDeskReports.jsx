@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
+import { useToast } from '../ui/Toast';
 import { apiFetch } from '../../lib/api';
 import { 
   Calendar, ChevronDown, Download, FileText, CheckCircle, Clock, 
@@ -37,6 +38,7 @@ const KpiCard = ({ label, value, subtext, isPositive, iconBg, iconColor, icon: I
 );
 
 export function HelpDeskReports() {
+  const { addToast } = useToast();
   const [reportData, setReportData] = useState(null);
   const [dashboardData, setDashboardData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -78,7 +80,7 @@ export function HelpDeskReports() {
 
   const handleExportCSV = () => {
     if (!detailedReport || detailedReport.length === 0) {
-      alert("No report data available to export");
+      addToast("No report data available to export", 'info');
       return;
     }
 
@@ -104,6 +106,7 @@ export function HelpDeskReports() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    addToast("Help Desk report exported to CSV successfully!", 'success');
   };
 
   const totalPages = Math.ceil(detailedReport.length / itemsPerPage) || 1;

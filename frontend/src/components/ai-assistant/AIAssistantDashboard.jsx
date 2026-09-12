@@ -471,9 +471,9 @@ export function AIAssistantDashboard() {
     setInputVal('');
     setLoading(true);
 
-    // 2. Add temporary "Thinking..." step message
+    // 2. Add temporary "AI Thinking..." step message
     const stepId = Date.now() + 1;
-    setMessages(prev => [...prev, { id: stepId, sender: 'ai', isStep: true, text: "Checking database details...", time: timestamp }]);
+    setMessages(prev => [...prev, { id: stepId, sender: 'ai', isStep: true, text: "AI Thinking...", time: timestamp }]);
 
     try {
       // 3. Make real API request
@@ -1136,11 +1136,68 @@ export function AIAssistantDashboard() {
                   <SmallAIAvatar />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     {msg.isStep ? (
-                      <div style={styles.aiBubble}>
-                        <p style={styles.aiStepText}>
-                          {msg.text}
-                          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#8A98B0" strokeWidth="2"><circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" /></svg>
-                        </p>
+                      <div style={{
+                        ...styles.aiBubble,
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '9px 15px',
+                        background: '#FFFFFF',
+                        border: '1px solid #E2E8F0',
+                        borderRadius: '12px 12px 12px 2px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+                      }}>
+                        <style>{`
+                          @keyframes aiPulseDot {
+                            0%, 80%, 100% { transform: scale(0.6); opacity: 0.35; }
+                            40% { transform: scale(1.15); opacity: 1; }
+                          }
+                        `}</style>
+                        <div style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: 6,
+                          background: 'linear-gradient(135deg, #6847F5 0%, #8B5CF6 100%)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#fff',
+                          boxShadow: '0 2px 6px rgba(104,71,245,0.25)',
+                          flexShrink: 0
+                        }}>
+                          <SparkleIcon color="#FFFFFF" size={13} />
+                        </div>
+                        <span style={{ fontSize: 12.5, fontWeight: 600, color: '#17213A', display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {msg.text || "AI Thinking..."}
+                        </span>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 2 }}>
+                          <span style={{
+                            width: 5,
+                            height: 5,
+                            borderRadius: '50%',
+                            background: '#6847F5',
+                            display: 'inline-block',
+                            animation: 'aiPulseDot 1.4s infinite ease-in-out both'
+                          }} />
+                          <span style={{
+                            width: 5,
+                            height: 5,
+                            borderRadius: '50%',
+                            background: '#6847F5',
+                            display: 'inline-block',
+                            animation: 'aiPulseDot 1.4s infinite ease-in-out both',
+                            animationDelay: '0.2s'
+                          }} />
+                          <span style={{
+                            width: 5,
+                            height: 5,
+                            borderRadius: '50%',
+                            background: '#6847F5',
+                            display: 'inline-block',
+                            animation: 'aiPulseDot 1.4s infinite ease-in-out both',
+                            animationDelay: '0.4s'
+                          }} />
+                        </div>
                       </div>
                     ) : msg.structuredData ? (
                       <AIResponseRenderer data={msg.structuredData} text={msg.text} time={msg.time} />

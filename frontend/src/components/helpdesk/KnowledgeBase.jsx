@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
+import { useToast } from '../ui/Toast';
 import { apiFetch } from '../../lib/api';
 import { Search, Plus, Eye, Edit2, Trash2, ChevronDown, X } from 'lucide-react';
 
@@ -15,6 +16,7 @@ const KB_CATS = [
 ];
 
 export function KnowledgeBase() {
+  const { addToast } = useToast();
   const [selectedCat, setSelectedCat] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -56,6 +58,7 @@ export function KnowledgeBase() {
     setArticlesList([newItem, ...articlesList]);
     setShowAddModal(false);
     setFormData({ articleTitle: '', category: '', keywords: '', content: '', attachment: null, status: 'Published' });
+    addToast('Article published to Knowledge Base!', 'success');
   };
 
   return (

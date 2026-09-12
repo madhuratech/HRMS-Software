@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
+import { useToast } from '../ui/Toast';
 import { apiFetch } from '../../lib/api';
 import { canCreate, canEdit, canDelete } from '../../lib/permissions';
 import { 
@@ -43,6 +44,7 @@ const KpiCard = ({ label, value, subtext, isPositive, iconBg, iconColor, icon: I
 );
 
 export default function HelpDeskTickets() {
+  const { addToast } = useToast();
   const [ticketsList, setTicketsList] = useState([]);
   const [categories, setCategories] = useState([]);
   const [priorities, setPriorities] = useState([]);
@@ -148,9 +150,10 @@ export default function HelpDeskTickets() {
       await loadTickets();
       setShowAddModal(false);
       setFormData({ title: '', employee: '', department: '', category: '', priority: 'Medium', assignedTo: '', description: '', status: 'Open' });
+      addToast('Support ticket created successfully!', 'success');
     } catch (err) {
       console.error("Failed to create ticket:", err);
-      alert(err.message || "Failed to create ticket");
+      addToast(err.message || "Failed to create ticket", 'error');
     }
     setIsSubmitting(false);
   };
@@ -166,8 +169,10 @@ export default function HelpDeskTickets() {
       if (inspectTicket && (inspectTicket.id === ticketId || inspectTicket.db_id === ticketId)) {
         setInspectTicket({ ...inspectTicket, status: newStatus });
       }
+      addToast(`Ticket status updated to "${newStatus}"`, 'success');
     } catch (err) {
       console.error("Failed to update status:", err);
+      addToast(err.message || "Failed to update ticket status", 'error');
     }
     setStatusUpdating(false);
   };
@@ -180,8 +185,10 @@ export default function HelpDeskTickets() {
       if (inspectTicket && (inspectTicket.id === ticketId || inspectTicket.db_id === ticketId)) {
         setInspectTicket(null);
       }
+      addToast('Ticket deleted successfully', 'success');
     } catch (err) {
       console.error("Failed to delete ticket:", err);
+      addToast(err.message || "Failed to delete ticket", 'error');
     }
   };
 

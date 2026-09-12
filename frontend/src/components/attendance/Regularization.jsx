@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
+import { useToast } from '../ui/Toast';
 import { apiFetch } from '../../lib/api';
 import { canCreate } from '../../lib/permissions';
 import { getAvatarUrl } from '../../lib/utils';
 import { Search, Filter, Download, Calendar as CalendarIcon, Edit2, Eye, ChevronDown, Check, X, Plus, CheckCircle2, Clock } from 'lucide-react';
 
 export default function Regularization() {
+  const { addToast } = useToast();
   const [activeTab, setActiveTab] = useState('pending');
   const [requests, setRequests] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -86,15 +88,17 @@ export default function Regularization() {
         body: JSON.stringify({ status: newStatus })
       });
       await loadRequests();
+      addToast(`Regularization request ${newStatus.toLowerCase()} successfully!`, 'success');
     } catch (err) {
       console.error("Failed to update status:", err);
+      addToast("Failed to update status", "error");
     }
   };
 
   const handleCreateRequest = async (e) => {
     e.preventDefault();
     if (!formData.reason.trim()) {
-      alert("Please provide a reason for the regularization request.");
+      addToast("Please provide a reason for the regularization request.", "error");
       return;
     }
 
@@ -121,9 +125,10 @@ export default function Regularization() {
       setShowApplyModal(false);
       setFormData(prev => ({ ...prev, reason: '' }));
       await loadRequests();
+      addToast("Attendance regularization submitted successfully!", "success");
     } catch (err) {
       console.error("Failed to create regularization request:", err);
-      alert("Failed to submit request. Please try again.");
+      addToast("Failed to submit request. Please try again.", "error");
     }
     setSubmitting(false);
   };

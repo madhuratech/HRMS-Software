@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
+import { useToast } from '../ui/Toast';
 import { apiFetch } from '../../lib/api';
 import { canCreate } from '../../lib/permissions';
 import { getAvatarUrl } from '../../lib/utils';
 import { Calendar as CalendarIcon, Filter, MoreHorizontal, ChevronDown, Plus, X, Check, Trash2, RotateCcw, Clock } from 'lucide-react';
 
 export default function Overtime() {
+  const { addToast } = useToast();
   const [showAddModal, setShowAddModal] = useState(false);
   const [employees, setEmployees] = useState([]);
   const [overtimeData, setOvertimeData] = useState([]);
@@ -113,7 +115,7 @@ export default function Overtime() {
     e.preventDefault();
     const effectiveEmpId = isAdminOrHR ? formData.employee_id : (currentUser?.employee_id || currentUser?.id || formData.employee_id);
     if (!effectiveEmpId || !formData.date || !formData.hours) {
-      alert("Please fill all required fields.");
+      addToast("Please fill all required fields.", "error");
       return;
     }
 
@@ -134,9 +136,10 @@ export default function Overtime() {
       });
       setShowAddModal(false);
       await loadOvertime();
+      addToast("Overtime request submitted successfully!", "success");
     } catch (err) {
       console.error("Failed to log overtime:", err);
-      alert("Failed to save overtime record.");
+      addToast("Failed to save overtime record.", "error");
     }
   };
 

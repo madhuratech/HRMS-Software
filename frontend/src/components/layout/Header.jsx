@@ -1,9 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Bell, Search, ChevronRight, X, Calendar, CheckSquare, Folder,
   Settings, FileText, HelpCircle,
-  CheckCircle2, XCircle, User, Clock, Wallet, AlignJustify
+  CheckCircle2, XCircle, User, Clock, Wallet, AlignJustify,
+  Sparkles, Building, Briefcase, Award, Shield, UserPlus, BookOpen,
+  Layers, ArrowRight, Loader2, Tag, LayoutDashboard, Users, MapPin, CheckCircle
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 
@@ -12,6 +14,132 @@ export function Header({ title, userRole, currentView }) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Global Dynamic Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchEmployees, setSearchEmployees] = useState([]);
+  const [searchTickets, setSearchTickets] = useState([]);
+  const searchContainerRef = useRef(null);
+
+  // App Routes / Modules navigation list
+  const APP_PAGES = [
+    { title: 'Dashboard', path: '/dashboard', category: 'Overview', icon: LayoutDashboard, keywords: 'home stats metrics overview' },
+    { title: 'Employees Directory', path: '/employees', category: 'Employees', icon: Users, keywords: 'staff list people team directory' },
+    { title: 'Add New Employee', path: '/employees/add', category: 'Employees', icon: UserPlus, keywords: 'create employee onboarding register' },
+    { title: 'Attendance Logs', path: '/attendance/logs', category: 'Attendance', icon: Calendar, keywords: 'clock in clock out records punches' },
+    { title: 'Attendance Regularization', path: '/attendance/regularization', category: 'Attendance', icon: Clock, keywords: 'regularize correction punch request' },
+    { title: 'Shifts & Schedules', path: '/attendance/shifts', category: 'Attendance', icon: Clock, keywords: 'roster working hours shifts' },
+    { title: 'Overtime Requests', path: '/attendance/overtime', category: 'Attendance', icon: Clock, keywords: 'extra hours ot compensation' },
+    { title: 'Client Live Tracking', path: '/attendance/visits', category: 'Attendance', icon: MapPin, keywords: 'gps location field visits clients live' },
+    { title: 'Leave Requests', path: '/leaves/requests', category: 'Leaves', icon: Calendar, keywords: 'apply leave sick casual vacation approval' },
+    { title: 'Leave Balances', path: '/leaves/balances', category: 'Leaves', icon: Calendar, keywords: 'quota balance entitlement remaining' },
+    { title: 'Leave Policies', path: '/leaves/policies', category: 'Leaves', icon: FileText, keywords: 'rules holiday list policies' },
+    { title: 'Payroll Dashboard', path: '/payroll', category: 'Payroll', icon: Wallet, keywords: 'salary pay run compensation slips' },
+    { title: 'Salary Structure', path: '/payroll/structure', category: 'Payroll', icon: Wallet, keywords: 'ctc components allowances deductions' },
+    { title: 'Reimbursements', path: '/payroll/reimbursements', category: 'Payroll', icon: Wallet, keywords: 'expense claims bills reimbursement' },
+    { title: 'Job Openings', path: '/recruitment/jobs', category: 'Recruitment', icon: Briefcase, keywords: 'hiring positions vacancies jobs recruitment' },
+    { title: 'Candidates', path: '/recruitment/candidates', category: 'Recruitment', icon: Users, keywords: 'applicants resumes screening candidates' },
+    { title: 'Interview Schedule', path: '/recruitment/interviews', category: 'Recruitment', icon: Calendar, keywords: 'rounds interviews schedule interviewers' },
+    { title: 'Offer Letters', path: '/recruitment/offers', category: 'Recruitment', icon: FileText, keywords: 'job offer letters release candidates' },
+    { title: 'Performance Reviews', path: '/performance/reviews', category: 'Performance', icon: Award, keywords: 'appraisals ratings evaluations review' },
+    { title: 'Goals & OKRs', path: '/performance/goals', category: 'Performance', icon: Award, keywords: 'kpi kra objectives targets key results' },
+    { title: 'Support Tickets', path: '/helpdesk/tickets', category: 'Help Desk', icon: HelpCircle, keywords: 'issues support complaints helpdesk tickets' },
+    { title: 'Helpdesk Categories', path: '/helpdesk/categories', category: 'Help Desk', icon: Folder, keywords: 'categories departments ticket type' },
+    { title: 'Helpdesk Priorities', path: '/helpdesk/priorities', category: 'Help Desk', icon: Shield, keywords: 'priorities sla urgent high medium' },
+    { title: 'Knowledge Base', path: '/helpdesk/kb', category: 'Help Desk', icon: BookOpen, keywords: 'articles faqs guides kb knowledge' },
+    { title: 'Company Profile', path: '/organization/company-profile', category: 'Organization', icon: Building, keywords: 'company info documents statutory profile' },
+    { title: 'Departments', path: '/organization/departments', category: 'Organization', icon: Layers, keywords: 'divisions units departments org' },
+    { title: 'Designations', path: '/organization/designations', category: 'Organization', icon: Shield, keywords: 'roles positions titles designations' },
+    { title: 'Teams', path: '/organization/teams', category: 'Organization', icon: Users, keywords: 'squads team leaders members' },
+    { title: 'AI Assistant', path: '/ai-assistant', category: 'AI Tools', icon: Sparkles, keywords: 'ai chat bot ask assistant insights gemini' },
+    { title: 'System Settings', path: '/settings', category: 'Settings', icon: Settings, keywords: 'config roles permissions audit' },
+  ];
+
+  // Debounced API search for live database records
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchEmployees([]);
+      setSearchTickets([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const q = encodeURIComponent(searchQuery.trim());
+        const [empRes, ticketRes] = await Promise.allSettled([
+          apiFetch(`/employees?search=${q}&limit=5`),
+          apiFetch(`/tickets?search=${q}&limit=5`)
+        ]);
+
+        if (empRes.status === 'fulfilled' && empRes.value) {
+          const empList = Array.isArray(empRes.value.employees) ? empRes.value.employees : (Array.isArray(empRes.value) ? empRes.value : []);
+          setSearchEmployees(empList.slice(0, 4));
+        } else {
+          setSearchEmployees([]);
+        }
+
+        if (ticketRes.status === 'fulfilled' && ticketRes.value) {
+          const tList = Array.isArray(ticketRes.value.tickets) ? ticketRes.value.tickets : (Array.isArray(ticketRes.value) ? ticketRes.value : []);
+          setSearchTickets(tList.slice(0, 4));
+        } else {
+          setSearchTickets([]);
+        }
+      } catch (err) {
+        console.error("Search fetch error:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Click outside to close search dropdown
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target)) {
+        setIsSearchOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredPages = searchQuery.trim()
+    ? APP_PAGES.filter(p => 
+        p.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        p.keywords.toLowerCase().includes(searchQuery.toLowerCase())
+      ).slice(0, 5)
+    : [
+        APP_PAGES.find(p => p.path === '/ai-assistant'),
+        APP_PAGES.find(p => p.path === '/helpdesk/tickets'),
+        APP_PAGES.find(p => p.path === '/employees'),
+        APP_PAGES.find(p => p.path === '/leaves/requests'),
+      ].filter(Boolean);
+
+  const handleSelectPage = (path) => {
+    setIsSearchOpen(false);
+    setSearchQuery('');
+    navigate(path);
+  };
+
+  const handleSelectEmployee = (emp) => {
+    setIsSearchOpen(false);
+    setSearchQuery('');
+    localStorage.setItem('selectedEmployeeId', emp.id);
+    navigate('/employees/profile');
+  };
+
+  const handleSelectTicket = () => {
+    setIsSearchOpen(false);
+    setSearchQuery('');
+    navigate('/helpdesk/tickets');
+  };
 
   const authRaw = localStorage.getItem('hrms_auth');
   let authData = {};
@@ -446,14 +574,448 @@ export function Header({ title, userRole, currentView }) {
 
       {/* Right: Search, Notifications, User */}
       <div className="flex items-center gap-6">
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-          <input
-            type="text"
-            placeholder="Search anything..."
-            className="pl-10 pr-4 py-2 bg-slate-100 rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
-          />
+        {/* Dynamic Global Search */}
+        <div className="relative" ref={searchContainerRef} style={{ width: 280 }}>
+          <style>{`
+            .clean-search-scroll::-webkit-scrollbar {
+              width: 5px;
+            }
+            .clean-search-scroll::-webkit-scrollbar-track {
+              background: #F8FAFC;
+              border-radius: 8px;
+            }
+            .clean-search-scroll::-webkit-scrollbar-thumb {
+              background: #CBD5E1;
+              border-radius: 8px;
+            }
+            .clean-search-scroll::-webkit-scrollbar-thumb:hover {
+              background: #94A3B8;
+            }
+          `}</style>
+          
+          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
+            <Search 
+              size={16} 
+              color="#94A3B8" 
+              style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', zIndex: 2 }} 
+            />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (!isSearchOpen) setIsSearchOpen(true);
+              }}
+              onFocus={() => setIsSearchOpen(true)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape') {
+                  setIsSearchOpen(false);
+                }
+              }}
+              placeholder="Search anything..."
+              style={{
+                width: '100%',
+                height: 38,
+                paddingLeft: 38,
+                paddingRight: searchQuery || isSearching ? 34 : 14,
+                background: isSearchOpen ? '#FFFFFF' : '#F1F5F9',
+                border: isSearchOpen ? '1.5px solid #2563EB' : '1.5px solid #E2E8F0',
+                borderRadius: 20,
+                fontSize: 13.5,
+                fontWeight: 500,
+                color: '#0F172A',
+                outline: 'none',
+                boxSizing: 'border-box',
+                fontFamily: 'inherit',
+                transition: 'all 0.18s ease',
+                boxShadow: isSearchOpen ? '0 0 0 3.5px rgba(37, 99, 235, 0.12)' : 'none',
+              }}
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSearchEmployees([]);
+                  setSearchTickets([]);
+                }}
+                style={{
+                  position: 'absolute',
+                  right: 10,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  background: '#E2E8F0',
+                  border: 'none',
+                  borderRadius: '50%',
+                  width: 18,
+                  height: 18,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  color: '#64748B',
+                  padding: 0,
+                  zIndex: 2,
+                }}
+                title="Clear search"
+              >
+                <X size={11} strokeWidth={2.5} />
+              </button>
+            ) : isSearching ? (
+              <div style={{ position: 'absolute', right: 11, top: '50%', transform: 'translateY(-50%)', zIndex: 2, display: 'flex' }}>
+                <Loader2 size={15} className="animate-spin" color="#2563EB" />
+              </div>
+            ) : null}
+          </div>
+
+          {/* Search Dropdown Popup */}
+          {isSearchOpen && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 'calc(100% + 8px)',
+                right: -80,
+                width: 440,
+                maxWidth: 'calc(100vw - 32px)',
+                background: '#FFFFFF',
+                borderRadius: 16,
+                border: '1px solid #E2E8F0',
+                boxShadow: '0 20px 50px rgba(15, 23, 42, 0.16), 0 2px 10px rgba(15, 23, 42, 0.06)',
+                zIndex: 9999,
+                overflow: 'hidden',
+                display: 'flex',
+                flexDirection: 'column',
+                animation: 'fadeInDown 0.15s ease-out',
+                fontFamily: "'Inter', -apple-system, sans-serif",
+              }}
+            >
+              {/* Header inside search popup */}
+              <div style={{
+                padding: '10px 16px',
+                background: '#F8FAFC',
+                borderBottom: '1px solid #F1F5F9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+              }}>
+                <span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>
+                  {searchQuery ? `Results for "${searchQuery}"` : 'Quick Navigation'}
+                </span>
+                {isSearching ? (
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#2563EB', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    <Loader2 size={12} className="animate-spin" /> Searching live...
+                  </span>
+                ) : (
+                  <span style={{ fontSize: 11, color: '#94A3B8' }}>HRMS Database</span>
+                )}
+              </div>
+
+              {/* Scrollable container */}
+              <div 
+                className="clean-search-scroll"
+                style={{
+                  maxHeight: 380,
+                  overflowY: 'auto',
+                  padding: '8px 10px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 12,
+                }}
+              >
+                {/* 1. Navigation & Pages */}
+                {filteredPages.length > 0 && (
+                  <div>
+                    <div style={{
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      color: '#64748B',
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                      padding: '4px 8px 6px',
+                    }}>
+                      Pages & Modules
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {filteredPages.map((page, idx) => {
+                        const Icon = page.icon;
+                        return (
+                          <div
+                            key={idx}
+                            onClick={() => handleSelectPage(page.path)}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '8px 10px',
+                              borderRadius: 10,
+                              cursor: 'pointer',
+                              transition: 'background 0.12s',
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.background = '#F1F5F9'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                              <div style={{
+                                width: 32,
+                                height: 32,
+                                minWidth: 32,
+                                borderRadius: 8,
+                                background: '#F8FAFC',
+                                border: '1px solid #E2E8F0',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#475569',
+                                flexShrink: 0,
+                              }}>
+                                <Icon size={16} />
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                                <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.2' }}>
+                                  {page.title}
+                                </div>
+                                <div style={{ fontSize: 11, fontWeight: 500, color: '#64748B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.2' }}>
+                                  {page.category}
+                                </div>
+                              </div>
+                            </div>
+                            <ArrowRight size={14} color="#94A3B8" style={{ flexShrink: 0, marginLeft: 8 }} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* 2. Employees search results */}
+                {searchEmployees.length > 0 && (
+                  <div>
+                    <div style={{
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      color: '#64748B',
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                      padding: '4px 8px 6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}>
+                      <span>Employees ({searchEmployees.length})</span>
+                      <span style={{ fontSize: 10, fontWeight: 500, color: '#94A3B8', textTransform: 'none' }}>Live Database</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {searchEmployees.map((emp) => (
+                        <div
+                          key={emp.id}
+                          onClick={() => handleSelectEmployee(emp)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '8px 10px',
+                            borderRadius: 10,
+                            cursor: 'pointer',
+                            transition: 'background 0.12s',
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#F1F5F9'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            {emp.profile_photo ? (
+                              <img
+                                src={emp.profile_photo.startsWith('http') ? emp.profile_photo : `/uploads/photos/${emp.profile_photo}`}
+                                alt={emp.name}
+                                style={{
+                                  width: 32,
+                                  height: 32,
+                                  minWidth: 32,
+                                  maxWidth: 32,
+                                  borderRadius: '50%',
+                                  objectFit: 'cover',
+                                  border: '1px solid #E2E8F0',
+                                  flexShrink: 0,
+                                }}
+                                onError={(e) => { e.target.onerror = null; e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=2563EB&color=fff`; }}
+                              />
+                            ) : (
+                              <div style={{
+                                width: 32,
+                                height: 32,
+                                minWidth: 32,
+                                maxWidth: 32,
+                                borderRadius: '50%',
+                                background: '#EFF6FF',
+                                color: '#2563EB',
+                                border: '1px solid #DBEAFE',
+                                fontWeight: 700,
+                                fontSize: 11.5,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0,
+                              }}>
+                                {(emp.name || 'E').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                              <div style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.2' }}>
+                                {emp.name}
+                              </div>
+                              <div style={{ fontSize: 11, fontWeight: 500, color: '#64748B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.2' }}>
+                                {emp.role_name || emp.role || emp.dept_name || emp.email}
+                              </div>
+                            </div>
+                          </div>
+                          <span style={{
+                            fontSize: 10.5,
+                            fontWeight: 600,
+                            color: '#2563EB',
+                            background: '#EFF6FF',
+                            border: '1px solid #DBEAFE',
+                            padding: '2px 8px',
+                            borderRadius: 12,
+                            flexShrink: 0,
+                            marginLeft: 8,
+                          }}>
+                            Profile
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 3. Tickets search results */}
+                {searchTickets.length > 0 && (
+                  <div>
+                    <div style={{
+                      fontSize: 10.5,
+                      fontWeight: 700,
+                      color: '#64748B',
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                      padding: '4px 8px 6px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                    }}>
+                      <span>Support Tickets ({searchTickets.length})</span>
+                      <span style={{ fontSize: 10, fontWeight: 500, color: '#94A3B8', textTransform: 'none' }}>Help Desk</span>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                      {searchTickets.map((ticket, idx) => (
+                        <div
+                          key={ticket.id || idx}
+                          onClick={handleSelectTicket}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '8px 10px',
+                            borderRadius: 10,
+                            cursor: 'pointer',
+                            transition: 'background 0.12s',
+                          }}
+                          onMouseEnter={e => e.currentTarget.style.background = '#F1F5F9'}
+                          onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                            <div style={{
+                              width: 32,
+                              height: 32,
+                              minWidth: 32,
+                              maxWidth: 32,
+                              borderRadius: 8,
+                              background: '#FEF3C7',
+                              color: '#D97706',
+                              border: '1px solid #FDE68A',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0,
+                            }}>
+                              <HelpCircle size={16} />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0, flex: 1, overflow: 'hidden' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}>
+                                <span style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  color: '#2563EB',
+                                  background: '#EFF6FF',
+                                  border: '1px solid #DBEAFE',
+                                  padding: '1px 5px',
+                                  borderRadius: 4,
+                                  flexShrink: 0,
+                                }}>
+                                  {ticket.id}
+                                </span>
+                                <span style={{ fontSize: 13, fontWeight: 600, color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.2' }}>
+                                  {ticket.subject}
+                                </span>
+                              </div>
+                              <div style={{ fontSize: 11, fontWeight: 500, color: '#64748B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', lineHeight: '1.2' }}>
+                                {ticket.requester} &bull; {ticket.status}
+                              </div>
+                            </div>
+                          </div>
+                          <span style={{
+                            fontSize: 10.5,
+                            fontWeight: 600,
+                            padding: '2px 8px',
+                            borderRadius: 12,
+                            flexShrink: 0,
+                            marginLeft: 8,
+                            ...(ticket.status === 'Open' ? { background: '#FEF3C7', color: '#B45309', border: '1px solid #FDE68A' } :
+                               ticket.status === 'In Progress' ? { background: '#EFF6FF', color: '#1D4ED8', border: '1px solid #DBEAFE' } :
+                               ticket.status === 'Resolved' || ticket.status === 'Closed' ? { background: '#ECFDF5', color: '#047857', border: '1px solid #A7F3D0' } :
+                               { background: '#F1F5F9', color: '#475569', border: '1px solid #E2E8F0' }),
+                          }}>
+                            {ticket.status || 'Ticket'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Empty State */}
+                {searchQuery.trim() && !isSearching && filteredPages.length === 0 && searchEmployees.length === 0 && searchTickets.length === 0 && (
+                  <div style={{ padding: '24px 16px', textAlign: 'center' }}>
+                    <Search size={24} color="#94A3B8" style={{ margin: '0 auto 8px', display: 'block' }} />
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#334155', marginBottom: 2 }}>No results found for "{searchQuery}"</div>
+                    <div style={{ fontSize: 11.5, color: '#94A3B8' }}>Try searching by module name, employee name, or ticket subject</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom Shortcut bar */}
+              <div style={{
+                padding: '8px 16px',
+                background: '#F8FAFC',
+                borderTop: '1px solid #F1F5F9',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: 11,
+                color: '#64748B',
+              }}>
+                <span>Tip: Click any item to navigate directly</span>
+                <span style={{
+                  background: '#FFFFFF',
+                  padding: '2px 6px',
+                  borderRadius: 4,
+                  border: '1px solid #E2E8F0',
+                  fontFamily: 'monospace',
+                  fontSize: 10,
+                  color: '#475569',
+                }}>
+                  ESC to close
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Notification bell */}
