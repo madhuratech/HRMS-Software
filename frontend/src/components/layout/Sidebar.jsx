@@ -261,6 +261,7 @@ export function Sidebar({ userRole, onLogout, onClose }) {
       label: 'Onboarding',
       icon: ClipboardList,
       roles: ['ALL'],
+      hidden: true,
       children: [
         { id: 'new-joiners', label: 'New Joiners', path: '/onboarding/new-joiners', moduleKey: 'onboarding', submoduleKey: 'new_joiners' },
         { id: 'document-verification', label: 'Document Verification', path: '/onboarding/documents', moduleKey: 'onboarding', submoduleKey: 'document_verification' },
@@ -376,14 +377,15 @@ export function Sidebar({ userRole, onLogout, onClose }) {
     return canView(userPermissions, normRole, item.moduleKey, item.submoduleKey);
   };
 
-  // Admin / Super Admin gets the original untouched sidebar
-  // Employee / Team Leader / HR gets the dynamic database-driven sidebar
+  // Admin / Super Admin gets the original sidebar without hidden items
+  // Employee / Team Leader / HR gets the dynamic database-driven sidebar without hidden items
   const filteredMenu = React.useMemo(() => {
-    if (isProtectedAdmin) return masterMenuItems;
-    return masterMenuItems
+    const visibleMasterItems = masterMenuItems.filter(item => !item.hidden);
+    if (isProtectedAdmin) return visibleMasterItems;
+    return visibleMasterItems
       .map(item => {
         if (item.children && item.children.length > 0) {
-          const validChildren = item.children.filter(child => isItemPermitted(child));
+          const validChildren = item.children.filter(child => !child.hidden && isItemPermitted(child));
           if (validChildren.length > 0) return { ...item, children: validChildren };
           return null;
         }

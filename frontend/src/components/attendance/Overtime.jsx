@@ -3,13 +3,29 @@ import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
 import { canCreate } from '../../lib/permissions';
 import { getAvatarUrl } from '../../lib/utils';
-import { Calendar as CalendarIcon, Filter, MoreHorizontal, ChevronDown, Plus, X, Check, Trash2, RotateCcw } from 'lucide-react';
+import { Calendar as CalendarIcon, Filter, MoreHorizontal, ChevronDown, Plus, X, Check, Trash2, RotateCcw, Clock } from 'lucide-react';
 
 export default function Overtime() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [employees, setEmployees] = useState([]);
   const [overtimeData, setOvertimeData] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  const getLoggedInUser = () => {
+    try {
+      const auth = localStorage.getItem('hrms_auth');
+      if (auth) {
+        const parsed = JSON.parse(auth);
+        return parsed.user || parsed;
+      }
+    } catch (e) {}
+    return null;
+  };
+  const currentUser = getLoggedInUser();
+  const currentRole = String(currentUser?.role || localStorage.getItem('userRole') || 'EMPLOYEE').toUpperCase().replace(/_/g, ' ');
+  const isAdminOrHR = currentRole.includes('SUPER') || currentRole === 'SUPER ADMIN' || currentRole === 'ADMIN' || currentRole === 'HR MANAGER' || currentRole === 'HR';
+  const isTeamLeader = currentRole === 'TEAM LEADER';
+  const canManageStatus = isAdminOrHR || isTeamLeader;
 
   const [formData, setFormData] = useState({
     employee_id: '',
@@ -22,10 +38,11 @@ export default function Overtime() {
     try {
       const data = await apiFetch('/employees?status=Active');
       if (Array.isArray(data)) {
-        setEmployees(data);
-        if (data.length > 0) {
-          setFormData(prev => ({ ...prev, employee_id: data[0].id }));
-        }
+        const formatted = data.map(e => ({
+          value: e.id,
+          label: `${e.first_name || ''} ${e.last_name || ''}`.trim() || e.name || `Employee #${e.id}`
+        }));
+        setEmployees(formatted);
       }
     } catch (e) {
       console.error("Failed to load employees:", e);
@@ -49,6 +66,17 @@ export default function Overtime() {
     loadOvertime();
     loadEmployees();
   }, []);
+
+  const handleOpenModal = () => {
+    const defaultEmpId = isAdminOrHR ? (employees[0]?.value || '') : (currentUser?.employee_id || currentUser?.id || '');
+    setFormData({
+      employee_id: defaultEmpId,
+      date: new Date().toISOString().split('T')[0],
+      hours: '02h 00m',
+      reason: ''
+    });
+    setShowAddModal(true);
+  };
 
   const handleUpdateStatus = async (id, newStatus) => {
     // Optimistically update local state for instant UI responsiveness
@@ -83,34 +111,33 @@ export default function Overtime() {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!formData.employee_id || !formData.date || !formData.hours) return;
+    const effectiveEmpId = isAdminOrHR ? formData.employee_id : (currentUser?.employee_id || currentUser?.id || formData.employee_id);
+    if (!effectiveEmpId || !formData.date || !formData.hours) {
+      alert("Please fill all required fields.");
+      return;
+    }
 
     try {
-      const selectedEmp = employees.find(emp => String(emp.id) === String(formData.employee_id));
+      const selectedEmp = employees.find(emp => String(emp.value) === String(effectiveEmpId));
+      const empName = selectedEmp ? selectedEmp.label : (currentUser?.name || 'Employee');
       const formattedDate = new Date(formData.date).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 
       await apiFetch('/attendance/overtime', {
         method: 'POST',
         body: JSON.stringify({
-          employee_id: formData.employee_id,
-          employee_name: selectedEmp ? selectedEmp.name : 'Employee',
+          employee_id: effectiveEmpId,
+          employee_name: empName,
           date: formattedDate,
           hours: formData.hours,
           reason: formData.reason
         })
       });
+      setShowAddModal(false);
       await loadOvertime();
     } catch (err) {
       console.error("Failed to log overtime:", err);
+      alert("Failed to save overtime record.");
     }
-
-    setFormData({
-      employee_id: employees.length > 0 ? employees[0].id : '',
-      date: new Date().toISOString().split('T')[0],
-      hours: '02h 00m',
-      reason: ''
-    });
-    setShowAddModal(false);
   };
 
   // Helper calculation functions for KPIs
@@ -161,7 +188,7 @@ export default function Overtime() {
         </div>
         {canCreate('attendance', 'overtime') && (
           <button
-            onClick={() => setShowAddModal(true)}
+            onClick={handleOpenModal}
             style={{ height: 38, padding: '0 16px', background: '#2563EB', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap', flexShrink: 0 }}
           >
             <Plus size={15} /> Log Overtime
@@ -241,59 +268,63 @@ export default function Overtime() {
                         </td>
                         <td style={{ whiteSpace: 'nowrap', textAlign: 'center' }}>
                           <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center', justifyContent: 'center' }}>
-                            {record.status === 'Pending' ? (
-                              <>
-                                <button 
-                                  title="Approve Overtime"
-                                  onClick={() => handleUpdateStatus(record.id, 'Approved')}
-                                  style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                    background: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0',
-                                    borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: '600',
-                                    cursor: 'pointer', transition: 'all 0.15s ease'
-                                  }}
-                                >
-                                  <Check size={14} strokeWidth={2.5} /> Approve
-                                </button>
-                                <button 
-                                  title="Reject Overtime"
-                                  onClick={() => handleUpdateStatus(record.id, 'Rejected')}
-                                  style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                    background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA',
-                                    borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: '600',
-                                    cursor: 'pointer', transition: 'all 0.15s ease'
-                                  }}
-                                >
-                                  <X size={14} strokeWidth={2.5} /> Reject
-                                </button>
-                              </>
+                            {canManageStatus ? (
+                              record.status === 'Pending' ? (
+                                <>
+                                  <button 
+                                    title="Approve Overtime"
+                                    onClick={() => handleUpdateStatus(record.id, 'Approved')}
+                                    style={{
+                                      display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                      background: '#F0FDF4', color: '#16A34A', border: '1px solid #BBF7D0',
+                                      borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: '600',
+                                      cursor: 'pointer', transition: 'all 0.15s ease'
+                                    }}
+                                  >
+                                    <Check size={14} strokeWidth={2.5} /> Approve
+                                  </button>
+                                  <button 
+                                    title="Reject Overtime"
+                                    onClick={() => handleUpdateStatus(record.id, 'Rejected')}
+                                    style={{
+                                      display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                      background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA',
+                                      borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: '600',
+                                      cursor: 'pointer', transition: 'all 0.15s ease'
+                                    }}
+                                  >
+                                    <X size={14} strokeWidth={2.5} /> Reject
+                                  </button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    title="Reset Status to Pending"
+                                    onClick={() => handleReset(record.id)}
+                                    style={{
+                                      display: 'inline-flex', alignItems: 'center', gap: '4px',
+                                      background: '#F1F5F9', color: '#475569', border: '1px solid #E2E8F0',
+                                      borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: '600',
+                                      cursor: 'pointer', transition: 'all 0.15s ease'
+                                    }}
+                                  >
+                                    <RotateCcw size={14} strokeWidth={2.5} /> Reset
+                                  </button>
+                                  <button
+                                    title="Delete Record"
+                                    onClick={() => handleDelete(record.id)}
+                                    style={{
+                                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                      background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA',
+                                      borderRadius: '6px', width: '28px', height: '28px', cursor: 'pointer'
+                                    }}
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                </>
+                              )
                             ) : (
-                              <>
-                                <button
-                                  title="Reset Status to Pending"
-                                  onClick={() => handleReset(record.id)}
-                                  style={{
-                                    display: 'inline-flex', alignItems: 'center', gap: '4px',
-                                    background: '#F1F5F9', color: '#475569', border: '1px solid #E2E8F0',
-                                    borderRadius: '6px', padding: '6px 12px', fontSize: '12px', fontWeight: '600',
-                                    cursor: 'pointer', transition: 'all 0.15s ease'
-                                  }}
-                                >
-                                  <RotateCcw size={14} strokeWidth={2.5} /> Reset
-                                </button>
-                                <button
-                                  title="Delete Record"
-                                  onClick={() => handleDelete(record.id)}
-                                  style={{
-                                    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                                    background: '#FEF2F2', color: '#DC2626', border: '1px solid #FECACA',
-                                    borderRadius: '6px', width: '28px', height: '28px', cursor: 'pointer'
-                                  }}
-                                >
-                                  <Trash2 size={13} />
-                                </button>
-                              </>
+                              <span style={{ fontSize: '12px', color: '#94a3b8' }}>--</span>
                             )}
                           </div>
                         </td>
@@ -351,7 +382,31 @@ export default function Overtime() {
             <form onSubmit={handleSave} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', flex: 1 }}>
               <div>
                 <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#334155', marginBottom: '6px' }}>Employee *</label>
-                <AppDropdown value={formData.employee_id} options={[, ...(employees || [])]} size="sm" />
+                {isAdminOrHR ? (
+                  <AppDropdown
+                    value={formData.employee_id}
+                    options={[{ value: '', label: 'Select Employee' }, ...(employees || [])]}
+                    onChange={(val) => setFormData({ ...formData, employee_id: val })}
+                    size="sm"
+                  />
+                ) : (
+                  <div style={{
+                    width: '100%',
+                    height: '40px',
+                    padding: '0 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '14px',
+                    color: '#1E293B',
+                    background: '#F1F5F9',
+                    display: 'flex',
+                    alignItems: 'center',
+                    fontWeight: '600',
+                    boxSizing: 'border-box'
+                  }}>
+                    {currentUser?.name || currentUser?.first_name || 'My Account'}
+                  </div>
+                )}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                 <div>

@@ -584,31 +584,114 @@ export function Departments() {
 
       {/* Add / Edit Department Modal */}
       {isAddEditModalOpen && (
-        <>
-          <div className="modal-backdrop-blur" onClick={() => setIsAddEditModalOpen(false)} />
-          <div className="modal-centered-content" style={{ width: '850px', maxWidth: '90vw', maxHeight: '90vh' }}>
-            <div className="p-6 border-b border-slate-200 flex items-center justify-between shrink-0">
-              <div>
-                <h2 className="text-xl font-bold text-[#0A1629]">
-                  {selectedDept ? 'Edit Department' : 'Add Department'}
-                </h2>
-                <p className="text-sm text-slate-500 mt-1">
-                  {selectedDept ? 'Modify department configuration and assignments.' : 'Create a new company department and assign a department head.'}
-                </p>
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '16px',
+          background: 'rgba(15, 23, 42, 0.55)',
+          backdropFilter: 'blur(6px)'
+        }}>
+          <div style={{
+            width: '680px',
+            maxWidth: '95vw',
+            maxHeight: '90vh',
+            display: 'flex',
+            flexDirection: 'column',
+            background: '#FFFFFF',
+            borderRadius: '22px',
+            boxShadow: '0 32px 80px rgba(15, 23, 42, 0.28)',
+            overflow: 'hidden',
+            border: '1px solid rgba(255,255,255,0.8)'
+          }}>
+            {/* Header */}
+            <div style={{
+              position: 'relative',
+              padding: '20px 24px',
+              background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              overflow: 'hidden',
+              flexShrink: 0
+            }}>
+              <div style={{
+                position: 'absolute',
+                top: '-30px',
+                right: '-30px',
+                width: '130px',
+                height: '130px',
+                borderRadius: '50%',
+                background: 'rgba(255, 255, 255, 0.08)',
+                pointerEvents: 'none'
+              }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1, flex: 1, marginRight: '16px' }}>
+                <div style={{
+                  width: '42px',
+                  height: '42px',
+                  borderRadius: '12px',
+                  background: 'rgba(255, 255, 255, 0.18)',
+                  backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  placeContent: 'center',
+                  color: '#FFFFFF',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)',
+                  flexShrink: 0,
+                  lineHeight: 0,
+                  padding: 0
+                }}>
+                  <Building2 size={22} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#FFFFFF', letterSpacing: '-0.2px' }}>
+                    {selectedDept ? 'Edit Department' : 'Add Department'}
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: 'rgba(255, 255, 255, 0.85)' }}>
+                    {selectedDept ? 'Modify department configuration and assignments.' : 'Create a new company department and assign a department head.'}
+                  </p>
+                </div>
               </div>
+
               <button
+                type="button"
                 onClick={() => setIsAddEditModalOpen(false)}
-                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  background: 'rgba(255, 255, 255, 0.12)',
+                  backdropFilter: 'blur(4px)',
+                  display: 'grid',
+                  placeItems: 'center',
+                  placeContent: 'center',
+                  cursor: 'pointer',
+                  zIndex: 1,
+                  transition: 'all 0.2s',
+                  flexShrink: 0,
+                  marginLeft: 'auto',
+                  lineHeight: 0,
+                  padding: 0
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
               >
-                <X size={20} className="text-slate-400" />
+                <X size={16} color="#FFFFFF" style={{ display: 'block', margin: 'auto' }} />
               </button>
             </div>
 
-            <form onSubmit={(e) => { e.preventDefault(); handleSaveDepartment(); }} className="p-6 overflow-y-auto flex-1 space-y-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Department Name <span className="text-red-500">*</span>
+            {/* Form Body */}
+            <form onSubmit={(e) => { e.preventDefault(); handleSaveDepartment(); }} style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '18px', overflowY: 'auto', flex: 1 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="hrms-input-group">
+                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>
+                    Department Name <span style={{ color: '#EF4444' }}>*</span>
                   </label>
                   <input
                     type="text"
@@ -616,14 +699,15 @@ export function Departments() {
                     placeholder="e.g. Human Resources"
                     value={formData.name}
                     onChange={(e) => handleFormChange('name', e.target.value)}
-                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="hrms-input"
+                    style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }}
                   />
-                  {formErrors.name && <span className="text-xs text-red-500 mt-1 block">{formErrors.name}</span>}
+                  {formErrors.name && <span style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px', display: 'block' }}>{formErrors.name}</span>}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Department Code <span className="text-red-500">*</span>
+                <div className="hrms-input-group">
+                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>
+                    Department Code <span style={{ color: '#EF4444' }}>*</span>
                   </label>
                   <input
                     type="text"
@@ -631,13 +715,14 @@ export function Departments() {
                     placeholder="e.g. HR-001"
                     value={formData.code}
                     onChange={(e) => handleFormChange('code', e.target.value)}
-                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
+                    className="hrms-input"
+                    style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1', fontFamily: 'monospace' }}
                   />
-                  {formErrors.code && <span className="text-xs text-red-500 mt-1 block">{formErrors.code}</span>}
+                  {formErrors.code && <span style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px', display: 'block' }}>{formErrors.code}</span>}
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Department Head</label>
+                <div className="hrms-input-group">
+                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Department Head</label>
                   <AppDropdown
                     value={formData.headName || 'Unassigned'}
                     onChange={(val) => {
@@ -661,8 +746,8 @@ export function Departments() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Parent Department</label>
+                <div className="hrms-input-group">
+                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Parent Department</label>
                   <AppDropdown
                     value={formData.parentDepartment || 'None'}
                     onChange={(val) => handleFormChange('parentDepartment', val === 'None' ? '' : val)}
@@ -677,71 +762,85 @@ export function Departments() {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Department Email</label>
+                <div className="hrms-input-group">
+                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Department Email</label>
                   <input
                     type="email"
                     placeholder="e.g. hr@company.com"
                     value={formData.email}
                     onChange={(e) => handleFormChange('email', e.target.value)}
-                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="hrms-input"
+                    style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }}
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Department Phone</label>
+                <div className="hrms-input-group">
+                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Department Phone</label>
                   <input
                     type="text"
                     placeholder="e.g. +1 (555) 123-4567"
                     value={formData.phone}
                     onChange={(e) => handleFormChange('phone', e.target.value)}
-                    className="w-full h-12 px-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                    className="hrms-input"
+                    style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }}
                   />
                 </div>
 
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Status</label>
-                  <AppDropdown
-                    value={formData.status}
-                    onChange={(v) => handleFormChange('status', v)}
-                    options={[
-                      { value: 'Active', label: 'Active' },
-                      { value: 'Inactive', label: 'Inactive' }
-                    ]}
-                    size="sm"
-                  />
+                <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Status *</label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '20px', paddingTop: '4px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: '500', color: '#334155' }}>
+                      <input type="radio" name="deptStatus" checked={formData.status === 'Active'} onChange={() => handleFormChange('status', 'Active')} style={{ accentColor: '#2563EB', width: '16px', height: '16px' }} />
+                      Active
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '14px', fontWeight: '500', color: '#334155' }}>
+                      <input type="radio" name="deptStatus" checked={formData.status === 'Inactive'} onChange={() => handleFormChange('status', 'Inactive')} style={{ accentColor: '#2563EB', width: '16px', height: '16px' }} />
+                      Inactive
+                    </label>
+                  </div>
                 </div>
 
-                <div className="col-span-1 sm:col-span-2">
-                  <label className="block text-sm font-semibold text-slate-700 mb-2">Description</label>
+                <div className="hrms-input-group" style={{ gridColumn: 'span 2' }}>
+                  <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Description</label>
                   <textarea
                     placeholder="Brief description of the department's role and responsibilities..."
                     value={formData.description}
                     onChange={(e) => handleFormChange('description', e.target.value)}
-                    style={{ height: '90px' }}
-                    className="w-full p-4 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+                    style={{ height: '80px', borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1', resize: 'none' }}
+                    className="hrms-input"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-200 shrink-0">
+              {/* Footer */}
+              <div style={{
+                marginTop: '12px',
+                paddingTop: '16px',
+                borderTop: '1px solid #E2E8F0',
+                display: 'flex',
+                gap: '12px',
+                justifyContent: 'flex-end',
+                flexShrink: 0
+              }}>
                 <button
                   type="button"
+                  className="hrms-secondary-btn"
                   onClick={() => setIsAddEditModalOpen(false)}
-                  className="px-8 h-12 border border-slate-200 rounded-xl text-base font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+                  style={{ borderRadius: '10px', padding: '9px 18px', fontWeight: '600' }}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-8 h-12 bg-blue-600 text-white rounded-xl text-base font-semibold hover:bg-blue-700 transition-colors shadow-md"
+                  className="hrms-btn-primary"
+                  style={{ borderRadius: '10px', padding: '9px 22px', fontWeight: '600', background: 'linear-gradient(135deg, #1E40AF 0%, #2563EB 100%)', color: '#FFF' }}
                 >
                   {selectedDept ? 'Update Department' : 'Save Department'}
                 </button>
               </div>
             </form>
           </div>
-        </>
+        </div>
       )}
 
       {/* View Department Details Modal */}

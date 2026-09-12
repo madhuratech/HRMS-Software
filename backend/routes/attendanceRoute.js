@@ -104,40 +104,86 @@ router.put("/records/:employeeId/:date", authenticateJWT, attendanceController.u
 router.delete("/records/:employeeId/:date", authenticateJWT, attendanceController.deleteAttendanceRecord);
 
 // Regularization Requests
-router.get("/regularization", authenticateJWT, (req, res) => {
+router.get("/regularization", authenticateJWT, async (req, res) => {
   const db = require("../config/database");
+  const DataScopeService = require("../services/DataScopeService");
   const { status } = req.query;
-  let sql = `
-    SELECT 
-      ar.*,
-      COALESCE(e.name, ar.employee_name) as employee_name,
-      e.profile_photo as profile_photo
-    FROM attendance_regularizations ar
-    LEFT JOIN employees e ON ar.employee_id = e.id
-  `;
-  const params = [];
-  if (status && status !== 'All') {
-    sql += ' WHERE LOWER(ar.status) = LOWER(?)';
-    params.push(status);
+
+  try {
+    const scopeInfo = await DataScopeService.getScope(req);
+
+    let sql = `
+      SELECT 
+        ar.*,
+        COALESCE(e.name, ar.employee_name) as employee_name,
+        e.profile_photo as profile_photo
+      FROM attendance_regularizations ar
+      LEFT JOIN employees e ON ar.employee_id = e.id
+    `;
+    const whereClauses = [];
+    const params = [];
+
+    if (!scopeInfo.isUnrestricted) {
+      if (scopeInfo.allowedEmployeeIds && scopeInfo.allowedEmployeeIds.length > 0) {
+        whereClauses.push(`ar.employee_id IN (?)`);
+        params.push(scopeInfo.allowedEmployeeIds);
+      } else {
+        whereClauses.push(`ar.employee_id = -1`);
+      }
+    }
+
+    if (status && status !== 'All' && status !== 'all') {
+      whereClauses.push(`LOWER(ar.status) = LOWER(?)`);
+      params.push(status);
+    }
+
+    if (whereClauses.length > 0) {
+      sql += ' WHERE ' + whereClauses.join(' AND ');
+    }
+
+    sql += ' ORDER BY ar.id DESC';
+
+    db.query(sql, params, (err, rows) => {
+      if (err) {
+        console.error("[attendance/regularization] Query error:", err);
+        return res.status(500).json(err);
+      }
+      res.json(rows || []);
+    });
+  } catch (err) {
+    console.error("[attendance/regularization] Scope error:", err);
+    res.status(500).json({ error: 'Failed to retrieve regularization requests' });
   }
-  sql += ' ORDER BY ar.id DESC';
-  db.query(sql, params, (err, rows) => {
-    if (err) return res.status(500).json(err);
-    res.json(rows);
-  });
 });
 
-router.post("/regularization", authenticateJWT, checkPermission('attendance', 'regularization', 'create'), (req, res) => {
+router.post("/regularization", authenticateJWT, checkPermission('attendance', 'regularization', 'create'), async (req, res) => {
   const db = require("../config/database");
-  const { employee_id, date, type, reason, time } = req.body;
-  const sql = `
-    INSERT INTO attendance_regularizations (employee_id, date, type, reason, status, time, created_at)
-    VALUES (?, ?, ?, ?, 'Pending', ?, NOW())
-  `;
-  db.query(sql, [employee_id || 1, date || DATE_FORMAT(NOW(), '%d %b, %Y'), type || 'Late Arrival', reason, time || '09:30 AM'], (err, result) => {
-    if (err) return res.status(500).json(err);
-    res.json({ message: 'Regularization request submitted successfully', id: result.insertId });
-  });
+  const DataScopeService = require("../services/DataScopeService");
+  let { employee_id, employee_name, date, type, reason, time } = req.body;
+
+  try {
+    const scopeInfo = await DataScopeService.getScope(req);
+    if (!scopeInfo.isUnrestricted && scopeInfo.employeeId) {
+      if (scopeInfo.scope === 'SELF' || !employee_id) {
+        employee_id = scopeInfo.employeeId;
+      }
+    }
+
+    const sql = `
+      INSERT INTO attendance_regularizations (employee_id, employee_name, date, type, reason, status, time, created_at)
+      VALUES (?, ?, ?, ?, ?, 'Pending', ?, NOW())
+    `;
+    db.query(sql, [employee_id || 1, employee_name || null, date, type || 'Late Arrival', reason, time || '09:30 AM'], (err, result) => {
+      if (err) {
+        console.error("[attendance/regularization] Insert error:", err);
+        return res.status(500).json(err);
+      }
+      res.json({ message: 'Regularization request submitted successfully', id: result.insertId });
+    });
+  } catch (err) {
+    console.error("[attendance/regularization] Scope error:", err);
+    res.status(500).json({ error: 'Failed to submit regularization request' });
+  }
 });
 
 router.put("/regularization/:id/status", authenticateJWT, (req, res) => {
@@ -151,34 +197,80 @@ router.put("/regularization/:id/status", authenticateJWT, (req, res) => {
 });
 
 // Overtime Requests
-router.get("/overtime", authenticateJWT, (req, res) => {
+router.get("/overtime", authenticateJWT, async (req, res) => {
   const db = require("../config/database");
-  const sql = `
-    SELECT 
-      o.*,
-      COALESCE(e.name, o.employee_name) as employee_name,
-      e.profile_photo as profile_photo
-    FROM overtime_records o
-    LEFT JOIN employees e ON o.employee_id = e.id
-    ORDER BY o.id DESC
-  `;
-  db.query(sql, (err, rows) => {
-    if (err) return res.status(500).json(err);
-    res.json(rows);
-  });
+  const DataScopeService = require("../services/DataScopeService");
+
+  try {
+    const scopeInfo = await DataScopeService.getScope(req);
+
+    let sql = `
+      SELECT 
+        o.*,
+        COALESCE(e.name, o.employee_name) as employee_name,
+        e.profile_photo as profile_photo
+      FROM overtime_records o
+      LEFT JOIN employees e ON o.employee_id = e.id
+    `;
+    const whereClauses = [];
+    const params = [];
+
+    if (!scopeInfo.isUnrestricted) {
+      if (scopeInfo.allowedEmployeeIds && scopeInfo.allowedEmployeeIds.length > 0) {
+        whereClauses.push(`o.employee_id IN (?)`);
+        params.push(scopeInfo.allowedEmployeeIds);
+      } else {
+        whereClauses.push(`o.employee_id = -1`);
+      }
+    }
+
+    if (whereClauses.length > 0) {
+      sql += ' WHERE ' + whereClauses.join(' AND ');
+    }
+
+    sql += ' ORDER BY o.id DESC';
+
+    db.query(sql, params, (err, rows) => {
+      if (err) {
+        console.error("[attendance/overtime] Query error:", err);
+        return res.status(500).json(err);
+      }
+      res.json(rows || []);
+    });
+  } catch (err) {
+    console.error("[attendance/overtime] Scope error:", err);
+    res.status(500).json({ error: 'Failed to retrieve overtime records' });
+  }
 });
 
-router.post("/overtime", authenticateJWT, checkPermission('attendance', 'overtime', 'create'), (req, res) => {
+router.post("/overtime", authenticateJWT, checkPermission('attendance', 'overtime', 'create'), async (req, res) => {
   const db = require("../config/database");
-  const { employee_id, employee_name, date, hours, reason } = req.body;
-  const sql = `
-    INSERT INTO overtime_records (employee_id, employee_name, date, hours, reason, status, created_at)
-    VALUES (?, ?, ?, ?, ?, 'Pending', NOW())
-  `;
-  db.query(sql, [employee_id || 1, employee_name || 'Super Admin', date, hours, reason || 'N/A'], (err, result) => {
-    if (err) return res.status(500).json(err);
-    res.json({ message: 'Overtime logged successfully', id: result.insertId });
-  });
+  const DataScopeService = require("../services/DataScopeService");
+  let { employee_id, employee_name, date, hours, reason } = req.body;
+
+  try {
+    const scopeInfo = await DataScopeService.getScope(req);
+    if (!scopeInfo.isUnrestricted && scopeInfo.employeeId) {
+      if (scopeInfo.scope === 'SELF' || !employee_id) {
+        employee_id = scopeInfo.employeeId;
+      }
+    }
+
+    const sql = `
+      INSERT INTO overtime_records (employee_id, employee_name, date, hours, reason, status, created_at)
+      VALUES (?, ?, ?, ?, ?, 'Pending', NOW())
+    `;
+    db.query(sql, [employee_id || 1, employee_name || 'Employee', date, hours, reason || 'N/A'], (err, result) => {
+      if (err) {
+        console.error("[attendance/overtime] Insert error:", err);
+        return res.status(500).json(err);
+      }
+      res.json({ message: 'Overtime logged successfully', id: result.insertId });
+    });
+  } catch (err) {
+    console.error("[attendance/overtime] Scope error:", err);
+    res.status(500).json({ error: 'Failed to log overtime' });
+  }
 });
 
 router.put("/overtime/:id/status", authenticateJWT, (req, res) => {

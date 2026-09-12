@@ -11,6 +11,28 @@ import {
 } from 'lucide-react';
 
 // ─── Distance calculation helper ──────────────────────────────────────────
+function resolveVisitPhotoUrl(photoPath) {
+  if (!photoPath || typeof photoPath !== 'string') return '';
+  const trimmed = photoPath.trim();
+  if (
+    trimmed.startsWith('http://') ||
+    trimmed.startsWith('https://') ||
+    trimmed.startsWith('data:') ||
+    trimmed.startsWith('blob:')
+  ) {
+    return trimmed;
+  }
+  const cleanPath = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  const isLocal = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hostname.startsWith('192.168.') ||
+    window.location.hostname.startsWith('10.') ||
+    Boolean(window.location.port)
+  );
+  return isLocal ? cleanPath : `https://madhura-hrm.onrender.com${cleanPath}`;
+}
+
 function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -833,20 +855,22 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
                     </div>
                     {s.photo && (
                       <div 
-                        onClick={() => setInspectPhoto({ url: s.photo, title: s.label, time: s.time })}
+                        onClick={() => setInspectPhoto({ url: resolveVisitPhotoUrl(s.photo), title: s.label, time: s.time })}
                         style={{ marginTop:'8px', borderRadius:'8px', overflow:'hidden', height:'70px', background:'#F8FAFC', border:'1px solid #E2E8F0', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', position:'relative' }}
                         title="Click to view verified full-size photo"
                       >
                         <img
-                          src={s.photo.startsWith('http') || s.photo.startsWith('data:') ? s.photo : `https://madhura-hrm.onrender.com${s.photo.startsWith('/') ? '' : '/'}${s.photo}`}
+                          src={resolveVisitPhotoUrl(s.photo)}
                           style={{ width:'100%', height:'100%', objectFit:'cover' }}
                           alt="Verification"
                           onError={(e) => {
                             if (!e.currentTarget.dataset.retried) {
                               e.currentTarget.dataset.retried = '1';
-                              e.currentTarget.src = s.photo;
+                              const raw = s.photo.startsWith('/') ? s.photo : `/${s.photo}`;
+                              e.currentTarget.src = raw;
                             } else {
-                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.onerror = null;
+                              e.currentTarget.src = `https://ui-avatars.com/api/?name=Verified+Visit&background=2563EB&color=fff&size=200&bold=true`;
                             }
                           }}
                         />
@@ -1008,11 +1032,15 @@ const LiveTrackingMap = ({ visitId, onClose }) => {
                   <XCircle size={20} color="#94A3B8" />
                 </button>
               </div>
-              <div style={{ height:'360px', background:'#000', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
+              <div style={{ height:'360px', background:'#0F172A', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }}>
                 <img
-                  src={inspectPhoto.url.startsWith('http') || inspectPhoto.url.startsWith('data:') ? inspectPhoto.url : `https://madhura-hrm.onrender.com${inspectPhoto.url.startsWith('/') ? '' : '/'}${inspectPhoto.url}`}
+                  src={resolveVisitPhotoUrl(inspectPhoto.url)}
                   style={{ width:'100%', height:'100%', objectFit:'contain' }}
                   alt="Verified Milestone"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = `https://ui-avatars.com/api/?name=Verified+Visit&background=2563EB&color=fff&size=400&bold=true`;
+                  }}
                 />
               </div>
               <div style={{ padding:'12px 18px', background:'#F8FAFC', display:'flex', justifyContent:'space-between', alignItems:'center' }}>

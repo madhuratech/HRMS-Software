@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
 import { apiFetch } from '../../lib/api';
+import { useToast } from '../ui/Toast';
 import { canCreate, canEdit, canDelete, canExport } from '../../lib/permissions';
 import {
   Users,
@@ -87,22 +88,54 @@ const CustomSelect = ({ label, required, value, onChange, options, placeholder }
   );
 };
 
+const isDeptMatch = (empDept, selectedDept, empDeptId, allDepartments = []) => {
+  if (!selectedDept) return false;
+  const clean = (s) => (s || '').replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
+  
+  const cleanEmpDept = clean(empDept);
+  const cleanSelectedDept = clean(selectedDept);
+  
+  if (cleanEmpDept && cleanSelectedDept) {
+    if (cleanEmpDept === cleanSelectedDept || cleanEmpDept.includes(cleanSelectedDept) || cleanSelectedDept.includes(cleanEmpDept)) {
+      return true;
+    }
+  }
+
+  if (Array.isArray(allDepartments) && allDepartments.length > 0) {
+    const targetDept = allDepartments.find(d => {
+      const dName = clean(d.name || d.dept_name);
+      const dCode = (d.code || '').trim().toLowerCase();
+      const sel = (selectedDept || '').trim().toLowerCase();
+      return (dName && (dName === cleanSelectedDept || sel.includes(dName))) ||
+             (dCode && (sel.includes(`(${dCode})`) || sel.includes(dCode)));
+    });
+
+    if (targetDept) {
+      if (empDeptId && String(empDeptId) === String(targetDept.id)) return true;
+      const targetNameClean = clean(targetDept.name || targetDept.dept_name);
+      if (cleanEmpDept && targetNameClean && (cleanEmpDept === targetNameClean || cleanEmpDept.includes(targetNameClean) || targetNameClean.includes(cleanEmpDept))) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
 /* Searchable Single-Select for Team Lead (Shows Only Team Leaders for Selected Department) */
-function TeamLeadSelect({ selectedDepartment, value, selectedId, onChange, employees, loading }) {
+function TeamLeadSelect({ selectedDepartment, value, selectedId, onChange, employees, departments = [], loading }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
 
-  // Active employees in selected department
+  // Active employees in selected department ONLY
   const departmentEmployees = useMemo(() => {
     if (!selectedDepartment) return [];
     const activeEmps = employees.filter(emp => emp.status === 'Active');
-    const deptNorm = selectedDepartment.toLowerCase().trim();
-    const matched = activeEmps.filter(emp => {
-      const empDept = (emp.dept_name || emp.department || emp.department_name || '').toLowerCase().trim();
-      return empDept === deptNorm;
+    return activeEmps.filter(emp => {
+      const empDept = emp.dept_name || emp.department || emp.department_name || '';
+      return isDeptMatch(empDept, selectedDepartment, emp.department_id, departments);
     });
-    return matched.length > 0 ? matched : activeEmps;
-  }, [employees, selectedDepartment]);
+  }, [employees, selectedDepartment, departments]);
 
   // Filter ONLY employees in selected department with Team Leader / Lead / Manager designations
   const teamLeadersOnly = useMemo(() => {
@@ -219,7 +252,7 @@ function TeamLeadSelect({ selectedDepartment, value, selectedId, onChange, emplo
                   {loading ? (
                     <div className="p-4 text-center text-xs text-slate-400 italic">Loading department employees...</div>
                   ) : filteredLeads.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-slate-400 italic">No matching leads found</div>
+                    <div className="p-4 text-center text-xs text-slate-400 italic">No leads found in {selectedDepartment}</div>
                   ) : (
                     filteredLeads.map((emp) => {
                       const isSelected = selectedEmp && String(selectedEmp.id) === String(emp.id);
@@ -258,23 +291,19 @@ function TeamLeadSelect({ selectedDepartment, value, selectedId, onChange, emplo
   );
 }
 
-/* Searchable Multi-Select for Team Members */
-function TeamMembersSelect({ selectedDepartment, selectedMemberIds, onChange, employees, loading }) {
+/* Searchable Multi-Select for Team Members (Shows ONLY Employees of Selected Department) */
+function TeamMembersSelect({ selectedDepartment, selectedMemberIds, onChange, employees, departments = [], loading }) {
   const [isOpen, setIsOpen] = useState(false);
   const [search, setSearch] = useState('');
 
   const departmentEmployees = useMemo(() => {
+    if (!selectedDepartment) return [];
     const activeEmps = employees.filter(emp => emp.status === 'Active');
-    if (!selectedDepartment) return activeEmps;
-    
-    const deptNorm = selectedDepartment.toLowerCase().trim();
-    const matched = activeEmps.filter(emp => {
-      const empDept = (emp.dept_name || emp.department || emp.department_name || '').toLowerCase().trim();
-      return empDept === deptNorm;
+    return activeEmps.filter(emp => {
+      const empDept = emp.dept_name || emp.department || emp.department_name || '';
+      return isDeptMatch(empDept, selectedDepartment, emp.department_id, departments);
     });
-
-    return matched.length > 0 ? matched : activeEmps;
-  }, [employees, selectedDepartment]);
+  }, [employees, selectedDepartment, departments]);
 
   const filteredEmployees = useMemo(() => {
     if (!search.trim()) return departmentEmployees;
@@ -434,6 +463,7 @@ function TeamMembersSelect({ selectedDepartment, selectedMemberIds, onChange, em
 }
 
 export const Teams = () => {
+  const { addToast } = useToast();
   const [teams, setTeams] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
@@ -446,6 +476,7 @@ export const Teams = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [formData, setFormData] = useState(emptyForm);
+  const [formErrors, setFormErrors] = useState({});
   const [departmentsList, setDepartmentsList] = useState([]);
   const [allDepartments, setAllDepartments] = useState([]);
   const [allEmployees, setAllEmployees] = useState([]);
@@ -514,18 +545,17 @@ export const Teams = () => {
   const paginatedData = filteredData.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const handleDepartmentChange = (newDept) => {
-    const deptObj = allDepartments.find(d => (d.name || d.dept_name) === newDept);
-    const deptNorm = (newDept || '').toLowerCase().trim();
+    const deptObj = allDepartments.find(d => (d.name || d.dept_name) === newDept || `${d.name} (${d.code})` === newDept);
 
     // Check if current team lead belongs to new department
     const currentLead = allEmployees.find(e => String(e.id) === String(formData.teamLeadId) || (e.name || '').toLowerCase().trim() === (formData.teamLead || '').toLowerCase().trim());
-    const leadDeptNorm = (currentLead?.dept_name || currentLead?.department || currentLead?.department_name || '').toLowerCase().trim();
-    const keepLead = currentLead && (leadDeptNorm === deptNorm || !newDept);
+    const leadDept = currentLead?.dept_name || currentLead?.department || currentLead?.department_name || '';
+    const keepLead = currentLead && isDeptMatch(leadDept, newDept, currentLead.department_id, allDepartments);
 
     const validMemberEmps = allEmployees.filter(emp => {
       const isSelected = (formData.teamMemberIds || []).some(id => String(id) === String(emp.id));
-      const empDept = (emp.dept_name || emp.department || emp.department_name || '').toLowerCase().trim();
-      return isSelected && emp.status === 'Active' && (empDept === deptNorm || !newDept);
+      const empDept = emp.dept_name || emp.department || emp.department_name || '';
+      return isSelected && emp.status === 'Active' && isDeptMatch(empDept, newDept, emp.department_id, allDepartments);
     });
     const validIds = validMemberEmps.map(e => e.id);
 
@@ -539,22 +569,34 @@ export const Teams = () => {
       teamMemberNames: validMemberEmps.map(e => e.name),
       members: validIds.length
     }));
+    if (formErrors.department) setFormErrors(prev => ({ ...prev, department: null }));
   };
 
   const handleAdd = () => {
     setFormData(emptyForm);
+    setFormErrors({});
     setShowAddModal(true);
   };
 
   const handleSaveAdd = async () => {
-    if (!formData.name || !formData.code || !formData.department) return;
+    const errors = {};
+    if (!formData.name?.trim()) errors.name = 'Team Name is required';
+    if (!formData.code?.trim()) errors.code = 'Team Code is required';
+    if (!formData.department?.trim()) errors.department = 'Department is required';
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      addToast('Please fill in all required fields.', 'error');
+      return;
+    }
+
     try {
-      await apiFetch('/organization/teams', {
+      const res = await apiFetch('/organization/teams', {
         method: 'POST',
         body: JSON.stringify({
-          name: formData.name,
-          code: formData.code,
-          department: formData.department,
+          name: formData.name.trim(),
+          code: formData.code.trim(),
+          department: formData.department.trim(),
           departmentId: formData.departmentId,
           teamLead: formData.teamLead,
           teamLeadId: formData.teamLeadId,
@@ -564,15 +606,24 @@ export const Teams = () => {
           description: formData.description
         })
       });
+
+      if (res && res.error) {
+        addToast(res.error, 'error');
+        return;
+      }
+
+      addToast('Team created successfully!', 'success');
       await loadTeams();
+      setShowAddModal(false);
     } catch (err) {
       console.error("Error creating team:", err);
+      addToast(err?.message || 'Failed to create team', 'error');
     }
-    setShowAddModal(false);
   };
 
   const handleOpenEdit = (item) => {
     setSelectedItem(item);
+    setFormErrors({});
 
     const leadEmp = allEmployees.find(e => String(e.id) === String(item.team_lead_id) || (e.name || '').toLowerCase().trim() === (item.teamLead || '').toLowerCase().trim());
     const deptObj = allDepartments.find(d => (d.name || d.dept_name) === item.department || String(d.id) === String(item.department_id));
@@ -603,14 +654,24 @@ export const Teams = () => {
   };
 
   const handleSaveEdit = async () => {
-    if (!formData.name || !formData.code || !formData.department) return;
+    const errors = {};
+    if (!formData.name?.trim()) errors.name = 'Team Name is required';
+    if (!formData.code?.trim()) errors.code = 'Team Code is required';
+    if (!formData.department?.trim()) errors.department = 'Department is required';
+
+    if (Object.keys(errors).length > 0) {
+      setFormErrors(errors);
+      addToast('Please fill in all required fields.', 'error');
+      return;
+    }
+
     try {
-      await apiFetch(`/organization/teams/${selectedItem.id}`, {
+      const res = await apiFetch(`/organization/teams/${selectedItem.id}`, {
         method: 'PUT',
         body: JSON.stringify({
-          name: formData.name,
-          code: formData.code,
-          department: formData.department,
+          name: formData.name.trim(),
+          code: formData.code.trim(),
+          department: formData.department.trim(),
           departmentId: formData.departmentId,
           teamLead: formData.teamLead,
           teamLeadId: formData.teamLeadId,
@@ -620,11 +681,19 @@ export const Teams = () => {
           description: formData.description
         })
       });
+
+      if (res && res.error) {
+        addToast(res.error, 'error');
+        return;
+      }
+
+      addToast('Team updated successfully!', 'success');
       await loadTeams();
+      setShowEditModal(false);
     } catch (err) {
       console.error("Error updating team:", err);
+      addToast(err?.message || 'Failed to update team', 'error');
     }
-    setShowEditModal(false);
   };
 
   const handleOpenView = (item) => { setSelectedItem(item); setShowViewModal(true); };
@@ -635,9 +704,11 @@ export const Teams = () => {
         await apiFetch(`/organization/teams/${selectedItem.id}`, {
           method: 'DELETE'
         });
+        addToast('Team deleted successfully', 'success');
         await loadTeams();
       } catch (err) {
         console.error("Error deleting team:", err);
+        addToast('Failed to delete team', 'error');
       }
     }
     setShowDeleteModal(false);
@@ -752,12 +823,38 @@ export const Teams = () => {
           <div style={{ padding: '24px 28px', display: 'flex', flexDirection: 'column', gap: '18px', overflowY: 'auto', flex: 1 }}>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
               <div className="hrms-input-group">
-                <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Team Name *</label>
-                <input type="text" className="hrms-input" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="Enter team name" style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} />
+                <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>
+                  Team Name <span style={{ color: '#EF4444' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  className="hrms-input"
+                  value={formData.name}
+                  onChange={e => {
+                    setFormData({ ...formData, name: e.target.value });
+                    if (formErrors.name) setFormErrors(prev => ({ ...prev, name: null }));
+                  }}
+                  placeholder="Enter team name"
+                  style={{ borderRadius: '10px', padding: '10px 14px', borderColor: formErrors.name ? '#EF4444' : '#CBD5E1' }}
+                />
+                {formErrors.name && <span style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px', display: 'block' }}>{formErrors.name}</span>}
               </div>
               <div className="hrms-input-group">
-                <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>Team Code *</label>
-                <input type="text" className="hrms-input" value={formData.code} onChange={e => setFormData({ ...formData, code: e.target.value })} placeholder="Enter team code" style={{ borderRadius: '10px', padding: '10px 14px', borderColor: '#CBD5E1' }} />
+                <label className="hrms-label" style={{ fontWeight: '600', color: '#334155' }}>
+                  Team Code <span style={{ color: '#EF4444' }}>*</span>
+                </label>
+                <input
+                  type="text"
+                  className="hrms-input"
+                  value={formData.code}
+                  onChange={e => {
+                    setFormData({ ...formData, code: e.target.value });
+                    if (formErrors.code) setFormErrors(prev => ({ ...prev, code: null }));
+                  }}
+                  placeholder="Enter team code"
+                  style={{ borderRadius: '10px', padding: '10px 14px', borderColor: formErrors.code ? '#EF4444' : '#CBD5E1' }}
+                />
+                {formErrors.code && <span style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px', display: 'block' }}>{formErrors.code}</span>}
               </div>
 
               {/* Department Dropdown */}
@@ -770,6 +867,7 @@ export const Teams = () => {
                   options={departmentOptions}
                   placeholder="Select department"
                 />
+                {formErrors.department && <span style={{ fontSize: '12px', color: '#EF4444', marginTop: '4px', display: 'block' }}>{formErrors.department}</span>}
               </div>
 
               {/* Dynamic Searchable Team Lead Selection */}
@@ -779,6 +877,7 @@ export const Teams = () => {
                   value={formData.teamLead}
                   selectedId={formData.teamLeadId}
                   employees={allEmployees}
+                  departments={allDepartments}
                   loading={loadingEmployees}
                   onChange={(selectedEmp) => {
                     setFormData(prev => ({
@@ -796,6 +895,7 @@ export const Teams = () => {
                   selectedDepartment={formData.department}
                   selectedMemberIds={formData.teamMemberIds || []}
                   employees={allEmployees}
+                  departments={allDepartments}
                   loading={loadingEmployees}
                   onChange={(nextIds, selectedEmps) => {
                     setFormData(prev => ({
@@ -1076,3 +1176,5 @@ export const Teams = () => {
     </div>
   );
 };
+
+export default Teams;

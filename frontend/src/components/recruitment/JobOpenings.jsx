@@ -1552,25 +1552,28 @@ export default function JobOpenings() {
 
             {/* Header */}
             <div style={{
-              padding: '22px 28px 18px',
-              background: 'linear-gradient(135deg, #0A1629 0%, #1a3558 100%)',
+              padding: '20px 24px',
+              background: 'linear-gradient(135deg, #1E40AF 0%, #1D4ED8 50%, #2563EB 100%)',
               display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0,
-              borderBottom: '1px solid rgba(255,255,255,0.07)'
+              position: 'relative', overflow: 'hidden'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{ position: 'absolute', top: '-30px', right: '-30px', width: '130px', height: '130px', borderRadius: '50%', background: 'rgba(255, 255, 255, 0.08)', pointerEvents: 'none' }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', zIndex: 1 }}>
                 <div style={{
-                  width: '40px', height: '40px', borderRadius: '11px',
-                  background: 'linear-gradient(135deg, #3B82F6, #2563EB)',
+                  width: '42px', height: '42px', borderRadius: '12px',
+                  background: 'rgba(255, 255, 255, 0.18)', backdropFilter: 'blur(8px)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: '0 4px 14px rgba(59,130,246,0.45)'
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.1)'
                 }}>
-                  <Plus size={18} color="#fff" strokeWidth={2.5} />
+                  <Plus size={20} color="#fff" strokeWidth={2.5} />
                 </div>
                 <div>
-                  <h2 style={{ margin: 0, fontSize: '17px', fontWeight: '700', color: '#fff', letterSpacing: '-0.01em' }}>
+                  <h2 style={{ margin: 0, fontSize: '18px', fontWeight: '700', color: '#fff', letterSpacing: '-0.01em' }}>
                     {editingJobId ? 'Edit Job Opening' : 'New Job Opening'}
                   </h2>
-                  <p style={{ margin: '3px 0 0', fontSize: '12px', color: '#94A3B8' }}>
+                  <p style={{ margin: '3px 0 0', fontSize: '12px', color: 'rgba(255, 255, 255, 0.85)' }}>
                     {editingJobId ? 'Update requisition details and publishing preferences' : 'Fill in the details to configure and publish this requisition'}
                   </p>
                 </div>
@@ -1578,44 +1581,44 @@ export default function JobOpenings() {
               <button
                 onClick={() => { setShowAddModal(false); resetForm(); }}
                 style={{
-                  width: '32px', height: '32px', borderRadius: '8px', border: 'none', cursor: 'pointer',
-                  background: 'rgba(255,255,255,0.08)', color: '#94A3B8',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '34px', height: '34px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.25)',
+                  background: 'rgba(255, 255, 255, 0.12)', backdropFilter: 'blur(4px)', color: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', zIndex: 1,
                   transition: 'all 0.15s'
                 }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.16)'; e.currentTarget.style.color = '#fff'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = '#94A3B8'; }}
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.25)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.12)'}
               >
-                <X size={15} />
+                <X size={16} />
               </button>
             </div>
 
             {/* Body */}
-            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden', background: '#F1F5F9' }}>
+            <form onSubmit={handleSave} style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden', background: '#F8FAFC' }}>
               <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '20px 24px' }}>
 
                 {/* Overlay to close dropdowns when clicking outside */}
                 {openDropdown && <div onClick={() => setOpenDropdown(null)} style={{ position: 'fixed', inset: 0, zIndex: 9000 }} />}
 
                 {/* Section 1: Basic Information */}
-                <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #E2E8F0', boxShadow: '0 1px 4px rgba(10,22,41,0.05)', flexShrink: 0, marginBottom: '16px' }}>
-                  <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '9px', borderBottom: '1px solid #EEF2FF', background: 'linear-gradient(135deg, #EFF6FF 0%, #F8FAFF 100%)', borderRadius: '13px 13px 0 0' }}>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.2"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /></svg>
+                <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #E2E8F0', boxShadow: '0 1px 4px rgba(10,22,41,0.04)', flexShrink: 0, marginBottom: '16px' }}>
+                  <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '9px', borderBottom: '1px solid #DBEAFE', background: 'linear-gradient(135deg, #EFF6FF 0%, #F8FAFF 100%)', borderRadius: '13px 13px 0 0' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: '#DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.2"><rect x="2" y="7" width="20" height="14" rx="2" /><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" /></svg>
                     </div>
-                    <span style={{ fontSize: '12.5px', fontWeight: '700', color: '#1E293B', letterSpacing: '0.01em' }}>Basic Information</span>
-                    <span style={{ marginLeft: 'auto', fontSize: '10.5px', color: '#94A3B8', fontWeight: '500' }}>Core job details</span>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B', letterSpacing: '0.01em' }}>Basic Information</span>
+                    <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#64748B', fontWeight: '500' }}>Core job details</span>
                   </div>
                   <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Job Title <span style={{ color: '#EF4444' }}>*</span></label>
                       <input type="text" required value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} placeholder="e.g. Senior React Developer"
                         style={{ width: '100%', height: '40px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '9px', fontSize: '13px', color: '#1E293B', background: '#FAFAFA', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
-                        onFocus={e => e.target.style.borderColor = '#3B82F6'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                        onFocus={e => e.target.style.borderColor = '#2563EB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Department <span style={{ color: '#EF4444' }}>*</span></label>
-                      <CustomSelect id="dept" accentColor="#3B82F6"
+                      <CustomSelect id="dept" accentColor="#2563EB"
                         value={formData.department} onChange={v => setFormData({ ...formData, department: v })}
                         placeholder="Select Department"
                         options={[{ value: '', label: 'Select Department' }, ...meta.departments.map(d => ({ value: d.id, label: d.name }))]}
@@ -1625,7 +1628,7 @@ export default function JobOpenings() {
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Designation <span style={{ color: '#EF4444' }}>*</span></label>
-                      <CustomSelect id="desig" accentColor="#3B82F6"
+                      <CustomSelect id="desig" accentColor="#2563EB"
                         value={formData.designation} onChange={v => setFormData({ ...formData, designation: v })}
                         placeholder="Select Designation"
                         options={[{ value: '', label: 'Select Designation' }, ...meta.designations.map(d => ({ value: d.id, label: d.name }))]}
@@ -1635,7 +1638,7 @@ export default function JobOpenings() {
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Employment Type <span style={{ color: '#EF4444' }}>*</span></label>
-                      <CustomSelect id="emptype" accentColor="#3B82F6"
+                      <CustomSelect id="emptype" accentColor="#2563EB"
                         value={formData.type} onChange={v => setFormData({ ...formData, type: v })}
                         placeholder="Select Type"
                         options={['Full Time', 'Part Time', 'Contract', 'Internship', 'Temporary', 'Freelancer', 'Remote', 'Hybrid'].map(t => ({ value: t, label: t }))}
@@ -1647,25 +1650,25 @@ export default function JobOpenings() {
                       <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Job Location <span style={{ color: '#EF4444' }}>*</span></label>
                       <input type="text" required value={formData.location} onChange={e => setFormData({ ...formData, location: e.target.value })} placeholder="e.g. Coimbatore / Remote"
                         style={{ width: '100%', height: '40px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '9px', fontSize: '13px', color: '#1E293B', background: '#FAFAFA', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
-                        onFocus={e => e.target.style.borderColor = '#3B82F6'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                        onFocus={e => e.target.style.borderColor = '#2563EB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
                     </div>
                     <div>
                       <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Vacancies <span style={{ color: '#EF4444' }}>*</span></label>
                       <input type="number" required min="1" value={formData.vacancies} onChange={e => setFormData({ ...formData, vacancies: e.target.value })} placeholder="e.g. 3"
                         style={{ width: '100%', height: '40px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '9px', fontSize: '13px', color: '#1E293B', background: '#FAFAFA', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
-                        onFocus={e => e.target.style.borderColor = '#3B82F6'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                        onFocus={e => e.target.style.borderColor = '#2563EB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Job Description <span style={{ color: '#EF4444' }}>*</span></label>
                       <textarea required value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} placeholder="Describe key responsibilities, expectations, and role objectives..."
                         style={{ width: '100%', height: '90px', padding: '10px 12px', border: '1.5px solid #E2E8F0', borderRadius: '9px', fontSize: '13px', color: '#1E293B', background: '#FAFAFA', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', resize: 'vertical', lineHeight: '1.55' }}
-                        onFocus={e => e.target.style.borderColor = '#3B82F6'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                        onFocus={e => e.target.style.borderColor = '#2563EB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Skills Required</label>
                       <input type="text" value={formData.skills} onChange={e => setFormData({ ...formData, skills: e.target.value })} placeholder="e.g. React.js, Node.js, TypeScript, MySQL"
                         style={{ width: '100%', height: '40px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '9px', fontSize: '13px', color: '#1E293B', background: '#FAFAFA', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
-                        onFocus={e => e.target.style.borderColor = '#3B82F6'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                        onFocus={e => e.target.style.borderColor = '#2563EB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
                     </div>
                   </div>
                 </div>
@@ -1674,12 +1677,12 @@ export default function JobOpenings() {
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
 
                   {/* Section 2: Experience & Compensation */}
-                  <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #E2E8F0', boxShadow: '0 1px 4px rgba(10,22,41,0.05)', flexShrink: 0 }}>
-                    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '9px', borderBottom: '1px solid #ECFDF5', background: 'linear-gradient(135deg, #ECFDF5 0%, #F8FFFC 100%)', borderRadius: '13px 13px 0 0' }}>
-                      <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: '#ECFDF5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#10B981" strokeWidth="2.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
+                  <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #E2E8F0', boxShadow: '0 1px 4px rgba(10,22,41,0.04)', flexShrink: 0 }}>
+                    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '9px', borderBottom: '1px solid #DBEAFE', background: 'linear-gradient(135deg, #EFF6FF 0%, #F8FAFF 100%)', borderRadius: '13px 13px 0 0' }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: '#DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg>
                       </div>
-                      <span style={{ fontSize: '12.5px', fontWeight: '700', color: '#1E293B' }}>Experience & Pay</span>
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B' }}>Experience & Pay</span>
                     </div>
                     <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                       {[
@@ -1692,41 +1695,41 @@ export default function JobOpenings() {
                           <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}{f.req && <span style={{ color: '#EF4444' }}> *</span>}</label>
                           <input type="number" required={f.req} min="0" value={formData[f.key]} onChange={e => setFormData({ ...formData, [f.key]: e.target.value })}
                             style={{ width: '100%', height: '40px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '9px', fontSize: '13px', color: '#1E293B', background: '#FAFAFA', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
-                            onFocus={e => e.target.style.borderColor = '#10B981'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                            onFocus={e => e.target.style.borderColor = '#2563EB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {/* Section 3: Schedule & Priority */}
-                  <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #E2E8F0', boxShadow: '0 1px 4px rgba(10,22,41,0.05)', flexShrink: 0 }}>
-                    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '9px', borderBottom: '1px solid #FEF9C3', background: 'linear-gradient(135deg, #FFFBEB 0%, #FFFDF5 100%)', borderRadius: '13px 13px 0 0' }}>
-                      <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: '#FFFBEB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="2.2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
+                  <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #E2E8F0', boxShadow: '0 1px 4px rgba(10,22,41,0.04)', flexShrink: 0 }}>
+                    <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '9px', borderBottom: '1px solid #DBEAFE', background: 'linear-gradient(135deg, #EFF6FF 0%, #F8FAFF 100%)', borderRadius: '13px 13px 0 0' }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: '#DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.2"><rect x="3" y="4" width="18" height="18" rx="2" /><line x1="16" y1="2" x2="16" y2="6" /><line x1="8" y1="2" x2="8" y2="6" /><line x1="3" y1="10" x2="21" y2="10" /></svg>
                       </div>
-                      <span style={{ fontSize: '12.5px', fontWeight: '700', color: '#1E293B' }}>Schedule & Priority</span>
+                      <span style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B' }}>Schedule & Priority</span>
                     </div>
                     <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                       <div>
                         <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Opening Date <span style={{ color: '#EF4444' }}>*</span></label>
                         <input type="date" required value={formData.openingDate} onChange={e => setFormData({ ...formData, openingDate: e.target.value })}
                           style={{ width: '100%', height: '40px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '9px', fontSize: '13px', color: '#1E293B', background: '#FAFAFA', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
-                          onFocus={e => e.target.style.borderColor = '#F59E0B'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                          onFocus={e => e.target.style.borderColor = '#2563EB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
                       </div>
                       <div>
                         <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Closing Date <span style={{ color: '#EF4444' }}>*</span></label>
                         <input type="date" required value={formData.closingDate} onChange={e => setFormData({ ...formData, closingDate: e.target.value })}
                           style={{ width: '100%', height: '40px', padding: '0 12px', border: '1.5px solid #E2E8F0', borderRadius: '9px', fontSize: '13px', color: '#1E293B', background: '#FAFAFA', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }}
-                          onFocus={e => e.target.style.borderColor = '#F59E0B'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
+                          onFocus={e => e.target.style.borderColor = '#2563EB'} onBlur={e => e.target.style.borderColor = '#E2E8F0'} />
                       </div>
                       <div style={{ gridColumn: '1 / -1' }}>
                         <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Priority <span style={{ color: '#EF4444' }}>*</span></label>
                         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '8px' }}>
                           {[
-                            { v: 'Low', c: '#22C55E', bg: '#F0FDF4', border: '#BBF7D0' },
-                            { v: 'Medium', c: '#F59E0B', bg: '#FFFBEB', border: '#FDE68A' },
-                            { v: 'High', c: '#F97316', bg: '#FFF7ED', border: '#FED7AA' },
-                            { v: 'Critical', c: '#EF4444', bg: '#FFF1F2', border: '#FECDD3' },
+                            { v: 'Low', c: '#16A34A', bg: '#F0FDF4', border: '#BBF7D0' },
+                            { v: 'Medium', c: '#2563EB', bg: '#EFF6FF', border: '#BFDBFE' },
+                            { v: 'High', c: '#EA580C', bg: '#FFF7ED', border: '#FED7AA' },
+                            { v: 'Critical', c: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
                           ].map(p => (
                             <button type="button" key={p.v} onClick={() => setFormData({ ...formData, priority: p.v })}
                               style={{
@@ -1745,27 +1748,27 @@ export default function JobOpenings() {
                 </div>
 
                 {/* Section 4: Team & Organization */}
-                <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #E2E8F0', boxShadow: '0 1px 4px rgba(10,22,41,0.05)', flexShrink: 0, marginBottom: '4px' }}>
-                  <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '9px', borderBottom: '1px solid #F3F0FF', background: 'linear-gradient(135deg, #F5F3FF 0%, #FAF9FF 100%)', borderRadius: '13px 13px 0 0' }}>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: '#F5F3FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
+                <div style={{ background: '#fff', borderRadius: '14px', border: '1px solid #E2E8F0', boxShadow: '0 1px 4px rgba(10,22,41,0.04)', flexShrink: 0, marginBottom: '4px' }}>
+                  <div style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '9px', borderBottom: '1px solid #DBEAFE', background: 'linear-gradient(135deg, #EFF6FF 0%, #F8FAFF 100%)', borderRadius: '13px 13px 0 0' }}>
+                    <div style={{ width: '28px', height: '28px', borderRadius: '7px', background: '#DBEAFE', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2563EB" strokeWidth="2.2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                     </div>
-                    <span style={{ fontSize: '12.5px', fontWeight: '700', color: '#1E293B' }}>Team & Organization</span>
-                    <span style={{ marginLeft: 'auto', fontSize: '10.5px', color: '#94A3B8', fontWeight: '500' }}>Optional</span>
+                    <span style={{ fontSize: '13px', fontWeight: '700', color: '#1E293B' }}>Team & Organization</span>
+                    <span style={{ marginLeft: 'auto', fontSize: '11px', color: '#64748B', fontWeight: '500' }}>Optional</span>
                   </div>
                   <div style={{ padding: '16px', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
                     {[
-                      { label: 'Hiring Manager', key: 'hiringManager', did: 'mgr', opts: meta.employees, placeholder: 'Select Manager' },
+                      { label: 'Hiring Manager', key: 'hiringManager', did: 'mgr', opts: meta.hrEmployees || meta.employees, placeholder: 'Select HR Manager' },
                       { label: 'Requested By', key: 'requestedBy', did: 'req', opts: meta.employees, placeholder: 'Select Requester' },
                       { label: 'Branch', key: 'branch', did: 'br', opts: meta.branches, placeholder: 'Select Branch' },
                       { label: 'Company', key: 'company', did: 'co', opts: meta.companies, placeholder: 'Select Company' },
                     ].map(f => (
                       <div key={f.key}>
                         <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{f.label}</label>
-                        <CustomSelect id={f.did} accentColor="#8B5CF6"
+                        <CustomSelect id={f.did} accentColor="#2563EB"
                           value={formData[f.key]} onChange={v => setFormData({ ...formData, [f.key]: v })}
                           placeholder={f.placeholder}
-                          options={[{ value: '', label: f.placeholder }, ...f.opts.map(o => ({ value: o.id, label: o.name }))]}
+                          options={[{ value: '', label: f.placeholder }, ...(f.opts || []).map(o => ({ value: o.id, label: o.name }))]}
                           isOpen={openDropdown === f.did}
                           onToggle={() => setOpenDropdown(openDropdown === f.did ? null : f.did)}
                           onClose={() => setOpenDropdown(null)} />
@@ -1773,7 +1776,7 @@ export default function JobOpenings() {
                     ))}
                     <div>
                       <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', color: '#64748B', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</label>
-                      <CustomSelect id="status" accentColor="#8B5CF6"
+                      <CustomSelect id="status" accentColor="#2563EB"
                         value={formData.status} onChange={v => setFormData({ ...formData, status: v })}
                         placeholder="Select Status"
                         options={['Open', 'Draft', 'Pending', 'Approved', 'Published', 'Closed'].map(s => ({ value: s, label: s }))}

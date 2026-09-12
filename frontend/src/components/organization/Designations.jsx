@@ -58,6 +58,7 @@ const getDesigStyles = (name) => {
 export const Designations = () => {
   const [designations, setDesignations] = useState([]);
   const [departmentsList, setDepartmentsList] = useState([]);
+  const [employeesList, setEmployeesList] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
   const [deptFilter, setDeptFilter] = useState('All');
@@ -74,9 +75,10 @@ export const Designations = () => {
   const loadDesignations = async () => {
     setLoading(true);
     try {
-      const [desigData, deptData] = await Promise.all([
+      const [desigData, deptData, empData] = await Promise.all([
         apiFetch('/organization/designations'),
-        apiFetch('/organization/departments')
+        apiFetch('/organization/departments'),
+        apiFetch('/employees?status=Active')
       ]);
       if (Array.isArray(desigData)) {
         setDesignations(desigData);
@@ -84,6 +86,9 @@ export const Designations = () => {
       if (Array.isArray(deptData)) {
         const fetchedDepts = deptData.map(d => d.name || d.dept_name).filter(Boolean);
         setDepartmentsList(fetchedDepts);
+      }
+      if (Array.isArray(empData)) {
+        setEmployeesList(empData);
       }
     } catch (e) {
       console.error("Failed to load designations:", e);
@@ -94,6 +99,24 @@ export const Designations = () => {
   useEffect(() => {
     loadDesignations();
   }, []);
+
+  const reportsToOptions = useMemo(() => {
+    const list = [
+      { value: 'None', label: 'None (Top Level / Direct)' }
+    ];
+    if (Array.isArray(employeesList) && employeesList.length > 0) {
+      employeesList.forEach(emp => {
+        const role = emp.role_name || emp.designation || '';
+        const dept = emp.dept_name || emp.department || '';
+        const sub = [role, dept].filter(Boolean).join(' • ');
+        list.push({
+          value: emp.name,
+          label: `${emp.name}${sub ? ` (${sub})` : ''}`
+        });
+      });
+    }
+    return list;
+  }, [employeesList]);
 
   const statistics = useMemo(() => ({
     total: designations.length,
@@ -289,7 +312,7 @@ export const Designations = () => {
                 <AppDropdown
                   value={formData.reportsTo}
                   onChange={v => setFormData({ ...formData, reportsTo: v })}
-                  options={['CEO', 'CTO', 'HR Manager', 'Finance Manager', 'Direct Manager', 'None']}
+                  options={reportsToOptions}
                   placeholder="Select Manager / Lead"
                   size="sm"
                 />

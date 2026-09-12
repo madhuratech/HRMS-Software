@@ -551,14 +551,14 @@ export function CompanyProfile() {
               </h3>
 
               {/* Company Details Form */}
-              {activeTab === 'company-details' && (
+              {(activeTab === 'company-details' || activeTab === 'general') && (
                 <div className="form-grid-2col">
                   <div className="form-group-field">
                     <label className="form-field-label">Company Name</label>
                     <input
                       type="text"
                       className="form-field-input"
-                      value={tempProfile.general.companyName}
+                      value={tempProfile.general.companyName || ''}
                       onChange={(e) => handleInputChange('general', 'companyName', e.target.value)}
                     />
                   </div>
@@ -567,7 +567,7 @@ export function CompanyProfile() {
                     <input
                       type="text"
                       className="form-field-input"
-                      value={tempProfile.general.legalCompanyName}
+                      value={tempProfile.general.legalCompanyName || ''}
                       onChange={(e) => handleInputChange('general', 'legalCompanyName', e.target.value)}
                     />
                   </div>
@@ -576,7 +576,7 @@ export function CompanyProfile() {
                     <input
                       type="text"
                       className="form-field-input"
-                      value={tempProfile.general.companyCode}
+                      value={tempProfile.general.companyCode || ''}
                       onChange={(e) => handleInputChange('general', 'companyCode', e.target.value)}
                     />
                   </div>
@@ -591,7 +591,7 @@ export function CompanyProfile() {
                     <input
                       type="text"
                       className="form-field-input"
-                      value={tempProfile.general.industry}
+                      value={tempProfile.general.industry || ''}
                       onChange={(e) => handleInputChange('general', 'industry', e.target.value)}
                     />
                   </div>
@@ -601,6 +601,36 @@ export function CompanyProfile() {
                     options={['Service', 'Product', 'Mixed']}
                     onChange={(val) => handleInputChange('general', 'businessType', val)}
                   />
+                  <div className="form-group-field">
+                    <label className="form-field-label">Employees</label>
+                    <input
+                      type="text"
+                      className="form-field-input"
+                      placeholder="e.g. 250"
+                      value={tempProfile.general.numberOfEmployees || ''}
+                      onChange={(e) => handleInputChange('general', 'numberOfEmployees', e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group-field">
+                    <label className="form-field-label">Established Year</label>
+                    <input
+                      type="text"
+                      className="form-field-input"
+                      placeholder="e.g. 2025"
+                      value={tempProfile.general.yearEstablished || ''}
+                      onChange={(e) => handleInputChange('general', 'yearEstablished', e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group-field">
+                    <label className="form-field-label">Financial Year</label>
+                    <input
+                      type="text"
+                      className="form-field-input"
+                      placeholder="e.g. April - March"
+                      value={tempProfile.general.financialYear || ''}
+                      onChange={(e) => handleInputChange('general', 'financialYear', e.target.value)}
+                    />
+                  </div>
                 </div>
               )}
 

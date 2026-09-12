@@ -12,6 +12,22 @@ export default function Regularization() {
   const [loading, setLoading] = useState(true);
   const [showApplyModal, setShowApplyModal] = useState(false);
 
+  const getLoggedInUser = () => {
+    try {
+      const auth = localStorage.getItem('hrms_auth');
+      if (auth) {
+        const parsed = JSON.parse(auth);
+        return parsed.user || parsed;
+      }
+    } catch (e) {}
+    return null;
+  };
+  const currentUser = getLoggedInUser();
+  const currentRole = String(currentUser?.role || localStorage.getItem('userRole') || 'EMPLOYEE').toUpperCase().replace(/_/g, ' ');
+  const isAdminOrHR = currentRole.includes('SUPER') || currentRole === 'SUPER ADMIN' || currentRole === 'ADMIN' || currentRole === 'HR MANAGER' || currentRole === 'HR';
+  const isTeamLeader = currentRole === 'TEAM LEADER';
+  const canManageStatus = isAdminOrHR || isTeamLeader;
+
   // Form State for new regularization request
   const [formData, setFormData] = useState({
     employee_id: '',
@@ -51,6 +67,18 @@ export default function Regularization() {
     loadEmployees();
   }, [activeTab]);
 
+  const handleOpenModal = () => {
+    const defaultEmpId = isAdminOrHR ? (employees[0]?.value || '') : (currentUser?.employee_id || currentUser?.id || '');
+    setFormData({
+      employee_id: defaultEmpId,
+      date: new Date().toISOString().split('T')[0],
+      type: 'Late Arrival',
+      time: '09:30 AM',
+      reason: ''
+    });
+    setShowApplyModal(true);
+  };
+
   const handleUpdateStatus = async (id, newStatus) => {
     try {
       await apiFetch(`/attendance/regularization/${id}/status`, {
@@ -70,16 +98,19 @@ export default function Regularization() {
       return;
     }
 
+    const effectiveEmpId = isAdminOrHR ? formData.employee_id : (currentUser?.employee_id || currentUser?.id || formData.employee_id);
+    const selectedEmp = employees.find(emp => String(emp.value) === String(effectiveEmpId));
+    const empName = selectedEmp ? selectedEmp.label : (currentUser?.name || 'Employee');
+
     setSubmitting(true);
     try {
-      const selectedEmp = employees.find(emp => String(emp.value) === String(formData.employee_id));
       const formattedDate = new Date(formData.date).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
 
       await apiFetch('/attendance/regularization', {
         method: 'POST',
         body: JSON.stringify({
-          employee_id: formData.employee_id,
-          employee_name: selectedEmp ? selectedEmp.label : 'Employee',
+          employee_id: effectiveEmpId,
+          employee_name: empName,
           date: formattedDate,
           type: formData.type,
           time: formData.time,
@@ -107,7 +138,7 @@ export default function Regularization() {
           </div>
           {canCreate('attendance', 'regularization') && (
             <button
-              onClick={() => setShowApplyModal(true)}
+              onClick={handleOpenModal}
               className="hrms-primary-btn"
               style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#2563EB' }}
             >
@@ -204,7 +235,7 @@ export default function Regularization() {
                         </td>
                         <td style={{ whiteSpace: 'nowrap' }}>
                           <div style={{ display: 'flex', gap: '8px' }}>
-                            {activeTab === 'pending' && (
+                            {activeTab === 'pending' && canManageStatus ? (
                               <>
                                 <button
                                   title="Approve"
@@ -221,6 +252,8 @@ export default function Regularization() {
                                   <X size={16} />
                                 </button>
                               </>
+                            ) : (
+                              <span style={{ fontSize: '12px', color: '#94a3b8' }}>--</span>
                             )}
                           </div>
                         </td>
@@ -282,12 +315,31 @@ export default function Regularization() {
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#374151', marginBottom: '7px' }}>
                   Employee <span style={{ color: '#EF4444' }}>*</span>
                 </label>
-                <AppDropdown
-                  value={formData.employee_id}
-                  options={[{ value: '', label: 'Select Employee' }, ...(employees || [])]}
-                  onChange={(val) => setFormData({ ...formData, employee_id: val })}
-                  size="sm"
-                />
+                {isAdminOrHR ? (
+                  <AppDropdown
+                    value={formData.employee_id}
+                    options={[{ value: '', label: 'Select Employee' }, ...(employees || [])]}
+                    onChange={(val) => setFormData({ ...formData, employee_id: val })}
+                    size="sm"
+                  />
+                ) : (
+                  <div style={{
+                    width: '100%',
+                    height: '44px',
+                    padding: '0 14px',
+                    borderRadius: '11px',
+                    border: '1.5px solid #E2E8F0',
+                    fontSize: '13.5px',
+                    color: '#1E293B',
+                    background: '#F1F5F9',
+                    display: 'flex',
+                    alignItems: 'center',
+                    fontWeight: '600',
+                    boxSizing: 'border-box'
+                  }}>
+                    {currentUser?.name || currentUser?.first_name || 'My Account'}
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>

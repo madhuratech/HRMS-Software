@@ -517,24 +517,25 @@ router.get("/teams", (req, res) => {
     SELECT 
       t.id,
       t.name,
-      COALESCE(t.code, CONCAT('TM-', UPPER(SUBSTRING(t.name, 1, 3)))) as code,
-      COALESCE(d.dept_name, t.department, 'General') as department,
+      COALESCE(NULLIF(t.code, ''), CONCAT('TM-', UPPER(SUBSTRING(t.name, 1, 3)))) as code,
+      COALESCE(d.dept_name, d.department_name, NULLIF(t.department, ''), 'General') as department,
       t.department_id,
       COALESCE(tl.name, NULLIF(t.teamLead, ''), 'Unassigned') as teamLead,
       t.team_lead_id,
-      (SELECT COUNT(*) FROM employees e WHERE e.team_id = t.id AND e.status = 'Active') as members,
-      t.code,
-      t.department,
-      t.teamLead,
-      t.members,
+      GREATEST(COALESCE((SELECT COUNT(*) FROM employees e WHERE e.team_id = t.id AND e.status = 'Active'), 0), COALESCE(t.members, 0)) as members,
       t.description,
       t.createdDate,
       t.status
     FROM teams t
+    LEFT JOIN departments d ON (t.department_id = d.id OR t.department = d.dept_name OR t.department = d.department_name)
+    LEFT JOIN employees tl ON (t.team_lead_id = tl.id OR t.teamLead = tl.name)
     ORDER BY t.id ASC
   `;
   db.query(sql, async (err, rows) => {
-    if (err) return res.status(500).json(err);
+    if (err) {
+      console.error("[GET /teams] Query Error:", err);
+      return res.status(500).json(err);
+    }
     
     // Enrich with live teamMemberIds array from employees table
     try {
@@ -547,7 +548,7 @@ router.get("/teams", (req, res) => {
       }));
       res.json(teamsWithMembers);
     } catch (e) {
-      res.json(rows);
+      res.json(rows || []);
     }
   });
 });
@@ -555,13 +556,28 @@ router.get("/teams", (req, res) => {
 router.post("/teams", authenticateJWT, checkPermission("organization", "teams", "create"), async (req, res) => {
   const { name, code, department, departmentId, teamLead, teamLeadId, members, status, description, teamMemberIds } = req.body;
   
-  let deptId = departmentId;
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ error: "Team Name is required" });
+  }
+
+  // Check for duplicate team name
+  const existingTeam = await new Promise(r => db.query("SELECT id FROM teams WHERE LOWER(name) = LOWER(?) LIMIT 1", [String(name).trim()], (e, rows) => r(rows)));
+  if (existingTeam && existingTeam.length > 0) {
+    return res.status(400).json({ error: `A team named "${name}" already exists.` });
+  }
+
+  let deptId = departmentId || null;
   if (!deptId && department) {
-    const deptRows = await new Promise(r => db.query("SELECT id FROM departments WHERE dept_name = ? LIMIT 1", [department], (e, res) => r(res)));
+    const cleanDept = String(department).replace(/\s*\([^)]*\)/g, '').trim();
+    const deptRows = await new Promise(r => db.query(
+      "SELECT id FROM departments WHERE dept_name = ? OR dept_name = ? OR name = ? OR name = ? OR CONCAT(dept_name, ' (', code, ')') = ? LIMIT 1",
+      [department, cleanDept, department, cleanDept, department],
+      (e, res) => r(res)
+    ));
     if (deptRows && deptRows.length > 0) deptId = deptRows[0].id;
   }
 
-  let leadId = teamLeadId;
+  let leadId = teamLeadId || null;
   if (!leadId && teamLead) {
     const leadRows = await new Promise(r => db.query("SELECT id FROM employees WHERE name = ? LIMIT 1", [teamLead], (e, res) => r(res)));
     if (leadRows && leadRows.length > 0) leadId = leadRows[0].id;
@@ -573,8 +589,21 @@ router.post("/teams", authenticateJWT, checkPermission("organization", "teams", 
     INSERT INTO teams (name, code, department, department_id, teamLead, team_lead_id, members, status, description, createdDate)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, DATE_FORMAT(NOW(), '%d %b %Y'))
   `;
-  db.query(sql, [name, code, department, deptId, teamLead, leadId, memberCount, status || 'Active', description], (err, result) => {
-    if (err) return res.status(500).json(err);
+  db.query(sql, [
+    String(name).trim(),
+    code ? String(code).trim() : '',
+    department ? String(department).trim() : '',
+    deptId || null,
+    teamLead ? String(teamLead).trim() : '',
+    leadId || null,
+    memberCount,
+    status || 'Active',
+    description ? String(description).trim() : ''
+  ], (err, result) => {
+    if (err) {
+      console.error("Error inserting team:", err);
+      return res.status(500).json({ error: err.message || "Failed to create team", details: err });
+    }
     const teamId = result.insertId;
 
     if (Array.isArray(teamMemberIds) && teamMemberIds.length > 0) {
@@ -591,13 +620,22 @@ router.put("/teams/:id", authenticateJWT, checkPermission("organization", "teams
   const { id } = req.params;
   const { name, code, department, departmentId, teamLead, teamLeadId, members, status, description, teamMemberIds } = req.body;
 
-  let deptId = departmentId;
+  if (!name || !String(name).trim()) {
+    return res.status(400).json({ error: "Team Name is required" });
+  }
+
+  let deptId = departmentId || null;
   if (!deptId && department) {
-    const deptRows = await new Promise(r => db.query("SELECT id FROM departments WHERE dept_name = ? LIMIT 1", [department], (e, res) => r(res)));
+    const cleanDept = String(department).replace(/\s*\([^)]*\)/g, '').trim();
+    const deptRows = await new Promise(r => db.query(
+      "SELECT id FROM departments WHERE dept_name = ? OR dept_name = ? OR name = ? OR name = ? OR CONCAT(dept_name, ' (', code, ')') = ? LIMIT 1",
+      [department, cleanDept, department, cleanDept, department],
+      (e, res) => r(res)
+    ));
     if (deptRows && deptRows.length > 0) deptId = deptRows[0].id;
   }
 
-  let leadId = teamLeadId;
+  let leadId = teamLeadId || null;
   if (!leadId && teamLead) {
     const leadRows = await new Promise(r => db.query("SELECT id FROM employees WHERE name = ? LIMIT 1", [teamLead], (e, res) => r(res)));
     if (leadRows && leadRows.length > 0) leadId = leadRows[0].id;
@@ -610,8 +648,22 @@ router.put("/teams/:id", authenticateJWT, checkPermission("organization", "teams
     SET name = ?, code = ?, department = ?, department_id = ?, teamLead = ?, team_lead_id = ?, members = ?, status = ?, description = ?
     WHERE id = ?
   `;
-  db.query(sql, [name, code, department, deptId, teamLead, leadId, memberCount, status, description, id], (err, result) => {
-    if (err) return res.status(500).json(err);
+  db.query(sql, [
+    String(name).trim(),
+    code ? String(code).trim() : '',
+    department ? String(department).trim() : '',
+    deptId || null,
+    teamLead ? String(teamLead).trim() : '',
+    leadId || null,
+    memberCount,
+    status || 'Active',
+    description ? String(description).trim() : '',
+    id
+  ], (err, result) => {
+    if (err) {
+      console.error("Error updating team:", err);
+      return res.status(500).json({ error: err.message || "Failed to update team", details: err });
+    }
 
     if (Array.isArray(teamMemberIds)) {
       db.query("UPDATE employees SET team_id = NULL WHERE team_id = ?", [id], () => {
