@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import AppDropdown from '../ui/AppDropdown';
-import { User, Lock, Mail, CheckCircle, Loader2, TrendingUp, Briefcase, KeyRound } from 'lucide-react';
+import { User, Lock, Mail, CheckCircle, Loader2, Users, Briefcase, KeyRound, ArrowLeft, Sparkles, CheckCircle2 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 
-export function Register({ onRegister, onLoginClick }) {
+export function Register({ onRegister, onLoginClick, onHomeClick }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('Employee'); // 'Admin' | 'Employee'
@@ -68,28 +68,24 @@ export function Register({ onRegister, onLoginClick }) {
       });
 
       if (data && data.success) {
+        setSessionId(data.sessionId);
         setOtpSent(true);
-        setSessionId(data.sessionId || '');
         setCooldown(60);
-        setSuccessMsg(data.message || `Verification code sent to ${email}`);
+        setSuccessMsg(data.message || "Verification code sent to your email!");
       } else {
-        setErrorMsg((data && data.message) || "Failed to send verification code.");
+        setErrorMsg((data && data.message) || "Unable to send verification email. Please try again.");
       }
     } catch (err) {
-      console.error("Verification request error:", err);
-      setErrorMsg(err.message || "Failed to send verification code.");
+      console.error("Email verification request error:", err);
+      setErrorMsg(err.message || "Unable to send verification email. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleVerifyOtp = async () => {
-    if (!otpCode || otpCode.length < 6) {
-      setErrorMsg("Please enter the complete 6-digit verification code.");
-      return;
-    }
-    if (!sessionId) {
-      setErrorMsg("No verification session found. Please click Verify Email again.");
+  const handleConfirmOtp = async () => {
+    if (!otpCode || otpCode.length < 4) {
+      setErrorMsg("Please enter the complete verification code sent to your email.");
       return;
     }
     setLoading(true);
@@ -97,23 +93,21 @@ export function Register({ onRegister, onLoginClick }) {
     setSuccessMsg('');
 
     try {
-      const data = await apiFetch('/auth/verify-otp', {
+      const data = await apiFetch('/auth/verify-email-confirm', {
         method: 'POST',
-        body: JSON.stringify({ email, code: otpCode, sessionId })
+        body: JSON.stringify({ email, sessionId, otp: otpCode })
       });
 
-      if (data && data.success && data.verified) {
+      if (data && data.success) {
         setEmailVerified(true);
         setVerifiedEmail(email);
         setOtpSent(false);
-        setSuccessMsg(data.message || "Email Verified Successfully ✓");
+        setSuccessMsg("Email successfully verified ✓");
       } else {
-        setEmailVerified(false);
-        setErrorMsg((data && data.message) || "Invalid verification code. Please check your email and try again.");
+        setErrorMsg((data && data.message) || "Invalid or expired verification code.");
       }
     } catch (err) {
       console.error("OTP verification error:", err);
-      setEmailVerified(false);
       setErrorMsg(err.message || "Invalid or expired verification code.");
     } finally {
       setLoading(false);
@@ -122,18 +116,21 @@ export function Register({ onRegister, onLoginClick }) {
 
   const handleSubmitRegister = async (e) => {
     e.preventDefault();
-    if (!emailVerified || email.trim().toLowerCase() !== verifiedEmail.trim().toLowerCase() || !sessionId) {
-      setErrorMsg("Please verify your email before creating your account.");
+    if (!emailVerified || email.trim().toLowerCase() !== verifiedEmail.trim().toLowerCase()) {
+      setErrorMsg("Please verify your email address before creating an account.");
       return;
     }
-    if (password !== confirmPassword) {
-      setErrorMsg("Passwords do not match.");
-      return;
-    }
+
     if (password.length < 6) {
       setErrorMsg("Password must be at least 6 characters long.");
       return;
     }
+
+    if (password !== confirmPassword) {
+      setErrorMsg("Passwords do not match. Please verify.");
+      return;
+    }
+
     setLoading(true);
     setErrorMsg('');
     setSuccessMsg('');
@@ -163,40 +160,67 @@ export function Register({ onRegister, onLoginClick }) {
   const isVerifiedForCurrentEmail = emailVerified && email.trim().toLowerCase() === verifiedEmail.trim().toLowerCase();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-blue-900 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 flex flex-col items-center justify-center p-4 relative">
+      
+      {/* Back to Home Link */}
+      {onHomeClick && (
+        <button
+          onClick={onHomeClick}
+          className="absolute top-6 left-6 text-xs sm:text-sm font-bold text-slate-300 hover:text-amber-400 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 hover:border-amber-400/40 backdrop-blur-sm transition-all duration-200">
+          <ArrowLeft size={16} />
+          <span>Back to Madhura HRMS Home</span>
+        </button>
+      )}
+
+      <div className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row border border-slate-800">
         
         {/* Left Side - Brand & Info */}
-        <div className="md:w-1/2 bg-blue-600 p-12 text-white flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-full bg-[url('https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=2069&q=80')] bg-cover bg-center opacity-10"></div>
-          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/90 to-indigo-900/90"></div>
+        <div className="md:w-1/2 bg-slate-900 p-10 sm:p-12 text-white flex flex-col justify-between relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-amber-400/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 left-0 w-80 h-80 bg-blue-600/15 rounded-full blur-3xl pointer-events-none" />
           
           <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-blue-600">
-                <TrendingUp size={24} />
+            <div className="flex items-center gap-3 mb-8">
+              <div className="w-12 h-12 bg-amber-400 rounded-2xl flex items-center justify-center text-slate-950 shadow-lg shadow-amber-400/20">
+                <Users size={26} />
               </div>
-              <h1 className="text-2xl font-bold tracking-tight">HAWKEYE NEST</h1>
+              <div>
+                <h1 className="text-2xl font-black tracking-tight">Madhura <span className="text-amber-400">HRMS</span></h1>
+                <p className="text-xs text-slate-400 font-medium">Enterprise Workforce Platform</p>
+              </div>
             </div>
-            <h2 className="text-4xl font-bold mb-4">Join the Platform</h2>
-            <p className="text-blue-100 text-lg leading-relaxed">
-              Create your account to start managing your team, tracking sales, and streamlining operations.
+
+            <h2 className="text-3xl sm:text-4xl font-extrabold mb-4 leading-tight">
+              Modernize Your HR & Team Management
+            </h2>
+            <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
+              Join thousands of businesses managing attendance, automated payroll, multi-tier approvals, and talent performance with ease.
             </p>
           </div>
 
-          <div className="relative z-10 mt-8">
-             <div className="p-4 bg-white/10 rounded-xl border border-white/20 backdrop-blur-sm">
-                <p className="font-bold text-lg mb-1">"A game changer for our branch."</p>
-                <p className="text-sm text-blue-200">- Sarah J., Branch Manager</p>
-             </div>
+          <div className="relative z-10 grid grid-cols-2 gap-4 mt-8">
+            <div className="bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/10">
+              <div className="flex items-center gap-1.5 text-amber-400 text-xs font-bold mb-1">
+                <Sparkles size={14} /> Instant Setup
+              </div>
+              <h3 className="font-bold text-sm text-white">Quick Onboard</h3>
+              <p className="text-xs text-slate-400">Ready in under 24 hrs</p>
+            </div>
+            <div className="bg-white/5 backdrop-blur-md p-4 rounded-2xl border border-white/10">
+              <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-bold mb-1">
+                <CheckCircle2 size={14} /> 100% Compliant
+              </div>
+              <h3 className="font-bold text-sm text-white">Statutory Tax</h3>
+              <p className="text-xs text-slate-400">PF, ESI & TDS enabled</p>
+            </div>
           </div>
         </div>
 
         {/* Right Side - Registration Form */}
-        <div className="md:w-1/2 p-12 bg-white flex flex-col justify-center relative">
+        <div className="md:w-1/2 p-8 sm:p-12 bg-white flex flex-col justify-center relative max-h-[90vh] overflow-y-auto">
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">Create Account</h2>
-            <p className="text-slate-500">Enter your company credentials to register.</p>
+            <h2 className="text-2xl sm:text-3xl font-black text-slate-900 mb-1.5">Create Account</h2>
+            <p className="text-sm text-slate-500 font-medium">Register your business credentials to get started.</p>
           </div>
 
           {errorMsg && (
@@ -214,40 +238,40 @@ export function Register({ onRegister, onLoginClick }) {
           <form onSubmit={handleSubmitRegister} className="space-y-4">
             
             {/* Full Name */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Full Name</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Full Name</label>
               <div className="relative">
-                <User className="absolute left-3 top-3 text-slate-400" size={18} />
+                <User className="absolute left-3.5 top-3 text-slate-400" size={18} />
                 <input
                   type="text"
                   value={name}
                   onChange={handleNameChange}
                   disabled={isVerifiedForCurrentEmail}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all disabled:opacity-70"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:bg-white focus:outline-none transition-all disabled:opacity-70"
                   placeholder="Enter your full name"
                   required />
               </div>
             </div>
 
             {/* Company Email Address */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700 flex justify-between">
-                Company Email
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex justify-between">
+                <span>Company Email</span>
                 {isVerifiedForCurrentEmail && (
-                  <span className="text-green-600 text-xs font-bold flex items-center gap-1">
+                  <span className="text-emerald-600 text-xs font-bold flex items-center gap-1">
                     <CheckCircle size={13} /> Verified
                   </span>
                 )}
               </label>
               <div className="relative flex gap-2">
                 <div className="relative flex-1">
-                  <Mail className="absolute left-3 top-3 text-slate-400" size={18} />
+                  <Mail className="absolute left-3.5 top-3 text-slate-400" size={18} />
                   <input
                     type="email"
                     value={email}
                     onChange={handleEmailChange}
                     disabled={isVerifiedForCurrentEmail}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all disabled:opacity-70"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:bg-white focus:outline-none transition-all disabled:opacity-70"
                     placeholder="name@company.com"
                     required />
                 </div>
@@ -256,7 +280,7 @@ export function Register({ onRegister, onLoginClick }) {
                     type="button"
                     onClick={handleVerifyEmailRequest}
                     disabled={loading || !name || !email}
-                    className="px-4 py-2 bg-slate-800 text-white text-xs font-semibold rounded-lg hover:bg-slate-700 disabled:opacity-50 min-w-[100px] transition-all"
+                    className="px-4 py-2 bg-slate-900 text-amber-400 text-xs font-bold rounded-xl hover:bg-slate-800 disabled:opacity-50 min-w-[100px] transition-all shadow-xs"
                   >
                     {loading ? <Loader2 className="animate-spin mx-auto" size={16} /> : 'Verify Email'}
                   </button>
@@ -266,9 +290,9 @@ export function Register({ onRegister, onLoginClick }) {
 
             {/* OTP Code Entry UI */}
             {otpSent && !isVerifiedForCurrentEmail && (
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-slate-700">
-                  <KeyRound size={15} className="text-blue-600" />
+              <div className="p-4 bg-amber-50/70 border border-amber-300 rounded-xl space-y-3 animate-in fade-in slide-in-from-top-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-800">
+                  <KeyRound size={15} className="text-amber-600" />
                   <span>Enter 6-Digit OTP sent to {email}</span>
                 </div>
                 
@@ -278,30 +302,29 @@ export function Register({ onRegister, onLoginClick }) {
                     maxLength={6}
                     value={otpCode}
                     onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
-                    placeholder="------"
-                    className="flex-1 px-4 py-2 bg-white border border-slate-200 rounded-lg text-center font-mono font-bold tracking-widest text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 bg-white border border-amber-300 rounded-lg text-center font-mono font-bold tracking-widest text-base focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                    placeholder="• • • • • •"
+                    autoFocus
                   />
                   <button
                     type="button"
-                    onClick={handleVerifyOtp}
-                    disabled={loading || otpCode.length < 6}
-                    className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-xs font-bold rounded-lg transition-all"
+                    onClick={handleConfirmOtp}
+                    disabled={loading || otpCode.length < 4}
+                    className="px-4 py-2 bg-slate-900 text-amber-400 text-xs font-bold rounded-lg hover:bg-slate-800 disabled:opacity-50 transition-all shrink-0"
                   >
-                    {loading ? <Loader2 className="animate-spin" size={16} /> : 'Verify OTP'}
+                    {loading ? <Loader2 className="animate-spin mx-auto" size={16} /> : 'Confirm OTP'}
                   </button>
                 </div>
 
-                <div className="flex justify-between items-center text-xs text-slate-500 pt-1">
-                  <span>Didn't receive the code?</span>
+                <div className="flex justify-between items-center text-[11px] text-slate-500">
+                  <span>Didn't receive the email? Check spam.</span>
                   {cooldown > 0 ? (
-                    <span className="text-slate-400 font-medium text-[11px]">
-                      Resend available in {cooldown}s
-                    </span>
+                    <span className="font-semibold text-slate-600">Resend in {cooldown}s</span>
                   ) : (
                     <button
                       type="button"
                       onClick={handleVerifyEmailRequest}
-                      className="text-blue-600 font-bold hover:underline"
+                      className="font-bold text-slate-900 hover:underline"
                     >
                       Resend OTP
                     </button>
@@ -310,47 +333,53 @@ export function Register({ onRegister, onLoginClick }) {
               </div>
             )}
 
-            {/* Role Selection Option - Admin / Employee */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Role</label>
+            {/* Select Role */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Account Role</label>
               <div className="relative">
-                <Briefcase className="absolute left-3 top-3 text-slate-400" size={18} />
-                <AppDropdown
-                value={role}
-                onChange={v => setRole(v)}
-                options={[{value:'Employee',label:'Employee'},{value:'Admin',label:'Admin'}]}
-                size="sm"
-              />
+                <Briefcase className="absolute left-3.5 top-3 text-slate-400" size={18} />
+                <div className="pl-10">
+                  <AppDropdown
+                    value={role}
+                    onChange={(val) => setRole(val)}
+                    disabled={isVerifiedForCurrentEmail}
+                    options={[
+                      { value: 'Employee', label: 'Employee' },
+                      { value: 'Admin', label: 'Organization Admin' }
+                    ]}
+                    className="w-full"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Password */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Password</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 text-slate-400" size={18} />
+                <Lock className="absolute left-3.5 top-3 text-slate-400" size={18} />
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   disabled={!isVerifiedForCurrentEmail}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all disabled:opacity-50"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:bg-white focus:outline-none transition-all disabled:opacity-50"
                   placeholder="Create password"
                   required />
               </div>
             </div>
 
             {/* Confirm Password */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Confirm Password</label>
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-slate-700 uppercase tracking-wider">Confirm Password</label>
               <div className="relative">
-                <Lock className="absolute left-3 top-3 text-slate-400" size={18} />
+                <Lock className="absolute left-3.5 top-3 text-slate-400" size={18} />
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   disabled={!isVerifiedForCurrentEmail}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all disabled:opacity-50"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-slate-900 focus:bg-white focus:outline-none transition-all disabled:opacity-50"
                   placeholder="Confirm password"
                   required />
               </div>
@@ -359,18 +388,18 @@ export function Register({ onRegister, onLoginClick }) {
             <button
               type="submit"
               disabled={loading || !isVerifiedForCurrentEmail}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2 mt-4 text-sm"
+              className="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 disabled:cursor-not-allowed text-amber-400 font-extrabold py-3.5 rounded-xl shadow-lg shadow-slate-900/15 transition-all flex items-center justify-center gap-2 mt-4 text-sm"
             >
-              {loading ? <Loader2 className="animate-spin" size={18} /> : 'Create Account'}
+              {loading ? <Loader2 className="animate-spin" size={18} /> : 'Create Account & Start Trial'}
             </button>
           </form>
           
           <div className="mt-6 text-center">
-            <p className="text-sm text-slate-500">
+            <p className="text-xs sm:text-sm text-slate-500">
               Already have an account?{' '}
               <button
                 onClick={onLoginClick}
-                className="text-blue-600 font-bold hover:underline"
+                className="text-slate-900 font-bold hover:underline"
               >
                 Sign In
               </button>

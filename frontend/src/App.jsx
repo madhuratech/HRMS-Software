@@ -6,6 +6,8 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { Login } from './components/auth/Login';
 import { Register } from './components/auth/Register';
+import { LandingPage } from './components/landing/LandingPage';
+import { PricingPage } from './components/landing/PricingPage';
 import { PermissionGuard } from './components/auth/PermissionGuard';
 import { AdminManagerRegister } from './components/auth/AdminManagerRegister';
 import { NotificationsPage } from './components/notifications/NotificationsPage';
@@ -157,7 +159,7 @@ import { CustomCursor } from './components/ui/CustomCursor';
 import { Agentation } from 'agentation';
 
 function App() {
-  const [authView, setAuthView] = useState('login');
+  const [authView, setAuthView] = useState('landing'); // 'landing' | 'login' | 'register' | 'pricing'
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [currentView, setCurrentView] = useState('dashboard');
@@ -270,11 +272,30 @@ function App() {
     window.dispatchEvent(new CustomEvent('permissionsUpdated', { detail: { roleKey: finalRole, permissions: incomingPerms } }));
   };
 
+  const handleQuickDemoLogin = (role = 'SUPER_ADMIN', name = 'Madhura Admin') => {
+    const emailPreset = role === 'SUPER_ADMIN'
+      ? 'madhuratechcbe@gmail.com'
+      : role === 'TEAM_LEADER'
+      ? 'muthu@gmail.com'
+      : 'dhilipanmadhuratech@gmail.com';
+    
+    const userObj = {
+      id: role === 'SUPER_ADMIN' ? 1 : (role === 'TEAM_LEADER' ? 3 : 2),
+      name: name,
+      email: emailPreset,
+      role: role,
+      token: 'mock_demo_jwt_token',
+      employeeId: role === 'SUPER_ADMIN' ? 1 : (role === 'TEAM_LEADER' ? 3 : 2),
+      employeeCode: role === 'SUPER_ADMIN' ? 'EMP0001' : (role === 'TEAM_LEADER' ? 'EMP0003' : 'EMP0002')
+    };
+    handleLogin(role, name, userObj);
+  };
+
   const handleLogout = () => {
     setIsLoggedIn(false);
     setUserRole('SUPER_ADMIN');
     setUserName('');
-    setAuthView('login');
+    setAuthView('landing');
 
     // Clear all persisted user-specific auth, role, and permission storage
     localStorage.removeItem('hrms_auth');
@@ -321,16 +342,58 @@ function App() {
   }
 
   if (!isLoggedIn) {
-    if (authView === 'register' || window.location.pathname.includes('verify-email')) {
+    // Check if public career page is requested directly
+    if (typeof window !== 'undefined' && window.location.pathname.startsWith('/career')) {
+      return (
+        <BrowserRouter>
+          <Routes>
+            <Route path="/career" element={<PublicCareerPage />} />
+            <Route path="/career/job/:slug" element={<PublicJobDetails />} />
+            <Route path="*" element={<Navigate to="/career" replace />} />
+          </Routes>
+        </BrowserRouter>
+      );
+    }
+
+    if (authView === 'register' || (typeof window !== 'undefined' && window.location.pathname.includes('verify-email'))) {
       return (
         <Register
           onRegister={handleLogin}
-          onLoginClick={() => setAuthView('login')} />);
+          onLoginClick={() => setAuthView('login')}
+          onHomeClick={() => setAuthView('landing')}
+        />
+      );
     }
+
+    if (authView === 'login') {
+      return (
+        <Login
+          onLogin={handleLogin}
+          onRegisterClick={() => setAuthView('register')}
+          onHomeClick={() => setAuthView('landing')}
+        />
+      );
+    }
+
+    if (authView === 'pricing') {
+      return (
+        <PricingPage 
+          onOpenLogin={() => setAuthView('login')}
+          onBackToHome={() => setAuthView('landing')}
+        />
+      );
+    }
+
+    // Default opening view: Landing Page
     return (
-      <Login
-        onLogin={handleLogin}
-        onRegisterClick={() => setAuthView('register')} />);
+      <LandingPage
+        onOpenLogin={() => setAuthView('login')}
+        onOpenRegister={() => setAuthView('register')}
+        onOpenPricing={() => setAuthView('pricing')}
+        onQuickDemoLogin={handleQuickDemoLogin}
+        isLoggedIn={false}
+      />
+    );
   }
 
   // A helper component to bridge the old currentView state with React Router
@@ -375,6 +438,16 @@ function App() {
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/landing" element={
+              <LandingPage
+                onOpenLogin={() => {}}
+                onOpenRegister={() => {}}
+                onQuickDemoLogin={handleQuickDemoLogin}
+                isLoggedIn={true}
+                userRole={userRole}
+              />
+            } />
+            <Route path="/home" element={<Navigate to="/landing" replace />} />
             
             {/* Public Career Website Routes */}
             <Route path="/career" element={<PublicCareerPage />} />
