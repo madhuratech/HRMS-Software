@@ -371,27 +371,6 @@ export function CustomerTrialModal({
                     )}
                   </div>
 
-                  {devPreviewOtp && !otpVerified && (
-                    <div style={{
-                      marginTop: "6px", padding: "8px 12px",
-                      background: "#eff6ff", border: "1px dashed #93c5fd",
-                      borderRadius: "8px", fontSize: "12px", color: "#1d4ed8",
-                      display: "flex", alignItems: "center", justifyContent: "space-between",
-                    }}>
-                      <span>📧 OTP sent to <strong>{email}</strong> · Dev code: <strong style={{ letterSpacing: "2px" }}>{devPreviewOtp}</strong></span>
-                      <button
-                        type="button" onClick={() => setOtpCode(devPreviewOtp)}
-                        style={{
-                          background: "#2563eb", color: "#fff", border: "none",
-                          borderRadius: "5px", padding: "2px 8px", marginLeft: "8px",
-                          fontSize: "11px", cursor: "pointer", fontWeight: 700, whiteSpace: "nowrap",
-                        }}
-                      >
-                        Use
-                      </button>
-                    </div>
-                  )}
-
                   {otpSent && !otpVerified && (
                     <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
