@@ -25,6 +25,7 @@ export function AppLayout({ userRole, onLogout }) {
           title={currentView}
           userRole={userRole}
           currentView={currentView}
+          onLogout={onLogout}
         />
 
         <main className={`page-content bg-slate-50 ${isAIAssistant ? 'p-0 overflow-hidden' : 'p-4 md:p-6'}`}>

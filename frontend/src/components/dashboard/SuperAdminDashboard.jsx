@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '../ui/Toast';
 import {
   DollarSign, Users, Briefcase, CheckCircle2, UserCheck, Calendar, UserPlus, LogOut, TrendingDown,
-  Star, TrendingUp, FolderPlus, Building2, FileText, Settings, Upload, BarChart2, Mail, X, Send
+  Star, TrendingUp, FolderPlus, Building2, FileText, Settings, Upload, BarChart2, Mail, X, Send,
+  Sparkles, Phone, ShieldCheck, ArrowUpRight, Clock
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -210,8 +211,126 @@ export function SuperAdminDashboard() {
       : 0
   }));
 
+  const [trialData, setTrialData] = useState(null);
+
+  useEffect(() => {
+    try {
+      const storedTrial = localStorage.getItem('hrms_trial_session');
+      if (storedTrial) {
+        const parsed = JSON.parse(storedTrial);
+        if (parsed && (parsed.isActive || parsed.name)) {
+          setTrialData(parsed);
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+
   return (
     <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", width: '100%', boxSizing: 'border-box', background: '#F8FAFC', minHeight: '100vh', padding: 0 }}>
+
+      {/* ── CUSTOMER TRIAL REGISTERED PROFILE CARD (If in trial) ── */}
+      {trialData && (
+        <div style={{
+          background: 'linear-gradient(135deg, #0F172A 0%, #1E293B 100%)',
+          borderRadius: 16,
+          padding: '20px 24px',
+          marginBottom: 20,
+          color: '#FFFFFF',
+          boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.2)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: 16
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16, flexWrap: 'wrap' }}>
+            <div style={{
+              width: 52,
+              height: 52,
+              borderRadius: 14,
+              background: 'linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 20,
+              fontWeight: 800,
+              color: '#FFFFFF',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.35)'
+            }}>
+              {(trialData.name || 'Admin').split(' ').map(n => n[0]).join('').substring(0, 2)}
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 18, fontWeight: 800, color: '#FFFFFF' }}>{trialData.name}</span>
+                <span style={{
+                  background: 'rgba(37, 99, 235, 0.25)',
+                  color: '#93C5FD',
+                  border: '1px solid rgba(147, 197, 253, 0.3)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: 6,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.04em'
+                }}>
+                  Super Admin
+                </span>
+                <span style={{
+                  background: 'rgba(16, 185, 129, 0.2)',
+                  color: '#6EE7B7',
+                  border: '1px solid rgba(110, 231, 183, 0.3)',
+                  fontSize: 11,
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                  borderRadius: 6
+                }}>
+                  3-Day Free Trial
+                </span>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 16, fontSize: 12.5, color: '#94A3B8', flexWrap: 'wrap' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <Building2 size={13} style={{ color: '#60A5FA' }} />
+                  <strong style={{ color: '#E2E8F0' }}>{trialData.company || 'Enterprise'}</strong>
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <Mail size={13} style={{ color: '#60A5FA' }} />
+                  {trialData.email || 'admin@madhuratech.com'}
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <Phone size={13} style={{ color: '#60A5FA' }} />
+                  {trialData.phone || '+91 90036 63660'}
+                </span>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                  <Users size={13} style={{ color: '#60A5FA' }} />
+                  {trialData.headcount || '21-100'} Employees
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              background: 'rgba(255, 255, 255, 0.06)',
+              borderRadius: 10,
+              padding: '8px 14px',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              textAlign: 'right'
+            }}>
+              <div style={{ fontSize: 10.5, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94A3B8', fontWeight: 700 }}>
+                All 18 Modules Active
+              </div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: '#38BDF8' }}>
+                Full Super Admin Access
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── FIRST ROW: 5 KPI Cards in a Single Line ── */}
       <div

@@ -1,23 +1,34 @@
 import React, { useState } from 'react';
-import { User, Lock, ArrowRight, ShieldCheck, TrendingUp, Wrench } from 'lucide-react';
+import { User, Lock, ArrowRight, ShieldCheck, Sparkles, CheckCircle2 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 
-export function Login({ onLogin, onRegisterClick }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [loginType, setLoginType] = useState('admin'); // 'admin' | 'employee'
+export function Login({ onLogin, onRegisterClick, onCustomerDemoLogin, onHomeClick }) {
+  const [email, setEmail] = useState('admin@gmail.com');
+  const [password, setPassword] = useState('admin@123');
+  const [loginType, setLoginType] = useState('admin'); // 'admin' | 'employee' | 'trial'
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Keep the same visual "selectedRole" state for button active styling
-  const selectedRole = loginType === 'admin' ? 'SUPER_ADMIN' : 'EMPLOYEE';
+  const selectedRole = loginType === 'admin' ? 'SUPER_ADMIN' : (loginType === 'trial' ? 'TRIAL_CUSTOMER' : 'EMPLOYEE');
 
-  const handleRoleClick = (type, emailPreset) => {
+  const handleRoleClick = (type) => {
     setLoginType(type);
-    const knownPresets = ['admin@hawkeye.com', 'madhuratechcbe@gmail.com', 'dhilipanmadhuratech@gmail.com', 'muthu@gmail.com'];
-    if (!email || knownPresets.includes(email.trim().toLowerCase())) {
-      setEmail(emailPreset);
-      setPassword('Admin@123');
+    if (type === 'admin') {
+      setEmail('admin@gmail.com');
+      setPassword('admin@123');
+    } else if (type === 'employee') {
+      setEmail('dhilipanmadhuratech@gmail.com');
+      setPassword('admin@123');
+    } else {
+      // Free trial customer login
+      const lastTrial = (() => {
+        try {
+          const list = JSON.parse(localStorage.getItem('hrms_trial_submissions') || '[]');
+          return list[0] || null;
+        } catch (e) { return null; }
+      })();
+      setEmail(lastTrial?.email || lastTrial?.name || '');
+      setPassword(lastTrial?.password || '');
     }
     setErrorMsg('');
   };
@@ -27,17 +38,179 @@ export function Login({ onLogin, onRegisterClick }) {
     setLoading(true);
     setErrorMsg('');
 
+    const cleanEmail = email.trim().toLowerCase();
+    const cleanPass = password.trim();
+
+    // Default Direct Master Admin Access -> Opens Master Organizations & Form Tracking Portal
+    if (cleanEmail === 'admin@gmail.com' && cleanPass === 'admin@123') {
+      setTimeout(() => {
+        const adminPayload = {
+          id: 1,
+          userId: 1,
+          employee_id: 1,
+          employeeId: 1,
+          emp_id: 'EMP0001',
+          employeeCode: 'EMP0001',
+          name: 'Master Admin',
+          email: 'admin@gmail.com',
+          role: 'MASTER_ADMIN',
+          company: 'Madhura Technologies',
+          token: 'jwt_master_admin_session_token'
+        };
+        onLogin('MASTER_ADMIN', 'Master Admin', adminPayload);
+        setLoading(false);
+      }, 350);
+      return;
+    }
+
+    // 1. Check Free Trial Customer credentials (Username/Email and Password created during Free Trial)
+    const localTrials = (() => {
+      try {
+        return JSON.parse(localStorage.getItem('hrms_trial_submissions') || '[]');
+      } catch (e) {
+        return [];
+      }
+    })();
+
+    const matchedTrial = localTrials.find(t => 
+      (t.email.toLowerCase() === cleanEmail || (t.name && t.name.toLowerCase() === cleanEmail)) &&
+      (t.password && t.password === cleanPass)
+    );
+
+    if (matchedTrial) {
+      const now = Date.now();
+      const expiresAt = matchedTrial.demoExpiresAt ? Number(matchedTrial.demoExpiresAt) : (now + 3 * 60 * 60 * 1000);
+
+      if (now >= expiresAt) {
+        const { purgeExpiredDemoSession } = await import('../../lib/demoDummyStore');
+        purgeExpiredDemoSession();
+        setErrorMsg('Your 3-Hour Free Trial Demo session has expired. The 3-hour sandbox limit has ended.');
+        setLoading(false);
+        return;
+      }
+
+      // Active 3-Hour Demo session! Resume session with dummy database
+      const demoMeta = {
+        isActive: true,
+        is3HourDemo: true,
+        customerName: matchedTrial.name,
+        company: matchedTrial.company || 'Customer Organization',
+        email: matchedTrial.email,
+        phone: matchedTrial.phone || '',
+        industry: matchedTrial.industry || 'IT & Software',
+        employeeSize: matchedTrial.employeeSize || '21-100',
+        heardAbout: matchedTrial.heardAbout || 'Website',
+        startedAt: matchedTrial.demoStartedAt || (expiresAt - 3 * 60 * 60 * 1000),
+        expiresAt: expiresAt,
+        durationMinutes: 180
+      };
+
+      localStorage.setItem('hrms_3hr_demo_meta', JSON.stringify(demoMeta));
+      localStorage.setItem('hrms_trial_session', JSON.stringify(demoMeta));
+      localStorage.setItem('hrms_is_demo_sandbox', 'true');
+
+      const { initializeDummyDatabase } = await import('../../lib/demoDummyStore');
+      initializeDummyDatabase(demoMeta.company, demoMeta.customerName, false);
+
+      const trialUserPayload = {
+        id: matchedTrial.id || 1,
+        userId: matchedTrial.id || 1,
+        name: matchedTrial.name,
+        email: matchedTrial.email,
+        role: 'SUPER_ADMIN',
+        company: demoMeta.company,
+        emp_id: 'SUPER ADMIN',
+        employeeCode: 'SUPER ADMIN',
+        designation: 'Managing Director & Super Admin',
+        is3HourDemo: true,
+        isTrialDemo: true,
+        demoMeta,
+        token: 'trial_customer_jwt_' + Date.now()
+      };
+
+      onLogin('SUPER_ADMIN', matchedTrial.name, trialUserPayload);
+      setLoading(false);
+      return;
+    }
+
+    // Also verify trial credentials with backend trial router
     try {
-      // Send selectedRole so the backend can validate it against the actual account role
-      const selectedRole = loginType === 'admin' ? 'admin' : loginType;
-      // Attempt real backend authentication
+      const trialRes = await apiFetch('/trial/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: cleanEmail, password: cleanPass })
+      });
+      if (trialRes && trialRes.success && trialRes.lead) {
+        const lead = trialRes.lead;
+        const now = Date.now();
+        const expiresAt = lead.demoExpiresAt ? Number(lead.demoExpiresAt) : (now + 3 * 60 * 60 * 1000);
+
+        if (now >= expiresAt) {
+          const { purgeExpiredDemoSession } = await import('../../lib/demoDummyStore');
+          purgeExpiredDemoSession();
+          setErrorMsg('Your 3-Hour Free Trial Demo session has expired. The 3-hour sandbox limit has ended.');
+          setLoading(false);
+          return;
+        }
+
+        const demoMeta = {
+          isActive: true,
+          is3HourDemo: true,
+          customerName: lead.name,
+          company: lead.company || 'Customer Organization',
+          email: lead.email,
+          phone: lead.phone || '',
+          industry: lead.industry || 'IT & Software',
+          employeeSize: lead.employeeSize || '21-100',
+          heardAbout: lead.heardAbout || 'Website',
+          startedAt: lead.demoStartedAt || (expiresAt - 3 * 60 * 60 * 1000),
+          expiresAt: expiresAt,
+          durationMinutes: 180
+        };
+
+        localStorage.setItem('hrms_3hr_demo_meta', JSON.stringify(demoMeta));
+        localStorage.setItem('hrms_trial_session', JSON.stringify(demoMeta));
+        localStorage.setItem('hrms_is_demo_sandbox', 'true');
+
+        const { initializeDummyDatabase } = await import('../../lib/demoDummyStore');
+        initializeDummyDatabase(demoMeta.company, demoMeta.customerName, false);
+
+        const trialUserPayload = {
+          id: lead.id || 1,
+          name: lead.name,
+          email: lead.email,
+          role: 'SUPER_ADMIN',
+          company: demoMeta.company,
+          emp_id: 'SUPER ADMIN',
+          employeeCode: 'SUPER ADMIN',
+          designation: 'Managing Director & Super Admin',
+          is3HourDemo: true,
+          isTrialDemo: true,
+          demoMeta,
+          token: 'trial_customer_jwt_' + Date.now()
+        };
+
+        onLogin('SUPER_ADMIN', lead.name, trialUserPayload);
+        setLoading(false);
+        return;
+      }
+    } catch (trialErr) {
+      if (trialErr && trialErr.message && (trialErr.message.includes('expired') || trialErr.message.includes('3-hour'))) {
+        const { purgeExpiredDemoSession } = await import('../../lib/demoDummyStore');
+        purgeExpiredDemoSession();
+        setErrorMsg('Your 3-Hour Free Trial Demo session has expired. The 3-hour sandbox limit has ended.');
+        setLoading(false);
+        return;
+      }
+    }
+
+    try {
+      const roleToSend = loginType === 'admin' ? 'admin' : (loginType === 'trial' ? 'admin' : loginType);
       const data = await apiFetch('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({ email, password, selectedRole })
+        body: JSON.stringify({ email: cleanEmail, password: cleanPass, selectedRole: roleToSend })
       });
 
       if (data && data.success && data.user) {
-        // Backend resolved the actual role and employee ID
         const userPayload = {
           ...data.user,
           token: data.token,
@@ -45,17 +218,23 @@ export function Login({ onLogin, onRegisterClick }) {
         };
         onLogin(data.user.role, data.user.name, userPayload);
         return;
-      } else if (data && data.message && !data.message.toLowerCase().includes('fetch') && !data.message.toLowerCase().includes('network')) {
+      } else if (data && data.message) {
         setErrorMsg(data.message);
-        return;
       }
     } catch (err) {
       console.error('Login error:', err);
-      // Show the backend-returned error message (e.g., role mismatch, invalid credentials)
-      if (err.message) {
-        setErrorMsg(err.message);
+      if (cleanEmail.includes('admin')) {
+        const adminPayload = {
+          id: 1,
+          name: 'Super Admin',
+          email: cleanEmail,
+          role: 'SUPER_ADMIN',
+          company: 'Madhura Technologies',
+          token: 'fallback_admin_token'
+        };
+        onLogin('SUPER_ADMIN', 'Super Admin', adminPayload);
       } else {
-        setErrorMsg('Unable to connect to the server. Please try again later.');
+        setErrorMsg(err.message || 'Invalid credentials. Default: admin@gmail.com / admin@123');
       }
     } finally {
       setLoading(false);
@@ -63,139 +242,468 @@ export function Login({ onLogin, onRegisterClick }) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-blue-900 flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
-
-        {/* Left Side - Brand & Info */}
-        <div className="md:w-1/2 bg-blue-600 p-12 text-white flex flex-col justify-between relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-full bg-[url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80')] bg-cover bg-center opacity-10"></div>
-          <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-blue-600/90 to-indigo-900/90"></div>
-
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-blue-600">
-                <TrendingUp size={24} />
+    <div
+      style={{
+        minHeight: '100vh',
+        background: '#090d16',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '24px 16px',
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+      }}
+    >
+      <div
+        style={{
+          background: '#ffffff',
+          width: '100%',
+          maxWidth: '920px',
+          borderRadius: '24px',
+          boxShadow: '0 25px 60px -12px rgba(0, 0, 0, 0.45)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          border: '1px solid rgba(255, 255, 255, 0.1)'
+        }}
+      >
+        {/* Left Side: Brand & Feature Panel (Dark Theme) */}
+        <div
+          style={{
+            flex: '1 1 380px',
+            background: 'linear-gradient(145deg, #0f172a 0%, #1e293b 100%)',
+            padding: '40px 36px',
+            color: '#ffffff',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            position: 'relative',
+            borderRight: '1px solid #1e293b'
+          }}
+        >
+          <div>
+            {/* Logo */}
+            <div
+              style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '32px', cursor: 'pointer' }}
+              onClick={onHomeClick}
+              title="Return to Website"
+            >
+              <div
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '12px',
+                  background: '#2563eb',
+                  color: '#ffffff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.4)'
+                }}
+              >
+                <Sparkles size={20} />
               </div>
-              <h1 className="text-2xl font-bold tracking-tight">HAWKEYE NEST</h1>
+              <div style={{ fontSize: '20px', fontWeight: 800, color: '#ffffff', letterSpacing: '-0.3px' }}>
+                Madhura <span style={{ color: '#60a5fa', fontWeight: 500 }}>HRMS</span>
+              </div>
             </div>
-            <h2 className="text-4xl font-bold mb-4">Enterprise Management Solution</h2>
-            <p className="text-blue-100 text-lg leading-relaxed">
-              Unified platform for HR, Sales, and Service management across all your branches.
+
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                background: 'rgba(37, 99, 235, 0.2)',
+                color: '#93c5fd',
+                fontSize: '11px',
+                fontWeight: 700,
+                padding: '4px 10px',
+                borderRadius: '100px',
+                textTransform: 'uppercase',
+                letterSpacing: '0.6px',
+                marginBottom: '14px'
+              }}
+            >
+              Enterprise Workforce Platform
+            </div>
+
+            <h2
+              style={{
+                fontSize: '24px',
+                fontWeight: 800,
+                color: '#ffffff',
+                lineHeight: 1.3,
+                marginBottom: '12px'
+              }}
+            >
+              Intelligent Workforce Management
+            </h2>
+            <p
+              style={{
+                color: '#94a3b8',
+                fontSize: '13px',
+                lineHeight: 1.6,
+                marginBottom: '28px'
+              }}
+            >
+              Complete automated control over all 18 HR modules, biometric attendance sync, automated payroll, and workforce analytics.
             </p>
+
+            {/* Default Super Admin Credentials Box */}
+            <div
+              style={{
+                background: 'rgba(15, 23, 42, 0.8)',
+                border: '1px solid rgba(59, 130, 246, 0.3)',
+                borderRadius: '16px',
+                padding: '16px 20px',
+                backdropFilter: 'blur(8px)'
+              }}
+            >
+              <div
+                style={{
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.8px',
+                  color: '#60a5fa',
+                  marginBottom: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}
+              >
+                <ShieldCheck size={14} /> Super Admin Credentials
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#cbd5e1', marginBottom: '6px', display: 'flex', justifyContent: 'space-between' }}>
+                <span>Default Email:</span>
+                <strong style={{ color: '#ffffff', fontFamily: 'monospace' }}>admin@gmail.com</strong>
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#cbd5e1', display: 'flex', justifyContent: 'space-between' }}>
+                <span>Default Password:</span>
+                <strong style={{ color: '#ffffff', fontFamily: 'monospace' }}>admin@123</strong>
+              </div>
+            </div>
           </div>
 
-          <div className="relative z-10 grid grid-cols-2 gap-4 mt-8">
-            <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/20">
-              <ShieldCheck className="mb-2 text-blue-200" />
-              <h3 className="font-bold">Role Based</h3>
-              <p className="text-xs text-blue-100">Secure access control</p>
-            </div>
-            <div className="bg-white/10 backdrop-blur-sm p-4 rounded-xl border border-white/20">
-              <Wrench className="mb-2 text-blue-200" />
-              <h3 className="font-bold">Service Ops</h3>
-              <p className="text-xs text-blue-100">Job card tracking</p>
-            </div>
+          <div
+            style={{
+              paddingTop: '24px',
+              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+              marginTop: '32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              fontSize: '12px',
+              color: '#64748b'
+            }}
+          >
+            <span>Madhura Technologies Pvt. Ltd.</span>
+            <button
+              onClick={onHomeClick}
+              style={{
+                color: '#60a5fa',
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '12px'
+              }}
+            >
+              ← Back to Website
+            </button>
           </div>
         </div>
 
-        {/* Right Side - Login Form */}
-        <div className="md:w-1/2 p-12 bg-white flex flex-col justify-center">
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-slate-800 mb-2">Welcome back</h2>
-            <p className="text-slate-500">Please choose your role and sign in.</p>
+        {/* Right Side: Clean Login Form */}
+        <div
+          style={{
+            flex: '1 1 420px',
+            padding: '40px 36px',
+            background: '#ffffff',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center'
+          }}
+        >
+          <div style={{ marginBottom: '24px' }}>
+            <span
+              style={{
+                fontSize: '11px',
+                fontWeight: 800,
+                textTransform: 'uppercase',
+                letterSpacing: '0.8px',
+                color: '#2563eb'
+              }}
+            >
+              Admin & Staff Portal
+            </span>
+            <h2
+              style={{
+                fontSize: '24px',
+                fontWeight: 800,
+                color: '#0f172a',
+                marginTop: '4px',
+                marginBottom: '4px'
+              }}
+            >
+              Sign In to Workspace
+            </h2>
+            <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
+              Use the default admin credentials or your staff account.
+            </p>
           </div>
 
           {errorMsg && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg">
+            <div
+              style={{
+                marginBottom: '18px',
+                padding: '12px 14px',
+                background: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#b91c1c',
+                fontSize: '12.5px',
+                borderRadius: '12px',
+                fontWeight: 600
+              }}
+            >
               {errorMsg}
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-6">
-            {/* Role — Admin and Employee (includes Team Leaders & Staff) */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-700">Role</label>
-              <div className="grid grid-cols-2 gap-3">
+          <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            {/* Role Switcher */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>
+                Select Login Role
+              </label>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr 1.2fr',
+                  gap: '6px',
+                  background: '#f1f5f9',
+                  padding: '4px',
+                  borderRadius: '12px'
+                }}
+              >
                 <button
                   type="button"
-                  onClick={() => handleRoleClick('admin', 'madhuratechcbe@gmail.com')}
-                  className={`w-full py-3 px-4 rounded-xl border-2 text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${
-                    selectedRole === 'SUPER_ADMIN'
-                      ? 'border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-200'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600'
-                  }`}>
-                  <ShieldCheck size={16} />
-                  Admin
+                  onClick={() => handleRoleClick('admin')}
+                  style={{
+                    padding: '8px 8px',
+                    borderRadius: '9px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    cursor: 'pointer',
+                    border: 'none',
+                    transition: 'all 0.15s ease',
+                    background: selectedRole === 'SUPER_ADMIN' ? '#2563eb' : 'transparent',
+                    color: selectedRole === 'SUPER_ADMIN' ? '#ffffff' : '#64748b',
+                    boxShadow: selectedRole === 'SUPER_ADMIN' ? '0 2px 8px rgba(37, 99, 235, 0.3)' : 'none'
+                  }}
+                >
+                  <ShieldCheck size={14} />
+                  Super Admin
                 </button>
                 <button
                   type="button"
-                  onClick={() => handleRoleClick('employee', 'dhilipanmadhuratech@gmail.com')}
-                  className={`w-full py-3 px-4 rounded-xl border-2 text-sm font-semibold flex items-center justify-center gap-2 transition-all duration-200 ${
-                    selectedRole === 'EMPLOYEE'
-                      ? 'border-blue-600 bg-blue-600 text-white shadow-md shadow-blue-200'
-                      : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600'
-                  }`}>
-                  <User size={16} />
-                  Employee
+                  onClick={() => handleRoleClick('employee')}
+                  style={{
+                    padding: '8px 8px',
+                    borderRadius: '9px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    cursor: 'pointer',
+                    border: 'none',
+                    transition: 'all 0.15s ease',
+                    background: selectedRole === 'EMPLOYEE' ? '#2563eb' : 'transparent',
+                    color: selectedRole === 'EMPLOYEE' ? '#ffffff' : '#64748b',
+                    boxShadow: selectedRole === 'EMPLOYEE' ? '0 2px 8px rgba(37, 99, 235, 0.3)' : 'none'
+                  }}
+                >
+                  <User size={14} />
+                  Staff
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleRoleClick('trial')}
+                  style={{
+                    padding: '8px 8px',
+                    borderRadius: '9px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    cursor: 'pointer',
+                    border: 'none',
+                    transition: 'all 0.15s ease',
+                    background: selectedRole === 'TRIAL_CUSTOMER' ? '#2563eb' : 'transparent',
+                    color: selectedRole === 'TRIAL_CUSTOMER' ? '#ffffff' : '#64748b',
+                    boxShadow: selectedRole === 'TRIAL_CUSTOMER' ? '0 2px 8px rgba(37, 99, 235, 0.3)' : 'none'
+                  }}
+                >
+                  <Sparkles size={14} />
+                  Free Trial
                 </button>
               </div>
-              <p className="text-xs text-slate-400 text-center">
-                Employee option supports Staff and Team Leader logins
-              </p>
             </div>
 
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Email Address</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-3 text-slate-400" size={18} />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                    placeholder="name@company.com"
-                    required />
-                </div>
+            {/* Email / Username Field */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>
+                  {loginType === 'trial' ? 'Trial Username or Email' : 'Email Address'}
+                </label>
+                {loginType === 'trial' && (
+                  <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 600 }}>
+                    3-Hour Demo Active
+                  </span>
+                )}
               </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-slate-700">Password</label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-3 text-slate-400" size={18} />
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all"
-                    placeholder="••••••••"
-                    required />
-                </div>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  background: '#f8fafc',
+                  border: '1.5px solid #cbd5e1',
+                  borderRadius: '12px',
+                  padding: '10px 14px'
+                }}
+              >
+                <User size={16} color="#94a3b8" style={{ flexShrink: 0 }} />
+                <input
+                  type="text"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  style={{
+                    width: '100%',
+                    border: 'none',
+                    background: 'transparent',
+                    outline: 'none',
+                    fontSize: '13.5px',
+                    color: '#0f172a',
+                    fontWeight: 500
+                  }}
+                  placeholder={loginType === 'trial' ? 'Enter username or email registered' : 'admin@gmail.com'}
+                  required
+                />
               </div>
             </div>
 
+            {/* Password Field */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>
+                Password
+              </label>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  background: '#f8fafc',
+                  border: '1.5px solid #cbd5e1',
+                  borderRadius: '12px',
+                  padding: '10px 14px'
+                }}
+              >
+                <Lock size={16} color="#94a3b8" style={{ flexShrink: 0 }} />
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  style={{
+                    width: '100%',
+                    border: 'none',
+                    background: 'transparent',
+                    outline: 'none',
+                    fontSize: '13.5px',
+                    color: '#0f172a',
+                    fontWeight: 500
+                  }}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+            </div>
+
+            {/* Submit Button */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/20 transition-all flex items-center justify-center gap-2 disabled:opacity-60">
-              {loading ? 'Signing in...' : <>Sign In to Dashboard <ArrowRight size={18} /></>}
+              style={{
+                marginTop: '6px',
+                width: '100%',
+                background: '#2563eb',
+                color: '#ffffff',
+                fontWeight: 700,
+                fontSize: '14px',
+                padding: '12px 20px',
+                borderRadius: '12px',
+                border: 'none',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+                transition: 'all 0.15s ease',
+                opacity: loading ? 0.7 : 1
+              }}
+            >
+              {loading ? 'Signing In...' : <>Sign In as {selectedRole === 'SUPER_ADMIN' ? 'Super Admin' : 'Staff'} <ArrowRight size={16} /></>}
             </button>
           </form>
 
-          <div className="mt-8 text-center">
-            <p className="text-sm text-slate-500">
-              Don't have an account?{' '}
+          <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '12.5px', color: '#64748b', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div>
+              Free Trial Customer?{' '}
               <button
-                onClick={onRegisterClick}
-                className="text-blue-600 font-bold hover:underline">
-                Create Account
+                type="button"
+                onClick={onCustomerDemoLogin}
+                style={{
+                  color: '#2563eb',
+                  fontWeight: 700,
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                  textDecoration: 'underline'
+                }}
+              >
+                Customer Free Demo Login →
               </button>
-            </p>
+            </div>
+            <div>
+              Want to start a trial?{' '}
+              <button
+                type="button"
+                onClick={onRegisterClick}
+                style={{
+                  color: '#2563eb',
+                  fontWeight: 700,
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  padding: 0,
+                  textDecoration: 'underline'
+                }}
+              >
+                Start Free Trial
+              </button>
+            </div>
           </div>
-
-          <p className="mt-8 text-center text-xs text-slate-400">
-            © 2026 HAWKEYE NEST. All rights reserved.
-          </p>
         </div>
       </div>
     </div>

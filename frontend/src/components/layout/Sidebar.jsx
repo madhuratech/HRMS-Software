@@ -94,6 +94,19 @@ export function Sidebar({ userRole, onLogout, onClose }) {
     return () => window.removeEventListener('permissionsUpdated', handlePermUpdate);
   }, [userRole]);
 
+  const getSidebarCompany = () => {
+    try {
+      const demoMeta = JSON.parse(localStorage.getItem('hrms_3hr_demo_meta') || '{}');
+      if (demoMeta && demoMeta.company) return demoMeta.company;
+      const trialSession = JSON.parse(localStorage.getItem('hrms_trial_session') || '{}');
+      if (trialSession && trialSession.company) return trialSession.company;
+      const auth = JSON.parse(localStorage.getItem('hrms_auth') || '{}');
+      if (auth && auth.user && auth.user.company) return auth.user.company;
+    } catch (e) {}
+    return 'HAWKEYE NEST';
+  };
+  const companyTitle = getSidebarCompany();
+
   const getAuthUser = () => {
     try {
       const authRaw = localStorage.getItem('hrms_auth');
@@ -105,7 +118,9 @@ export function Sidebar({ userRole, onLogout, onClose }) {
           const role = parsed.role || userObj.role || localStorage.getItem('userRole') || userRole || 'SUPER_ADMIN';
           const photo = userObj.profile_photo || userObj.avatar || null;
           const department = userObj.department_name || userObj.department || '';
-          const empCode = userObj.employee_code || userObj.employeeCode || userObj.emp_id || (userObj.employee_id ? `EMP${String(userObj.employee_id).padStart(4, '0')}` : '');
+          const empCode = userObj.is3HourDemo || userObj.isTrialDemo
+            ? ''
+            : (userObj.employee_code || userObj.employeeCode || userObj.emp_id || (userObj.employee_id ? `EMP${String(userObj.employee_id).padStart(4, '0')}` : ''));
 
           return {
             name,
@@ -496,7 +511,7 @@ export function Sidebar({ userRole, onLogout, onClose }) {
           </linearGradient>
         </defs>
       </svg>
-      <div className="sidebar custom-sidebar overflow-y-auto safe-area-top">
+      <div className="sidebar custom-sidebar flex flex-col h-full overflow-hidden safe-area-top">
         {/* Logo */}
         <div className="p-5 custom-sidebar-border-b flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -506,8 +521,10 @@ export function Sidebar({ userRole, onLogout, onClose }) {
               </svg>
             </div>
             <div>
-              <h1 className="font-bold text-lg text-white tracking-tight">HAWKEYE NEST</h1>
-              <p className="text-[10px] text-blue-200/80 uppercase tracking-widest font-semibold mt-0.5">HRMS</p>
+              <h1 className="font-bold text-base text-white tracking-tight truncate max-w-[170px]" title={companyTitle}>
+                {companyTitle}
+              </h1>
+              <p className="text-[10px] text-blue-200/80 uppercase tracking-widest font-semibold mt-0.5">HRMS PLATFORM</p>
             </div>
           </div>
         </div>

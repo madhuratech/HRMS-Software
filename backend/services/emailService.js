@@ -28,48 +28,50 @@ exports.sendOtpEmail = async ({ toEmail, recipientName, otpCode }) => {
   const transporter = await getTransporter();
   const smtpUser = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
   const fromEmail = smtpUser || 'noreply@madhuratech.com';
-  const fromName = process.env.SMTP_FROM || `"HRMS Portal" <${fromEmail}>`;
-  const nameDisplay = recipientName || 'Administrator';
+  const fromName = process.env.SMTP_FROM || `"Madhura HRMS" <${fromEmail}>`;
+  const nameDisplay = recipientName || 'Customer';
 
-  // Read OTP recipient explicitly from process.env.SMTP_USER
-  // The entered registration email must NEVER be used as the OTP recipient
-  const targetRecipient = smtpUser;
+  // Send OTP to the actual customer's email address
+  const targetRecipient = toEmail;
 
   if (!targetRecipient) {
-    throw new Error('SMTP_USER environment variable is not defined. Cannot dispatch verification OTP.');
+    throw new Error('Recipient email is required to dispatch verification OTP.');
   }
 
   const mailOptions = {
     from: fromName,
-    to: targetRecipient, // Explicitly set to process.env.SMTP_USER
-    subject: 'HRMS Admin/Manager Registration - 6-Digit OTP Verification Code',
-    text: `Hello ${nameDisplay},\n\nYour 6-digit HRMS verification code is:\n\n${otpCode}\n\nThis code will expire in 5 minutes.\n\nIf you did not request this verification, please ignore this email.\n\nRegards,\nHRMS Portal`,
+    to: targetRecipient,
+    subject: 'Madhura HRMS - Your Email Verification Code',
+    text: `Hello ${nameDisplay},\n\nYour 6-digit Madhura HRMS verification code is:\n\n${otpCode}\n\nThis code is valid for 10 minutes.\n\nIf you did not request this, please ignore this email.\n\nRegards,\nMadhura HRMS Team`,
     html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
-        <div style="background-color: #2563eb; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 22px;">HAWKEYE NEST HRMS</h1>
+      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 0; background: #f8fafc;">
+        <div style="background: linear-gradient(135deg, #1e40af, #2563eb); padding: 32px 24px; text-align: center; border-radius: 12px 12px 0 0;">
+          <div style="display: inline-block; background: rgba(255,255,255,0.15); border-radius: 12px; padding: 10px 18px; margin-bottom: 12px;">
+            <span style="color: #fff; font-size: 18px; font-weight: 900; letter-spacing: -0.5px;">Madhura<span style="color: #93c5fd;">HRMS</span></span>
+          </div>
+          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">Email Verification Code</h1>
         </div>
-        <div style="padding: 30px 20px; color: #334155;">
-          <h2 style="color: #1e293b; margin-top: 0;">Admin/Manager Registration OTP</h2>
-          <p style="font-size: 15px; line-height: 1.5;">Hello <strong>${nameDisplay}</strong>,</p>
-          <p style="font-size: 15px; line-height: 1.5;">A request has been initiated to register a new administrative account. Please use the following 6-digit verification code:</p>
+        <div style="background: #ffffff; padding: 36px 28px; color: #334155; border: 1px solid #e2e8f0; border-top: none;">
+          <p style="font-size: 15px; line-height: 1.6; margin-top: 0;">Hello <strong>${nameDisplay}</strong>,</p>
+          <p style="font-size: 14px; line-height: 1.6; color: #64748b;">You are registering for a Free Trial of Madhura HRMS. Use the verification code below to confirm your email address:</p>
           
-          <div style="background-color: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 8px; padding: 20px; text-align: center; margin: 25px 0;">
-            <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #2563eb;">${otpCode}</span>
+          <div style="background: linear-gradient(135deg, #eff6ff, #dbeafe); border: 2px solid #bfdbfe; border-radius: 12px; padding: 28px; text-align: center; margin: 24px 0;">
+            <div style="font-size: 13px; color: #3b82f6; font-weight: 600; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px;">Your OTP Code</div>
+            <span style="font-size: 40px; font-weight: 900; letter-spacing: 12px; color: #1d4ed8; font-family: monospace;">${otpCode}</span>
+            <div style="font-size: 12px; color: #64748b; margin-top: 10px;">Valid for 10 minutes</div>
           </div>
 
-          <p style="font-size: 13px; color: #64748b;">This verification code is valid for <strong>5 minutes</strong>. Do not share this code with unauthorized personnel.</p>
-          <p style="font-size: 13px; color: #64748b;">If you did not request this code, please ignore this email.</p>
+          <p style="font-size: 13px; color: #94a3b8; line-height: 1.5;">Do not share this code with anyone. If you did not request this verification, you can safely ignore this email.</p>
         </div>
-        <div style="border-top: 1px solid #e2e8f0; padding-top: 15px; text-align: center; color: #94a3b8; font-size: 12px;">
-          &copy; 2026 HRMS Portal. All rights reserved.
+        <div style="padding: 16px 24px; text-align: center; color: #94a3b8; font-size: 12px;">
+          &copy; 2026 Madhura Technologies. All rights reserved.
         </div>
       </div>
     `
   };
 
   const info = await transporter.sendMail(mailOptions);
-  console.log(`[EMAIL DISPATCH SUCCESS] Verification OTP successfully sent to SMTP_USER (${targetRecipient}) | Message ID: ${info.messageId}`);
+  console.log(`[OTP EMAIL] Verification code sent to ${targetRecipient} | Message ID: ${info.messageId}`);
   return info;
 };
 
@@ -129,4 +131,46 @@ ${contentText || 'Please review your attached offer letter for details.'}
     console.error("[OFFER EMAIL SERVICE ERROR]:", err);
     throw err;
   }
+};
+
+exports.sendActivationEmail = async ({ toEmail, recipientName, activationUrl }) => {
+  const transporter = await getTransporter();
+  const smtpUser = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
+  const fromEmail = smtpUser || 'noreply@madhuratech.com';
+  const fromName = process.env.SMTP_FROM || `"Madhura HRMS" <${fromEmail}>`;
+  const nameDisplay = recipientName || 'Customer';
+
+  const mailOptions = {
+    from: fromName,
+    to: toEmail,
+    subject: 'Madhura HRMS - Activate Your 3-Hour Demo',
+    text: `Hello ${nameDisplay},\n\nYour registration is verified. Please use the following link to activate your 3-Hour Super Admin Demo Workspace:\n\n${activationUrl}\n\nThis link will securely open your setup form.\n\nRegards,\nMadhura HRMS Team`,
+    html: `
+      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 0; background: #f8fafc;">
+        <div style="background: linear-gradient(135deg, #059669, #047857); padding: 32px 24px; text-align: center; border-radius: 12px 12px 0 0;">
+          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">Demo Activation</h1>
+        </div>
+        <div style="background: #ffffff; padding: 36px 28px; color: #334155; border: 1px solid #e2e8f0; border-top: none;">
+          <p style="font-size: 15px; line-height: 1.6; margin-top: 0;">Hello <strong>${nameDisplay}</strong>,</p>
+          <p style="font-size: 14px; line-height: 1.6; color: #64748b;">Your email has been successfully verified! You are just one step away from launching your 3-Hour Super Admin Workspace.</p>
+          
+          <div style="text-align: center; margin: 32px 0;">
+            <a href="${activationUrl}" style="display: inline-block; padding: 14px 28px; background: linear-gradient(135deg, #059669, #047857); color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 700; border-radius: 8px; box-shadow: 0 4px 12px rgba(5,150,105,0.25);">
+              Accept & Activate Demo Workspace
+            </a>
+          </div>
+
+          <p style="font-size: 13px; color: #94a3b8; line-height: 1.5;">If the button above does not work, copy and paste the following URL into your browser:<br/><br/>
+          <span style="color: #3b82f6; word-break: break-all;">${activationUrl}</span></p>
+        </div>
+        <div style="padding: 16px 24px; text-align: center; color: #94a3b8; font-size: 12px;">
+          &copy; 2026 Madhura Technologies. All rights reserved.
+        </div>
+      </div>
+    `
+  };
+
+  const info = await transporter.sendMail(mailOptions);
+  console.log(`[ACTIVATION EMAIL] Sent to ${toEmail} | Message ID: ${info.messageId}`);
+  return info;
 };

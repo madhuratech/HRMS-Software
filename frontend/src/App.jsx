@@ -1,13 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ToastProvider } from './components/ui/Toast';
 import { PermissionProvider } from './context/PermissionContext';
 import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { Login } from './components/auth/Login';
+import { CustomerDemoLogin } from './components/auth/CustomerDemoLogin';
 import { Register } from './components/auth/Register';
 import { LandingPage } from './components/landing/LandingPage';
 import { PricingPage } from './components/landing/PricingPage';
+import { CustomerTrialModal } from './components/auth/CustomerTrialModal';
+import { CustomerActivationModal } from './components/auth/CustomerActivationModal';
+import { ContactModal } from './components/auth/ContactModal';
+import { DemoPersonaModal } from './components/demo/DemoPersonaModal';
+import { DemoTutorialTour } from './components/demo/DemoTutorialTour';
+import { DemoSessionBanner } from './components/demo/DemoSessionBanner';
+import { isDemoSessionActive, endDemoSession, getDemoTimeRemainingSeconds, initializeDummyDatabase } from './lib/demoDummyStore';
+import { TrialExpiredPaywall } from './components/auth/TrialExpiredPaywall';
+import { MasterAdminDashboard } from './components/dashboard/MasterAdminDashboard';
+import { MasterAdminLogin } from './components/auth/MasterAdminLogin';
+import './components/landing/LandingPage.css';
 import { PermissionGuard } from './components/auth/PermissionGuard';
 import { AdminManagerRegister } from './components/auth/AdminManagerRegister';
 import { NotificationsPage } from './components/notifications/NotificationsPage';
@@ -155,8 +167,8 @@ import SettingsSecurity from './components/settings/SettingsSecurity';
 import SettingsSystem from './components/settings/SettingsSystem';
 import { AIAssistantDashboard } from './components/ai-assistant/AIAssistantDashboard';
 
-import { CustomCursor } from './components/ui/CustomCursor';
-import { Agentation } from 'agentation';
+import { apiFetch } from './lib/api';
+import { Sparkles, AlertTriangle, ShieldCheck, Clock, LogOut, ArrowUpRight } from 'lucide-react';
 
 function App() {
   const [authView, setAuthView] = useState('landing'); // 'landing' | 'login' | 'register' | 'pricing'
@@ -166,10 +178,47 @@ function App() {
   const [userRole, setUserRole] = useState('SUPER_ADMIN');
   const [userName, setUserName] = useState('');
 
-  // On mount: restore auth state from localStorage and validate with backend /auth/me
-  React.useEffect(() => {
+  // 3-Hour Customer Free Trial & Activation Modals State
+  const [isTrialModalOpen, setIsTrialModalOpen] = useState(false);
+  const [isActivationModalOpen, setIsActivationModalOpen] = useState(false);
+  const [activationLeadData, setActivationLeadData] = useState(null);
+  const [isTutorialTourOpen, setIsTutorialTourOpen] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
+  const [isDemoSandbox, setIsDemoSandbox] = useState(() => {
+    return localStorage.getItem('hrms_is_demo_sandbox') === 'true';
+  });
+  const [isTrialActive, setIsTrialActive] = useState(false);
+  const [isPaywallActive, setIsPaywallActive] = useState(false);
+  const [trialUser, setTrialUser] = useState(null);
+
+  // On mount: restore auth state from localStorage
+  useEffect(() => {
     const initAuth = async () => {
       try {
+        // Check for active trial or demo sandbox session
+        const storedTrial = localStorage.getItem('hrms_trial_session');
+        if (storedTrial) {
+          try {
+            const parsedTrial = JSON.parse(storedTrial);
+            if (parsedTrial && parsedTrial.isActive) {
+              const now = Date.now();
+              if (parsedTrial.expiresAt && now >= parsedTrial.expiresAt) {
+                endDemoSession();
+                localStorage.removeItem('hrms_auth');
+              } else {
+                setIsTrialActive(true);
+                setTrialUser(parsedTrial);
+                if (parsedTrial.isDemo || localStorage.getItem('hrms_is_demo_sandbox') === 'true') {
+                  setIsDemoSandbox(true);
+                }
+              }
+            }
+          } catch (e) {
+            console.error('Trial parse error:', e);
+          }
+        }
+
         const storedAuth = localStorage.getItem('hrms_auth');
         if (storedAuth) {
           const authData = JSON.parse(storedAuth);
@@ -185,17 +234,6 @@ function App() {
                 setIsLoggedIn(true);
                 localStorage.setItem('userRole', refreshedRole);
                 localStorage.setItem('userName', refreshedName);
-                localStorage.setItem('hrms_auth', JSON.stringify({
-                  role: refreshedRole,
-                  name: refreshedName,
-                  loggedIn: true,
-                  token: authData.token,
-                  user: refreshedUser
-                }));
-                if (res.permissions) {
-                  localStorage.setItem('hrms_permissions', JSON.stringify(res.permissions));
-                  window.dispatchEvent(new CustomEvent('permissionsUpdated', { detail: { roleKey: refreshedRole, permissions: res.permissions } }));
-                }
                 setIsInitializing(false);
                 return;
               }
@@ -203,8 +241,8 @@ function App() {
               console.warn('Could not validate session via /auth/me:', apiErr);
             }
 
-            const role = authData.role || authData.user?.role || 'EMPLOYEE';
-            const name = authData.name || authData.user?.name || '';
+            const role = authData.role || authData.user?.role || 'SUPER_ADMIN';
+            const name = authData.name || authData.user?.name || 'Super Admin';
             setUserRole(role);
             setUserName(name);
             setIsLoggedIn(true);
@@ -214,8 +252,6 @@ function App() {
         }
       } catch (err) {
         localStorage.removeItem('hrms_auth');
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('userName');
       } finally {
         setIsInitializing(false);
       }
@@ -223,20 +259,73 @@ function App() {
     initAuth();
   }, []);
 
+  // URL Synchronization for direct navigation (/pricing, /master-admin, /activate-trial, /)
+  useEffect(() => {
+    const handleLocation = () => {
+      const path = window.location.pathname;
+      if (path.startsWith('/activate-trial')) {
+        const params = new URLSearchParams(window.location.search);
+        const token = params.get('token');
+        const email = params.get('email');
+        if (token || email) {
+          // Look up full lead data from localStorage (has password, name, phone etc.)
+          let leadData = { token, email: email || '', name: 'Customer Admin' };
+          try {
+            const stored = JSON.parse(localStorage.getItem('hrms_trial_submissions') || '[]');
+            const found = stored.find(l => l.email && email && l.email.toLowerCase() === email.toLowerCase());
+            if (found) leadData = { ...found, token };
+          } catch (e) {}
+          setActivationLeadData(leadData);
+          setIsActivationModalOpen(true);
+          // Set landing as backdrop
+          window.history.replaceState({}, '', '/');
+          setAuthView('landing');
+        }
+      } else if (path === '/pricing') {
+        setAuthView('pricing');
+      } else if (path === '/master-admin' || path === '/admin') {
+        setAuthView('master-admin');
+      } else if (path === '/login') {
+        setAuthView('login');
+      } else if (path === '/register') {
+        setAuthView('register');
+      } else if (path === '/' || path === '') {
+        setAuthView('landing');
+      } else if (!isLoggedIn && !path.startsWith('/career')) {
+        // If an unauthenticated user arrives at or was left at an internal route (e.g. /attendance/gps), normalize address bar to /
+        window.history.replaceState({}, '', '/');
+        setAuthView('landing');
+      }
+    };
+
+    handleLocation();
+    window.addEventListener('popstate', handleLocation);
+    return () => window.removeEventListener('popstate', handleLocation);
+  }, [isLoggedIn]);
+
   const handleLogin = (role, name, userObj) => {
-    const finalRole = role || (userObj && userObj.role) || 'EMPLOYEE';
-    const finalName = name || (userObj && userObj.name) || '';
+    const finalRole = role || (userObj && userObj.role) || 'SUPER_ADMIN';
+    const finalName = name || (userObj && userObj.name) || 'Admin User';
     const finalId = (userObj && (userObj.userId || userObj.id)) || 1;
     const finalEmpId = (userObj && (userObj.employeeId || userObj.employee_id)) || finalId;
     const finalEmpCode = (userObj && (userObj.employeeCode || userObj.employee_code || userObj.emp_id)) || `EMP${String(finalEmpId).padStart(4, '0')}`;
     const finalEmail = (userObj && userObj.email) || '';
-    const finalToken = (userObj && userObj.token) || 'mock_jwt_token';
+    const finalToken = (userObj && userObj.token) || 'mock_trial_jwt_token';
 
     setUserRole(finalRole);
     setUserName(finalName);
     setIsLoggedIn(true);
+    setIsPaywallActive(false);
     localStorage.setItem('userRole', finalRole);
     localStorage.setItem('userName', finalName);
+
+    // Ensure URL is set to /dashboard when logging in from root or auth screens
+    if (typeof window !== 'undefined') {
+      const currentPath = window.location.pathname;
+      if (currentPath === '/' || currentPath === '' || currentPath === '/login' || currentPath === '/pricing' || currentPath === '/register') {
+        window.history.pushState({}, '', '/dashboard');
+      }
+    }
 
     const authObj = {
       role: finalRole,
@@ -252,92 +341,209 @@ function App() {
         employeeCode: finalEmpCode,
         name: finalName,
         email: finalEmail,
-        role: finalRole
+        role: finalRole,
+        company: (userObj && userObj.company) || 'Madhura Enterprise'
       }
     };
     localStorage.setItem('hrms_auth', JSON.stringify(authObj));
+  };
 
-    const incomingPerms = (userObj && (userObj.permissions || userObj.userPermissions)) || null;
-    if (incomingPerms) {
-      localStorage.setItem('hrms_permissions', JSON.stringify(incomingPerms));
-    } else {
-      localStorage.removeItem('hrms_permissions');
+  // Start / Activate 3-Hour Customer Demo Session with Isolated Dummy Database Storage
+  const handleCompleteCustomerOnboarding = (onboardedData) => {
+    const companyName = onboardedData.company || 'Customer Organization';
+    const customerName = onboardedData.name || 'Customer Admin';
+    const customerEmail = onboardedData.email || '';
+    const now = (onboardedData.demoMeta && onboardedData.demoMeta.startedAt) || Date.now();
+    const expiresAt = (onboardedData.demoMeta && onboardedData.demoMeta.expiresAt) || (now + 3 * 60 * 60 * 1000); // 3 hours
+
+    // Initialize fresh dummy database tailored specifically to customer's company and customer admin
+    initializeDummyDatabase(companyName, customerName, true);
+
+    const trialPayload = {
+      id: 1,
+      userId: 1,
+      emp_id: 'SUPER ADMIN',
+      employeeCode: 'SUPER ADMIN',
+      designation: 'Managing Director & Super Admin',
+      isActive: true,
+      isDemo: true,
+      is3HourDemo: true,
+      startedAt: now,
+      expiresAt: expiresAt,
+      company: companyName,
+      name: customerName,
+      email: customerEmail,
+      phone: onboardedData.phone || '',
+      industry: onboardedData.industry || 'IT & Software',
+      employeeSize: onboardedData.employeeSize || '21-100',
+      role: 'SUPER_ADMIN'
+    };
+
+    localStorage.setItem('hrms_trial_session', JSON.stringify(trialPayload));
+    localStorage.setItem('hrms_is_demo_sandbox', 'true');
+    setIsDemoSandbox(true);
+    setIsTrialActive(true);
+    setTrialUser(trialPayload);
+    setIsActivationModalOpen(false);
+    setIsTrialModalOpen(false);
+    setIsPaywallActive(false);
+
+    // Immediate Super Admin Login branded with customer's name and organization
+    handleLogin('SUPER_ADMIN', customerName, trialPayload);
+
+    // Automatically trigger Interactive Tutorial Tour with skip buttons!
+    setTimeout(() => {
+      setIsTutorialTourOpen(true);
+    }, 450);
+  };
+
+  const handleStartTrial = (customerData) => {
+    handleCompleteCustomerOnboarding(customerData);
+  };
+
+  // Launch Odoo-Style Live Demo Sandbox
+  const handleLaunchDemo = (persona) => {
+    const p = persona || {
+      role: 'SUPER_ADMIN',
+      name: 'Rajesh Sharma (CEO)',
+      email: 'ceo.demo@madhuratech.com',
+      company: 'Madhura Global Enterprises',
+      designation: 'Managing Director & CEO',
+      emp_id: 'EMP0001'
+    };
+
+    const demoPayload = {
+      isActive: true,
+      isDemo: true,
+      startedAt: Date.now(),
+      daysTotal: 3,
+      daysRemaining: 3,
+      company: p.company || 'Madhura Global Enterprises',
+      name: p.name,
+      email: p.email,
+      role: p.role,
+      designation: p.designation,
+      emp_id: p.emp_id || 'EMP0001'
+    };
+
+    localStorage.setItem('hrms_trial_session', JSON.stringify(demoPayload));
+    localStorage.setItem('hrms_is_demo_sandbox', 'true');
+    setIsDemoSandbox(true);
+    setIsTrialActive(true);
+    setTrialUser(demoPayload);
+    setIsDemoModalOpen(false);
+    setIsTrialModalOpen(false);
+    setIsPaywallActive(false);
+
+    handleLogin(p.role, p.name, demoPayload);
+  };
+
+  // Switch demo persona on the fly (Odoo-Style)
+  const handleSwitchDemoRole = (roleObj) => {
+    const updatedUser = {
+      ...trialUser,
+      role: roleObj.role,
+      name: roleObj.label.split('(')[0].trim(),
+      email: roleObj.email,
+      company: trialUser?.company || 'Madhura Global Enterprises'
+    };
+    setTrialUser(updatedUser);
+    setUserRole(roleObj.role);
+    setUserName(updatedUser.name);
+    localStorage.setItem('userRole', roleObj.role);
+    localStorage.setItem('userName', updatedUser.name);
+
+    const storedAuth = localStorage.getItem('hrms_auth');
+    if (storedAuth) {
+      try {
+        const parsed = JSON.parse(storedAuth);
+        parsed.role = roleObj.role;
+        parsed.name = updatedUser.name;
+        if (parsed.user) {
+          parsed.user.role = roleObj.role;
+          parsed.user.name = updatedUser.name;
+          parsed.user.email = roleObj.email;
+        }
+        localStorage.setItem('hrms_auth', JSON.stringify(parsed));
+      } catch (e) {}
     }
 
-    // Reset browser route to root/dashboard for the new user session
+    // Trigger instant permission sync
+    window.dispatchEvent(new CustomEvent('permissionsUpdated', { detail: { role: roleObj.role } }));
+  };
+
+  // Reset Demo Database
+  const handleResetDatabase = async () => {
     try {
-      window.history.pushState(null, '', '/');
-    } catch (e) {}
-
-    window.dispatchEvent(new CustomEvent('permissionsUpdated', { detail: { roleKey: finalRole, permissions: incomingPerms } }));
+      await apiFetch('/demo/reset-database', { method: 'POST' }).catch(() => {});
+    } catch (e) {
+      console.error('Reset error:', e);
+    }
   };
 
-  const handleQuickDemoLogin = (role = 'SUPER_ADMIN', name = 'Madhura Admin') => {
-    const emailPreset = role === 'SUPER_ADMIN'
-      ? 'madhuratechcbe@gmail.com'
-      : role === 'TEAM_LEADER'
-      ? 'muthu@gmail.com'
-      : 'dhilipanmadhuratech@gmail.com';
-    
-    const userObj = {
-      id: role === 'SUPER_ADMIN' ? 1 : (role === 'TEAM_LEADER' ? 3 : 2),
-      name: name,
-      email: emailPreset,
-      role: role,
-      token: 'mock_demo_jwt_token',
-      employeeId: role === 'SUPER_ADMIN' ? 1 : (role === 'TEAM_LEADER' ? 3 : 2),
-      employeeCode: role === 'SUPER_ADMIN' ? 'EMP0001' : (role === 'TEAM_LEADER' ? 'EMP0003' : 'EMP0002')
-    };
-    handleLogin(role, name, userObj);
-  };
-
-  const handleLogout = () => {
+  // End Trial Session / Cut Session -> Shows Paywall
+  const handleCutSession = () => {
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/pricing');
+    }
     setIsLoggedIn(false);
-    setUserRole('SUPER_ADMIN');
-    setUserName('');
-    setAuthView('landing');
-
-    // Clear all persisted user-specific auth, role, and permission storage
+    setIsPaywallActive(true);
     localStorage.removeItem('hrms_auth');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('userName');
-    localStorage.removeItem('hrms_permissions');
-    localStorage.removeItem('selectedEmployeeId');
-    localStorage.removeItem('activeModule');
-    localStorage.removeItem('selectedMenu');
-    localStorage.removeItem('expandedMenus');
-
-    // Reset URL history to root so no protected routes leak to next user
-    try {
-      window.history.pushState(null, '', '/');
-    } catch (e) {}
-
-    window.dispatchEvent(new CustomEvent('permissionsUpdated', { detail: null }));
+    localStorage.removeItem('hrms_is_demo_sandbox');
+    setIsDemoSandbox(false);
+    endDemoSession();
+    if (trialUser) {
+      localStorage.setItem('hrms_trial_session', JSON.stringify({ ...trialUser, isActive: false, isExpired: true }));
+    }
   };
 
-  // Show a full-screen loading spinner while restoring auth state
+  // Renew / Restart trial session
+  const handleRenewTrial = () => {
+    setIsPaywallActive(false);
+    setIsTrialModalOpen(true);
+  };
+
+  // Pay / Subscribe success from Paywall
+  const handleSubscribeSuccess = (planKey) => {
+    const activeUser = trialUser || { name: 'Subscribed Admin', company: 'Enterprise' };
+    const paidPayload = {
+      ...activeUser,
+      isPaid: true,
+      plan: planKey,
+      role: 'SUPER_ADMIN'
+    };
+    localStorage.removeItem('hrms_trial_session');
+    setIsTrialActive(false);
+    setIsPaywallActive(false);
+    handleLogin('SUPER_ADMIN', activeUser.name, paidPayload);
+  };
+
   if (isInitializing) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%)',
-        gap: 20,
-      }}>
-        <div style={{
-          width: 56, height: 56, borderRadius: '50%',
-          border: '4px solid rgba(255,255,255,0.15)',
-          borderTopColor: '#3b82f6',
-          animation: 'spin 0.85s linear infinite',
-        }} />
-        <p style={{ color: '#94a3b8', fontSize: 15, fontWeight: 500, letterSpacing: '0.02em' }}>
-          Loading HRMS…
-        </p>
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      <div className="flex h-screen items-center justify-center bg-slate-900 text-white">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-sm font-semibold tracking-wide">Loading Madhura HRMS...</p>
+        </div>
       </div>
+    );
+  }
+
+  // If trial session was cut or expired -> Show realistic Paywall
+  if (isPaywallActive) {
+    return (
+      <TrialExpiredPaywall
+        trialUser={trialUser}
+        onRenewTrial={handleRenewTrial}
+        onSubscribeSuccess={handleSubscribeSuccess}
+        onReturnHome={() => {
+          if (typeof window !== 'undefined') {
+            window.history.pushState({}, '', '/');
+          }
+          setIsPaywallActive(false);
+          setAuthView('landing');
+        }}
+      />
     );
   }
 
@@ -355,317 +561,488 @@ function App() {
       );
     }
 
-    if (authView === 'register' || (typeof window !== 'undefined' && window.location.pathname.includes('verify-email'))) {
+    // Master Admin Portal Login Route for company usage (/master-admin or /admin)
+    if (authView === 'master-admin' || (typeof window !== 'undefined' && (window.location.pathname === '/master-admin' || window.location.pathname === '/admin'))) {
+      return (
+        <MasterAdminLogin
+          onLoginSuccess={(payload) => {
+            handleLogin('MASTER_ADMIN', 'Master Admin', payload);
+          }}
+          onHomeClick={() => {
+            window.history.pushState({}, '', '/');
+            setAuthView('landing');
+          }}
+        />
+      );
+    }
+
+    if (authView === 'register') {
       return (
         <Register
           onRegister={handleLogin}
-          onLoginClick={() => setAuthView('login')}
-          onHomeClick={() => setAuthView('landing')}
+          onLoginClick={() => {
+            window.history.pushState({}, '', '/login');
+            setAuthView('login');
+          }}
+          onHomeClick={() => {
+            window.history.pushState({}, '', '/');
+            setAuthView('landing');
+          }}
         />
       );
     }
 
-    if (authView === 'login') {
+    if (authView === 'login' || (typeof window !== 'undefined' && window.location.pathname === '/login')) {
+      return (
+        <CustomerDemoLogin
+          onLoginSuccess={(role, name, payload) => {
+            handleLogin(role, name, payload);
+          }}
+          onOpenTrialModal={() => {
+            setIsTrialModalOpen(true);
+          }}
+          onHomeClick={() => {
+            window.history.pushState({}, '', '/');
+            setAuthView('landing');
+          }}
+        />
+      );
+    }
+
+    if (authView === 'staff-login') {
       return (
         <Login
           onLogin={handleLogin}
-          onRegisterClick={() => setAuthView('register')}
-          onHomeClick={() => setAuthView('landing')}
+          onRegisterClick={() => setIsTrialModalOpen(true)}
+          onCustomerDemoLogin={() => {
+            window.history.pushState({}, '', '/login');
+            setAuthView('login');
+          }}
+          onHomeClick={() => {
+            window.history.pushState({}, '', '/');
+            setAuthView('landing');
+          }}
         />
       );
     }
 
-    if (authView === 'pricing') {
+    if (authView === 'pricing' || (typeof window !== 'undefined' && window.location.pathname === '/pricing')) {
       return (
-        <PricingPage 
-          onOpenLogin={() => setAuthView('login')}
-          onBackToHome={() => setAuthView('landing')}
-        />
+        <>
+          <PricingPage
+            onOpenTrial={() => setIsTrialModalOpen(true)}
+            onOpenCustomerLogin={() => {
+              window.history.pushState({}, '', '/login');
+              setAuthView('login');
+            }}
+            onOpenLogin={() => setIsTrialModalOpen(true)}
+            onBackToHome={() => {
+              window.history.pushState({}, '', '/');
+              setAuthView('landing');
+            }}
+          />
+          <CustomerTrialModal
+            isOpen={isTrialModalOpen}
+            onClose={() => setIsTrialModalOpen(false)}
+            onActivationSuccess={(lead) => {
+              setIsTrialModalOpen(false);
+              setActivationLeadData(lead);
+              setIsActivationModalOpen(true);
+            }}
+            onOpenLogin={() => {
+              setIsTrialModalOpen(false);
+              window.history.pushState({}, '', '/login');
+              setAuthView('login');
+            }}
+          />
+          <CustomerActivationModal
+            isOpen={isActivationModalOpen}
+            customerData={activationLeadData}
+            onClose={() => setIsActivationModalOpen(false)}
+            onComplete={handleCompleteCustomerOnboarding}
+          />
+          <DemoPersonaModal
+            isOpen={isDemoModalOpen}
+            onClose={() => setIsDemoModalOpen(false)}
+            onLaunchDemo={handleLaunchDemo}
+          />
+          <ContactModal
+            isOpen={isContactModalOpen}
+            onClose={() => setIsContactModalOpen(false)}
+          />
+        </>
       );
     }
 
     // Default opening view: Landing Page
     return (
-      <LandingPage
-        onOpenLogin={() => setAuthView('login')}
-        onOpenRegister={() => setAuthView('register')}
-        onOpenPricing={() => setAuthView('pricing')}
-        onQuickDemoLogin={handleQuickDemoLogin}
-        isLoggedIn={false}
-      />
+      <>
+        <LandingPage
+          onOpenTrial={() => setIsTrialModalOpen(true)}
+          onOpenContact={() => setIsContactModalOpen(true)}
+          onOpenCustomerLogin={() => {
+            window.history.pushState({}, '', '/login');
+            setAuthView('login');
+          }}
+          onOpenLogin={() => {
+            window.history.pushState({}, '', '/login');
+            setAuthView('login');
+          }}
+          onOpenDemoPersona={() => setIsDemoModalOpen(true)}
+          onOpenPricing={() => {
+            window.history.pushState({}, '', '/pricing');
+            setAuthView('pricing');
+          }}
+          isLoggedIn={false}
+        />
+        <CustomerTrialModal
+          isOpen={isTrialModalOpen}
+          onClose={() => setIsTrialModalOpen(false)}
+          onActivationSuccess={(lead) => {
+            setIsTrialModalOpen(false);
+            setActivationLeadData(lead);
+            setIsActivationModalOpen(true);
+          }}
+          onOpenLogin={() => {
+            setIsTrialModalOpen(false);
+            window.history.pushState({}, '', '/login');
+            setAuthView('login');
+          }}
+        />
+        <CustomerActivationModal
+          isOpen={isActivationModalOpen}
+          customerData={activationLeadData}
+          onClose={() => setIsActivationModalOpen(false)}
+          onComplete={handleCompleteCustomerOnboarding}
+        />
+        <DemoPersonaModal
+          isOpen={isDemoModalOpen}
+          onClose={() => setIsDemoModalOpen(false)}
+          onLaunchDemo={handleLaunchDemo}
+        />
+        <ContactModal
+          isOpen={isContactModalOpen}
+          onClose={() => setIsContactModalOpen(false)}
+        />
+      </>
     );
   }
 
-  // A helper component to bridge the old currentView state with React Router
-  const LegacyViewManager = () => {
-    const location = useLocation();
-    const currentView = location.pathname.substring(1) || 'dashboard'; // remove leading slash
+  const handleLogout = () => {
+    if (typeof window !== 'undefined') {
+      window.history.pushState({}, '', '/');
+    }
+    setIsLoggedIn(false);
+    setUserRole(null);
+    setUserName(null);
+    setAuthView('landing');
+    localStorage.removeItem('hrms_auth');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('userName');
 
-    switch (currentView) {
-      case 'dashboard':
-        if (userRole === 'EMPLOYEE') {
-          return <EmployeeDashboard />;
-        }
-        if (userRole === 'TEAM_LEADER') {
-          return <TeamLeaderDashboard />;
-        }
-        return <SuperAdminDashboard />;
-      case 'settings':
-        return (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-            <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4">
-              <span className="text-4xl">⚙️</span>
-            </div>
-            <h2 className="text-2xl font-bold text-slate-700">System Settings</h2>
-            <p className="text-slate-500 mt-2 max-w-md">Global configuration, role management, and incentive rule settings go here.</p>
-          </div>
-        );
-      default:
-        return (
-          <div className="flex flex-col items-center justify-center h-[60vh] text-center">
-            <h2 className="text-2xl font-bold text-slate-700">Module Coming Soon</h2>
-            <p className="text-slate-500 mt-2">The route {location.pathname} is not yet implemented.</p>
-          </div>
-        );
+    // Check if 3-Hour Demo session is still active
+    const remaining = getDemoTimeRemainingSeconds();
+    if (remaining <= 0) {
+      localStorage.removeItem('hrms_is_demo_sandbox');
+      setIsDemoSandbox(false);
+      endDemoSession();
+    } else {
+      console.log(`[HRMS Demo] Logout with ${remaining}s remaining. Dummy DB preserved for customer re-login.`);
     }
   };
 
+  // Dedicated Master Admin Portal (Central Organization & Forms Tracking)
+  if (isLoggedIn && userRole === 'MASTER_ADMIN') {
+    return (
+      <ToastProvider>
+        <MasterAdminDashboard
+          onLogout={handleLogout}
+          onLaunchWorkspace={(org) => {
+            handleCompleteCustomerOnboarding(org);
+          }}
+          onHomeClick={() => {
+            if (typeof window !== 'undefined') {
+              window.history.pushState({}, '', '/');
+            }
+            setIsLoggedIn(false);
+            setAuthView('landing');
+          }}
+        />
+      </ToastProvider>
+    );
+  }
+
+  // Authenticated Application (HRMS Software for Customers & Staff)
   return (
     <ToastProvider>
       <PermissionProvider>
-        <CustomCursor />
-        {process.env.NODE_ENV === 'development' && <Agentation />}
         <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Navigate to="/dashboard" replace />} />
-            <Route path="/landing" element={
-              <LandingPage
-                onOpenLogin={() => {}}
-                onOpenRegister={() => {}}
-                onQuickDemoLogin={handleQuickDemoLogin}
-                isLoggedIn={true}
-                userRole={userRole}
-              />
-            } />
-            <Route path="/home" element={<Navigate to="/landing" replace />} />
+          <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-50" style={{ height: '100vh', width: '100vw' }}>
             
-            {/* Public Career Website Routes */}
-            <Route path="/career" element={<PublicCareerPage />} />
-            <Route path="/career/job/:slug" element={<PublicJobDetails />} />
+            {/* Interactive Tutorial Tour with Skip Buttons */}
+            <DemoTutorialTour
+              isOpen={isTutorialTourOpen}
+              onClose={() => setIsTutorialTourOpen(false)}
+            />
 
-            <Route element={<AppLayout userRole={userRole} onLogout={handleLogout} />}>
-              {/* Dashboard Route */}
-              <Route path="/dashboard" element={userRole === 'EMPLOYEE' ? <EmployeeDashboard /> : userRole === 'TEAM_LEADER' ? <TeamLeaderDashboard /> : <SuperAdminDashboard />} />
+            {/* 3-Hour Demo Workspace Banner with Live Countdown & Protected Dummy DB indicator */}
+            {isDemoSandbox ? (
+              <DemoSessionBanner
+                companyName={trialUser?.company || 'My Organization'}
+                customerName={userName || trialUser?.name || 'Super Admin'}
+                onOpenTour={() => setIsTutorialTourOpen(true)}
+                onCutSession={handleCutSession}
+                onUpgrade={handleCutSession}
+              />
+            ) : isTrialActive ? (
+              /* Standard 3-Day Trial Floating Banner */
+              <div className="pb-top-trial-strip flex-shrink-0" style={{ position: 'relative', zIndex: 50 }}>
+                <div className="pb-trial-strip-inner">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <Sparkles size={14} className="text-amber-400" />
+                    <span className="font-bold text-white text-xs">
+                      3-Day Free Trial Active
+                    </span>
+                    <span style={{
+                      background: '#1e3a8a',
+                      color: '#bfdbfe',
+                      border: '1px solid #3b82f6',
+                      fontWeight: 700,
+                      fontSize: '11.5px',
+                      padding: '2px 8px',
+                      borderRadius: '6px'
+                    }}>
+                      {trialUser?.company || 'Enterprise'}
+                    </span>
+                    <span className="text-slate-300 text-xs hidden md:inline">
+                      • <strong className="text-white">{trialUser?.name || 'Super Admin'}</strong> (Super Admin Privileges) • 3 Days Remaining
+                    </span>
+                  </div>
 
-              {/* Dedicated Employee Module Routes */}
-              <Route path="/employee" element={<Navigate to="/employee/dashboard" replace />} />
-              <Route path="/employee/dashboard" element={<PermissionGuard moduleKey="dashboard" submoduleKey="dashboard_overview"><EmployeeDashboard /></PermissionGuard>} />
-              <Route path="/employee/profile" element={<Navigate to="/employees/profile" replace />} />
-              <Route path="/employee/attendance" element={<PermissionGuard moduleKey="attendance" submoduleKey="daily_attendance"><GPSAttendance /></PermissionGuard>} />
-              <Route path="/employee/shift" element={<PermissionGuard moduleKey="attendance" submoduleKey="shift_roster"><MyShift /></PermissionGuard>} />
-              <Route path="/employee/leave" element={<PermissionGuard moduleKey="leave" submoduleKey="my_leave"><LeaveApplications /></PermissionGuard>} />
-              <Route path="/employee/leave-balance" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_balance"><LeaveBalance /></PermissionGuard>} />
-              <Route path="/employee/leave-requests" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_approval"><LeaveApplications activeTab="approval" /></PermissionGuard>} />
-              <Route path="/employee/leave-types" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_types"><LeaveTypes /></PermissionGuard>} />
-              <Route path="/employee/holidays" element={<PermissionGuard moduleKey="leave" submoduleKey="holiday_list"><HolidayList /></PermissionGuard>} />
-              <Route path="/employee/payroll" element={<Navigate to="/payroll/payslips" replace />} />
-              <Route path="/employee/tasks" element={<PermissionGuard moduleKey="projects" submoduleKey="tasks"><Tasks /></PermissionGuard>} />
-              <Route path="/employee/performance" element={<PermissionGuard moduleKey="performance" submoduleKey="reviews"><MyPerformance /></PermissionGuard>} />
-              <Route path="/employee/documents" element={<PermissionGuard moduleKey="documents" submoduleKey="doc_employee"><EmployeeDocuments /></PermissionGuard>} />
-              <Route path="/employee/announcements" element={<PermissionGuard moduleKey="organization" submoduleKey="company_profile"><NewsFeed /></PermissionGuard>} />
-              <Route path="/employee/help" element={<PermissionGuard moduleKey="helpdesk" submoduleKey="tickets"><Tickets /></PermissionGuard>} />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleCutSession()}
+                      className="pb-trial-strip-btn upgrade"
+                    >
+                      <ArrowUpRight size={13} /> Upgrade Plan (₹59/mo)
+                    </button>
+                    <button
+                      onClick={() => handleCutSession()}
+                      className="pb-trial-strip-btn cut-session"
+                      title="End your trial demo session and view subscription paywall"
+                    >
+                      <LogOut size={13} /> Cut / End Trial Session
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
 
-              {/* Dedicated Team Leader Routes */}
-              <Route path="/team-leader" element={<Navigate to="/team-leader/dashboard" replace />} />
-              <Route path="/team-leader/dashboard" element={<PermissionGuard moduleKey="dashboard" submoduleKey="dashboard_overview"><TeamLeaderDashboard /></PermissionGuard>} />
-              <Route path="/team-leader/profile" element={<Navigate to="/employees/profile" replace />} />
-              <Route path="/team-leader/my-attendance" element={<PermissionGuard moduleKey="attendance" submoduleKey="gps_attendance"><GPSAttendance /></PermissionGuard>} />
-              <Route path="/team-leader/my-shift" element={<PermissionGuard moduleKey="attendance" submoduleKey="shift_roster"><MyShift /></PermissionGuard>} />
-              <Route path="/team-leader/team-attendance" element={<PermissionGuard moduleKey="attendance" submoduleKey="daily_attendance"><TeamAttendanceModule /></PermissionGuard>} />
-              <Route path="/team-leader/projects" element={<PermissionGuard moduleKey="projects" submoduleKey="projects_list"><ProjectsList /></PermissionGuard>} />
-              <Route path="/team-leader/team-tasks" element={<PermissionGuard moduleKey="projects" submoduleKey="tasks"><TeamTasksModule /></PermissionGuard>} />
-              <Route path="/team-leader/team-performance" element={<PermissionGuard moduleKey="performance" submoduleKey="reviews"><TeamPerformanceModule /></PermissionGuard>} />
-              <Route path="/team-leader/my-leave" element={<PermissionGuard moduleKey="leave" submoduleKey="my_leave"><LeaveApplications /></PermissionGuard>} />
-              <Route path="/team-leader/team-leave" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_approval"><TeamLeaveModule /></PermissionGuard>} />
-              <Route path="/team-leader/holidays" element={<PermissionGuard moduleKey="leave" submoduleKey="holiday_list"><HolidayList /></PermissionGuard>} />
-              <Route path="/team-leader/leave-types" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_types"><LeaveTypes /></PermissionGuard>} />
-              <Route path="/team-leader/my-payroll" element={<Navigate to="/payroll/payslips" replace />} />
-              <Route path="/team-leader/help" element={<PermissionGuard moduleKey="helpdesk" submoduleKey="tickets"><Tickets /></PermissionGuard>} />
+            <div className="flex-1 min-h-0 min-w-0 w-full overflow-hidden" style={{ height: (isDemoSandbox || isTrialActive) ? 'calc(100vh - 44px)' : '100vh' }}>
+              <Routes>
+                <Route element={<AppLayout userRole={userRole} onLogout={handleLogout} />}>
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="/dashboard" element={
+                userRole === 'EMPLOYEE' ? <EmployeeDashboard /> :
+                userRole === 'TEAM_LEADER' ? <TeamLeaderDashboard /> :
+                <SuperAdminDashboard />
+              } />
 
-            {/* AI Assistant Route */}
-            <Route path="/ai-assistant" element={<PermissionGuard moduleKey="ai_assistant"><AIAssistantDashboard /></PermissionGuard>} />
+              {/* Attendance Module */}
+              <Route path="/attendance" element={<DailyAttendance />} />
+              <Route path="/attendance/daily" element={<DailyAttendance />} />
+              <Route path="/attendance/logs" element={<DailyAttendance />} />
+              <Route path="/attendance/gps" element={<GPSAttendance />} />
+              <Route path="/attendance/regularization" element={<Regularization />} />
+              <Route path="/attendance/shifts" element={<ShiftRoster />} />
+              <Route path="/attendance/shift-roster" element={<ShiftRoster />} />
+              <Route path="/attendance/overtime" element={<Overtime />} />
+              <Route path="/attendance/late-arrival" element={<LateArrival />} />
+              <Route path="/attendance/reports" element={<AttendanceReports />} />
+              <Route path="/attendance/visits" element={<PunchLocations />} />
+              <Route path="/attendance/punch-locations" element={<PunchLocations />} />
 
-            {/* Notifications Center Route */}
-            <Route path="/notifications" element={<NotificationsPage userRole={userRole} />} />
+              {/* Employee Module */}
+              <Route path="/employees" element={<EmployeeDirectory />} />
+              <Route path="/employees/list" element={<EmployeeListContent />} />
+              <Route path="/employees/add" element={<AddEmployeeForm />} />
+              <Route path="/employees/profile" element={<EmployeeProfileContent />} />
+              <Route path="/employees/profile/:id" element={<EmployeeProfileContent />} />
+              <Route path="/employees/history" element={<EmploymentHistory />} />
+              <Route path="/employees/promotions" element={<PromotionsContent />} />
+              <Route path="/employees/transfers" element={<TransfersContent />} />
+              <Route path="/employees/exit" element={<ExitManagement />} />
+              <Route path="/employees/documents" element={<EmployeeDocuments />} />
+              <Route path="/employees/my-shift" element={<MyShift />} />
+              <Route path="/employees/my-performance" element={<MyPerformance />} />
 
-            {/* Employee Routes - explicitly rendering their own components */}
-            <Route path="/employees/dashboard" element={<Navigate to="/employees" replace />} />
-            <Route path="/employees" element={<PermissionGuard moduleKey="employees" submoduleKey="employee_directory"><EmployeeDirectory /></PermissionGuard>} />
-            <Route path="/employees/list" element={<PermissionGuard moduleKey="employees" submoduleKey="employee_list"><EmployeeListContent /></PermissionGuard>} />
-            <Route path="/employees/add" element={<PermissionGuard moduleKey="employees" submoduleKey="add_employee" action="create"><AddEmployeeForm /></PermissionGuard>} />
-            <Route path="/employees/profile" element={<PermissionGuard moduleKey="employees" submoduleKey="employee_profile"><EmployeeProfileContent /></PermissionGuard>} />
-            <Route path="/employees/history" element={<PermissionGuard moduleKey="employees" submoduleKey="employment_history"><EmploymentHistory /></PermissionGuard>} />
-            <Route path="/employees/promotions" element={<PermissionGuard moduleKey="employees" submoduleKey="promotions"><PromotionsContent /></PermissionGuard>} />
-            <Route path="/employees/transfers" element={<PermissionGuard moduleKey="employees" submoduleKey="transfers"><TransfersContent /></PermissionGuard>} />
-            <Route path="/employees/exit" element={<PermissionGuard moduleKey="employees" submoduleKey="exit_management"><ExitManagement /></PermissionGuard>} />
-            <Route path="/employees/documents" element={<PermissionGuard moduleKey="employees" submoduleKey="employee_documents"><EmployeeDocuments /></PermissionGuard>} />
-            <Route path="/employees/reports" element={<Navigate to="/reports/employees" replace />} />
+              {/* Team Leader Module */}
+              <Route path="/team-leader/dashboard" element={<TeamLeaderDashboard />} />
+              <Route path="/team-leader/attendance" element={<TeamAttendanceModule />} />
+              <Route path="/team-leader/tasks" element={<TeamTasksModule />} />
+              <Route path="/team-leader/leaves" element={<TeamLeaveModule />} />
+              <Route path="/team-leader/performance" element={<TeamPerformanceModule />} />
 
-            {/* Attendance Routes */}
-            <Route path="/attendance/daily" element={<PermissionGuard moduleKey="attendance" submoduleKey="daily_attendance"><DailyAttendance /></PermissionGuard>} />
-            <Route path="/attendance/gps" element={<PermissionGuard moduleKey="attendance" submoduleKey="gps_attendance"><GPSAttendance /></PermissionGuard>} />
-            <Route path="/attendance/gps-punch" element={<PermissionGuard moduleKey="attendance" submoduleKey="gps_attendance"><GPSAttendance /></PermissionGuard>} />
-            <Route path="/attendance/punch" element={<PermissionGuard moduleKey="attendance" submoduleKey="gps_attendance"><GPSAttendance /></PermissionGuard>} />
-            <Route path="/attendance/regularization" element={<PermissionGuard moduleKey="attendance" submoduleKey="regularization"><Regularization /></PermissionGuard>} />
-            <Route path="/attendance/shift-roster" element={<PermissionGuard moduleKey="attendance" submoduleKey="shift_roster"><ShiftRoster /></PermissionGuard>} />
-            <Route path="/attendance/overtime" element={<PermissionGuard moduleKey="attendance" submoduleKey="overtime"><Overtime /></PermissionGuard>} />
-            <Route path="/attendance/late-arrival" element={<PermissionGuard moduleKey="attendance" submoduleKey="late_arrival"><LateArrival /></PermissionGuard>} />
-            <Route path="/attendance/reports" element={<Navigate to="/reports/attendance" replace />} />
-            <Route path="/attendance/punch-locations" element={<PermissionGuard moduleKey="attendance" submoduleKey="punch_locations"><PunchLocations /></PermissionGuard>} />
+              {/* Leave Module */}
+              <Route path="/leaves" element={<LeaveDashboard />} />
+              <Route path="/leave" element={<LeaveDashboard />} />
+              <Route path="/leave-dashboard" element={<LeaveDashboard />} />
+              <Route path="/leaves/requests" element={<LeaveApplications />} />
+              <Route path="/leave-applications" element={<LeaveApplications />} />
+              <Route path="/leaves/approvals" element={<LeaveApproval />} />
+              <Route path="/leave-approval" element={<LeaveApproval />} />
+              <Route path="/leaves/balances" element={<LeaveBalance />} />
+              <Route path="/leave-balance" element={<LeaveBalance />} />
+              <Route path="/leaves/types" element={<LeaveTypes />} />
+              <Route path="/leave-types" element={<LeaveTypes />} />
+              <Route path="/leaves/holidays" element={<HolidayList />} />
+              <Route path="/holiday-list" element={<HolidayList />} />
+              <Route path="/leaves/comp-off" element={<CompOff />} />
+              <Route path="/comp-off" element={<CompOff />} />
 
-            {/* Leave Module */}
-            <Route path="/leave-dashboard" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_dashboard"><LeaveDashboard /></PermissionGuard>} />
-            <Route path="/leave-applications" element={<PermissionGuard moduleKey="leave" submoduleKey="my_leave"><LeaveApplications /></PermissionGuard>} />
-            <Route path="/leave-approval" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_approval"><LeaveApproval /></PermissionGuard>} />
-            <Route path="/leave-balance" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_balance"><LeaveBalance /></PermissionGuard>} />
-            <Route path="/leave-types" element={<PermissionGuard moduleKey="leave" submoduleKey="leave_types"><LeaveTypes /></PermissionGuard>} />
-            <Route path="/leave/reports" element={<Navigate to="/reports/leave" replace />} />
-            <Route path="/holiday-list" element={<PermissionGuard moduleKey="leave" submoduleKey="holiday_list"><HolidayList /></PermissionGuard>} />
-            <Route path="/comp-off" element={<PermissionGuard moduleKey="leave" submoduleKey="comp_off"><CompOff /></PermissionGuard>} />
+              {/* Payroll Module */}
+              <Route path="/payroll" element={<PayrollProcessing />} />
+              <Route path="/payroll/processing" element={<PayrollProcessing />} />
+              <Route path="/payroll/structure" element={<SalaryStructure />} />
+              <Route path="/payroll/salary-structure" element={<SalaryStructure />} />
+              <Route path="/payroll/components" element={<SalaryComponents />} />
+              <Route path="/payroll/generate-payslips" element={<GeneratePayslips />} />
+              <Route path="/payroll/payslips" element={<GeneratePayslips />} />
+              <Route path="/payroll/bonus" element={<BonusIncentives />} />
+              <Route path="/payroll/reimbursements" element={<Reimbursements />} />
+              <Route path="/payroll/loans" element={<LoansAdvances />} />
+              <Route path="/payroll/tax" element={<TaxManagement />} />
+              <Route path="/payroll/reports" element={<PayrollReports />} />
 
-            {/* Organization Module */}
-            <Route path="/company-profile" element={<PermissionGuard moduleKey="organization" submoduleKey="company_profile"><CompanyProfile /></PermissionGuard>} />
-            <Route path="/departments" element={<PermissionGuard moduleKey="organization" submoduleKey="departments"><Departments /></PermissionGuard>} />
-            <Route path="/designations" element={<PermissionGuard moduleKey="organization" submoduleKey="designations"><Designations /></PermissionGuard>} />
-            <Route path="/teams" element={<PermissionGuard moduleKey="organization" submoduleKey="teams"><Teams /></PermissionGuard>} />
-            <Route path="/shift-management" element={<PermissionGuard moduleKey="organization" submoduleKey="shift_management"><ShiftManagement /></PermissionGuard>} />
-            <Route path="/holiday-calendar" element={<PermissionGuard moduleKey="organization" submoduleKey="holiday_calendar"><HolidayCalendar /></PermissionGuard>} />
-            <Route path="/organization-chart" element={<PermissionGuard moduleKey="organization" submoduleKey="organization_chart"><OrganizationChart /></PermissionGuard>} />
-            <Route path="/user-roles" element={<PermissionGuard moduleKey="settings" submoduleKey="user_roles"><UserRoles /></PermissionGuard>} />
+              {/* Organization Module */}
+              <Route path="/organization/company-profile" element={<CompanyProfile />} />
+              <Route path="/company-profile" element={<CompanyProfile />} />
+              <Route path="/organization/departments" element={<Departments />} />
+              <Route path="/departments" element={<Departments />} />
+              <Route path="/organization/designations" element={<Designations />} />
+              <Route path="/designations" element={<Designations />} />
+              <Route path="/organization/teams" element={<Teams />} />
+              <Route path="/teams" element={<Teams />} />
+              <Route path="/organization/shifts" element={<ShiftManagement />} />
+              <Route path="/shift-management" element={<ShiftManagement />} />
+              <Route path="/organization/holidays" element={<HolidayCalendar />} />
+              <Route path="/holiday-calendar" element={<HolidayCalendar />} />
+              <Route path="/organization/chart" element={<OrganizationChart />} />
+              <Route path="/organization-chart" element={<OrganizationChart />} />
+              <Route path="/organization/user-roles" element={<UserRoles />} />
 
-            {/* Other Existing Modules */}
-            <Route path="/news" element={<NewsFeed />} />
-            {/* Global Centralized Reports Module */}
-            <Route path="/reports" element={<ReportsDirectory />} />
-            <Route path="/reports/employees" element={<EmployeeReports />} />
-            <Route path="/reports/employee" element={<EmployeeReports />} />
-            <Route path="/reports/attendance" element={<AttendanceReportsModule />} />
-            <Route path="/reports/leave" element={<LeaveReports />} />
-            <Route path="/reports/payroll" element={<PayrollReportsModule />} />
-            <Route path="/reports/recruitment" element={<RecruitmentReportsModule />} />
-            <Route path="/reports/performance" element={<PerformanceReports />} />
-            <Route path="/reports/projects" element={<ProjectReports />} />
-            <Route path="/reports/project" element={<ProjectReports />} />
+              {/* Communication Module */}
+              <Route path="/communication/newsfeed" element={<NewsFeed />} />
+              <Route path="/notifications" element={<NotificationsPage />} />
 
-            {/* Payroll Module */}
-            <Route path="/payroll" element={<Navigate to="/payroll/salary-structure" replace />} />
-            <Route path="/payroll/salary-structure" element={<PermissionGuard moduleKey="payroll" submoduleKey="salary_structure"><SalaryStructure /></PermissionGuard>} />
-            <Route path="/payroll/components" element={<PermissionGuard moduleKey="payroll" submoduleKey="salary_components"><SalaryComponents /></PermissionGuard>} />
-            <Route path="/payroll/processing" element={<PermissionGuard moduleKey="payroll" submoduleKey="payroll_processing"><PayrollProcessing /></PermissionGuard>} />
-            <Route path="/payroll/payslips" element={<PermissionGuard moduleKey="payroll" submoduleKey="generate_payslips"><GeneratePayslips /></PermissionGuard>} />
-            <Route path="/payroll/bonus" element={<PermissionGuard moduleKey="payroll" submoduleKey="bonus_incentives"><BonusIncentives /></PermissionGuard>} />
-            <Route path="/payroll/reimbursements" element={<PermissionGuard moduleKey="payroll" submoduleKey="reimbursements"><Reimbursements /></PermissionGuard>} />
-            <Route path="/payroll/loans" element={<PermissionGuard moduleKey="payroll" submoduleKey="loans_advances"><LoansAdvances /></PermissionGuard>} />
-            <Route path="/payroll/tax" element={<PermissionGuard moduleKey="payroll" submoduleKey="tax_management"><TaxManagement /></PermissionGuard>} />
-            <Route path="/payroll/reports" element={<Navigate to="/reports/payroll" replace />} />
+              {/* Reports Module */}
+              <Route path="/reports" element={<ReportsDirectory />} />
+              <Route path="/reports/directory" element={<ReportsDirectory />} />
+              <Route path="/reports/employee" element={<EmployeeReports />} />
+              <Route path="/reports/attendance" element={<AttendanceReportsModule />} />
+              <Route path="/reports/leave" element={<LeaveReports />} />
+              <Route path="/reports/payroll" element={<PayrollReportsModule />} />
+              <Route path="/reports/recruitment" element={<RecruitmentReportsModule />} />
+              <Route path="/reports/performance" element={<PerformanceReports />} />
+              <Route path="/reports/projects" element={<ProjectReports />} />
 
-            {/* Recruitment Module */}
-            <Route path="/recruitment" element={<Navigate to="/recruitment/dashboard" replace />} />
-            <Route path="/recruitment/dashboard" element={<PermissionGuard moduleKey="recruitment" submoduleKey="recruitment_dashboard"><RecruitmentDashboard /></PermissionGuard>} />
-            <Route path="/recruitment/jobs" element={<PermissionGuard moduleKey="recruitment" submoduleKey="job_openings"><JobOpenings /></PermissionGuard>} />
-            <Route path="/recruitment/candidates" element={<PermissionGuard moduleKey="recruitment" submoduleKey="candidates"><Candidates /></PermissionGuard>} />
-            <Route path="/recruitment/screening" element={<PermissionGuard moduleKey="recruitment" submoduleKey="screening"><CandidateScreening /></PermissionGuard>} />
-            <Route path="/recruitment/interviews" element={<PermissionGuard moduleKey="recruitment" submoduleKey="interview_schedule"><InterviewSchedule /></PermissionGuard>} />
-            <Route path="/recruitment/offers" element={<PermissionGuard moduleKey="recruitment" submoduleKey="offer_letters"><OfferLetters /></PermissionGuard>} />
-            <Route path="/recruitment/pipeline" element={<PermissionGuard moduleKey="recruitment" submoduleKey="hiring_pipeline"><HiringPipeline /></PermissionGuard>} />
-            <Route path="/recruitment/reports" element={<Navigate to="/reports/recruitment" replace />} />
+              {/* Recruitment Module */}
+              <Route path="/recruitment" element={<RecruitmentDashboard />} />
+              <Route path="/recruitment/dashboard" element={<RecruitmentDashboard />} />
+              <Route path="/recruitment/jobs" element={<JobOpenings />} />
+              <Route path="/recruitment/candidates" element={<Candidates />} />
+              <Route path="/recruitment/screening" element={<CandidateScreening />} />
+              <Route path="/recruitment/interviews" element={<InterviewSchedule />} />
+              <Route path="/recruitment/offers" element={<OfferLetters />} />
+              <Route path="/recruitment/pipeline" element={<HiringPipeline />} />
 
-            {/* Onboarding Module */}
-            <Route path="/onboarding" element={<Navigate to="/onboarding/new-joiners" replace />} />
-            <Route path="/onboarding/new-joiners" element={<PermissionGuard moduleKey="onboarding" submoduleKey="new_joiners"><NewJoiners /></PermissionGuard>} />
-            <Route path="/onboarding/documents" element={<PermissionGuard moduleKey="onboarding" submoduleKey="document_verification"><DocumentVerification /></PermissionGuard>} />
-            <Route path="/onboarding/assets" element={<PermissionGuard moduleKey="onboarding" submoduleKey="asset_allocation"><AssetAllocation /></PermissionGuard>} />
-            <Route path="/onboarding/welcome-kit" element={<PermissionGuard moduleKey="onboarding" submoduleKey="welcome_kit"><WelcomeKit /></PermissionGuard>} />
-            <Route path="/onboarding/orientation" element={<PermissionGuard moduleKey="onboarding" submoduleKey="orientation"><Orientation /></PermissionGuard>} />
-            <Route path="/onboarding/probation" element={<PermissionGuard moduleKey="onboarding" submoduleKey="probation"><Probation /></PermissionGuard>} />
+              {/* Onboarding Module */}
+              <Route path="/onboarding" element={<NewJoiners />} />
+              <Route path="/onboarding/new-joiners" element={<NewJoiners />} />
+              <Route path="/onboarding/documents" element={<DocumentVerification />} />
+              <Route path="/onboarding/assets" element={<AssetAllocation />} />
+              <Route path="/onboarding/welcome-kit" element={<WelcomeKit />} />
+              <Route path="/onboarding/orientation" element={<Orientation />} />
+              <Route path="/onboarding/probation" element={<Probation />} />
 
-            {/* Performance Module */}
-            <Route path="/performance" element={<Navigate to="/performance/goals" replace />} />
-            <Route path="/performance/goals" element={<PermissionGuard moduleKey="performance" submoduleKey="goals"><Goals /></PermissionGuard>} />
-            <Route path="/performance/kpis" element={<PermissionGuard moduleKey="performance" submoduleKey="kpis"><KPIs /></PermissionGuard>} />
-            <Route path="/performance/kras" element={<PermissionGuard moduleKey="performance" submoduleKey="kras"><KRAs /></PermissionGuard>} />
-            <Route path="/performance/appraisals" element={<PermissionGuard moduleKey="performance" submoduleKey="appraisals"><Appraisals /></PermissionGuard>} />
-            <Route path="/performance/reviews" element={<PermissionGuard moduleKey="performance" submoduleKey="reviews"><Reviews /></PermissionGuard>} />
-            <Route path="/performance/feedback" element={<PermissionGuard moduleKey="performance" submoduleKey="feedback"><Feedback /></PermissionGuard>} />
-            <Route path="/performance/promotions" element={<PermissionGuard moduleKey="performance" submoduleKey="performance_promotions"><Promotions /></PermissionGuard>} />
-            <Route path="/performance/reports" element={<Navigate to="/reports/performance" replace />} />
+              {/* Performance Module */}
+              <Route path="/performance" element={<Goals />} />
+              <Route path="/performance/goals" element={<Goals />} />
+              <Route path="/performance/kpis" element={<KPIs />} />
+              <Route path="/performance/kras" element={<KRAs />} />
+              <Route path="/performance/appraisals" element={<Appraisals />} />
+              <Route path="/performance/reviews" element={<Reviews />} />
+              <Route path="/performance/feedback" element={<Feedback />} />
+              <Route path="/performance/promotions" element={<Promotions />} />
 
-            {/* Project Management Module */}
-            <Route path="/projects" element={<Navigate to="/projects/dashboard" replace />} />
-            <Route path="/projects/dashboard" element={<PermissionGuard moduleKey="projects" submoduleKey="project_dashboard"><ProjectDashboard /></PermissionGuard>} />
-            <Route path="/projects/list" element={<PermissionGuard moduleKey="projects" submoduleKey="projects_list"><ProjectsList /></PermissionGuard>} />
-            <Route path="/projects/tasks" element={<PermissionGuard moduleKey="projects" submoduleKey="tasks"><Tasks /></PermissionGuard>} />
-            <Route path="/projects/sprint-board" element={<PermissionGuard moduleKey="projects" submoduleKey="sprint_board"><SprintBoard /></PermissionGuard>} />
-            <Route path="/projects/timesheets" element={<PermissionGuard moduleKey="projects" submoduleKey="timesheets"><Timesheets /></PermissionGuard>} />
-            <Route path="/projects/milestones" element={<PermissionGuard moduleKey="projects" submoduleKey="milestones"><Milestones /></PermissionGuard>} />
-            <Route path="/projects/team" element={<PermissionGuard moduleKey="projects" submoduleKey="team_members"><TeamMembers /></PermissionGuard>} />
-            <Route path="/projects/reports" element={<Navigate to="/reports/projects" replace />} />
+              {/* Project Management Module */}
+              <Route path="/projects" element={<ProjectDashboard />} />
+              <Route path="/projects/dashboard" element={<ProjectDashboard />} />
+              <Route path="/projects/list" element={<ProjectsList />} />
+              <Route path="/projects/tasks" element={<Tasks />} />
+              <Route path="/projects/sprint-board" element={<SprintBoard />} />
+              <Route path="/projects/timesheets" element={<Timesheets />} />
+              <Route path="/projects/milestones" element={<Milestones />} />
+              <Route path="/projects/team" element={<TeamMembers />} />
 
-            {/* Client Management Module */}
-            <Route path="/clients" element={<Navigate to="/clients/list" replace />} />
-            <Route path="/clients/list" element={<PermissionGuard moduleKey="clients" submoduleKey="client_management" action="view"><AllClients /></PermissionGuard>} />
-            <Route path="/clients/add" element={<PermissionGuard moduleKey="clients" submoduleKey="client_management" action="create"><AddClient /></PermissionGuard>} />
-            <Route path="/clients/:id" element={<PermissionGuard moduleKey="clients" submoduleKey="client_management" action="view"><ClientDetails /></PermissionGuard>} />
-            <Route path="/clients/:id/edit" element={<PermissionGuard moduleKey="clients" submoduleKey="client_management" action="edit"><AddClient isEdit={true} /></PermissionGuard>} />
-            <Route path="/clients/projects" element={<Navigate to="/clients/list" replace />} />
+              {/* Client Management Module */}
+              <Route path="/clients" element={<AllClients />} />
+              <Route path="/clients/list" element={<AllClients />} />
+              <Route path="/clients/add" element={<AddClient />} />
+              <Route path="/clients/:id" element={<ClientDetails />} />
+              <Route path="/clients/:id/edit" element={<AddClient isEdit={true} />} />
 
-            {/* Expenses Module */}
-            <Route path="/expenses" element={<Navigate to="/expenses/claims" replace />} />
-            <Route path="/expenses/claims" element={<PermissionGuard moduleKey="expenses" submoduleKey="expense_claims"><ExpenseClaims /></PermissionGuard>} />
-            <Route path="/expenses/categories" element={<PermissionGuard moduleKey="expenses" submoduleKey="expense_categories"><ExpenseCategories /></PermissionGuard>} />
-            <Route path="/expenses/approval" element={<PermissionGuard moduleKey="expenses" submoduleKey="expense_approval"><ExpenseApproval /></PermissionGuard>} />
-            <Route path="/expenses/reimbursements" element={<PermissionGuard moduleKey="expenses" submoduleKey="expense_reimbursements"><ReimbursementsModule /></PermissionGuard>} />
-            <Route path="/expenses/reports" element={<Navigate to="/reports/expenses" replace />} />
+              {/* Expenses Module */}
+              <Route path="/expenses" element={<ExpenseClaims />} />
+              <Route path="/expenses/claims" element={<ExpenseClaims />} />
+              <Route path="/expenses/categories" element={<ExpenseCategories />} />
+              <Route path="/expenses/approval" element={<ExpenseApproval />} />
+              <Route path="/expenses/reimbursements" element={<ReimbursementsModule />} />
 
-            {/* Documents Module */}
-            <Route path="/documents" element={<Navigate to="/documents/employee" replace />} />
-            <Route path="/documents/employee" element={<PermissionGuard moduleKey="documents" submoduleKey="doc_employee"><EmployeeDocumentsModule /></PermissionGuard>} />
-            <Route path="/documents/company" element={<PermissionGuard moduleKey="documents" submoduleKey="doc_company"><CompanyDocuments /></PermissionGuard>} />
-            <Route path="/documents/policies" element={<PermissionGuard moduleKey="documents" submoduleKey="doc_policies"><HRPolicies /></PermissionGuard>} />
-            <Route path="/documents/templates" element={<PermissionGuard moduleKey="documents" submoduleKey="doc_templates"><Templates /></PermissionGuard>} />
-            <Route path="/documents/signatures" element={<PermissionGuard moduleKey="documents" submoduleKey="digital_signatures"><DigitalSignatures /></PermissionGuard>} />
+              {/* Documents Module */}
+              <Route path="/documents" element={<EmployeeDocumentsModule />} />
+              <Route path="/documents/employee" element={<EmployeeDocumentsModule />} />
+              <Route path="/documents/company" element={<CompanyDocuments />} />
+              <Route path="/documents/policies" element={<HRPolicies />} />
+              <Route path="/documents/templates" element={<Templates />} />
+              <Route path="/documents/signatures" element={<DigitalSignatures />} />
 
-            {/* Help Desk Module */}
-            <Route path="/help-desk" element={<Navigate to="/help-desk/dashboard" replace />} />
-            <Route path="/help-desk/dashboard" element={<PermissionGuard moduleKey="helpdesk" submoduleKey="helpdesk_dashboard"><HelpDeskDashboard /></PermissionGuard>} />
-            <Route path="/help-desk/tickets" element={<PermissionGuard moduleKey="helpdesk" submoduleKey="tickets"><Tickets /></PermissionGuard>} />
-            <Route path="/help-desk/categories" element={<PermissionGuard moduleKey="helpdesk" submoduleKey="helpdesk_categories"><Categories /></PermissionGuard>} />
-            <Route path="/help-desk/priorities" element={<PermissionGuard moduleKey="helpdesk" submoduleKey="helpdesk_priorities"><Priorities /></PermissionGuard>} />
-            <Route path="/help-desk/knowledge-base" element={<PermissionGuard moduleKey="helpdesk" submoduleKey="knowledge_base"><KnowledgeBase /></PermissionGuard>} />
-            <Route path="/help-desk/reports" element={<PermissionGuard moduleKey="helpdesk" submoduleKey="helpdesk_reports"><HelpDeskReports /></PermissionGuard>} />
+              {/* Help Desk Module */}
+              <Route path="/help-desk" element={<HelpDeskDashboard />} />
+              <Route path="/help-desk/dashboard" element={<HelpDeskDashboard />} />
+              <Route path="/help-desk/tickets" element={<Tickets />} />
+              <Route path="/help-desk/categories" element={<Categories />} />
+              <Route path="/help-desk/priorities" element={<Priorities />} />
+              <Route path="/help-desk/knowledge-base" element={<KnowledgeBase />} />
+              <Route path="/help-desk/reports" element={<HelpDeskReports />} />
 
-            {/* Settings Module */}
-            <Route path="/settings" element={<Navigate to="/settings/company" replace />} />
-            <Route path="/settings/company" element={<PermissionGuard moduleKey="settings" submoduleKey="settings_company"><SettingsCompany /></PermissionGuard>} />
-            <Route path="/settings/branding" element={<PermissionGuard moduleKey="settings" submoduleKey="settings_branding"><SettingsBranding /></PermissionGuard>} />
-            <Route path="/settings/organization" element={<PermissionGuard moduleKey="settings" submoduleKey="settings_organization"><SettingsOrganization /></PermissionGuard>} />
-            <Route path="/settings/users" element={<PermissionGuard moduleKey="settings" submoduleKey="user_roles"><UserRoles /></PermissionGuard>} />
-            <Route path="/settings/hr" element={<PermissionGuard moduleKey="settings" submoduleKey="settings_hr"><SettingsHR /></PermissionGuard>} />
-            <Route path="/settings/communication" element={<PermissionGuard moduleKey="settings" submoduleKey="settings_communication"><SettingsCommunication /></PermissionGuard>} />
-            <Route path="/settings/integrations" element={<PermissionGuard moduleKey="settings" submoduleKey="settings_integrations"><SettingsIntegrations /></PermissionGuard>} />
-            <Route path="/settings/security" element={<PermissionGuard moduleKey="settings" submoduleKey="settings_security"><SettingsSecurity /></PermissionGuard>} />
-            <Route path="/settings/system" element={<PermissionGuard moduleKey="settings" submoduleKey="settings_system"><SettingsSystem /></PermissionGuard>} />
-            <Route path="/admin-register" element={<PermissionGuard moduleKey="settings" submoduleKey="user_roles"><AdminManagerRegister /></PermissionGuard>} />
+              {/* Settings Module */}
+              <Route path="/settings" element={<SettingsCompany />} />
+              <Route path="/settings/company" element={<SettingsCompany />} />
+              <Route path="/settings/branding" element={<SettingsBranding />} />
+              <Route path="/settings/organization" element={<SettingsOrganization />} />
+              <Route path="/settings/users" element={<UserRoles />} />
+              <Route path="/settings/hr" element={<SettingsHR />} />
+              <Route path="/settings/communication" element={<SettingsCommunication />} />
+              <Route path="/settings/integrations" element={<SettingsIntegrations />} />
+              <Route path="/settings/security" element={<SettingsSecurity />} />
+              <Route path="/settings/system" element={<SettingsSystem />} />
+              <Route path="/admin-register" element={<AdminManagerRegister />} />
 
-            {/* Fallback for all other routes */}
-            <Route path="*" element={<LegacyViewManager />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
+              {/* AI Assistant */}
+              <Route path="/ai-assistant" element={<AIAssistantDashboard />} />
+
+              {/* Fallback */}
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Route>
+              </Routes>
+            </div>
+          </div>
+        </BrowserRouter>
       </PermissionProvider>
     </ToastProvider>
   );
-
 }
 
 export default App;

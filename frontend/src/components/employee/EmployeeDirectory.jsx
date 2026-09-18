@@ -32,6 +32,10 @@ export default function EmployeeDirectory() {
       .then(data => {
         if (Array.isArray(data)) {
           setEmployees(data);
+        } else if (data && Array.isArray(data.employees)) {
+          setEmployees(data.employees);
+        } else if (data && Array.isArray(data.data)) {
+          setEmployees(data.data);
         } else {
           setEmployees([]);
         }

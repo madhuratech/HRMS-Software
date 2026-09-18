@@ -1,6 +1,9 @@
 const RENDER_BACKEND_URL = 'https://madhura-hrm.onrender.com';
 const API_BASE = '/app';
 
+// ─── Native Fetch Reference & Global Window Fetch Interception ────────────────
+const nativeFetch = (typeof window !== 'undefined' && window.fetch) ? window.fetch.bind(window) : fetch;
+
 export const getAuthToken = () => {
   const auth = localStorage.getItem('hrms_auth');
   if (auth) {
@@ -34,6 +37,23 @@ export const getAuthHeaders = (extraHeaders = {}) => {
   };
 };
 
+/**
+ * Universal Response Formatter for Demo Store
+ * Ensures that whether a component expects an Array (e.g. Array.isArray(res)),
+ * or an Object (e.g. res.data, res.success, res.total), it works seamlessly!
+ */
+export const toDemoResponse = (data, extra = {}) => {
+  if (Array.isArray(data)) {
+    const arr = [...data];
+    arr.success = true;
+    arr.data = arr;
+    arr.total = arr.length;
+    Object.assign(arr, extra);
+    return arr;
+  }
+  return { success: true, data, ...data, ...extra };
+};
+
 export const apiFetch = async (path, options = {}) => {
   let targetPath = path || '';
   if (targetPath.startsWith('/app/')) {
@@ -55,8 +75,928 @@ export const apiFetch = async (path, options = {}) => {
     return { success: false, offline: true, message: 'Internet connection unavailable' };
   }
 
+  // Safe Interception: If customer is in 3-Hour Demo session, serve dummy store for operational endpoints
+  // This guarantees the real database is NEVER touched by demo actions
+  const isDemoActive = (() => {
+    try {
+      if (localStorage.getItem('hrms_is_demo_sandbox') === 'true') {
+        const meta = JSON.parse(localStorage.getItem('hrms_3hr_demo_meta') || '{}');
+        if (meta && meta.expiresAt && Date.now() >= meta.expiresAt) {
+          return false;
+        }
+        return true;
+      }
+      const meta = JSON.parse(localStorage.getItem('hrms_3hr_demo_meta') || '{}');
+      if (!meta || !meta.isActive || !meta.is3HourDemo) return false;
+      if (meta.expiresAt && Date.now() >= meta.expiresAt) {
+        return false;
+      }
+      return true;
+    } catch (e) {
+      return false;
+    }
+  })();
+
+  // ══════════════════════════════════════════════════════════════════════════
+  // Complete 3-Hour Demo Interception for ALL Modules & Crud Operations
+  // Guaranteed: Production MySQL DB is NEVER touched or displayed!
+  // ══════════════════════════════════════════════════════════════════════════
+  if (isDemoActive && !targetPath.startsWith('/trial') && targetPath !== '/auth/login') {
+    try {
+      const rawDb = localStorage.getItem('hrms_3hr_demo_dummy_db');
+      let dummyDb = rawDb ? JSON.parse(rawDb) : null;
+      const meta = JSON.parse(localStorage.getItem('hrms_3hr_demo_meta') || '{}');
+      if (!dummyDb || !dummyDb.initialized) {
+        const { initializeDummyDatabase } = await import('./demoDummyStore');
+        dummyDb = initializeDummyDatabase(meta.company, meta.customerName);
+      }
+
+      if (dummyDb) {
+        // Parse request body if available
+        let bodyPayload = {};
+        try {
+          if (typeof options.body === 'string') {
+            bodyPayload = JSON.parse(options.body);
+          } else if (options.body && typeof options.body === 'object') {
+            bodyPayload = options.body;
+          }
+        } catch (e) {}
+
+        // 1. Current Session User (/auth/me)
+        if (targetPath.includes('/auth/me')) {
+          return {
+            success: true,
+            user: {
+              id: 1,
+              name: meta.customerName || 'Customer Admin',
+              email: meta.email || 'admin@company.com',
+              role: 'SUPER_ADMIN',
+              company: meta.company || 'Customer Organization',
+              emp_id: 'SUPER ADMIN',
+              employeeCode: 'SUPER ADMIN',
+              designation: 'Managing Director & Super Admin'
+            },
+            role: 'SUPER_ADMIN'
+          };
+        }
+
+        // 2. Dashboard Stats Interception (CRITICAL: prevents showing real MySQL data!)
+        if (targetPath.includes('/dashboard')) {
+          const { getDummyDashboardStats } = await import('./demoDummyStore');
+          return getDummyDashboardStats();
+        }
+
+        // 3. Projects Meta & Dashboard & List (CRITICAL for /projects/list & /projects/dashboard!)
+        if (targetPath.includes('/projects/meta')) {
+          const metaEmployees = (dummyDb.employees || []).map(e => ({
+            id: e.id,
+            name: e.name,
+            department_name: e.department,
+            designation_name: e.designation,
+            role_key: e.role === 'SUPER_ADMIN' ? 'super_admin' : 'employee',
+            role_name: e.role === 'SUPER_ADMIN' ? 'Super Admin' : 'Employee'
+          }));
+          const metaDepartments = (dummyDb.departments || []).map(d => ({ id: d.id, name: d.name }));
+          return {
+            success: true,
+            data: {
+              employees: metaEmployees,
+              departments: metaDepartments,
+              projects: dummyDb.projects || []
+            }
+          };
+        }
+
+        if (targetPath.includes('/projects/dashboard')) {
+          const projs = dummyDb.projects || [];
+          return {
+            success: true,
+            data: {
+              totalProjects: projs.length,
+              completedProjects: projs.filter(p => p.status === 'Completed').length,
+              inProgressProjects: projs.filter(p => p.status === 'In Progress').length,
+              onHoldProjects: 0,
+              statusPie: projs.length ? [
+                { name: 'In Progress', value: projs.filter(p => p.status === 'In Progress').length, color: '#3B82F6' },
+                { name: 'Completed', value: projs.filter(p => p.status === 'Completed').length, color: '#10B981' }
+              ] : [],
+              monthlyTrend: [],
+              topProjects: projs.slice(0, 3).map(p => ({
+                id: p.id,
+                name: p.title || p.project_name || 'Project',
+                progress: p.progress || 0,
+                budget: p.budget || 0,
+                status: p.status || 'In Progress'
+              })),
+              recentProjects: projs.slice(0, 5).map(p => ({
+                id: p.id,
+                name: p.title || p.project_name || 'Project',
+                manager: meta.customerName || 'Admin',
+                start: p.start_date || '',
+                end: p.end_date || '',
+                status: p.status || 'In Progress',
+                priority: 'High'
+              }))
+            }
+          };
+        }
+
+        if (targetPath.includes('/projects')) {
+          if (options.method === 'POST') {
+            const { addDummyProject } = await import('./demoDummyStore');
+            const proj = addDummyProject(bodyPayload);
+            return { success: true, message: 'Project created in demo database', project: proj, data: proj };
+          }
+          if (options.method === 'PUT') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { updateDummyProject } = await import('./demoDummyStore');
+            const updated = updateDummyProject(id, bodyPayload);
+            return { success: true, message: 'Project updated in demo database', project: updated, data: updated };
+          }
+          if (options.method === 'DELETE') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { deleteDummyProject } = await import('./demoDummyStore');
+            deleteDummyProject(id);
+            return { success: true, message: 'Project removed from demo database' };
+          }
+          const formattedProjects = (dummyDb.projects || []).map(p => ({
+            id: p.id,
+            project_name: p.title || p.project_name || 'Enterprise Project',
+            project_code: p.project_code || `PRJ-${String(p.id).padStart(3, '0')}`,
+            client: p.client || p.client_name || 'Enterprise Client',
+            client_name: p.client || p.client_name || 'Enterprise Client',
+            status: p.status || 'In Progress',
+            budget: p.budget || 150000,
+            progress: p.progress || 45,
+            start_date: '2026-09-01',
+            end_date: '2026-12-31',
+            priority: 'High',
+            description: 'Managed in 3-Hour Demo Workspace',
+            team_members: []
+          }));
+          return {
+            success: true,
+            data: {
+              projects: formattedProjects,
+              total: formattedProjects.length
+            },
+            projects: formattedProjects,
+            total: formattedProjects.length
+          };
+        }
+
+        // 4. Tasks & Sprint Board & Milestones & Timesheets & Project Team
+        if (targetPath.includes('/tasks/dashboard')) {
+          const tasks = dummyDb.tasks || [];
+          return {
+            success: true,
+            data: {
+              totalTasks: tasks.length,
+              todo: tasks.filter(t => t.status === 'To Do' || t.status === 'Backlog').length,
+              inProgress: tasks.filter(t => t.status === 'In Progress').length,
+              review: tasks.filter(t => t.status === 'Review' || t.status === 'Testing').length,
+              completed: tasks.filter(t => t.status === 'Completed' || t.status === 'Done').length
+            }
+          };
+        }
+
+        if (targetPath.includes('/tasks')) {
+          if (options.method === 'POST') {
+            const { addDummyTask } = await import('./demoDummyStore');
+            const newTask = addDummyTask(bodyPayload);
+            return { success: true, message: 'Task created in demo database', task: newTask, data: newTask };
+          }
+          if (options.method === 'PUT') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { updateDummyTask } = await import('./demoDummyStore');
+            const updated = updateDummyTask(id, bodyPayload);
+            return { success: true, message: 'Task updated in demo database', task: updated, data: updated };
+          }
+          if (options.method === 'DELETE') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { deleteDummyTask } = await import('./demoDummyStore');
+            deleteDummyTask(id);
+            return { success: true, message: 'Task deleted from demo database' };
+          }
+          const taskList = dummyDb.tasks || [];
+          return {
+            success: true,
+            data: {
+              tasks: taskList,
+              total: taskList.length
+            },
+            tasks: taskList,
+            total: taskList.length
+          };
+        }
+
+        if (targetPath.includes('/sprints')) {
+          return {
+            success: true,
+            data: {
+              sprints: [],
+              tasks: dummyDb.tasks || []
+            }
+          };
+        }
+
+        if (targetPath.includes('/milestones')) {
+          if (targetPath.includes('/dashboard')) {
+            return {
+              success: true,
+              data: {
+                totalMilestones: 0,
+                completed: 0,
+                inProgress: 0,
+                overdue: 0
+              }
+            };
+          }
+          return toDemoResponse([]);
+        }
+
+        if (targetPath.includes('/timesheets')) {
+          if (targetPath.includes('/summary')) {
+            return {
+              success: true,
+              data: {
+                totalHours: 0,
+                billableHours: 0,
+                nonBillableHours: 0,
+                approvedHours: 0
+              }
+            };
+          }
+          return toDemoResponse([]);
+        }
+
+        if (targetPath.includes('/project-team')) {
+          if (targetPath.includes('/meta')) {
+            return {
+              success: true,
+              data: {
+                employees: dummyDb.employees || [],
+                projects: dummyDb.projects || []
+              }
+            };
+          }
+          return toDemoResponse([]);
+        }
+
+        // 5. Clients Active List & Clients CRUD
+        if (targetPath.includes('/clients/active/list')) {
+          return {
+            success: true,
+            data: (dummyDb.clients || []).map(c => ({
+              id: c.id,
+              name: c.name || c.client_name,
+              company_name: c.name || c.client_name,
+              client_name: c.name || c.client_name
+            }))
+          };
+        }
+
+        if (targetPath.includes('/clients')) {
+          if (options.method === 'POST') {
+            const { addDummyClient } = await import('./demoDummyStore');
+            const cl = addDummyClient(bodyPayload);
+            return { success: true, message: 'Client created in demo database', client: cl, data: cl };
+          }
+          if (options.method === 'PUT') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { updateDummyClient } = await import('./demoDummyStore');
+            const updated = updateDummyClient(id, bodyPayload);
+            return { success: true, message: 'Client updated in demo database', client: updated, data: updated };
+          }
+          if (options.method === 'DELETE') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { deleteDummyClient } = await import('./demoDummyStore');
+            deleteDummyClient(id);
+            return { success: true, message: 'Client deleted' };
+          }
+          if (targetPath.includes('/projects')) {
+            return { success: true, data: dummyDb.projects || [] };
+          }
+          if (targetPath.includes('/activity')) {
+            return { success: true, data: [] };
+          }
+          const formattedClients = (dummyDb.clients || []).map(c => ({
+            id: c.id,
+            client_name: c.name || c.client_name,
+            company_name: c.name || c.client_name,
+            industry: c.industry || 'Technology',
+            client_type: 'Enterprise',
+            status: c.status || 'Active',
+            email: 'contact@' + (c.name || 'client').toLowerCase().replace(/[^a-z0-9]/g, '') + '.com',
+            phone: '+91 98765 43210'
+          }));
+          return {
+            success: true,
+            data: {
+              clients: formattedClients,
+              total: formattedClients.length,
+              stats: {
+                total: formattedClients.length,
+                active: formattedClients.filter(c => c.status === 'Active').length,
+                inactive: 0
+              },
+              industries: ['Technology', 'Logistics', 'Healthcare', 'Finance']
+            },
+            clients: formattedClients,
+            total: formattedClients.length
+          };
+        }
+
+        // 6. Employees (GET, POST, PUT, DELETE)
+        if (targetPath.includes('/employees')) {
+          if (options.method === 'POST') {
+            const { addDummyEmployee } = await import('./demoDummyStore');
+            const newEmp = addDummyEmployee(bodyPayload);
+            return { success: true, message: 'Employee added to demo database successfully', employee: newEmp, data: newEmp };
+          }
+          if (options.method === 'PUT') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { updateDummyEmployee } = await import('./demoDummyStore');
+            const updated = updateDummyEmployee(id, bodyPayload);
+            return { success: true, message: 'Employee updated successfully', employee: updated, data: updated };
+          }
+          if (options.method === 'DELETE') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { deleteDummyEmployee } = await import('./demoDummyStore');
+            deleteDummyEmployee(id);
+            return { success: true, message: 'Employee removed from demo database' };
+          }
+          const empList = (dummyDb.employees || []).map(e => ({
+            id: e.id,
+            name: e.name,
+            email: e.email,
+            phone: e.phone,
+            status: e.status || 'Active',
+            dept_name: e.department,
+            department: e.department,
+            department_name: e.department,
+            role_name: e.designation,
+            designation: e.designation,
+            designation_name: e.designation,
+            salary: e.salary,
+            ctc: e.salary,
+            join_date: e.join_date,
+            emp_id: e.emp_id,
+            employeeCode: e.emp_id,
+            role: e.role,
+            avatar: e.avatar,
+            profile_photo: e.avatar
+          }));
+          return toDemoResponse(empList, { employees: empList, total: empList.length });
+        }
+
+        // 7. Organization (Departments, Designations, Profile, Shifts, Teams, Holidays)
+        if (targetPath.includes('/organization/departments') || targetPath.includes('/departments')) {
+          if (options.method === 'POST') {
+            const { addDummyDepartment } = await import('./demoDummyStore');
+            const dept = addDummyDepartment(bodyPayload);
+            return { success: true, message: 'Department created in demo database', department: dept, data: dept };
+          }
+          const depts = (dummyDb.departments || []).map(d => ({
+            id: d.id,
+            name: d.name,
+            dept_name: d.name,
+            head: d.head || 'Super Admin',
+            employees_count: d.employees_count || 1
+          }));
+          return toDemoResponse(depts, { departments: depts });
+        }
+        if (targetPath.includes('/organization/designations') || targetPath.includes('/designations')) {
+          if (options.method === 'POST') {
+            const { addDummyDesignation } = await import('./demoDummyStore');
+            const desig = addDummyDesignation(bodyPayload);
+            return { success: true, message: 'Designation created in demo database', designation: desig, data: desig };
+          }
+          const desigs = (dummyDb.designations || []).map(d => ({
+            id: d.id,
+            name: d.name,
+            role_name: d.name,
+            role_code: `DES-${d.id}`,
+            department: d.department
+          }));
+          return toDemoResponse(desigs, { designations: desigs });
+        }
+        if (targetPath.includes('/organization/teams') || targetPath.includes('/teams')) {
+          return toDemoResponse([]);
+        }
+        if (targetPath.includes('/organization/shifts') || targetPath.includes('/shifts')) {
+          const shifts = [
+            { id: 1, name: 'General Shift', start_time: '09:00:00', end_time: '18:00:00', status: 'Active' }
+          ];
+          return toDemoResponse(shifts);
+        }
+        if (targetPath.includes('/organization/holidays') || targetPath.includes('/holiday-calendar') || targetPath.includes('/leaves/holidays')) {
+          return toDemoResponse([]);
+        }
+        if (targetPath.includes('/company-profile')) {
+          if (options.method === 'POST' || options.method === 'PUT') {
+            const { updateDummyCompanyProfile } = await import('./demoDummyStore');
+            const comp = updateDummyCompanyProfile(bodyPayload);
+            return { success: true, message: 'Company profile updated in demo database', company: comp, data: comp };
+          }
+          return { success: true, company: dummyDb.company || {}, data: dummyDb.company || {} };
+        }
+
+        // 8. Attendance (Daily, Punch Locations, GPS, Recent)
+        if (targetPath.includes('/attendance')) {
+          if (options.method === 'POST') {
+            const { addDummyAttendance } = await import('./demoDummyStore');
+            const att = addDummyAttendance(bodyPayload);
+            return { success: true, message: 'Attendance recorded in demo database', record: att, data: att };
+          }
+          if (targetPath.includes('/daily')) {
+            const daily = (dummyDb.attendanceToday || []).map(a => ({
+              id: a.id,
+              db_id: a.id,
+              employee_id: a.id,
+              name: a.name,
+              emp_name: a.name,
+              punch_in: a.punchIn,
+              punch_out: a.punchOut,
+              status: a.status,
+              punch_type: a.type,
+              location: a.location
+            }));
+            return {
+              success: true,
+              data: daily,
+              records: daily,
+              kpis: {
+                totalEmployees: (dummyDb.employees || []).length,
+                presentCount: (dummyDb.attendanceToday || []).filter(a => a.status === 'Present').length,
+                lateCount: (dummyDb.attendanceToday || []).filter(a => a.status === 'Late').length,
+                absentCount: 0,
+                halfDayCount: 0
+              }
+            };
+          }
+          if (targetPath.includes('/punch-locations')) {
+            return {
+              success: true,
+              data: {
+                locations: [],
+                total: 0
+              }
+            };
+          }
+          if (targetPath.includes('/today-status') || targetPath.includes('/recent')) {
+            return {
+              success: true,
+              data: {
+                status: 'Not Punched',
+                punchIn: '--',
+                duration: '0h 0m',
+                recent: dummyDb.attendanceToday || []
+              }
+            };
+          }
+          return { success: true, records: dummyDb.attendanceToday || [], data: dummyDb.attendanceToday || [] };
+        }
+
+        // 9. Leaves & Approvals
+        if (targetPath.includes('/leaves') || targetPath.includes('/leave')) {
+          if (options.method === 'POST') {
+            const { addDummyLeave } = await import('./demoDummyStore');
+            const lv = addDummyLeave(bodyPayload);
+            return { success: true, message: 'Leave application submitted in demo database', leave: lv, data: lv };
+          }
+          if (targetPath.includes('/dashboard-stats')) {
+            return {
+              success: true,
+              kpis: {
+                totalEmployees: (dummyDb.employees || []).length,
+                onLeaveToday: 0,
+                leavesTaken: (dummyDb.leaves || []).filter(l => l.status === 'Approved').length,
+                pendingApprovals: (dummyDb.leaves || []).filter(l => l.status === 'Pending Approval').length,
+                leaveEncashment: '₹0.00'
+              },
+              onLeaveToday: [],
+              leaveByDepartment: [],
+              leaveDistribution: [],
+              data: {
+                totalLeaves: (dummyDb.leaves || []).length,
+                approved: (dummyDb.leaves || []).filter(l => l.status === 'Approved').length,
+                pending: (dummyDb.leaves || []).filter(l => l.status === 'Pending Approval').length,
+                rejected: 0,
+                recentApplications: dummyDb.leaves || []
+              }
+            };
+          }
+          if (targetPath.includes('/types')) {
+            const types = [
+              { id: 1, name: 'Casual Leave', code: 'CL', days_allowed: 12, carry_forward: false, status: 'Active' },
+              { id: 2, name: 'Sick Leave', code: 'SL', days_allowed: 10, carry_forward: false, status: 'Active' },
+              { id: 3, name: 'Privilege Leave', code: 'PL', days_allowed: 15, carry_forward: true, status: 'Active' }
+            ];
+            return toDemoResponse(types);
+          }
+          if (targetPath.includes('/all-balances') || targetPath.includes('/balances')) {
+            const balances = [
+              { type: 'Casual Leave', allocated: 12, used: 2, balance: 10 },
+              { type: 'Sick Leave', allocated: 10, used: 1, balance: 9 },
+              { type: 'Privilege Leave', allocated: 15, used: 0, balance: 15 }
+            ];
+            return toDemoResponse(balances);
+          }
+          if (targetPath.includes('/comp-off')) {
+            return toDemoResponse([]);
+          }
+          const formattedLeaves = (dummyDb.leaves || []).map(l => ({
+            id: l.id,
+            employee_name: l.employeeName,
+            leave_type: l.type,
+            from_date: l.fromDate,
+            to_date: l.toDate,
+            days: l.days,
+            status: l.status,
+            reason: l.reason,
+            created_at: new Date().toISOString()
+          }));
+          return toDemoResponse(formattedLeaves, { leaves: formattedLeaves });
+        }
+
+        // 10. Payroll (Processing, Structures, Components, Payslips)
+        if (targetPath.includes('/payroll')) {
+          if (targetPath.includes('/structures')) {
+            return toDemoResponse(dummyDb.salaryStructures || []);
+          }
+          if (targetPath.includes('/components')) {
+            return toDemoResponse(dummyDb.salaryComponents || []);
+          }
+          if (targetPath.includes('/bonuses') || targetPath.includes('/reimbursements') || targetPath.includes('/loans')) {
+            return toDemoResponse([]);
+          }
+          const payslipsList = (dummyDb.employees || []).map(e => ({
+            id: e.id,
+            employee_id: e.id,
+            emp_id: e.emp_id,
+            name: e.name,
+            employee_name: e.name,
+            department: e.department,
+            designation: e.designation,
+            month: 'September',
+            year: '2026',
+            basic_salary: Math.round((e.salary || 60000) * 0.5),
+            hra: Math.round((e.salary || 60000) * 0.25),
+            allowances: Math.round((e.salary || 60000) * 0.15),
+            gross_salary: e.salary || 60000,
+            pf_deduction: 1800,
+            tax_deduction: 2500,
+            total_deductions: 4300,
+            net_salary: (e.salary || 60000) - 4300,
+            status: 'Paid',
+            payment_date: '2026-09-01'
+          }));
+
+          if (targetPath.includes('/payslips') || targetPath === '/payroll' || targetPath.startsWith('/payroll?')) {
+            return toDemoResponse(payslipsList, {
+              payrollSummary: dummyDb.payrollSummary || {}
+            });
+          }
+
+          return {
+            success: true,
+            payroll: dummyDb.payrollSummary || {},
+            data: dummyDb.payrollSummary || {}
+          };
+        }
+
+        // 11. Recruitment (Dashboard, Requirements, Candidates, Interviews, Offers, Pipeline)
+        if (targetPath.includes('/requirements/dashboard')) {
+          const reqs = dummyDb.requirements || [];
+          return {
+            success: true,
+            data: {
+              total: [{ count: reqs.length }],
+              open: [{ count: reqs.filter(r => r.status === 'Open').length }],
+              pendingApproval: [{ count: 0 }],
+              critical: [{ count: reqs.filter(r => r.priority === 'High').length }],
+              monthOpenings: [{ count: reqs.length }],
+              monthlyTrend: [
+                { month: 'Jul', count: 1 },
+                { month: 'Aug', count: 2 },
+                { month: 'Sep', count: reqs.length }
+              ],
+              statusPie: [
+                { name: 'Open', value: reqs.length }
+              ]
+            }
+          };
+        }
+
+        if (targetPath.includes('/requirements/meta/all') || targetPath.includes('/requirements/meta')) {
+          return {
+            success: true,
+            departments: dummyDb.departments || [],
+            branches: [{ id: 1, name: 'Headquarters Campus' }]
+          };
+        }
+
+        if (targetPath.includes('/requirements')) {
+          if (options.method === 'POST') {
+            const { addDummyRequirement } = await import('./demoDummyStore');
+            const newReq = addDummyRequirement(bodyPayload);
+            return { success: true, message: 'Requirement created in demo database', requirement: newReq, data: newReq };
+          }
+          if (options.method === 'PUT') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { updateDummyRequirement } = await import('./demoDummyStore');
+            const updated = updateDummyRequirement(id, bodyPayload);
+            return { success: true, message: 'Requirement updated', requirement: updated, data: updated };
+          }
+          if (options.method === 'DELETE') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { deleteDummyRequirement } = await import('./demoDummyStore');
+            deleteDummyRequirement(id);
+            return { success: true, message: 'Requirement deleted' };
+          }
+          const reqs = dummyDb.requirements || [];
+          return {
+            success: true,
+            data: {
+              requirements: reqs,
+              total: reqs.length
+            },
+            requirements: reqs,
+            total: reqs.length
+          };
+        }
+
+        if (targetPath.includes('/candidates/dropdown')) {
+          const cands = (dummyDb.candidates || []).map(c => ({
+            id: c.id,
+            name: c.name || c.candidate_name,
+            email: c.email,
+            job_title: c.job_title
+          }));
+          return { success: true, data: cands };
+        }
+
+        if (targetPath.includes('/candidates')) {
+          if (options.method === 'POST') {
+            const { addDummyCandidate } = await import('./demoDummyStore');
+            const newCand = addDummyCandidate(bodyPayload);
+            return { success: true, message: 'Candidate added to demo database', candidate: newCand, data: newCand };
+          }
+          if (options.method === 'PUT') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { updateDummyCandidate } = await import('./demoDummyStore');
+            const updated = updateDummyCandidate(id, bodyPayload);
+            return { success: true, message: 'Candidate updated', candidate: updated, data: updated };
+          }
+          if (options.method === 'DELETE') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { deleteDummyCandidate } = await import('./demoDummyStore');
+            deleteDummyCandidate(id);
+            return { success: true, message: 'Candidate deleted' };
+          }
+          const cands = dummyDb.candidates || [];
+          return {
+            success: true,
+            data: {
+              candidates: cands,
+              total: cands.length
+            },
+            candidates: cands,
+            total: cands.length
+          };
+        }
+
+        if (targetPath.includes('/pipeline/stats')) {
+          return {
+            success: true,
+            data: {
+              totals: {
+                sourced: 0,
+                screening: 0,
+                interview: 0,
+                offered: 0,
+                hired: 0
+              },
+              breakdown: [],
+              insights: {
+                avgTimeToHire: '0 Days',
+                offerAcceptanceRate: '0%'
+              }
+            }
+          };
+        }
+
+        if (targetPath.includes('/pipeline/sources')) {
+          return {
+            success: true,
+            data: []
+          };
+        }
+
+        if (targetPath.includes('/interviews')) {
+          return toDemoResponse(dummyDb.interviews || []);
+        }
+
+        if (targetPath.includes('/offers')) {
+          return {
+            success: true,
+            data: {
+              offers: dummyDb.offers || [],
+              total: (dummyDb.offers || []).length
+            }
+          };
+        }
+
+        // 12. Onboarding & Performance
+        if (targetPath.includes('/onboarding')) {
+          return toDemoResponse([]);
+        }
+
+        if (targetPath.includes('/goals/dashboard')) {
+          const goals = dummyDb.goals || [];
+          return {
+            success: true,
+            data: {
+              totalGoals: goals.length,
+              onTrack: goals.filter(g => g.status === 'On Track').length,
+              atRisk: goals.filter(g => g.status === 'At Risk').length,
+              completed: goals.filter(g => g.status === 'Completed').length
+            }
+          };
+        }
+
+        if (targetPath.includes('/goals') || targetPath.includes('/performance/goals')) {
+          if (options.method === 'POST') {
+            const { addDummyGoal } = await import('./demoDummyStore');
+            const newGoal = addDummyGoal(bodyPayload);
+            return { success: true, message: 'Goal added to demo database', goal: newGoal, data: newGoal };
+          }
+          if (options.method === 'PUT') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { updateDummyGoal } = await import('./demoDummyStore');
+            const updated = updateDummyGoal(id, bodyPayload);
+            return { success: true, message: 'Goal updated', goal: updated, data: updated };
+          }
+          if (options.method === 'DELETE') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { deleteDummyGoal } = await import('./demoDummyStore');
+            deleteDummyGoal(id);
+            return { success: true, message: 'Goal removed' };
+          }
+          const goals = dummyDb.goals || [];
+          return {
+            success: true,
+            data: {
+              goals,
+              total: goals.length
+            },
+            goals,
+            total: goals.length
+          };
+        }
+
+        if (targetPath.includes('/kpis') || targetPath.includes('/kras')) {
+          return toDemoResponse([]);
+        }
+
+        if (targetPath.includes('/reviews/dashboard')) {
+          return {
+            success: true,
+            data: {
+              totalReviews: 0,
+              completed: 0,
+              pending: 0,
+              avgScore: 0
+            }
+          };
+        }
+
+        if (targetPath.includes('/reviews') || targetPath.includes('/promotions') || targetPath.includes('/appraisals')) {
+          return toDemoResponse([]);
+        }
+
+        // 13. Expenses
+        if (targetPath.includes('/expenses')) {
+          return toDemoResponse([]);
+        }
+
+        // 14. Documents (Templates, Policies, Dashboard)
+        if (targetPath.includes('/documents/dashboard')) {
+          return {
+            success: true,
+            data: {
+              totalDocuments: (dummyDb.policies || []).length + (dummyDb.templates || []).length,
+              templates: (dummyDb.templates || []).length,
+              signed: 0,
+              pending: 0
+            }
+          };
+        }
+
+        if (targetPath.includes('/documents/templates')) {
+          return toDemoResponse(dummyDb.templates || []);
+        }
+
+        if (targetPath.includes('/documents/policies')) {
+          return toDemoResponse(dummyDb.policies || []);
+        }
+
+        if (targetPath.includes('/documents')) {
+          return toDemoResponse([]);
+        }
+
+        // 15. Help Desk (Tickets & Categories)
+        if (targetPath.includes('/helpdesk/dashboard')) {
+          const tkts = dummyDb.tickets || [];
+          return {
+            success: true,
+            data: {
+              totalTickets: tkts.length,
+              open: tkts.filter(t => t.status === 'Open').length,
+              inProgress: tkts.filter(t => t.status === 'In Progress').length,
+              resolved: 0
+            }
+          };
+        }
+
+        if (targetPath.includes('/helpdesk') || targetPath.includes('/tickets')) {
+          if (options.method === 'POST') {
+            const { addDummyTicket } = await import('./demoDummyStore');
+            const tkt = addDummyTicket(bodyPayload);
+            return { success: true, message: 'Ticket created in demo database', ticket: tkt, data: tkt };
+          }
+          if (options.method === 'PUT') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { updateDummyTicket } = await import('./demoDummyStore');
+            const updated = updateDummyTicket(id, bodyPayload);
+            return { success: true, message: 'Ticket updated', ticket: updated, data: updated };
+          }
+          if (options.method === 'DELETE') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { deleteDummyTicket } = await import('./demoDummyStore');
+            deleteDummyTicket(id);
+            return { success: true, message: 'Ticket removed' };
+          }
+          return toDemoResponse(dummyDb.tickets || []);
+        }
+
+        // 16. Role Permissions & User Roles & RBAC
+        if (targetPath.includes('/rbac/roles')) {
+          return toDemoResponse([
+            { id: 1, role_key: 'super_admin', role_name: 'Super Admin', description: 'Complete system control' },
+            { id: 2, role_key: 'team_leader', role_name: 'Team Leader', description: 'Team and task management' },
+            { id: 3, role_key: 'employee', role_name: 'Employee', description: 'Self-service portal access' }
+          ]);
+        }
+
+        if (targetPath.includes('/rbac/user-permissions') || targetPath.includes('/rbac/permissions')) {
+          const allPerms = {
+            dashboard: { view: true, create: true, edit: true, delete: true },
+            organization: { view: true, create: true, edit: true, delete: true },
+            employees: { view: true, create: true, edit: true, delete: true },
+            attendance: { view: true, create: true, edit: true, delete: true },
+            leave: { view: true, create: true, edit: true, delete: true },
+            leaves: { view: true, create: true, edit: true, delete: true },
+            payroll: { view: true, create: true, edit: true, delete: true },
+            recruitment: { view: true, create: true, edit: true, delete: true },
+            onboarding: { view: true, create: true, edit: true, delete: true },
+            performance: { view: true, create: true, edit: true, delete: true },
+            projects: { view: true, create: true, edit: true, delete: true },
+            clients: { view: true, create: true, edit: true, delete: true },
+            expenses: { view: true, create: true, edit: true, delete: true },
+            documents: { view: true, create: true, edit: true, delete: true },
+            helpdesk: { view: true, create: true, edit: true, delete: true },
+            settings: { view: true, create: true, edit: true, delete: true }
+          };
+          return {
+            success: true,
+            permissions: allPerms,
+            data: allPerms
+          };
+        }
+
+        // 17. Notifications
+        if (targetPath.includes('/notifications')) {
+          return {
+            success: true,
+            notifications: [
+              { id: 1, title: 'Welcome to your 3-Hour Demo', description: 'Explore all 18 HR modules with your isolated dummy database.', read: false, createdAt: new Date().toISOString() }
+            ]
+          };
+        }
+
+        // Fallback for ANY other demo endpoint: return clean success data so UI never breaks!
+        return toDemoResponse([], { success: true, message: 'Demo operation successful' });
+      }
+    } catch (e) {
+      console.warn('Dummy store interception notice:', e);
+      return toDemoResponse([], { success: true, message: 'Demo operation successful' });
+    }
+  }
+
   try {
-    const res = await fetch(`${API_BASE}${targetPath}`, { ...options, headers });
+    const res = await nativeFetch(`${API_BASE}${targetPath}`, { ...options, headers });
     const text = await res.text();
     if (!text || !text.trim()) {
       return { success: res.ok, status: res.status };
@@ -75,6 +1015,57 @@ export const apiFetch = async (path, options = {}) => {
     return { success: false, message: e.message || 'Network request failed' };
   }
 };
+
+// ─── Global Window Fetch Monkey Patch for Legacy / Direct Component Fetch Calls ──
+if (typeof window !== 'undefined' && !window.__hrms_fetch_intercepted) {
+  window.__hrms_fetch_intercepted = true;
+  const originalWindowFetch = window.fetch.bind(window);
+
+  window.fetch = async function (input, init) {
+    try {
+      const urlString = typeof input === 'string' ? input : (input instanceof Request ? input.url : String(input));
+      
+      let isDemo = false;
+      try {
+        if (localStorage.getItem('hrms_is_demo_sandbox') === 'true') {
+          const meta = JSON.parse(localStorage.getItem('hrms_3hr_demo_meta') || '{}');
+          if (!meta.expiresAt || Date.now() < meta.expiresAt) isDemo = true;
+        } else {
+          const meta = JSON.parse(localStorage.getItem('hrms_3hr_demo_meta') || '{}');
+          if (meta?.isActive && meta?.is3HourDemo && (!meta.expiresAt || Date.now() < meta.expiresAt)) {
+            isDemo = true;
+          }
+        }
+      } catch (e) {}
+
+      const isAppApiCall = urlString.includes('/app/') || urlString.includes('/api/') || 
+                           urlString.startsWith('/app') || urlString.startsWith('/api') ||
+                           urlString.startsWith('/requirements') || urlString.startsWith('/candidates') ||
+                           urlString.startsWith('/pipeline') || urlString.startsWith('/employees');
+      const isTrialCall = urlString.includes('/trial') || urlString.includes('/auth/login');
+
+      if (isDemo && isAppApiCall && !isTrialCall) {
+        let cleanPath = urlString;
+        if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
+          try {
+            const parsedUrl = new URL(cleanPath);
+            cleanPath = parsedUrl.pathname + parsedUrl.search;
+          } catch (e) {}
+        }
+
+        const result = await apiFetch(cleanPath, init);
+        return new Response(JSON.stringify(result), {
+          status: result && result.status ? result.status : (result?.success === false ? 400 : 200),
+          statusText: 'OK',
+          headers: new Headers({ 'Content-Type': 'application/json' })
+        });
+      }
+    } catch (err) {
+      console.warn('Window fetch interception warning:', err);
+    }
+    return originalWindowFetch(input, init);
+  };
+}
 
 export const formatDate = (value) => {
   if (!value) return 'TBD';

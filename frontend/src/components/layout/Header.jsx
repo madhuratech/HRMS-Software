@@ -5,11 +5,11 @@ import {
   Settings, FileText, HelpCircle,
   CheckCircle2, XCircle, User, Clock, Wallet, AlignJustify,
   Sparkles, Building, Briefcase, Award, Shield, UserPlus, BookOpen,
-  Layers, ArrowRight, Loader2, Tag, LayoutDashboard, Users, MapPin, CheckCircle
+  Layers, ArrowRight, Loader2, Tag, LayoutDashboard, Users, MapPin, CheckCircle, LogOut
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
 
-export function Header({ title, userRole, currentView }) {
+export function Header({ title, userRole, currentView, onLogout }) {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
@@ -1341,6 +1341,39 @@ export function Header({ title, userRole, currentView }) {
             </p>
           </div>
         </div>
+
+        {/* Header Sign Out Button */}
+        {onLogout && (
+          <button
+            onClick={onLogout}
+            title="Sign Out"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: '#fef2f2',
+              color: '#dc2626',
+              border: '1px solid #fecaca',
+              padding: '6px 12px',
+              borderRadius: '8px',
+              fontSize: '12.5px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#fee2e2';
+              e.currentTarget.style.borderColor = '#fca5a5';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#fef2f2';
+              e.currentTarget.style.borderColor = '#fecaca';
+            }}
+          >
+            <LogOut size={14} />
+            <span>Sign Out</span>
+          </button>
+        )}
       </div>
     </header>
   );

@@ -72,7 +72,13 @@ export default function Projects() {
   const fetchMeta = useCallback(async () => {
     try {
       const res = await apiFetch('/projects/meta');
-      if (res.success && res.data) setMeta(res.data);
+      if (res && res.success && res.data) {
+        setMeta({
+          employees: Array.isArray(res.data.employees) ? res.data.employees : (Array.isArray(res.data) ? res.data : []),
+          departments: Array.isArray(res.data.departments) ? res.data.departments : [],
+          projects: Array.isArray(res.data.projects) ? res.data.projects : []
+        });
+      }
     } catch (err) {
       console.error('Failed to load project meta:', err);
     }
@@ -82,7 +88,7 @@ export default function Projects() {
   const fetchActiveClients = useCallback(async () => {
     try {
       const res = await apiFetch('/clients/active/list');
-      if (res.success && res.data) setActiveClients(res.data);
+      if (res && res.success && res.data) setActiveClients(Array.isArray(res.data) ? res.data : (res.data.clients || []));
     } catch (err) {
       console.warn('Could not load active clients list:', err);
     }
@@ -98,15 +104,21 @@ export default function Projects() {
       if (statusFilter) url += `&status=${encodeURIComponent(statusFilter)}`;
       if (deptFilter) url += `&department_id=${deptFilter}`;
       const res = await apiFetch(url);
-      if (res.success && res.data) {
-        setProjectsList(res.data.projects || []);
-        setTotal(res.data.total || 0);
+      if (res && res.success) {
+        const list = (res.data && Array.isArray(res.data.projects))
+          ? res.data.projects
+          : (Array.isArray(res.data) ? res.data : (Array.isArray(res.projects) ? res.projects : []));
+        const totalCount = (res.data && res.data.total != null)
+          ? res.data.total
+          : (res.total != null ? res.total : list.length);
+        setProjectsList(list);
+        setTotal(totalCount);
         setTimeout(() => setLoaded(true), 150);
       } else {
-        if ((res.message || '').toLowerCase().includes('forbidden') || res.status === 403) {
+        if (res && ((res.message || '').toLowerCase().includes('forbidden') || res.status === 403)) {
           setAccessDenied(true);
         } else {
-          addToast(res.message || 'Failed to fetch projects', 'error');
+          addToast(res?.message || 'Failed to fetch projects', 'error');
         }
       }
     } catch (err) {
@@ -216,8 +228,9 @@ export default function Projects() {
     }
   };
 
+  const allEmployeesList = Array.isArray(meta?.employees) ? meta.employees : [];
   // Filter out Super Admin / MD from being listed as regular team members
-  const nonAdminEmployees = meta.employees.filter(emp => {
+  const nonAdminEmployees = allEmployeesList.filter(emp => {
     const nameLower = (emp.name || '').toLowerCase();
     const roleKeyLower = (emp.role_key || '').toLowerCase();
     const desgLower = (emp.designation_name || '').toLowerCase();
@@ -237,7 +250,7 @@ export default function Projects() {
       rKey.includes('team_leader') || rKey.includes('manager');
   });
   const managerOptions = teamLeaders.length > 0 ? teamLeaders : nonAdminEmployees;
-  const selectedManager = meta.employees.find(e => e.id === parseInt(formData.project_manager_id));
+  const selectedManager = allEmployeesList.find(e => e.id === parseInt(formData.project_manager_id));
 
   // Team Members: Filter strictly for selected Team Leader's team or department
   const teamMembersOptions = nonAdminEmployees.filter(emp => {
