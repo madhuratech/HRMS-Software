@@ -77,6 +77,7 @@ export function CustomerTrialModal({
   const isPasswordMatch = password.length >= 6 && password === confirmPassword;
 
   const handleSendOtp = async (emailOverride) => {
+    if (isSendingOtp) return;
     const targetEmail = (emailOverride || email || "").trim();
     if (!isValidEmail(targetEmail)) {
       setOtpError("Please enter a valid email address first.");
@@ -84,27 +85,35 @@ export function CustomerTrialModal({
     }
     setOtpError("");
     setIsSendingOtp(true);
-    setDevPreviewOtp("");
+    
     try {
+      // Abort controller to prevent infinite hanging if SMTP is slow
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
+
       const res = await apiFetch("/trial/send-otp", {
         method: "POST",
+        signal: controller.signal,
         body: JSON.stringify({ email: targetEmail, name: username.trim() || "Customer" }),
       });
+      
+      clearTimeout(timeoutId);
+
       if (res && res.success) {
         setOtpSent(true);
         setOtpTimer(60);
         setOtpCode("");
-        if (res.devPreviewOtp) setDevPreviewOtp(res.devPreviewOtp);
       } else {
         setOtpError(res.message || "Failed to send OTP. Please try again.");
+        setOtpSent(false);
       }
     } catch (e) {
-      const fallbackOtp = Math.floor(100000 + Math.random() * 900000).toString();
-      setOtpSent(true);
-      setOtpTimer(60);
-      setOtpCode("");
-      setDevPreviewOtp(fallbackOtp);
-      sessionStorage.setItem("fallback_trial_otp_" + targetEmail.toLowerCase(), fallbackOtp);
+      if (e.name === 'AbortError') {
+        setOtpError("The server took too long to respond. Please try again.");
+      } else {
+        setOtpError("An error occurred while sending the email. Please try again.");
+      }
+      setOtpSent(false);
     } finally {
       setIsSendingOtp(false);
     }
