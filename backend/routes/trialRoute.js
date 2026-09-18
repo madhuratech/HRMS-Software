@@ -12,6 +12,37 @@ let trialLeadsStore = [];
 const activeOtps = new Map();
 
 /**
+ * 0. GET /api/trial/test-smtp
+ * Diagnostic endpoint to test SMTP connectivity and credentials
+ */
+router.get('/test-smtp', async (req, res) => {
+  try {
+    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+    const port = process.env.SMTP_PORT || '465';
+    const secure = process.env.SMTP_SECURE || 'true';
+    const user = process.env.SMTP_USER || process.env.EMAIL_USER || '';
+
+    const testResult = await emailService.verifyConnection();
+    return res.json({
+      success: testResult.success,
+      config: {
+        host,
+        port,
+        secure,
+        userConfigured: !!user,
+        userEmail: user ? `${user.substring(0, 3)}***@${user.split('@')[1] || ''}` : null
+      },
+      result: testResult
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success: false,
+      error: err.message
+    });
+  }
+});
+
+/**
  * 1. POST /api/trial/send-otp
  * Generates and dispatches 6-digit OTP for customer Gmail/Email verification
  */

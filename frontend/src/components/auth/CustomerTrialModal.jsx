@@ -28,6 +28,7 @@ export function CustomerTrialModal({
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [otpError, setOtpError] = useState("");
   const [devPreviewOtp, setDevPreviewOtp] = useState("");
+  const [fallbackActivationUrl, setFallbackActivationUrl] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formError, setFormError] = useState("");
   const [registeredLead, setRegisteredLead] = useState(null);
@@ -48,6 +49,7 @@ export function CustomerTrialModal({
       setOtpVerified(false);
       setOtpTimer(0);
       setDevPreviewOtp("");
+      setFallbackActivationUrl("");
     }
   }, [isOpen]);
 
@@ -204,6 +206,9 @@ export function CustomerTrialModal({
         const updated = [leadRecord, ...existing.filter((item) => item.email !== leadRecord.email)];
         localStorage.setItem("hrms_trial_submissions", JSON.stringify(updated));
       } catch (err) {}
+      if (res && res.activationUrl) {
+        setFallbackActivationUrl(res.activationUrl);
+      }
       setRegisteredLead(leadRecord);
       setStep("activation_sent");
     } catch (err) {
@@ -389,6 +394,28 @@ export function CustomerTrialModal({
                     <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#ef4444", fontWeight: 500 }}>
                       {otpError}
                     </p>
+                  )}
+
+                  {/* RESTORED DEV CODE UI FOR DEVELOPMENT MODE */}
+                  {devPreviewOtp && !otpVerified && (
+                    <div style={{
+                      marginTop: "12px", padding: "10px 14px",
+                      background: "#f8fafc", border: "1px dashed #cbd5e1",
+                      borderRadius: "8px", fontSize: "12px", color: "#475569",
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                    }}>
+                      <span>SMTP Failed - Dev Bypass: <strong style={{ letterSpacing: "2px", color: "#0f172a" }}>{devPreviewOtp}</strong></span>
+                      <button
+                        type="button" onClick={() => setOtpCode(devPreviewOtp)}
+                        style={{
+                          background: "#0f172a", color: "#fff", border: "none",
+                          borderRadius: "5px", padding: "4px 10px", marginLeft: "8px",
+                          fontSize: "11px", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
+                        }}
+                      >
+                        Auto-Fill
+                      </button>
+                    </div>
                   )}
 
                   {otpSent && !otpVerified && (
@@ -626,6 +653,33 @@ export function CustomerTrialModal({
                 <strong>Important:</strong> You must click the activation link inside the email we just sent to verify your identity. The link will safely open your secure Demo Workspace setup.
               </div>
             </div>
+            {fallbackActivationUrl && (
+              <div style={{
+                margin: "20px 0",
+                padding: "16px",
+                background: "#f0fdf4",
+                border: "1.5px dashed #86efac",
+                borderRadius: "12px",
+                textAlign: "center"
+              }}>
+                <div style={{ fontSize: "12px", color: "#166534", fontWeight: 600, marginBottom: "10px" }}>
+                  Delivery slow or testing environment? Activate directly:
+                </div>
+                <a
+                  href={fallbackActivationUrl}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: "8px",
+                    padding: "11px 22px", borderRadius: "9px",
+                    background: "linear-gradient(135deg, #16a34a, #15803d)",
+                    color: "#ffffff", fontWeight: 700, fontSize: "13.5px",
+                    textDecoration: "none", boxShadow: "0 4px 14px rgba(22,163,74,0.3)"
+                  }}
+                >
+                  Activate Demo Workspace Now <ArrowRight size={15} />
+                </a>
+              </div>
+            )}
+
             <button
               type="button" onClick={onClose}
               style={{

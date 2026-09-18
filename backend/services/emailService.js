@@ -1,31 +1,57 @@
 const nodemailer = require('nodemailer');
+const dns = require('dns');
+
+// Force IPv4 DNS lookups first (Render containers drop IPv6 packets to smtp.gmail.com)
+if (dns && dns.setDefaultResultOrder) {
+  dns.setDefaultResultOrder('ipv4first');
+}
 
 async function getTransporter() {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-  const port = parseInt(process.env.SMTP_PORT || '587');
-  const secure = process.env.SMTP_SECURE === 'true'; // false for 587 STARTTLS
+  const port = parseInt(process.env.SMTP_PORT || '465');
+  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
   const user = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
   const pass = (process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASS || '').trim().replace(/\s+/g, '');
 
   if (!user || !pass) {
-    throw new Error('SMTP credentials missing: Please ensure SMTP_USER and SMTP_PASS are configured in backend/.env');
+    throw new Error('SMTP credentials missing: Please ensure SMTP_USER and SMTP_PASS are configured');
   }
 
-  const transporter = nodemailer.createTransport({
+  const transportOptions = {
     host,
     port,
     secure,
+    family: 4, // Explicitly force IPv4 socket connection
     auth: { user, pass },
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 15000
-  });
+    connectionTimeout: 12000,
+    greetingTimeout: 12000,
+    socketTimeout: 15000,
+    tls: {
+      rejectUnauthorized: false
+    }
+  };
+
+  const transporter = nodemailer.createTransport(transportOptions);
 
   // Verify transporter connectivity and credentials before sending
   await transporter.verify();
 
   return transporter;
 }
+
+exports.verifyConnection = async () => {
+  try {
+    const transporter = await getTransporter();
+    return { success: true, message: 'SMTP connection verified successfully' };
+  } catch (err) {
+    return {
+      success: false,
+      message: err.message,
+      code: err.code || 'UNKNOWN',
+      response: err.response || null
+    };
+  }
+};
 
 exports.sendOtpEmail = async ({ toEmail, recipientName, otpCode }) => {
   const transporter = await getTransporter();
@@ -136,47 +162,6 @@ ${contentText || 'Please review your attached offer letter for details.'}
   }
 };
 
-exports.sendActivationEmail = async ({ toEmail, recipientName, activationUrl }) => {
-  const transporter = await getTransporter();
-  const smtpUser = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
-  const fromEmail = smtpUser || 'noreply@madhuratech.com';
-  const fromName = process.env.SMTP_FROM || `"Madhura HRMS" <${fromEmail}>`;
-  const nameDisplay = recipientName || 'Customer';
-
-  const mailOptions = {
-    from: fromName,
-    to: toEmail,
-    subject: 'Madhura HRMS - Activate Your 3-Hour Demo',
-    text: `Hello ${nameDisplay},\n\nYour registration is verified. Please use the following link to activate your 3-Hour Super Admin Demo Workspace:\n\n${activationUrl}\n\nThis link will securely open your setup form.\n\nRegards,\nMadhura HRMS Team`,
-    html: `
-      <div style="font-family: 'Inter', Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 0; background: #f8fafc;">
-        <div style="background: linear-gradient(135deg, #059669, #047857); padding: 32px 24px; text-align: center; border-radius: 12px 12px 0 0;">
-          <h1 style="color: #ffffff; margin: 0; font-size: 22px; font-weight: 700;">Demo Activation</h1>
-        </div>
-        <div style="background: #ffffff; padding: 36px 28px; color: #334155; border: 1px solid #e2e8f0; border-top: none;">
-          <p style="font-size: 15px; line-height: 1.6; margin-top: 0;">Hello <strong>${nameDisplay}</strong>,</p>
-          <p style="font-size: 14px; line-height: 1.6; color: #64748b;">Your email has been successfully verified! You are just one step away from launching your 3-Hour Super Admin Workspace.</p>
-          
-          <div style="text-align: center; margin: 32px 0;">
-            <a href="${activationUrl}" style="display: inline-block; padding: 14px 28px; background: linear-gradient(135deg, #059669, #047857); color: #ffffff; text-decoration: none; font-size: 16px; font-weight: 700; border-radius: 8px; box-shadow: 0 4px 12px rgba(5,150,105,0.25);">
-              Accept & Activate Demo Workspace
-            </a>
-          </div>
-
-          <p style="font-size: 13px; color: #94a3b8; line-height: 1.5;">If the button above does not work, copy and paste the following URL into your browser:<br/><br/>
-          <span style="color: #3b82f6; word-break: break-all;">${activationUrl}</span></p>
-        </div>
-        <div style="padding: 16px 24px; text-align: center; color: #94a3b8; font-size: 12px;">
-          &copy; 2026 Madhura Technologies. All rights reserved.
-        </div>
-      </div>
-    `
-  };
-
-  const info = await transporter.sendMail(mailOptions);
-  console.log(`[ACTIVATION EMAIL] Sent to ${toEmail} | Message ID: ${info.messageId}`);
-  return info;
-};
 exports.sendActivationEmail = async ({ toEmail, recipientName, activationUrl }) => {
   const transporter = await getTransporter();
   const smtpUser = (process.env.SMTP_USER || process.env.EMAIL_USER || '').trim();
