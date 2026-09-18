@@ -43,6 +43,9 @@ router.post('/send-otp', async (req, res) => {
       }
     } catch (e) {
       console.warn('[Trial OTP Email Notice] SMTP delivery skipped or error:', e.message);
+      if (process.env.NODE_ENV === 'production') {
+        return res.status(500).json({ success: false, message: 'Failed to dispatch verification email due to server SMTP error. Please contact support.' });
+      }
     }
 
     return res.json({
