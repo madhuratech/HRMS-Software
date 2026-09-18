@@ -1,7 +1,19 @@
 const nodemailer = require('nodemailer');
 const dns = require('dns');
 
-// Force IPv4 DNS lookups first (Render containers drop IPv6 packets to smtp.gmail.com)
+// Disable IPv6 resolution for cloud environments (Render, etc.) that drop IPv6 packets
+const disableResolve6 = function(hostname, options, callback) {
+  const cb = typeof options === 'function' ? options : callback;
+  if (typeof cb === 'function') {
+    const err = new Error('IPv6 disabled');
+    err.code = dns.NODATA;
+    return cb(err);
+  }
+};
+dns.resolve6 = disableResolve6;
+if (dns.Resolver && dns.Resolver.prototype) {
+  dns.Resolver.prototype.resolve6 = disableResolve6;
+}
 if (dns && dns.setDefaultResultOrder) {
   dns.setDefaultResultOrder('ipv4first');
 }
