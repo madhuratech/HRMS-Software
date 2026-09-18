@@ -385,6 +385,11 @@ export function CustomerTrialModal({
                       </button>
                     )}
                   </div>
+                  {otpError && !otpSent && (
+                    <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#ef4444", fontWeight: 500 }}>
+                      {otpError}
+                    </p>
+                  )}
 
                   {otpSent && !otpVerified && (
                     <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
