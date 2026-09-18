@@ -88,8 +88,9 @@ export function CustomerTrialModal({
     
     try {
       // Abort controller to prevent infinite hanging if SMTP is slow
+      // Render free tier can take up to 50 seconds to wake up from sleep
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds timeout
+      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 seconds timeout
 
       const res = await apiFetch("/trial/send-otp", {
         method: "POST",
@@ -104,12 +105,17 @@ export function CustomerTrialModal({
         setOtpTimer(60);
         setOtpCode("");
       } else {
-        setOtpError(res.message || "Failed to send OTP. Please try again.");
+        // If apiFetch catches the abort, it returns the error message
+        if (res.message && res.message.includes("aborted")) {
+          setOtpError("The server is waking up. Please click Resend OTP.");
+        } else {
+          setOtpError(res.message || "Failed to send OTP. Please try again.");
+        }
         setOtpSent(false);
       }
     } catch (e) {
-      if (e.name === 'AbortError') {
-        setOtpError("The server took too long to respond. Please try again.");
+      if (e.name === 'AbortError' || (e.message && e.message.includes('aborted'))) {
+        setOtpError("The server is waking up. Please click Resend OTP.");
       } else {
         setOtpError("An error occurred while sending the email. Please try again.");
       }
