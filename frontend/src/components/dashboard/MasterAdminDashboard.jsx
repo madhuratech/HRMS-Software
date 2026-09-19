@@ -14,6 +14,13 @@ export function MasterAdminDashboard({ onLogout, onLaunchWorkspace, onHomeClick 
   const [contactSubmissions, setContactSubmissions] = useState([]);
   const [selectedLead, setSelectedLead] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [now, setNow] = useState(Date.now());
+
+  // Real-time ticking interval for live demo countdown timer
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // New Lead form state
   const [newOrgName, setNewOrgName] = useState('');
@@ -255,30 +262,6 @@ export function MasterAdminDashboard({ onLogout, onLaunchWorkspace, onHomeClick 
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <button
-              onClick={() => {
-                const target = trialSubmissions[0] || { name: 'Super Admin', company: 'Madhura Enterprise', role: 'SUPER_ADMIN' };
-                onLaunchWorkspace && onLaunchWorkspace(target);
-              }}
-              style={{
-                background: '#2563eb',
-                color: '#ffffff',
-                border: 'none',
-                padding: '8px 14px',
-                borderRadius: '8px',
-                fontSize: '13px',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                cursor: 'pointer',
-                boxShadow: '0 1px 3px rgba(37, 99, 235, 0.2)'
-              }}
-            >
-              <ExternalLink size={14} />
-              Open HRMS Software
-            </button>
-
             <button
               onClick={onHomeClick}
               style={{
@@ -527,29 +510,6 @@ export function MasterAdminDashboard({ onLogout, onLaunchWorkspace, onHomeClick 
                 />
               </div>
 
-              {/* Add Org Button */}
-              {activeTab === 'trials' && (
-                <button
-                  onClick={() => setShowAddModal(true)}
-                  style={{
-                    background: '#2563eb',
-                    color: '#ffffff',
-                    border: 'none',
-                    padding: '7px 12px',
-                    borderRadius: '8px',
-                    fontSize: '12.5px',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '5px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <PlusCircle size={14} />
-                  Add Organization
-                </button>
-              )}
-
               {/* Export JSON */}
               <button
                 onClick={handleExportCSV}
@@ -615,13 +575,12 @@ export function MasterAdminDashboard({ onLogout, onLaunchWorkspace, onHomeClick 
                     </tr>
                   ) : (
                     filteredTrials.map((t, idx) => {
-                      const now = Date.now();
                       const isExpired = t.demoExpiresAt && now > t.demoExpiresAt;
                       const isPending = t.status === 'Pending Activation';
-                      const isActive = !isExpired && !isPending;
-                      const remainingMinutes = t.demoExpiresAt ? Math.max(0, Math.floor((t.demoExpiresAt - now) / (60 * 1000))) : 180;
-                      const remHours = Math.floor(remainingMinutes / 60);
-                      const remMins = remainingMinutes % 60;
+                      const diffMs = t.demoExpiresAt ? Math.max(0, t.demoExpiresAt - now) : 0;
+                      const remHours = Math.floor(diffMs / (1000 * 60 * 60));
+                      const remMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                      const remSecs = Math.floor((diffMs % (1000 * 60)) / 1000);
 
                       return (
                         <tr
@@ -743,7 +702,7 @@ export function MasterAdminDashboard({ onLogout, onLaunchWorkspace, onHomeClick 
                                 </span>
                                 <div style={{ fontSize: '11px', color: '#2563eb', fontWeight: 600, marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                   <Clock size={11} />
-                                  <span>{remHours}h {remMins}m remaining</span>
+                                  <span>{String(remHours).padStart(2, '0')}h {String(remMins).padStart(2, '0')}m {String(remSecs).padStart(2, '0')}s remaining</span>
                                 </div>
                               </div>
                             )}
@@ -752,43 +711,6 @@ export function MasterAdminDashboard({ onLogout, onLaunchWorkspace, onHomeClick 
                           {/* 7. Actions */}
                           <td style={{ padding: '14px 18px', textAlign: 'right' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '6px' }}>
-                              <button
-                                onClick={() => onLaunchWorkspace && onLaunchWorkspace(t)}
-                                title="Launch Customer Workspace"
-                                style={{
-                                  background: '#2563eb',
-                                  color: '#ffffff',
-                                  border: 'none',
-                                  padding: '6px 10px',
-                                  borderRadius: '7px',
-                                  fontSize: '12px',
-                                  fontWeight: 600,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                Launch <ArrowRight size={12} />
-                              </button>
-
-                              <button
-                                onClick={(e) => handleExtendTrial(t.id, e)}
-                                title="Extend Demo +3 Hours"
-                                style={{
-                                  background: '#f8fafc',
-                                  color: '#2563eb',
-                                  border: '1px solid #cbd5e1',
-                                  padding: '6px 9px',
-                                  borderRadius: '7px',
-                                  fontSize: '11.5px',
-                                  fontWeight: 600,
-                                  cursor: 'pointer'
-                                }}
-                              >
-                                +3h Demo
-                              </button>
-
                               <button
                                 onClick={(e) => handleDeleteTrial(t.id, e)}
                                 title="Delete Record"
