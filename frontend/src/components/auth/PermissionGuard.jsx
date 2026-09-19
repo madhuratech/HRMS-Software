@@ -23,7 +23,8 @@ export function PermissionGuard({ moduleKey, module, submoduleKey = null, action
     );
   }
 
-  const allowed = isAdmin || 
+  const isDemoSandbox = localStorage.getItem('hrms_is_demo_sandbox') === 'true';
+  const allowed = isAdmin || isDemoSandbox || 
     (hasPermission && hasPermission(modName, submoduleKey, action)) ||
     globalHasPermission(permissions, userRole, modName, submoduleKey, action) ||
     globalHasPermission(modName, submoduleKey, action);

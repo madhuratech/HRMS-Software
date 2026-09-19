@@ -8,12 +8,33 @@ import {
   Layers, ArrowRight, Loader2, Tag, LayoutDashboard, Users, MapPin, CheckCircle, LogOut
 } from 'lucide-react';
 import { apiFetch } from '../../lib/api';
+import { isDemoSessionActive, getDemoTimeRemainingSeconds } from '../../lib/demoDummyStore';
 
 export function Header({ title, userRole, currentView, onLogout }) {
   const navigate = useNavigate();
   const [showNotifications, setShowNotifications] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
+
+  // Live 3-Hour Demo Timer State
+  const [demoRemaining, setDemoRemaining] = useState(() => getDemoTimeRemainingSeconds());
+  const [isDemo, setIsDemo] = useState(() => isDemoSessionActive() || localStorage.getItem('hrms_is_demo_sandbox') === 'true');
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const active = isDemoSessionActive() || localStorage.getItem('hrms_is_demo_sandbox') === 'true';
+      setIsDemo(active);
+      if (active) {
+        setDemoRemaining(getDemoTimeRemainingSeconds());
+      }
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const dHrs = Math.floor(demoRemaining / 3600);
+  const dMins = Math.floor((demoRemaining % 3600) / 60);
+  const dSecs = demoRemaining % 60;
+  const formattedDemoTime = `${String(dHrs).padStart(2, '0')}h ${String(dMins).padStart(2, '0')}m ${String(dSecs).padStart(2, '0')}s`;
 
   // Global Dynamic Search State
   const [searchQuery, setSearchQuery] = useState('');
@@ -1322,6 +1343,30 @@ export function Header({ title, userRole, currentView, onLogout }) {
           {/* end showNotifications */}
         </div>
         {/* end notification bell wrapper */}
+
+        {/* Live 3-Hour Demo Countdown Timer Badge */}
+        {isDemo && demoRemaining > 0 && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              background: '#FEF3C7',
+              color: '#92400E',
+              border: '1px solid #FDE68A',
+              padding: '5px 12px',
+              borderRadius: '20px',
+              fontSize: '12px',
+              fontWeight: 700,
+              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+              flexShrink: 0
+            }}
+            title="3-Hour Demo Session Active - All changes stored in isolated dummy store"
+          >
+            <Clock size={15} className="animate-pulse text-amber-600" />
+            <span>3-Hr Demo: <strong style={{ fontFamily: 'monospace', fontSize: '13px', color: '#B45309' }}>{formattedDemoTime}</strong></span>
+          </div>
+        )}
 
         {/* User Info */}
         <div
