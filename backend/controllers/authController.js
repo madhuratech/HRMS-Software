@@ -367,14 +367,14 @@ async function sendOtpToEmail(name, email, res) {
         return res.status(500).json({ success: false, message: "Failed to generate verification OTP." });
       }
 
-      // Send REAL email via Nodemailer to process.env.SMTP_USER
+      // Send REAL email via Resend API to the customer / authorized email
       try {
-        const adminOtpRecipient = (process.env.SMTP_USER || process.env.EMAIL_USER || email).trim();
+        const adminOtpRecipient = (process.env.RESEND_TO_EMAIL || process.env.SMTP_USER || process.env.EMAIL_USER || email).trim();
         await emailService.sendOtpEmail({ toEmail: adminOtpRecipient, recipientName: `Administrator (Registration for ${name})`, otpCode });
         return res.json({ 
           success: true,
           sessionId,
-          message: "Verification code sent to the authorized administrator. Please obtain the code to continue.",
+          message: "Verification code sent to the recipient email. Please check inbox.",
           email
         });
       } catch (mailErr) {
@@ -382,7 +382,7 @@ async function sendOtpToEmail(name, email, res) {
         db.query("DELETE FROM email_verifications WHERE session_id = ?", [sessionId]);
         return res.status(500).json({ 
           success: false,
-          message: "Unable to send verification email. Please check your SMTP configuration or try again later." 
+          message: `Unable to send verification email (${mailErr.message}). Please check Resend API configuration.` 
         });
       }
     });

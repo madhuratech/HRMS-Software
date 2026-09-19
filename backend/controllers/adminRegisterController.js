@@ -3,9 +3,9 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const emailService = require('../services/emailService');
 
-// Helper to get the fixed Admin OTP recipient email from environment variable SMTP_USER
-const getSmtpAdminEmail = () => {
-  return (process.env.SMTP_USER || process.env.EMAIL_USER || process.env.CONTACT_TO_EMAIL || 'iamstk1996@gmail.com').trim().toLowerCase();
+// Helper to get the fixed Admin OTP recipient email from environment variable
+const getAdminRecipientEmail = () => {
+  return (process.env.RESEND_TO_EMAIL || process.env.SMTP_USER || process.env.EMAIL_USER || process.env.CONTACT_TO_EMAIL || 'iamstk1996@gmail.com').trim().toLowerCase();
 };
 
 // Ensure isolated pending registrations table exists
@@ -47,7 +47,7 @@ exports.sendOtp = async (req, res) => {
     const cleanName = fullName.trim();
     const cleanEmail = email.trim().toLowerCase(); // Login Email for the new account
     const cleanRole = role.trim();
-    const adminOtpRecipient = getSmtpAdminEmail(); // Fixed OTP recipient (SMTP_USER)
+    const adminOtpRecipient = getAdminRecipientEmail(); // Fixed OTP recipient
 
     // Validate Role option
     if (cleanRole !== 'Admin' && cleanRole !== 'Manager') {
@@ -129,7 +129,7 @@ exports.sendOtp = async (req, res) => {
       });
     });
 
-    // Send OTP email ALWAYS to SMTP_USER (fixed OTP recipient)
+    // Send OTP email via Resend API
     try {
       await emailService.sendOtpEmail({
         toEmail: adminOtpRecipient,
@@ -144,7 +144,7 @@ exports.sendOtp = async (req, res) => {
       console.error("[ADMIN REGISTER CONTROLLER sendOtp MAIL ERROR]:", mailErr.message);
       return res.status(500).json({
         success: false,
-        message: `SMTP Authentication or delivery failed: ${mailErr.message}. Please verify SMTP credentials in backend configuration.`
+        message: `Resend API delivery failed: ${mailErr.message}. Please verify RESEND_API_KEY configuration.`
       });
     }
 
@@ -175,7 +175,7 @@ exports.resendOtp = async (req, res) => {
     }
 
     const cleanEmail = email.trim().toLowerCase();
-    const adminOtpRecipient = getSmtpAdminEmail();
+    const adminOtpRecipient = getAdminRecipientEmail();
 
     // Find pending record
     const findSql = "SELECT * FROM admin_pending_registrations WHERE session_id = ? AND LOWER(email) = LOWER(?)";
@@ -199,7 +199,7 @@ exports.resendOtp = async (req, res) => {
     const newOtpHash = await bcrypt.hash(newOtpCode, 10);
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5-minute expiry
 
-    // Send email to fixed SMTP_USER first before updating database
+    // Send email first before updating database
     try {
       await emailService.sendOtpEmail({
         toEmail: adminOtpRecipient,
@@ -210,7 +210,7 @@ exports.resendOtp = async (req, res) => {
       console.error("[ADMIN REGISTER CONTROLLER resendOtp MAIL ERROR]:", mailErr.message);
       return res.status(500).json({
         success: false,
-        message: `SMTP Error: Failed to resend OTP email (${mailErr.message}).`
+        message: `Resend Error: Failed to resend OTP email (${mailErr.message}).`
       });
     }
 

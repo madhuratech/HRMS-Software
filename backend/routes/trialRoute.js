@@ -12,25 +12,18 @@ let trialLeadsStore = [];
 const activeOtps = new Map();
 
 /**
- * 0. GET /api/trial/test-smtp
- * Diagnostic endpoint to test SMTP connectivity and credentials
+ * 0. GET /api/trial/test-smtp & /api/trial/test-email
+ * Diagnostic endpoint to test Resend API connectivity and status
  */
-router.get('/test-smtp', async (req, res) => {
+const testEmailHandler = async (req, res) => {
   try {
-    const host = process.env.SMTP_HOST || 'smtp.gmail.com';
-    const port = process.env.SMTP_PORT || '465';
-    const secure = process.env.SMTP_SECURE || 'true';
-    const user = process.env.SMTP_USER || process.env.EMAIL_USER || '';
-
     const testResult = await emailService.verifyConnection();
     return res.json({
       success: testResult.success,
       config: {
-        host,
-        port,
-        secure,
-        userConfigured: !!user,
-        userEmail: user ? `${user.substring(0, 3)}***@${user.split('@')[1] || ''}` : null
+        provider: 'Resend API',
+        hasApiKey: !!(process.env.RESEND_API_KEY),
+        fromEmail: process.env.RESEND_FROM_EMAIL || 'Madhura HRMS <onboarding@resend.dev>'
       },
       result: testResult
     });
@@ -40,7 +33,9 @@ router.get('/test-smtp', async (req, res) => {
       error: err.message
     });
   }
-});
+};
+router.get('/test-smtp', testEmailHandler);
+router.get('/test-email', testEmailHandler);
 
 /**
  * 1. POST /api/trial/send-otp
@@ -61,31 +56,37 @@ router.post('/send-otp', async (req, res) => {
 
     activeOtps.set(cleanEmail, { otp: otpCode, expiresAt, sessionId });
 
-    // Try sending email via nodemailer if SMTP is configured
+    // Try sending email via Resend API
     let emailSent = false;
+    let emailErrorMessage = null;
     try {
-      if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      if (process.env.RESEND_API_KEY) {
         await emailService.sendOtpEmail({
           toEmail: cleanEmail,
           recipientName: cleanName,
           otpCode
         });
         emailSent = true;
+      } else {
+        console.warn('[Trial OTP Email Notice] RESEND_API_KEY not configured.');
       }
     } catch (e) {
-      console.warn('[Trial OTP Email Notice] SMTP delivery skipped or error:', e.message);
+      emailErrorMessage = e.message;
+      console.warn('[Trial OTP Email Notice] Resend delivery skipped or error:', e.message);
       if (process.env.NODE_ENV === 'production') {
-        return res.status(500).json({ success: false, message: 'Failed to dispatch verification email due to server SMTP error. Please contact support.' });
+        return res.status(500).json({ success: false, message: `Failed to dispatch verification email via Resend: ${e.message}` });
       }
     }
 
     return res.json({
       success: true,
-      message: `Verification code dispatched to ${cleanEmail}. Valid for 10 minutes.`,
+      message: emailSent
+        ? `Verification code dispatched to ${cleanEmail}. Valid for 10 minutes.`
+        : `Verification code generated. (Resend API key missing or unverified recipient notice: ${emailErrorMessage || 'Not configured'})`,
       sessionId,
       email: cleanEmail,
       emailSent,
-      // Provide dev preview OTP only if SMTP fails or is not configured
+      // Provide dev preview OTP only if Resend fails or is not configured
       ...(emailSent ? {} : { devPreviewOtp: otpCode })
     });
   } catch (err) {
@@ -188,10 +189,10 @@ router.post('/register', async (req, res) => {
 
     console.log(`[TRIAL REGISTRATION] Customer: ${cleanName} (${cleanEmail}) - Activation URL: ${activationUrl}`);
 
-    // Dispatch the activation email
+    // Dispatch the activation email via Resend API
     let emailSent = false;
     try {
-      if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      if (process.env.RESEND_API_KEY) {
         await emailService.sendActivationEmail({
           toEmail: cleanEmail,
           recipientName: cleanName,
@@ -200,7 +201,7 @@ router.post('/register', async (req, res) => {
         emailSent = true;
       }
     } catch (e) {
-      console.warn('[Trial Activation Email Notice] SMTP delivery failed:', e.message);
+      console.warn('[Trial Activation Email Notice] Resend delivery failed:', e.message);
     }
 
     return res.json({
