@@ -45,11 +45,12 @@ export default function PunchLocations() {
     setLoading(true);
     try {
       const res = await apiFetch(`/attendance/punch-locations?search=${search}&status=${statusFilter}&page=${page}&limit=${limit}`);
-      if (res.success) {
-        setLocations(res.locations || []);
-        setTotal(res.total || 0);
+      if (res && (res.success || Array.isArray(res.locations) || Array.isArray(res.data))) {
+        const rawList = Array.isArray(res.locations) ? res.locations : (Array.isArray(res.data) ? res.data : (Array.isArray(res) ? res : []));
+        setLocations(rawList);
+        setTotal(typeof res.total === 'number' ? res.total : rawList.length);
       } else {
-        showToast(res.message || 'Failed to load locations', 'error');
+        showToast(res?.message || 'Failed to load locations', 'error');
       }
     } catch (err) {
       console.error(err);

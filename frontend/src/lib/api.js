@@ -575,28 +575,84 @@ export const apiFetch = async (path, options = {}) => {
           }
           if (targetPath.includes('/punch-locations')) {
             if (options.method === 'POST') {
-              const { addDummyPunchLocation } = await import('./demoDummyStore');
+              const { addDummyPunchLocation, getDummyDb } = await import('./demoDummyStore');
               const loc = addDummyPunchLocation(bodyPayload);
-              return { success: true, message: 'Punch location added successfully', location: loc, data: loc };
+              const freshDb = getDummyDb();
+              return { success: true, message: 'Punch location added successfully', location: loc, locations: freshDb.punchLocations || [loc], data: loc };
             }
             if (options.method === 'PUT') {
-              const id = targetPath.split('/').filter(Boolean).pop();
+              const cleanId = targetPath.split('?')[0].split('/').filter(Boolean).pop();
               const { updateDummyPunchLocation } = await import('./demoDummyStore');
-              const updated = updateDummyPunchLocation(id, bodyPayload);
+              const updated = updateDummyPunchLocation(cleanId, bodyPayload);
               return { success: true, message: 'Punch location updated successfully', location: updated, data: updated };
             }
             if (options.method === 'DELETE') {
-              const id = targetPath.split('/').filter(Boolean).pop();
+              const cleanId = targetPath.split('?')[0].split('/').filter(Boolean).pop();
               const { deleteDummyPunchLocation } = await import('./demoDummyStore');
-              deleteDummyPunchLocation(id);
+              deleteDummyPunchLocation(cleanId);
               return { success: true, message: 'Punch location removed successfully' };
             }
-            const locList = dummyDb.punchLocations || [];
+
+            const { getDummyDb, saveDummyDb } = await import('./demoDummyStore');
+            const freshDb = getDummyDb();
+            let locList = freshDb.punchLocations;
+
+            // Auto-repair if punchLocations was missing/empty in an older session
+            if (!locList || !Array.isArray(locList) || locList.length === 0) {
+              locList = [
+                {
+                  id: 1,
+                  name: 'HQ Main Campus Geofence',
+                  branch: 'Headquarters',
+                  latitude: 12.9716,
+                  longitude: 77.5946,
+                  radius: 100,
+                  address: 'MG Road, Indiranagar, Bengaluru, Karnataka 560038',
+                  description: 'Main corporate headquarters office geofence',
+                  status: 'Active'
+                },
+                {
+                  id: 2,
+                  name: 'Tech Park Branch Geofence',
+                  branch: 'North Office',
+                  latitude: 12.9352,
+                  longitude: 77.6245,
+                  radius: 150,
+                  address: 'Koramangala 5th Block, Bengaluru, Karnataka 560095',
+                  description: 'R&D tech park center',
+                  status: 'Active'
+                }
+              ];
+              freshDb.punchLocations = locList;
+              saveDummyDb(freshDb);
+            }
+
+            // Parse URL search params for filtering
+            let filtered = [...locList];
+            if (targetPath.includes('?')) {
+              try {
+                const searchParams = new URLSearchParams(targetPath.split('?')[1]);
+                const q = searchParams.get('search');
+                const st = searchParams.get('status');
+                if (q && q.trim()) {
+                  const query = q.trim().toLowerCase();
+                  filtered = filtered.filter(l =>
+                    (l.name && l.name.toLowerCase().includes(query)) ||
+                    (l.branch && l.branch.toLowerCase().includes(query)) ||
+                    (l.address && l.address.toLowerCase().includes(query))
+                  );
+                }
+                if (st && st.trim()) {
+                  filtered = filtered.filter(l => l.status === st.trim());
+                }
+              } catch (e) {}
+            }
+
             return {
               success: true,
-              locations: locList,
-              total: locList.length,
-              data: { locations: locList, total: locList.length }
+              locations: filtered,
+              total: filtered.length,
+              data: filtered
             };
           }
           if (targetPath.includes('/today-status') || targetPath.includes('/recent')) {
