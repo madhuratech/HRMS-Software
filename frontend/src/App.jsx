@@ -379,6 +379,21 @@ function App() {
       role: 'SUPER_ADMIN'
     };
 
+    const demoMetaObj = {
+      isActive: true,
+      is3HourDemo: true,
+      customerName,
+      company: companyName,
+      email: customerEmail,
+      phone: onboardedData.phone || '',
+      industry: onboardedData.industry || 'IT & Software',
+      employeeSize: onboardedData.employeeSize || '21-100',
+      startedAt: now,
+      expiresAt: expiresAt,
+      durationMinutes: 180
+    };
+
+    localStorage.setItem('hrms_3hr_demo_meta', JSON.stringify(demoMetaObj));
     localStorage.setItem('hrms_trial_session', JSON.stringify(trialPayload));
     localStorage.setItem('hrms_is_demo_sandbox', 'true');
     setIsDemoSandbox(true);
@@ -412,10 +427,14 @@ function App() {
       emp_id: 'EMP0001'
     };
 
+    const now = Date.now();
+    const expiresAt = now + 3 * 60 * 60 * 1000;
+
     const demoPayload = {
       isActive: true,
       isDemo: true,
-      startedAt: Date.now(),
+      startedAt: now,
+      expiresAt: expiresAt,
       daysTotal: 3,
       daysRemaining: 3,
       company: p.company || 'Madhura Global Enterprises',
@@ -426,6 +445,20 @@ function App() {
       emp_id: p.emp_id || 'EMP0001'
     };
 
+    const demoMetaObj = {
+      isActive: true,
+      is3HourDemo: true,
+      customerName: p.name,
+      company: p.company || 'Madhura Global Enterprises',
+      email: p.email,
+      startedAt: now,
+      expiresAt: expiresAt,
+      durationMinutes: 180
+    };
+
+    initializeDummyDatabase(demoMetaObj.company, p.name, false);
+
+    localStorage.setItem('hrms_3hr_demo_meta', JSON.stringify(demoMetaObj));
     localStorage.setItem('hrms_trial_session', JSON.stringify(demoPayload));
     localStorage.setItem('hrms_is_demo_sandbox', 'true');
     setIsDemoSandbox(true);

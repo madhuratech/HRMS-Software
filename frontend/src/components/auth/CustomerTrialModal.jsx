@@ -227,18 +227,24 @@ export function CustomerTrialModal({
     <div
       style={{
         position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
-        backgroundColor: "rgba(2, 6, 23, 0.82)", backdropFilter: "blur(14px)",
+        backgroundColor: "rgba(2, 6, 23, 0.75)", backdropFilter: "blur(12px)",
         zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "16px", fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+        padding: "20px 16px", fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
       }}
       onClick={onClose}
     >
+      <style>{`
+        .modal-no-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
+        .modal-no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
       <div
+        className="modal-no-scrollbar"
         style={{
-          background: "#ffffff", borderRadius: "20px",
-          maxWidth: step === "activation_sent" ? "500px" : "492px",
-          width: "100%", position: "relative", maxHeight: "92vh", overflowY: "auto",
-          boxShadow: "0 32px 64px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)",
+          background: "#ffffff", borderRadius: "24px",
+          maxWidth: step === "activation_sent" ? "560px" : "580px",
+          width: "100%", position: "relative", maxHeight: "90vh", overflowY: "auto",
+          boxShadow: "0 25px 60px -15px rgba(0,0,0,0.3), 0 0 0 1px rgba(0,0,0,0.04)",
+          border: "1px solid #e2e8f0",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -246,102 +252,105 @@ export function CustomerTrialModal({
           onClick={onClose}
           aria-label="Close"
           style={{
-            position: "absolute", top: "14px", right: "14px", background: "rgba(255,255,255,0.18)",
-            border: "none", borderRadius: "50%", width: "28px", height: "28px",
+            position: "absolute", top: "18px", right: "18px", background: "rgba(255,255,255,0.2)",
+            border: "none", borderRadius: "50%", width: "32px", height: "32px",
             display: "flex", alignItems: "center", justifyContent: "center",
-            cursor: "pointer", color: "#fff", zIndex: 5,
+            cursor: "pointer", color: "#fff", zIndex: 5, transition: "background 0.2s",
           }}
         >
-          <X size={14} />
+          <X size={16} />
         </button>
 
         {step === "form" && (
           <>
-            {/* Blue gradient header */}
+            {/* Header */}
             <div style={{
-              background: "linear-gradient(135deg, #1e40af 0%, #2563eb 55%, #3b82f6 100%)",
-              padding: "28px 28px 22px", borderRadius: "20px 20px 0 0", color: "#fff",
+              background: "linear-gradient(135deg, #1e40af 0%, #2563eb 60%, #3b82f6 100%)",
+              padding: "32px 36px 26px", borderRadius: "24px 24px 0 0", color: "#fff",
             }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "10px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "8px" }}>
                 <div style={{
-                  width: "38px", height: "38px", borderRadius: "10px",
+                  width: "42px", height: "42px", borderRadius: "12px",
                   background: "rgba(255,255,255,0.18)", display: "flex",
-                  alignItems: "center", justifyContent: "center",
+                  alignItems: "center", justifyContent: "center", flexShrink: 0,
                 }}>
-                  <Sparkles size={19} />
+                  <Sparkles size={20} />
                 </div>
                 <div>
-                  <div style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", opacity: 0.75 }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", opacity: 0.85 }}>
                     Madhura HRMS • Free Trial
                   </div>
-                  <div style={{ fontSize: "18px", fontWeight: 800, letterSpacing: "-0.3px" }}>
+                  <div style={{ fontSize: "20px", fontWeight: 800, letterSpacing: "-0.3px" }}>
                     Start 3-Hour Demo Workspace
                   </div>
                 </div>
               </div>
-              <p style={{ fontSize: "13px", opacity: 0.8, margin: 0, lineHeight: 1.5 }}>
+              <p style={{ fontSize: "13.5px", opacity: 0.85, margin: "6px 0 0", lineHeight: 1.5 }}>
                 Full Super Admin access to all HRMS modules. No credit card required.
               </p>
             </div>
 
             {/* Form body */}
-            <div style={{ padding: "22px 26px 26px" }}>
+            <div style={{ padding: "28px 36px 32px" }}>
               {formError && (
                 <div style={{
-                  display: "flex", alignItems: "center", gap: "8px",
+                  display: "flex", alignItems: "center", gap: "10px",
                   background: "#fef2f2", border: "1px solid #fecaca",
-                  borderRadius: "10px", padding: "10px 12px", marginBottom: "14px",
-                  fontSize: "13px", color: "#b91c1c",
+                  borderRadius: "12px", padding: "12px 16px", marginBottom: "18px",
+                  fontSize: "13px", color: "#b91c1c", fontWeight: 500,
                 }}>
-                  <AlertCircle size={14} style={{ flexShrink: 0 }} />
+                  <AlertCircle size={16} style={{ flexShrink: 0 }} />
                   <span>{formError}</span>
                 </div>
               )}
 
-              <form onSubmit={handleSubmitTrial} style={{ display: "flex", flexDirection: "column", gap: "13px" }}>
+              <form onSubmit={handleSubmitTrial} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                 {/* Full Name */}
                 <div>
-                  <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "5px" }}>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>
                     Full Name <span style={{ color: "#ef4444" }}>*</span>
                   </label>
                   <div style={{ position: "relative" }}>
-                    <User size={14} style={{ position: "absolute", left: "11px", top: "11px", color: "#9ca3af", pointerEvents: "none" }} />
+                    <User size={15} style={{ position: "absolute", left: "14px", top: "13px", color: "#9ca3af", pointerEvents: "none" }} />
                     <input
                       type="text" required placeholder="e.g. Rahul Sharma"
                       value={username} onChange={(e) => setUsername(e.target.value)}
                       style={{
-                        width: "100%", boxSizing: "border-box", padding: "9px 12px 9px 34px",
-                        borderRadius: "9px", border: "1.5px solid #e2e8f0", fontSize: "13.5px",
-                        outline: "none", color: "#111827",
+                        width: "100%", boxSizing: "border-box", padding: "11px 14px 11px 40px",
+                        borderRadius: "11px", border: "1.5px solid #e2e8f0", fontSize: "14px",
+                        outline: "none", color: "#111827", transition: "border-color 0.2s",
+                        background: "#fff",
                       }}
+                      onFocus={(e) => e.target.style.borderColor = "#2563eb"}
+                      onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
                     />
                   </div>
                 </div>
 
                 {/* Email + OTP */}
                 <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "5px" }}>
-                    <label style={{ fontSize: "12px", fontWeight: 600, color: "#374151" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <label style={{ fontSize: "12.5px", fontWeight: 600, color: "#374151" }}>
                       Email Address <span style={{ color: "#ef4444" }}>*</span>
                     </label>
                     {otpVerified && (
                       <span style={{
-                        display: "inline-flex", alignItems: "center", gap: "3px",
+                        display: "inline-flex", alignItems: "center", gap: "4px",
                         background: "#f0fdf4", border: "1px solid #bbf7d0",
-                        color: "#15803d", fontSize: "10.5px", fontWeight: 700,
-                        padding: "2px 7px", borderRadius: "20px",
+                        color: "#15803d", fontSize: "11px", fontWeight: 700,
+                        padding: "2px 8px", borderRadius: "20px",
                       }}>
-                        <CheckCircle2 size={11} /> Verified
+                        <CheckCircle2 size={12} /> Verified
                       </span>
                     )}
                     {isSendingOtp && (
-                      <span style={{ fontSize: "11px", color: "#3b82f6", display: "flex", alignItems: "center", gap: "4px" }}>
-                        <Loader2 size={11} className="animate-spin" /> Sending OTP...
+                      <span style={{ fontSize: "11.5px", color: "#2563eb", display: "flex", alignItems: "center", gap: "5px", fontWeight: 600 }}>
+                        <Loader2 size={12} className="animate-spin" /> Sending OTP...
                       </span>
                     )}
                   </div>
                   <div style={{ position: "relative" }}>
-                    <Mail size={14} style={{ position: "absolute", left: "11px", top: "11px", color: "#9ca3af", pointerEvents: "none" }} />
+                    <Mail size={15} style={{ position: "absolute", left: "14px", top: "13px", color: "#9ca3af", pointerEvents: "none" }} />
                     <input
                       type="email" required disabled={otpVerified}
                       placeholder="name@gmail.com" value={email}
@@ -351,39 +360,37 @@ export function CustomerTrialModal({
                       }}
                       onBlur={handleEmailBlur}
                       style={{
-                        width: "100%", boxSizing: "border-box", padding: "9px 36px 9px 34px",
-                        borderRadius: "9px", fontSize: "13.5px", outline: "none", color: "#111827",
-                        border: "1.5px solid " + (otpVerified ? "#10b981" : isSendingOtp ? "#3b82f6" : otpSent ? "#3b82f6" : "#e2e8f0"),
+                        width: "100%", boxSizing: "border-box", padding: "11px 40px 11px 40px",
+                        borderRadius: "11px", fontSize: "14px", outline: "none", color: "#111827",
+                        border: "1.5px solid " + (otpVerified ? "#10b981" : isSendingOtp ? "#2563eb" : otpSent ? "#2563eb" : "#e2e8f0"),
                         background: otpVerified ? "#f0fdf4" : "#fff",
-                        transition: "border 0.2s",
+                        transition: "border-color 0.2s",
                       }}
                     />
-                    {/* Manual send icon as fallback — shown when not yet sent and not loading */}
                     {!otpVerified && !isSendingOtp && !otpSent && isValidEmail(email) && (
                       <button
                         type="button" onClick={() => handleSendOtp(email)}
                         title="Send OTP"
                         style={{
-                          position: "absolute", right: "10px", top: "9px",
+                          position: "absolute", right: "12px", top: "11px",
                           background: "none", border: "none", cursor: "pointer",
-                          color: "#3b82f6", padding: 0, display: "flex", alignItems: "center",
+                          color: "#2563eb", padding: 0, display: "flex", alignItems: "center",
                         }}
                       >
-                        <Send size={14} />
+                        <Send size={15} />
                       </button>
                     )}
                     {isSendingOtp && (
-                      <Loader2 size={14} color="#3b82f6" style={{ position: "absolute", right: "10px", top: "11px" }} className="animate-spin" />
+                      <Loader2 size={15} color="#2563eb" style={{ position: "absolute", right: "12px", top: "13px" }} className="animate-spin" />
                     )}
-                    {/* Manual resend when already sent but needs to resend */}
                     {!otpVerified && otpSent && otpTimer === 0 && (
                       <button
                         type="button" onClick={handleResendOtp} title="Resend OTP"
                         style={{
-                          position: "absolute", right: "8px", top: "8px",
+                          position: "absolute", right: "10px", top: "10px",
                           background: "#eff6ff", border: "1px solid #bfdbfe", cursor: "pointer",
-                          color: "#2563eb", padding: "2px 6px", borderRadius: "5px",
-                          fontSize: "10px", fontWeight: 700, display: "flex", alignItems: "center", gap: "3px",
+                          color: "#2563eb", padding: "3px 8px", borderRadius: "6px",
+                          fontSize: "11px", fontWeight: 700, display: "flex", alignItems: "center", gap: "4px",
                         }}
                       >
                         <RefreshCw size={11} /> Resend
@@ -391,17 +398,16 @@ export function CustomerTrialModal({
                     )}
                   </div>
                   {otpError && !otpSent && (
-                    <p style={{ margin: "4px 0 0", fontSize: "11px", color: "#ef4444", fontWeight: 500 }}>
+                    <p style={{ margin: "5px 0 0", fontSize: "11.5px", color: "#ef4444", fontWeight: 500 }}>
                       {otpError}
                     </p>
                   )}
 
-                  {/* RESTORED DEV CODE UI FOR DEVELOPMENT MODE */}
                   {devPreviewOtp && !otpVerified && (
                     <div style={{
                       marginTop: "12px", padding: "10px 14px",
                       background: "#f8fafc", border: "1px dashed #cbd5e1",
-                      borderRadius: "8px", fontSize: "12px", color: "#475569",
+                      borderRadius: "10px", fontSize: "12px", color: "#475569",
                       display: "flex", alignItems: "center", justifyContent: "space-between",
                     }}>
                       <span>SMTP Failed - Dev Bypass: <strong style={{ letterSpacing: "2px", color: "#0f172a" }}>{devPreviewOtp}</strong></span>
@@ -409,7 +415,7 @@ export function CustomerTrialModal({
                         type="button" onClick={() => setOtpCode(devPreviewOtp)}
                         style={{
                           background: "#0f172a", color: "#fff", border: "none",
-                          borderRadius: "5px", padding: "4px 10px", marginLeft: "8px",
+                          borderRadius: "6px", padding: "4px 10px", marginLeft: "8px",
                           fontSize: "11px", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
                         }}
                       >
@@ -421,37 +427,37 @@ export function CustomerTrialModal({
                   {otpSent && !otpVerified && (
                     <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <label style={{ fontSize: "12px", fontWeight: 600, color: "#374151" }}>
+                        <label style={{ fontSize: "12.5px", fontWeight: 600, color: "#374151" }}>
                           Verification Code <span style={{ color: "#ef4444" }}>*</span>
                         </label>
-                        <span style={{ fontSize: "11px", color: "#64748b" }}>
+                        <span style={{ fontSize: "11.5px", color: "#64748b" }}>
                           Sent to <strong>{email}</strong>
                         </span>
                       </div>
                       
-                      <div style={{ display: "flex", gap: "8px" }}>
+                      <div style={{ display: "flex", gap: "10px" }}>
                         <input
                           ref={otpInputRef}
                           type="text" maxLength={6} placeholder="• • • • • •" value={otpCode}
                           onChange={(e) => { setOtpCode(e.target.value.replace(/\D/g, "")); setOtpError(""); }}
                           onKeyDown={(e) => { if (e.key === "Enter" && otpCode.length === 6) handleVerifyOtp(); }}
                           style={{
-                            flex: 1, padding: "10px 12px", borderRadius: "9px",
+                            flex: 1, padding: "11px 14px", borderRadius: "11px",
                             border: "1.5px solid #e2e8f0", fontSize: "18px", fontWeight: 700,
-                            letterSpacing: "12px", textAlign: "center", outline: "none", boxSizing: "border-box",
+                            letterSpacing: "10px", textAlign: "center", outline: "none", boxSizing: "border-box",
                             color: "#111827", transition: "border 0.2s"
                           }}
-                          onFocus={(e) => e.target.style.border = '1.5px solid #3b82f6'}
+                          onFocus={(e) => e.target.style.border = '1.5px solid #2563eb'}
                           onBlur={(e) => e.target.style.border = '1.5px solid #e2e8f0'}
                         />
                         <button
                           type="button" onClick={handleVerifyOtp}
                           disabled={isVerifyingOtp || otpCode.length !== 6}
                           style={{
-                            padding: "0 18px", borderRadius: "9px", border: "none",
+                            padding: "0 22px", borderRadius: "11px", border: "none",
                             background: otpCode.length === 6 ? "#10b981" : "#f1f5f9",
                             color: otpCode.length === 6 ? "#fff" : "#94a3b8",
-                            fontSize: "13px", fontWeight: 700,
+                            fontSize: "13.5px", fontWeight: 700,
                             cursor: otpCode.length === 6 ? "pointer" : "not-allowed", whiteSpace: "nowrap",
                             transition: "all 0.2s"
                           }}
@@ -462,9 +468,9 @@ export function CustomerTrialModal({
 
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         {otpError ? (
-                          <span style={{ fontSize: "11px", color: "#ef4444", fontWeight: 500 }}>{otpError}</span>
+                          <span style={{ fontSize: "11.5px", color: "#ef4444", fontWeight: 500 }}>{otpError}</span>
                         ) : (
-                          <span style={{ fontSize: "11px", color: "#9ca3af" }}>Enter the 6-digit code from your email</span>
+                          <span style={{ fontSize: "11.5px", color: "#9ca3af" }}>Enter the 6-digit code from your email</span>
                         )}
                         
                         <button
@@ -473,7 +479,7 @@ export function CustomerTrialModal({
                             background: "none", border: "none", padding: 0,
                             color: otpTimer > 0 ? "#9ca3af" : "#2563eb",
                             fontWeight: 600, cursor: otpTimer > 0 ? "default" : "pointer",
-                            fontSize: "11.5px", transition: "color 0.2s"
+                            fontSize: "12px", transition: "color 0.2s"
                           }}
                         >
                           {otpTimer > 0 ? `Resend in ${otpTimer}s` : "Resend Code"}
@@ -483,27 +489,27 @@ export function CustomerTrialModal({
                   )}
                 </div>
 
-                {/* Phone */}
+                {/* Mobile Phone */}
                 <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "5px" }}>
-                    <label style={{ fontSize: "12px", fontWeight: 600, color: "#374151" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <label style={{ fontSize: "12.5px", fontWeight: 600, color: "#374151" }}>
                       Mobile Number <span style={{ color: "#ef4444" }}>*</span>
                     </label>
                     {phone && (
-                      <span style={{ fontSize: "11px", fontWeight: 600, color: isPhoneValid ? "#059669" : "#d97706" }}>
+                      <span style={{ fontSize: "11.5px", fontWeight: 600, color: isPhoneValid ? "#059669" : "#d97706" }}>
                         {isPhoneValid ? "Valid ✓" : countryCode === "+91" ? "10 digits required" : "Invalid format"}
                       </span>
                     )}
                   </div>
-                  <div style={{ display: "flex", gap: "7px" }}>
+                  <div style={{ display: "flex", gap: "10px" }}>
                     <div style={{ position: "relative" }}>
                       <select
                         value={countryCode} onChange={(e) => setCountryCode(e.target.value)}
                         style={{
-                          padding: "9px 28px 9px 10px", borderRadius: "9px",
-                          border: "1.5px solid #e2e8f0", fontSize: "13px", fontWeight: 600,
+                          padding: "11px 32px 11px 12px", borderRadius: "11px",
+                          border: "1.5px solid #e2e8f0", fontSize: "13.5px", fontWeight: 600,
                           background: "#f8fafc", outline: "none", cursor: "pointer",
-                          appearance: "none", WebkitAppearance: "none",
+                          appearance: "none", WebkitAppearance: "none", color: "#1e293b",
                         }}
                       >
                         <option value="+91">🇮🇳 +91</option>
@@ -512,77 +518,81 @@ export function CustomerTrialModal({
                         <option value="+971">🇦🇪 +971</option>
                         <option value="+65">🇸🇬 +65</option>
                       </select>
-                      <ChevronDown size={12} style={{ position: "absolute", right: "8px", top: "11px", color: "#64748b", pointerEvents: "none" }} />
+                      <ChevronDown size={14} style={{ position: "absolute", right: "10px", top: "14px", color: "#64748b", pointerEvents: "none" }} />
                     </div>
                     <div style={{ position: "relative", flex: 1 }}>
-                      <Phone size={14} style={{ position: "absolute", left: "11px", top: "11px", color: "#9ca3af", pointerEvents: "none" }} />
+                      <Phone size={15} style={{ position: "absolute", left: "14px", top: "13px", color: "#9ca3af", pointerEvents: "none" }} />
                       <input
                         type="tel" required
                         placeholder={countryCode === "+91" ? "98765 43210" : "Phone number"}
                         value={phone} onChange={(e) => setPhone(e.target.value)}
                         style={{
-                          width: "100%", boxSizing: "border-box", padding: "9px 12px 9px 34px",
-                          borderRadius: "9px", fontSize: "13.5px", outline: "none", color: "#111827",
+                          width: "100%", boxSizing: "border-box", padding: "11px 14px 11px 40px",
+                          borderRadius: "11px", fontSize: "14px", outline: "none", color: "#111827",
                           border: "1.5px solid " + (phone ? (isPhoneValid ? "#10b981" : "#f59e0b") : "#e2e8f0"),
+                          background: "#fff",
                         }}
                       />
                     </div>
                   </div>
                 </div>
 
-                {/* Passwords */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                  <div>
-                    <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "5px" }}>
-                      Create Password <span style={{ color: "#ef4444" }}>*</span>
-                    </label>
-                    <div style={{ position: "relative" }}>
-                      <Lock size={14} style={{ position: "absolute", left: "11px", top: "11px", color: "#9ca3af", pointerEvents: "none" }} />
-                      <input
-                        type={showPassword ? "text" : "password"} required
-                        placeholder="Min. 6 chars" value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        style={{
-                          width: "100%", boxSizing: "border-box", padding: "9px 32px 9px 34px",
-                          borderRadius: "9px", border: "1.5px solid #e2e8f0", fontSize: "13px",
-                          outline: "none", color: "#111827",
-                        }}
-                      />
-                      <button
-                        type="button" onClick={() => setShowPassword(!showPassword)}
-                        style={{ position: "absolute", right: "10px", top: "10px", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 0 }}
-                      >
-                        {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </button>
-                    </div>
+                {/* Create Password (STACKED - Full Width) */}
+                <div>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>
+                    Create Password <span style={{ color: "#ef4444" }}>*</span>
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <Lock size={15} style={{ position: "absolute", left: "14px", top: "13px", color: "#9ca3af", pointerEvents: "none" }} />
+                    <input
+                      type={showPassword ? "text" : "password"} required
+                      placeholder="Min. 6 characters" value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      style={{
+                        width: "100%", boxSizing: "border-box", padding: "11px 40px 11px 40px",
+                        borderRadius: "11px", border: "1.5px solid #e2e8f0", fontSize: "14px",
+                        outline: "none", color: "#111827", background: "#fff",
+                      }}
+                      onFocus={(e) => e.target.style.borderColor = "#2563eb"}
+                      onBlur={(e) => e.target.style.borderColor = "#e2e8f0"}
+                    />
+                    <button
+                      type="button" onClick={() => setShowPassword(!showPassword)}
+                      style={{ position: "absolute", right: "12px", top: "12px", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 0 }}
+                    >
+                      {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
-                  <div>
-                    <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "#374151", marginBottom: "5px" }}>
-                      Confirm Password <span style={{ color: "#ef4444" }}>*</span>
-                    </label>
-                    <div style={{ position: "relative" }}>
-                      <Lock size={14} style={{ position: "absolute", left: "11px", top: "11px", color: "#9ca3af", pointerEvents: "none" }} />
-                      <input
-                        type={showConfirmPassword ? "text" : "password"} required
-                        placeholder="Repeat password" value={confirmPassword}
-                        onChange={(e) => setConfirmPassword(e.target.value)}
-                        style={{
-                          width: "100%", boxSizing: "border-box", padding: "9px 32px 9px 34px",
-                          borderRadius: "9px", fontSize: "13px", outline: "none", color: "#111827",
-                          border: "1.5px solid " + (confirmPassword ? (isPasswordMatch ? "#10b981" : "#ef4444") : "#e2e8f0"),
-                        }}
-                      />
-                      <button
-                        type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        style={{ position: "absolute", right: "10px", top: "10px", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 0 }}
-                      >
-                        {showConfirmPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-                      </button>
-                    </div>
-                    {confirmPassword && !isPasswordMatch && (
-                      <p style={{ margin: "3px 0 0", fontSize: "11px", color: "#dc2626" }}>Passwords do not match</p>
-                    )}
+                </div>
+
+                {/* Confirm Password (STACKED - Full Width) */}
+                <div>
+                  <label style={{ display: "block", fontSize: "12.5px", fontWeight: 600, color: "#374151", marginBottom: "6px" }}>
+                    Confirm Password <span style={{ color: "#ef4444" }}>*</span>
+                  </label>
+                  <div style={{ position: "relative" }}>
+                    <Lock size={15} style={{ position: "absolute", left: "14px", top: "13px", color: "#9ca3af", pointerEvents: "none" }} />
+                    <input
+                      type={showConfirmPassword ? "text" : "password"} required
+                      placeholder="Repeat password" value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      style={{
+                        width: "100%", boxSizing: "border-box", padding: "11px 40px 11px 40px",
+                        borderRadius: "11px", fontSize: "14px", outline: "none", color: "#111827",
+                        border: "1.5px solid " + (confirmPassword ? (isPasswordMatch ? "#10b981" : "#ef4444") : "#e2e8f0"),
+                        background: "#fff",
+                      }}
+                    />
+                    <button
+                      type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      style={{ position: "absolute", right: "12px", top: "12px", background: "none", border: "none", cursor: "pointer", color: "#9ca3af", padding: 0 }}
+                    >
+                      {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
+                  {confirmPassword && !isPasswordMatch && (
+                    <p style={{ margin: "5px 0 0", fontSize: "11.5px", color: "#dc2626" }}>Passwords do not match</p>
+                  )}
                 </div>
 
                 {/* Submit */}
@@ -590,27 +600,28 @@ export function CustomerTrialModal({
                   type="submit"
                   disabled={isSubmitting || !otpVerified || !isPhoneValid || !isPasswordMatch}
                   style={{
-                    marginTop: "4px", width: "100%", padding: "12px", borderRadius: "11px",
+                    marginTop: "6px", width: "100%", padding: "13px", borderRadius: "12px",
                     background: (otpVerified && isPhoneValid && isPasswordMatch)
                       ? "linear-gradient(135deg, #2563eb, #1d4ed8)" : "#e2e8f0",
                     color: (otpVerified && isPhoneValid && isPasswordMatch) ? "#fff" : "#94a3b8",
-                    border: "none", fontSize: "14px", fontWeight: 700,
+                    border: "none", fontSize: "14.5px", fontWeight: 700,
                     cursor: (otpVerified && isPhoneValid && isPasswordMatch) ? "pointer" : "not-allowed",
                     display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                    boxShadow: (otpVerified && isPhoneValid && isPasswordMatch) ? "0 4px 15px rgba(37,99,235,0.35)" : "none",
+                    boxShadow: (otpVerified && isPhoneValid && isPasswordMatch) ? "0 4px 16px rgba(37,99,235,0.3)" : "none",
+                    transition: "all 0.2s",
                   }}
                 >
                   {isSubmitting
-                    ? <><RefreshCw size={15} className="animate-spin" /> Registering...</>
-                    : <>Submit Registration <ArrowRight size={15} /></>}
+                    ? <><RefreshCw size={16} className="animate-spin" /> Registering...</>
+                    : <>Submit Registration <ArrowRight size={16} /></>}
                 </button>
 
-                <div style={{ textAlign: "center", fontSize: "12.5px", color: "#94a3b8" }}>
+                <div style={{ textAlign: "center", fontSize: "13px", color: "#64748b", marginTop: "2px" }}>
                   Already registered?{" "}
                   <button
                     type="button"
                     onClick={() => { onClose(); onOpenLogin && onOpenLogin(); }}
-                    style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 700, cursor: "pointer", fontSize: "12.5px" }}
+                    style={{ background: "none", border: "none", color: "#2563eb", fontWeight: 700, cursor: "pointer", fontSize: "13px" }}
                   >
                     Sign In to Demo
                   </button>

@@ -77,12 +77,19 @@ export function DemoTrialModal({ isOpen, onClose, onStartTrial, onOpenLogin, onO
       }}
       onClick={onClose}
     >
+      <style>{`
+        .demo-modal-no-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
+        .demo-modal-no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
       <div
+        className="demo-modal-no-scrollbar"
         style={{
           background: '#ffffff',
           borderRadius: '24px',
-          maxWidth: '540px',
+          maxWidth: '580px',
           width: '100%',
+          maxHeight: '90vh',
+          overflowY: 'auto',
           boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.35)',
           border: '1px solid #e2e8f0',
           padding: '32px',

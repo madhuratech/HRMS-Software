@@ -11,11 +11,7 @@ function getResendClient() {
   return new Resend(apiKey);
 }
 
-/**
- * Gets the configured From email sender.
- * Defaults to 'Madhura HRMS <onboarding@resend.dev>' for unverified domains,
- * or process.env.RESEND_FROM_EMAIL once a custom domain is connected.
- */
+
 function getFromEmail() {
   return process.env.RESEND_FROM_EMAIL || 'Madhura HRMS <onboarding@resend.dev>';
 }
@@ -41,13 +37,11 @@ exports.verifyConnection = async () => {
       success: false,
       message: err.message,
       code: err.code || 'UNKNOWN'
-    };
+    }; 
   }
 };
 
-/**
- * Dispatches 6-digit OTP verification email via Resend API
- */
+
 exports.sendOtpEmail = async ({ toEmail, recipientName, otpCode }) => {
   const nameDisplay = recipientName || 'Customer';
   const targetRecipient = toEmail ? toEmail.trim() : null;

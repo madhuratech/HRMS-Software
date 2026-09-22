@@ -43,15 +43,17 @@ export const getAuthHeaders = (extraHeaders = {}) => {
  * or an Object (e.g. res.data, res.success, res.total), it works seamlessly!
  */
 export const toDemoResponse = (data, extra = {}) => {
-  if (Array.isArray(data)) {
-    const arr = [...data];
-    arr.success = true;
-    arr.data = arr;
-    arr.total = arr.length;
-    Object.assign(arr, extra);
-    return arr;
-  }
-  return { success: true, data, ...data, ...extra };
+  const isArray = Array.isArray(data);
+  const dataPayload = isArray ? data : (data !== undefined ? data : []);
+  const totalCount = isArray ? data.length : 0;
+  return {
+    success: true,
+    data: dataPayload,
+    total: totalCount,
+    items: dataPayload,
+    records: dataPayload,
+    ...extra
+  };
 };
 
 export const apiFetch = async (path, options = {}) => {
@@ -976,7 +978,175 @@ export const apiFetch = async (path, options = {}) => {
           };
         }
 
-        // 17. Notifications
+        // 17. Reports Directory & Analytics
+        if (targetPath.includes('/reports/employee')) {
+          const depts = (dummyDb.departments || []).map(d => {
+            const count = (dummyDb.employees || []).filter(e => e.department === d.name).length || 1;
+            return {
+              dept: d.name,
+              total: count,
+              active: count,
+              leave: 0,
+              joiners: 1,
+              resigned: 0,
+              age: '29',
+              exp: '3.5 yrs'
+            };
+          });
+          return {
+            success: true,
+            data: {
+              kpis: {
+                totalEmployees: (dummyDb.employees || []).length,
+                activeEmployees: (dummyDb.employees || []).length,
+                newJoinersMonth: 1,
+                resignedMonth: 0,
+                retentionRate: '100%'
+              },
+              summary: depts.length ? depts : [{ dept: 'Management', total: 1, active: 1, leave: 0, joiners: 1, resigned: 0, age: '30', exp: '5 yrs' }]
+            }
+          };
+        }
+
+        if (targetPath.includes('/reports/attendance')) {
+          const depts = (dummyDb.departments || []).map(d => {
+            const count = (dummyDb.employees || []).filter(e => e.department === d.name).length || 1;
+            return {
+              dept: d.name,
+              total: count,
+              present: count,
+              absent: 0,
+              late: 0,
+              half: 0,
+              pct: '100%'
+            };
+          });
+          return {
+            success: true,
+            data: {
+              kpis: {
+                avgAttendanceRate: '98.5%',
+                totalPunchesMonth: 240,
+                onTimePunches: 232,
+                lateArrivals: 8,
+                absences: 0
+              },
+              summary: depts.length ? depts : [{ dept: 'Management', total: 1, present: 1, absent: 0, late: 0, half: 0, pct: '100%' }]
+            }
+          };
+        }
+
+        if (targetPath.includes('/reports/leave')) {
+          const depts = (dummyDb.departments || []).map(d => ({
+            dept: d.name,
+            req: 1,
+            app: 1,
+            rej: 0,
+            days: 2
+          }));
+          return {
+            success: true,
+            data: {
+              kpis: {
+                totalRequests: (dummyDb.leaves || []).length,
+                approvedLeaves: (dummyDb.leaves || []).filter(l => l.status === 'Approved').length,
+                pendingApprovals: (dummyDb.leaves || []).filter(l => l.status === 'Pending Approval').length,
+                totalDaysTaken: (dummyDb.leaves || []).reduce((acc, l) => acc + (l.days || 1), 0)
+              },
+              summary: depts.length ? depts : [{ dept: 'Management', req: 1, app: 1, rej: 0, days: 1 }]
+            }
+          };
+        }
+
+        if (targetPath.includes('/reports/payroll')) {
+          const depts = (dummyDb.departments || []).map(d => {
+            const count = (dummyDb.employees || []).filter(e => e.department === d.name).length || 1;
+            return {
+              dept: d.name,
+              emp: count,
+              cost: '₹' + (count * 60000).toLocaleString(),
+              net: '₹' + (count * 55000).toLocaleString(),
+              ded: '₹' + (count * 5000).toLocaleString(),
+              tax: '₹' + (count * 2500).toLocaleString()
+            };
+          });
+          return {
+            success: true,
+            data: {
+              kpis: {
+                totalGrossPayroll: '₹' + ((dummyDb.employees || []).length * 60000).toLocaleString(),
+                totalNetDisbursed: '₹' + ((dummyDb.employees || []).length * 55000).toLocaleString(),
+                totalTaxDeducted: '₹' + ((dummyDb.employees || []).length * 2500).toLocaleString(),
+                processedPayslips: (dummyDb.employees || []).length
+              },
+              summary: depts.length ? depts : [{ dept: 'Management', emp: 1, cost: '₹60,000', net: '₹55,000', ded: '₹5,000', tax: '₹2,500' }]
+            }
+          };
+        }
+
+        if (targetPath.includes('/reports/recruitment')) {
+          return {
+            success: true,
+            data: {
+              kpis: {
+                totalOpenings: (dummyDb.requirements || []).length,
+                totalApplications: (dummyDb.candidates || []).length,
+                interviewsConducted: (dummyDb.interviews || []).length,
+                offersExtended: (dummyDb.offers || []).length,
+                hiredThisMonth: 1
+              },
+              deptHiring: [
+                { dept: 'Engineering', count: 2 },
+                { dept: 'Management', count: 1 }
+              ]
+            }
+          };
+        }
+
+        if (targetPath.includes('/reports/performance')) {
+          const depts = (dummyDb.departments || []).map(d => ({
+            dept: d.name,
+            avg: '4.8',
+            out: 1,
+            exc: 1,
+            meets: 0,
+            needs: 0,
+            un: 0
+          }));
+          return {
+            success: true,
+            data: {
+              kpis: {
+                avgCompanyRating: '4.8 / 5.0',
+                topPerformersCount: (dummyDb.employees || []).length,
+                goalsCompletedRate: '95%'
+              },
+              summary: depts.length ? depts : [{ dept: 'Management', avg: '5.0', out: 1, exc: 0, meets: 0, needs: 0, un: 0 }]
+            }
+          };
+        }
+
+        if (targetPath.includes('/reports/project')) {
+          const projs = dummyDb.projects || [];
+          return {
+            success: true,
+            data: {
+              kpis: {
+                totalActiveProjects: projs.length,
+                completedProjects: projs.filter(p => p.status === 'Completed').length,
+                onTrackProjects: projs.filter(p => p.status === 'In Progress').length,
+                totalRevenueBudget: '₹' + projs.reduce((acc, p) => acc + (p.budget || 0), 0).toLocaleString()
+              },
+              progressList: projs.slice(0, 5).map(p => ({
+                name: p.title || p.project_name || 'Enterprise System',
+                pct: p.progress || 50,
+                status: p.status || 'In Progress'
+              }))
+            }
+          };
+        }
+
+        // 18. Notifications & System Alerts
         if (targetPath.includes('/notifications')) {
           return {
             success: true,
