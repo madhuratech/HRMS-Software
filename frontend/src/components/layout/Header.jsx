@@ -1344,29 +1344,6 @@ export function Header({ title, userRole, currentView, onLogout }) {
         </div>
         {/* end notification bell wrapper */}
 
-        {/* Live 3-Hour Demo Countdown Timer Badge */}
-        {isDemo && demoRemaining > 0 && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: '#FEF3C7',
-              color: '#92400E',
-              border: '1px solid #FDE68A',
-              padding: '5px 12px',
-              borderRadius: '20px',
-              fontSize: '12px',
-              fontWeight: 700,
-              boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
-              flexShrink: 0
-            }}
-            title="3-Hour Demo Session Active - All changes stored in isolated dummy store"
-          >
-            <Clock size={15} className="animate-pulse text-amber-600" />
-            <span>3-Hr Demo: <strong style={{ fontFamily: 'monospace', fontSize: '13px', color: '#B45309' }}>{formattedDemoTime}</strong></span>
-          </div>
-        )}
 
         {/* User Info */}
         <div
