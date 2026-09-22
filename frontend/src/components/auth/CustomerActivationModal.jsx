@@ -14,6 +14,7 @@ export function CustomerActivationModal({
 }) {
   const [companyName, setCompanyName] = useState('');
   const [industry, setIndustry] = useState('IT & Software');
+  const [customIndustry, setCustomIndustry] = useState('');
   const [employeeSize, setEmployeeSize] = useState('21-100');
   const [heardAbout, setHeardAbout] = useState('Google Search');
   const [city, setCity] = useState('');
@@ -50,8 +51,14 @@ export function CustomerActivationModal({
       setError('Please enter your company or organization name.');
       return;
     }
+    if (industry === 'Other Industry' && !customIndustry.trim()) {
+      setError('Please specify your custom industry name.');
+      return;
+    }
     setError('');
     setIsSubmitting(true);
+
+    const finalIndustry = industry === 'Other Industry' ? (customIndustry.trim() || 'Other Industry') : industry;
 
     try {
       // 1. Submit onboarding info to backend
@@ -61,7 +68,7 @@ export function CustomerActivationModal({
           email: customerEmail,
           password: customerData?.password || '',
           company: companyName.trim(),
-          industry,
+          industry: finalIndustry,
           employeeSize,
           heardAbout,
           city: city.trim(),
@@ -75,7 +82,7 @@ export function CustomerActivationModal({
         company: companyName.trim(),
         email: customerEmail,
         phone: customerPhone,
-        industry,
+        industry: finalIndustry,
         employeeSize,
         heardAbout
       });
@@ -93,7 +100,7 @@ export function CustomerActivationModal({
           phone: customerPhone,
           password: leadPassword,
           company: companyName.trim(),
-          industry,
+          industry: finalIndustry,
           employeeSize,
           heardAbout,
           city: city.trim(),
@@ -114,7 +121,7 @@ export function CustomerActivationModal({
         onComplete({
           ...customerData,
           company: companyName.trim(),
-          industry,
+          industry: finalIndustry,
           employeeSize,
           heardAbout,
           role: 'SUPER_ADMIN',
@@ -129,7 +136,7 @@ export function CustomerActivationModal({
         company: companyName.trim(),
         email: customerEmail,
         phone: customerPhone,
-        industry,
+        industry: finalIndustry,
         employeeSize,
         heardAbout
       });
@@ -146,7 +153,7 @@ export function CustomerActivationModal({
           phone: customerPhone,
           password: leadPassword,
           company: companyName.trim(),
-          industry,
+          industry: finalIndustry,
           employeeSize,
           heardAbout,
           city: city.trim(),
@@ -166,7 +173,7 @@ export function CustomerActivationModal({
         onComplete({
           ...customerData,
           company: companyName.trim(),
-          industry,
+          industry: finalIndustry,
           employeeSize,
           heardAbout,
           role: 'SUPER_ADMIN',
@@ -186,73 +193,94 @@ export function CustomerActivationModal({
         left: 0,
         right: 0,
         bottom: 0,
-        backgroundColor: 'rgba(2, 6, 23, 0.82)',
-        backdropFilter: 'blur(14px)',
+        backgroundColor: 'rgba(2, 6, 23, 0.78)',
+        backdropFilter: 'blur(12px)',
         zIndex: 10005,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '16px',
+        padding: '20px 16px',
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
       }}
     >
+      <style>{`
+        .activation-no-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
+        .activation-no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      `}</style>
       <div
+        className="activation-no-scrollbar"
         style={{
           background: '#ffffff',
-          borderRadius: '20px',
-          maxWidth: '520px',
+          borderRadius: '24px',
+          maxWidth: '600px',
           width: '100%',
-          boxShadow: '0 32px 64px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)',
+          boxShadow: '0 25px 60px -15px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.04)',
           position: 'relative',
-          maxHeight: '94vh',
-          overflowY: 'auto'
+          maxHeight: '90vh',
+          overflowY: 'auto',
+          border: '1px solid #e2e8f0',
         }}
       >
+        {onClose && (
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            style={{
+              position: "absolute", top: "18px", right: "18px", background: "rgba(255,255,255,0.2)",
+              border: "none", borderRadius: "50%", width: "32px", height: "32px",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", color: "#fff", zIndex: 5, transition: "background 0.2s",
+            }}
+          >
+            <X size={16} />
+          </button>
+        )}
+
         {/* Header */}
         <div style={{
-          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 55%, #3b82f6 100%)",
-          padding: "28px 28px 22px", borderRadius: "20px 20px 0 0", color: "#fff",
+          background: "linear-gradient(135deg, #1e40af 0%, #2563eb 60%, #3b82f6 100%)",
+          padding: "32px 36px 26px", borderRadius: "24px 24px 0 0", color: "#fff",
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "10px" }}>
             <div style={{
-              width: "42px", height: "42px", borderRadius: "12px",
+              width: "44px", height: "44px", borderRadius: "12px",
               background: "rgba(255,255,255,0.18)", display: "flex",
               alignItems: "center", justifyContent: "center",
-              boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+              flexShrink: 0,
             }}>
               <Building2 size={22} />
             </div>
             <div>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "1px", textTransform: "uppercase", opacity: 0.8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", opacity: 0.85 }}>
                   Super Admin Activation
                 </span>
-                <span style={{ fontSize: '10px', background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '3px' }}>
-                  <CheckCircle2 size={10} /> Email Verified
+                <span style={{ fontSize: '10.5px', background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <CheckCircle2 size={11} /> Email Verified
                 </span>
               </div>
-              <h2 style={{ fontSize: "19px", fontWeight: 800, margin: "2px 0 0", letterSpacing: "-0.3px" }}>
+              <h2 style={{ fontSize: "20px", fontWeight: 800, margin: "3px 0 0", letterSpacing: "-0.3px" }}>
                 Welcome, {customerName}!
               </h2>
             </div>
           </div>
-          <p style={{ fontSize: "13px", opacity: 0.85, margin: 0, lineHeight: 1.5 }}>
+          <p style={{ fontSize: "13.5px", opacity: 0.85, margin: 0, lineHeight: 1.5 }}>
             Configure your organization profile to instantly launch your fully-featured 3-Hour Demo Workspace.
           </p>
         </div>
 
         {/* Form Body */}
-        <div style={{ padding: "26px" }}>
+        <div style={{ padding: "30px 36px 34px" }}>
           {error && (
             <div
               style={{
-                display: "flex", alignItems: "center", gap: "8px",
+                display: "flex", alignItems: "center", gap: "10px",
                 background: "#fef2f2", border: "1px solid #fecaca",
-                borderRadius: "10px", padding: "10px 12px", marginBottom: "18px",
-                fontSize: "13px", color: "#b91c1c",
+                borderRadius: "12px", padding: "12px 16px", marginBottom: "20px",
+                fontSize: "13px", color: "#b91c1c", fontWeight: 500,
               }}
             >
-              <AlertCircle size={15} style={{ flexShrink: 0 }} />
+              <AlertCircle size={16} style={{ flexShrink: 0 }} />
               {error}
             </div>
           )}
@@ -264,7 +292,7 @@ export function CustomerActivationModal({
                 Company / Organization Name <span style={{ color: "#ef4444" }}>*</span>
               </label>
               <div style={{ position: 'relative' }}>
-                <Building2 size={15} style={{ position: 'absolute', left: '12px', top: '11px', color: '#9ca3af' }} />
+                <Building2 size={16} style={{ position: 'absolute', left: '14px', top: '13px', color: '#9ca3af', pointerEvents: 'none' }} />
                 <input
                   type="text"
                   required
@@ -273,109 +301,140 @@ export function CustomerActivationModal({
                   onChange={(e) => setCompanyName(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '10px 12px 10px 36px',
-                    borderRadius: '10px',
+                    padding: '11px 14px 11px 40px',
+                    borderRadius: '11px',
                     border: '1.5px solid #e2e8f0',
-                    fontSize: '13.5px',
+                    fontSize: '14px',
                     outline: 'none',
                     boxSizing: 'border-box',
                     color: "#111827",
-                    transition: "border 0.2s"
+                    background: "#fff",
+                    transition: "border-color 0.2s"
                   }}
-                  onFocus={(e) => e.target.style.border = '1.5px solid #3b82f6'}
-                  onBlur={(e) => e.target.style.border = companyName ? '1.5px solid #10b981' : '1.5px solid #e2e8f0'}
+                  onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                  onBlur={(e) => e.target.style.borderColor = companyName ? '#10b981' : '#e2e8f0'}
                 />
               </div>
             </div>
 
-            {/* 2. Industry & City */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-              <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-                  Industry / Org Type <span style={{ color: "#ef4444" }}>*</span>
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <select
-                    value={industry}
-                    onChange={(e) => setIndustry(e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      borderRadius: '10px',
-                      border: '1.5px solid #e2e8f0',
-                      fontSize: '13.5px',
-                      outline: 'none',
-                      background: '#f8fafc',
-                      boxSizing: 'border-box',
-                      color: "#111827",
-                      appearance: "none",
-                      WebkitAppearance: "none",
-                      cursor: "pointer"
-                    }}
-                  >
-                    <option value="IT & Software">IT & Software</option>
-                    <option value="Manufacturing & Production">Manufacturing & Production</option>
-                    <option value="Healthcare & Pharma">Healthcare & Pharma</option>
-                    <option value="Finance & Banking">Finance & Banking</option>
-                    <option value="Retail & E-Commerce">Retail & E-Commerce</option>
-                    <option value="Education & EdTech">Education & EdTech</option>
-                    <option value="Logistics & Supply Chain">Logistics & Supply Chain</option>
-                    <option value="Construction & Real Estate">Construction & Real Estate</option>
-                    <option value="Consulting & Agency">Consulting & Agency</option>
-                    <option value="Other Industry">Other Industry</option>
-                  </select>
-                  <div style={{ position: 'absolute', right: '12px', top: '12px', pointerEvents: 'none', color: '#64748b' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-                  </div>
+            {/* 2. Industry / Org Type (STACKED - Full Width) */}
+            <div>
+              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                Industry / Org Type <span style={{ color: "#ef4444" }}>*</span>
+              </label>
+              <div style={{ position: 'relative' }}>
+                <select
+                  value={industry}
+                  onChange={(e) => setIndustry(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '11px 14px',
+                    borderRadius: '11px',
+                    border: '1.5px solid #e2e8f0',
+                    fontSize: '14px',
+                    outline: 'none',
+                    background: '#f8fafc',
+                    boxSizing: 'border-box',
+                    color: "#111827",
+                    appearance: "none",
+                    WebkitAppearance: "none",
+                    cursor: "pointer"
+                  }}
+                >
+                  <option value="IT & Software">IT & Software</option>
+                  <option value="Manufacturing & Production">Manufacturing & Production</option>
+                  <option value="Healthcare & Pharma">Healthcare & Pharma</option>
+                  <option value="Finance & Banking">Finance & Banking</option>
+                  <option value="Retail & E-Commerce">Retail & E-Commerce</option>
+                  <option value="Education & EdTech">Education & EdTech</option>
+                  <option value="Logistics & Supply Chain">Logistics & Supply Chain</option>
+                  <option value="Construction & Real Estate">Construction & Real Estate</option>
+                  <option value="Consulting & Agency">Consulting & Agency</option>
+                  <option value="Other Industry">Other Industry</option>
+                </select>
+                <div style={{ position: 'absolute', right: '14px', top: '14px', pointerEvents: 'none', color: '#64748b' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
-                  Headquarters City
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <MapPin size={15} style={{ position: 'absolute', left: '12px', top: '11px', color: '#9ca3af' }} />
+              {industry === 'Other Industry' && (
+                <div style={{ marginTop: '10px' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#374151', marginBottom: '5px' }}>
+                    Specify Custom Industry <span style={{ color: "#ef4444" }}>*</span>
+                  </label>
                   <input
                     type="text"
-                    placeholder="e.g. Bengaluru"
-                    value={city}
-                    onChange={(e) => setCity(e.target.value)}
+                    required
+                    placeholder="e.g. Fintech, Aerospace, EdTech"
+                    value={customIndustry}
+                    onChange={(e) => setCustomIndustry(e.target.value)}
                     style={{
                       width: '100%',
-                      padding: '10px 12px 10px 36px',
-                      borderRadius: '10px',
+                      padding: '11px 14px',
+                      borderRadius: '11px',
                       border: '1.5px solid #e2e8f0',
-                      fontSize: '13.5px',
+                      fontSize: '14px',
                       outline: 'none',
                       boxSizing: 'border-box',
                       color: "#111827",
+                      background: "#fff",
+                      transition: "border-color 0.2s"
                     }}
-                    onFocus={(e) => e.target.style.border = '1.5px solid #3b82f6'}
-                    onBlur={(e) => e.target.style.border = '1.5px solid #e2e8f0'}
+                    onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                    onBlur={(e) => e.target.style.borderColor = customIndustry ? '#10b981' : '#e2e8f0'}
                   />
                 </div>
+              )}
+            </div>
+
+            {/* 3. Headquarters City (STACKED - Full Width) */}
+            <div>
+              <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
+                Headquarters City
+              </label>
+              <div style={{ position: 'relative' }}>
+                <MapPin size={16} style={{ position: 'absolute', left: '14px', top: '13px', color: '#9ca3af', pointerEvents: 'none' }} />
+                <input
+                  type="text"
+                  placeholder="e.g. Bengaluru"
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '11px 14px 11px 40px',
+                    borderRadius: '11px',
+                    border: '1.5px solid #e2e8f0',
+                    fontSize: '14px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                    color: "#111827",
+                    background: "#fff",
+                    transition: "border-color 0.2s"
+                  }}
+                  onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                  onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                />
               </div>
             </div>
 
-            {/* 3. Employee Size */}
+            {/* 4. Employee Size */}
             <div>
               <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
                 Current Workforce / Employee Size <span style={{ color: "#ef4444" }}>*</span>
               </label>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '6px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
                 {['1-10', '11-50', '51-200', '201-500', '500+'].map((sz) => (
                   <button
                     type="button"
                     key={sz}
                     onClick={() => setEmployeeSize(sz)}
                     style={{
-                      padding: '8px 4px',
-                      borderRadius: '8px',
-                      border: `1.5px solid ${employeeSize === sz ? '#3b82f6' : '#e2e8f0'}`,
+                      padding: '10px 4px',
+                      borderRadius: '10px',
+                      border: `1.5px solid ${employeeSize === sz ? '#2563eb' : '#e2e8f0'}`,
                       background: employeeSize === sz ? '#eff6ff' : '#f8fafc',
                       color: employeeSize === sz ? '#1d4ed8' : '#475569',
-                      fontSize: '11.5px',
+                      fontSize: '12px',
                       fontWeight: employeeSize === sz ? 700 : 500,
                       cursor: 'pointer',
                       textAlign: 'center',
@@ -388,22 +447,22 @@ export function CustomerActivationModal({
               </div>
             </div>
 
-            {/* 4. Where did you hear about us? */}
+            {/* 5. Where did you hear about us? */}
             <div>
               <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
                 Where did you hear about Madhura HRMS? <span style={{ color: "#ef4444" }}>*</span>
               </label>
               <div style={{ position: 'relative' }}>
-                <Compass size={15} style={{ position: 'absolute', left: '12px', top: '11px', color: '#9ca3af' }} />
+                <Compass size={16} style={{ position: 'absolute', left: '14px', top: '13px', color: '#9ca3af', pointerEvents: 'none' }} />
                 <select
                   value={heardAbout}
                   onChange={(e) => setHeardAbout(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '10px 12px 10px 36px',
-                    borderRadius: '10px',
+                    padding: '11px 14px 11px 40px',
+                    borderRadius: '11px',
                     border: '1.5px solid #e2e8f0',
-                    fontSize: '13.5px',
+                    fontSize: '14px',
                     outline: 'none',
                     background: '#f8fafc',
                     boxSizing: 'border-box',
@@ -421,13 +480,13 @@ export function CustomerActivationModal({
                   <option value="Online Advertisement">Online Advertisement</option>
                   <option value="Other Source">Other Source</option>
                 </select>
-                <div style={{ position: 'absolute', right: '12px', top: '12px', pointerEvents: 'none', color: '#64748b' }}>
+                <div style={{ position: 'absolute', right: '14px', top: '14px', pointerEvents: 'none', color: '#64748b' }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </div>
               </div>
             </div>
 
-            {/* 5. Primary HR Interests / Goals */}
+            {/* 6. Primary HR Interests / Goals */}
             <div>
               <label style={{ display: 'block', fontSize: '12.5px', fontWeight: 600, color: '#374151', marginBottom: '6px' }}>
                 Modules You Want to Explore (Optional)
@@ -441,21 +500,21 @@ export function CustomerActivationModal({
                       key={opt}
                       onClick={() => togglePriority(opt)}
                       style={{
-                        padding: '6px 12px',
+                        padding: '7px 14px',
                         borderRadius: '20px',
-                        border: `1.5px solid ${active ? '#3b82f6' : '#e2e8f0'}`,
+                        border: `1.5px solid ${active ? '#2563eb' : '#e2e8f0'}`,
                         background: active ? '#eff6ff' : '#f8fafc',
                         color: active ? '#1d4ed8' : '#64748b',
-                        fontSize: '11.5px',
+                        fontSize: '12px',
                         fontWeight: active ? 700 : 500,
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '4px',
+                        gap: '5px',
                         transition: "all 0.2s"
                       }}
                     >
-                      {active && <CheckCircle2 size={12} />}
+                      {active && <CheckCircle2 size={13} />}
                       {opt}
                     </button>
                   );
@@ -466,8 +525,8 @@ export function CustomerActivationModal({
             {/* Sandbox & Production Safe Notice */}
             <div
               style={{
-                padding: '10px 14px',
-                borderRadius: '10px',
+                padding: '12px 16px',
+                borderRadius: '12px',
                 background: '#f0fdf4',
                 border: '1px solid #bbf7d0',
                 display: 'flex',
@@ -477,7 +536,7 @@ export function CustomerActivationModal({
               }}
             >
               <ShieldCheck size={18} style={{ color: '#059669', flexShrink: 0, marginTop: '1px' }} />
-              <div style={{ fontSize: '12px', color: '#166534', lineHeight: 1.4 }}>
+              <div style={{ fontSize: '12.5px', color: '#166534', lineHeight: 1.4 }}>
                 <strong>Isolated 3-Hour Demo Environment:</strong> Your actions here do not affect real data. The workspace will safely self-destruct after 3 hours.
               </div>
             </div>
@@ -487,7 +546,7 @@ export function CustomerActivationModal({
               type="submit"
               disabled={isSubmitting || !companyName.trim()}
               style={{
-                marginTop: '4px',
+                marginTop: '6px',
                 width: '100%',
                 padding: '14px',
                 borderRadius: '12px',
@@ -503,7 +562,7 @@ export function CustomerActivationModal({
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: '8px',
-                boxShadow: companyName.trim() ? '0 10px 15px -3px rgba(37, 99, 235, 0.3)' : 'none',
+                boxShadow: companyName.trim() ? '0 4px 16px rgba(37, 99, 235, 0.3)' : 'none',
                 transition: "all 0.2s"
               }}
             >
@@ -511,7 +570,7 @@ export function CustomerActivationModal({
                 'Initializing Demo Workspace...'
               ) : (
                 <>
-                  <Sparkles size={16} /> Launch My 3-Hour Super Admin Demo <ArrowRight size={16} />
+                  <Sparkles size={17} /> Launch My 3-Hour Super Admin Demo <ArrowRight size={17} />
                 </>
               )}
             </button>

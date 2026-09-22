@@ -43,43 +43,43 @@ export function DemoSessionBanner({
         background: 'linear-gradient(90deg, #0f172a 0%, #1e293b 100%)',
         borderBottom: '1px solid #334155',
         color: '#ffffff',
-        padding: '8px 18px',
+        padding: '5px 16px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'wrap',
-        gap: '12px',
+        gap: '8px',
         zIndex: 50,
         position: 'relative',
-        fontSize: '13px',
+        fontSize: '12px',
         fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
       }}
     >
       {/* Left: Customer & Company Info */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
         <div
           style={{
             background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
             color: '#fff',
-            padding: '3px 8px',
-            borderRadius: '6px',
+            padding: '2px 7px',
+            borderRadius: '5px',
             fontWeight: 800,
-            fontSize: '11px',
-            letterSpacing: '0.5px',
+            fontSize: '10px',
+            letterSpacing: '0.4px',
             display: 'flex',
             alignItems: 'center',
-            gap: '5px'
+            gap: '4px'
           }}
         >
-          <Sparkles size={12} />
+          <Sparkles size={11} />
           <span>SUPER ADMIN</span>
         </div>
 
-        <span style={{ fontWeight: 700, color: '#f8fafc' }}>
+        <span style={{ fontWeight: 700, color: '#f8fafc', fontSize: '12px' }}>
           {companyName}
         </span>
         <span style={{ color: '#64748b' }}>•</span>
-        <span style={{ color: '#94a3b8' }}>
+        <span style={{ color: '#94a3b8', fontSize: '12px' }}>
           Admin: <strong style={{ color: '#e2e8f0' }}>{customerName}</strong>
         </span>
 
@@ -88,41 +88,41 @@ export function DemoSessionBanner({
           style={{
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '5px',
-            background: 'rgba(16, 185, 129, 0.15)',
+            gap: '4px',
+            background: 'rgba(16, 185, 129, 0.12)',
             color: '#34d399',
-            border: '1px solid rgba(16, 185, 129, 0.3)',
-            borderRadius: '20px',
-            padding: '2px 10px',
-            fontSize: '11px',
-            fontWeight: 700
+            border: '1px solid rgba(16, 185, 129, 0.25)',
+            borderRadius: '16px',
+            padding: '1.5px 8px',
+            fontSize: '10.5px',
+            fontWeight: 600
           }}
         >
-          <ShieldCheck size={13} />
+          <ShieldCheck size={12} />
           <span>Isolated Dummy Database • Production Safe</span>
         </div>
       </div>
 
       {/* Right: 3-Hour Countdown Clock & Actions */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         {/* Countdown Timer */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '6px',
+            gap: '5px',
             background: isLowTime ? 'rgba(239, 68, 68, 0.2)' : 'rgba(30, 41, 59, 0.8)',
             border: `1px solid ${isLowTime ? '#ef4444' : '#475569'}`,
-            borderRadius: '8px',
-            padding: '4px 10px',
+            borderRadius: '6px',
+            padding: '3px 8px',
             color: isLowTime ? '#f87171' : '#e2e8f0'
           }}
         >
-          <Clock size={14} className={isLowTime ? 'animate-pulse text-red-400' : 'text-blue-400'} />
-          <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>
+          <Clock size={13} className={isLowTime ? 'animate-pulse text-red-400' : 'text-blue-400'} />
+          <span style={{ fontSize: '10px', color: '#94a3b8', textTransform: 'uppercase', fontWeight: 600 }}>
             Demo Ends In:
           </span>
-          <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '14px', letterSpacing: '1px' }}>
+          <span style={{ fontFamily: 'monospace', fontWeight: 800, fontSize: '12.5px', letterSpacing: '0.5px' }}>
             {formatTime(remainingSeconds)}
           </span>
         </div>
@@ -134,18 +134,18 @@ export function DemoSessionBanner({
             background: '#3b82f6',
             color: '#ffffff',
             border: 'none',
-            borderRadius: '8px',
-            padding: '5px 12px',
-            fontSize: '12px',
+            borderRadius: '6px',
+            padding: '4px 10px',
+            fontSize: '11.5px',
             fontWeight: 700,
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
-            gap: '5px',
-            boxShadow: '0 2px 6px rgba(59, 130, 246, 0.4)'
+            gap: '4px',
+            boxShadow: '0 2px 4px rgba(59, 130, 246, 0.3)'
           }}
         >
-          <Compass size={14} /> Take Tour
+          <Compass size={13} /> Take Tour
         </button>
 
         {/* Upgrade / Plan Button */}
@@ -155,9 +155,9 @@ export function DemoSessionBanner({
             background: 'linear-gradient(135deg, #10b981, #059669)',
             color: '#ffffff',
             border: 'none',
-            borderRadius: '8px',
-            padding: '5px 12px',
-            fontSize: '12px',
+            borderRadius: '6px',
+            padding: '4px 10px',
+            fontSize: '11.5px',
             fontWeight: 700,
             cursor: 'pointer',
             display: 'flex',
@@ -166,7 +166,7 @@ export function DemoSessionBanner({
           }}
         >
           <span>Upgrade to Full Plan</span>
-          <ArrowUpRight size={13} />
+          <ArrowUpRight size={12} />
         </button>
 
         {/* Exit Session */}
@@ -178,7 +178,7 @@ export function DemoSessionBanner({
             color: '#94a3b8',
             border: 'none',
             cursor: 'pointer',
-            padding: '4px',
+            padding: '3px',
             display: 'flex',
             alignItems: 'center'
           }}

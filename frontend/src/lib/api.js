@@ -504,8 +504,44 @@ export const apiFetch = async (path, options = {}) => {
           return { success: true, company: dummyDb.company || {}, data: dummyDb.company || {} };
         }
 
-        // 8. Attendance (Daily, Punch Locations, GPS, Recent)
+        // 8. Attendance (Daily, Punch Locations, Regularization, Overtime, Late Arrival, GPS, Recent)
         if (targetPath.includes('/attendance')) {
+          if (targetPath.includes('/regularization')) {
+            if (options.method === 'POST') {
+              const { addDummyRegularization } = await import('./demoDummyStore');
+              const reg = addDummyRegularization(bodyPayload);
+              return { success: true, message: 'Regularization request submitted', data: reg, regularization: reg };
+            }
+            if (options.method === 'PUT') {
+              const id = targetPath.split('/').filter(Boolean).slice(-2, -1)[0] || targetPath.split('/').filter(Boolean).pop();
+              const { updateDummyRegularization } = await import('./demoDummyStore');
+              const updated = updateDummyRegularization(id, bodyPayload);
+              return { success: true, message: 'Regularization updated', data: updated, regularization: updated };
+            }
+            return toDemoResponse(dummyDb.regularizations || []);
+          }
+          if (targetPath.includes('/overtime')) {
+            if (options.method === 'POST') {
+              const { addDummyOvertime } = await import('./demoDummyStore');
+              const ot = addDummyOvertime(bodyPayload);
+              return { success: true, message: 'Overtime request submitted', data: ot };
+            }
+            if (options.method === 'PUT') {
+              const id = targetPath.split('/').filter(Boolean).pop();
+              const { updateDummyOvertime } = await import('./demoDummyStore');
+              const updated = updateDummyOvertime(id, bodyPayload);
+              return { success: true, message: 'Overtime status updated', data: updated };
+            }
+            return toDemoResponse(dummyDb.overtime || []);
+          }
+          if (targetPath.includes('/late-arrival') || targetPath.includes('/late')) {
+            if (options.method === 'POST') {
+              const { addDummyLateArrival } = await import('./demoDummyStore');
+              const la = addDummyLateArrival(bodyPayload);
+              return { success: true, message: 'Late arrival recorded', data: la };
+            }
+            return toDemoResponse(dummyDb.lateArrival || []);
+          }
           if (options.method === 'POST') {
             const { addDummyAttendance } = await import('./demoDummyStore');
             const att = addDummyAttendance(bodyPayload);
@@ -538,12 +574,29 @@ export const apiFetch = async (path, options = {}) => {
             };
           }
           if (targetPath.includes('/punch-locations')) {
+            if (options.method === 'POST') {
+              const { addDummyPunchLocation } = await import('./demoDummyStore');
+              const loc = addDummyPunchLocation(bodyPayload);
+              return { success: true, message: 'Punch location added successfully', location: loc, data: loc };
+            }
+            if (options.method === 'PUT') {
+              const id = targetPath.split('/').filter(Boolean).pop();
+              const { updateDummyPunchLocation } = await import('./demoDummyStore');
+              const updated = updateDummyPunchLocation(id, bodyPayload);
+              return { success: true, message: 'Punch location updated successfully', location: updated, data: updated };
+            }
+            if (options.method === 'DELETE') {
+              const id = targetPath.split('/').filter(Boolean).pop();
+              const { deleteDummyPunchLocation } = await import('./demoDummyStore');
+              deleteDummyPunchLocation(id);
+              return { success: true, message: 'Punch location removed successfully' };
+            }
+            const locList = dummyDb.punchLocations || [];
             return {
               success: true,
-              data: {
-                locations: [],
-                total: 0
-              }
+              locations: locList,
+              total: locList.length,
+              data: { locations: locList, total: locList.length }
             };
           }
           if (targetPath.includes('/today-status') || targetPath.includes('/recent')) {
@@ -562,6 +615,14 @@ export const apiFetch = async (path, options = {}) => {
 
         // 9. Leaves & Approvals
         if (targetPath.includes('/leaves') || targetPath.includes('/leave')) {
+          if (targetPath.includes('/comp-off')) {
+            if (options.method === 'POST') {
+              const { addDummyCompOff } = await import('./demoDummyStore');
+              const co = addDummyCompOff(bodyPayload);
+              return { success: true, message: 'Comp-off request submitted', data: co };
+            }
+            return toDemoResponse(dummyDb.compOff || []);
+          }
           if (options.method === 'POST') {
             const { addDummyLeave } = await import('./demoDummyStore');
             const lv = addDummyLeave(bodyPayload);
@@ -605,9 +666,6 @@ export const apiFetch = async (path, options = {}) => {
             ];
             return toDemoResponse(balances);
           }
-          if (targetPath.includes('/comp-off')) {
-            return toDemoResponse([]);
-          }
           const formattedLeaves = (dummyDb.leaves || []).map(l => ({
             id: l.id,
             employee_name: l.employeeName,
@@ -622,7 +680,7 @@ export const apiFetch = async (path, options = {}) => {
           return toDemoResponse(formattedLeaves, { leaves: formattedLeaves });
         }
 
-        // 10. Payroll (Processing, Structures, Components, Payslips)
+        // 10. Payroll (Processing, Structures, Components, Payslips, Bonuses, Reimbursements, Loans)
         if (targetPath.includes('/payroll')) {
           if (targetPath.includes('/structures')) {
             return toDemoResponse(dummyDb.salaryStructures || []);
@@ -630,8 +688,29 @@ export const apiFetch = async (path, options = {}) => {
           if (targetPath.includes('/components')) {
             return toDemoResponse(dummyDb.salaryComponents || []);
           }
-          if (targetPath.includes('/bonuses') || targetPath.includes('/reimbursements') || targetPath.includes('/loans')) {
-            return toDemoResponse([]);
+          if (targetPath.includes('/bonuses')) {
+            if (options.method === 'POST') {
+              const { addDummyBonus } = await import('./demoDummyStore');
+              const b = addDummyBonus(bodyPayload);
+              return { success: true, message: 'Bonus entry added', data: b };
+            }
+            return toDemoResponse(dummyDb.bonuses || []);
+          }
+          if (targetPath.includes('/reimbursements')) {
+            if (options.method === 'POST') {
+              const { addDummyReimbursement } = await import('./demoDummyStore');
+              const r = addDummyReimbursement(bodyPayload);
+              return { success: true, message: 'Reimbursement claim submitted', data: r };
+            }
+            return toDemoResponse(dummyDb.reimbursements || []);
+          }
+          if (targetPath.includes('/loans')) {
+            if (options.method === 'POST') {
+              const { addDummyLoan } = await import('./demoDummyStore');
+              const l = addDummyLoan(bodyPayload);
+              return { success: true, message: 'Loan application submitted', data: l };
+            }
+            return toDemoResponse(dummyDb.loans || []);
           }
           const payslipsList = (dummyDb.employees || []).map(e => ({
             id: e.id,
@@ -878,9 +957,60 @@ export const apiFetch = async (path, options = {}) => {
           return toDemoResponse([]);
         }
 
-        // 13. Expenses
+        // 13. Timesheets, Project Team, Sprints & Expenses
+        if (targetPath.includes('/timesheets')) {
+          if (options.method === 'POST') {
+            const { addDummyTimesheet } = await import('./demoDummyStore');
+            const ts = addDummyTimesheet(bodyPayload);
+            return { success: true, message: 'Timesheet submitted', data: ts };
+          }
+          if (options.method === 'PUT') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { updateDummyTimesheet } = await import('./demoDummyStore');
+            const updated = updateDummyTimesheet(id, bodyPayload);
+            return { success: true, message: 'Timesheet updated', data: updated };
+          }
+          if (options.method === 'DELETE') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { deleteDummyTimesheet } = await import('./demoDummyStore');
+            deleteDummyTimesheet(id);
+            return { success: true, message: 'Timesheet removed' };
+          }
+          return toDemoResponse(dummyDb.timesheets || []);
+        }
+
+        if (targetPath.includes('/project-team')) {
+          return toDemoResponse(dummyDb.projectTeam || []);
+        }
+
+        if (targetPath.includes('/sprints')) {
+          return {
+            success: true,
+            data: [
+              { id: 1, name: 'Sprint 1 - Core Architecture', status: 'Active', start_date: '2026-09-01', end_date: '2026-09-30' }
+            ]
+          };
+        }
+
         if (targetPath.includes('/expenses')) {
-          return toDemoResponse([]);
+          if (options.method === 'POST') {
+            const { addDummyExpense } = await import('./demoDummyStore');
+            const exp = addDummyExpense(bodyPayload);
+            return { success: true, message: 'Expense claim submitted', data: exp };
+          }
+          if (options.method === 'PUT') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { updateDummyExpense } = await import('./demoDummyStore');
+            const updated = updateDummyExpense(id, bodyPayload);
+            return { success: true, message: 'Expense claim updated', data: updated };
+          }
+          if (options.method === 'DELETE') {
+            const id = targetPath.split('/').filter(Boolean).pop();
+            const { deleteDummyExpense } = await import('./demoDummyStore');
+            deleteDummyExpense(id);
+            return { success: true, message: 'Expense claim removed' };
+          }
+          return toDemoResponse(dummyDb.expenses || []);
         }
 
         // 14. Documents (Templates, Policies, Dashboard)

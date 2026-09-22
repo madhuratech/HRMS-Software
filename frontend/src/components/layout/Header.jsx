@@ -1089,13 +1089,13 @@ export function Header({ title, userRole, currentView, onLogout }) {
               <div
                 style={{
                   position: 'absolute',
-                  right: 0,
+                  right: -100,
                   top: 'calc(100% + 8px)',
-                  width: 520,
-                  maxWidth: 'calc(100vw - 2rem)',
+                  width: 440,
+                  maxWidth: 'calc(100vw - 32px)',
                   background: '#FFFFFF',
                   borderRadius: 24,
-                  boxShadow: '0 20px 60px rgba(15,23,42,0.13)',
+                  boxShadow: '0 20px 60px rgba(15,23,42,0.16)',
                   border: '1px solid #E8EDF5',
                   zIndex: 20,
                   display: 'flex',

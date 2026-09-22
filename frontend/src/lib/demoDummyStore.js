@@ -111,30 +111,312 @@ export const initializeDummyDatabase = (customerCompany = 'My Company', customer
         avatar: null
       }
     ],
-    attendanceToday: [],
-    leaves: [],
+    attendanceToday: [
+      {
+        id: 1,
+        emp_id: 'EMP-001',
+        name: cleanName,
+        punchIn: '09:00 AM',
+        punchOut: '06:00 PM',
+        status: 'Present',
+        location: 'HQ Main Campus Geofence',
+        type: 'Web Punch'
+      }
+    ],
+    leaves: [
+      {
+        id: 'LV-101',
+        employeeName: cleanName,
+        type: 'Casual Leave',
+        fromDate: new Date().toISOString().split('T')[0],
+        toDate: new Date().toISOString().split('T')[0],
+        days: 1,
+        status: 'Approved',
+        reason: 'Personal errands'
+      }
+    ],
+    regularizations: [
+      {
+        id: 1,
+        employee_id: 1,
+        employee_name: cleanName,
+        date: new Date().toISOString().split('T')[0],
+        requested_in: '09:15:00',
+        requested_out: '18:30:00',
+        reason: 'Traffic congestion on Ring Road',
+        status: 'PENDING',
+        created_at: new Date().toISOString()
+      }
+    ],
+    overtime: [
+      {
+        id: 1,
+        employee_id: 1,
+        employee_name: cleanName,
+        date: new Date().toISOString().split('T')[0],
+        hours: 3.5,
+        reason: 'Q3 Product Release Deployment',
+        status: 'Approved',
+        created_at: new Date().toISOString()
+      }
+    ],
+    lateArrival: [
+      {
+        id: 1,
+        employee_id: 1,
+        employee_name: cleanName,
+        date: new Date().toISOString().split('T')[0],
+        late_minutes: 25,
+        reason: 'Severe rain & waterlogging',
+        status: 'Approved'
+      }
+    ],
+    compOff: [
+      {
+        id: 1,
+        employee_id: 1,
+        employee_name: cleanName,
+        worked_date: new Date(Date.now() - 86400000 * 3).toISOString().split('T')[0],
+        hours_worked: 8,
+        reason: 'Server Maintenance on Sunday',
+        status: 'Approved'
+      }
+    ],
+    loans: [
+      {
+        id: 1,
+        employee_id: 1,
+        employee_name: cleanName,
+        loan_type: 'Personal Laptop Loan',
+        amount: 50000,
+        emi: 5000,
+        tenure_months: 10,
+        status: 'Active',
+        disbursed_date: new Date().toISOString().split('T')[0]
+      }
+    ],
+    bonuses: [
+      {
+        id: 1,
+        employee_id: 1,
+        employee_name: cleanName,
+        type: 'Annual Performance Incentive',
+        amount: 25000,
+        payout_month: 'September 2026',
+        status: 'Approved'
+      }
+    ],
+    reimbursements: [
+      {
+        id: 1,
+        employee_id: 1,
+        employee_name: cleanName,
+        category: 'Travel & Food',
+        amount: 3200,
+        claim_date: new Date().toISOString().split('T')[0],
+        description: 'Client Onboarding Lunch & Cab fare',
+        status: 'Approved'
+      }
+    ],
+    timesheets: [
+      {
+        id: 1,
+        employee_id: 1,
+        employee_name: cleanName,
+        project_name: 'Core HRMS Platform',
+        task_name: 'Module Interceptor & Demo Store Polish',
+        date: new Date().toISOString().split('T')[0],
+        hours: 8,
+        description: 'Completed 100% demo sandbox persistence for all 18 HR modules',
+        status: 'Approved'
+      }
+    ],
+    projectTeam: [
+      {
+        id: 1,
+        project_id: 1,
+        project_name: 'Core HRMS Platform',
+        employee_id: 1,
+        employee_name: cleanName,
+        role: 'Tech Lead / Admin',
+        allocated_hours: 40,
+        status: 'Active'
+      }
+    ],
+    expenses: [
+      {
+        id: 1,
+        employee_id: 1,
+        employee_name: cleanName,
+        title: 'Cloud Infrastructure Hosting',
+        category: 'IT Software',
+        amount: 12500,
+        expense_date: new Date().toISOString().split('T')[0],
+        status: 'Approved'
+      }
+    ],
     payrollSummary: {
       month: 'September 2026',
       totalEmployees: 1,
-      totalGross: 0,
-      totalDeductions: 0,
-      totalNetSalary: 0,
+      totalGross: 65000,
+      totalDeductions: 4300,
+      totalNetSalary: 60700,
       status: 'Ready for Processing',
       disbursementDate: '30 Sep 2026'
     },
-    projects: [],
-    clients: [],
-    tasks: [],
-    requirements: [],
-    candidates: [],
-    interviews: [],
-    offers: [],
-    goals: [],
-    salaryStructures: [],
-    salaryComponents: [],
-    tickets: [],
-    policies: [],
-    templates: []
+    punchLocations: [
+      {
+        id: 1,
+        name: 'HQ Main Campus Geofence',
+        branch: 'Headquarters',
+        latitude: 12.9716,
+        longitude: 77.5946,
+        radius: 100,
+        address: 'MG Road, Indiranagar, Bengaluru, Karnataka 560038',
+        description: 'Main corporate headquarters office geofence',
+        status: 'Active'
+      },
+      {
+        id: 2,
+        name: 'Tech Park Branch Geofence',
+        branch: 'North Office',
+        latitude: 12.9352,
+        longitude: 77.6245,
+        radius: 150,
+        address: 'Koramangala 5th Block, Bengaluru, Karnataka 560095',
+        description: 'R&D tech park center',
+        status: 'Active'
+      }
+    ],
+    projects: [
+      {
+        id: 1,
+        title: 'Core HRMS Platform',
+        project_name: 'Core HRMS Platform',
+        client: 'Internal Enterprise',
+        client_name: 'Internal Enterprise',
+        status: 'In Progress',
+        budget: 250000,
+        progress: 85
+      }
+    ],
+    clients: [
+      {
+        id: 1,
+        name: 'Apex Global Logistics',
+        client_name: 'Apex Global Logistics',
+        industry: 'Logistics & Supply Chain',
+        status: 'Active'
+      }
+    ],
+    tasks: [
+      {
+        id: 1,
+        title: 'Configure Attendance & Geofencing',
+        project_id: 1,
+        project_name: 'Core HRMS Platform',
+        assignee_id: 1,
+        assignee_name: cleanName,
+        priority: 'High',
+        status: 'In Progress',
+        start_date: new Date().toISOString().split('T')[0],
+        due_date: new Date(Date.now() + 86400000 * 7).toISOString().split('T')[0],
+        description: 'Set up punch locations and geofence radius for main campus.'
+      }
+    ],
+    requirements: [
+      {
+        id: 1,
+        title: 'Senior Full Stack Engineer',
+        department_name: 'Management',
+        department_id: 1,
+        positions: 2,
+        status: 'Open',
+        priority: 'High',
+        experience: '3-5 Years',
+        created_at: new Date().toISOString().split('T')[0]
+      }
+    ],
+    candidates: [
+      {
+        id: 1,
+        name: 'David Miller',
+        candidate_name: 'David Miller',
+        email: 'david.m@example.com',
+        job_title: 'Senior Full Stack Engineer',
+        stage: 'Screening',
+        status: 'Shortlisted',
+        phone: '+91 98123 45678'
+      }
+    ],
+    interviews: [
+      {
+        id: 1,
+        candidate_id: 1,
+        candidate_name: 'David Miller',
+        interviewer: cleanName,
+        round: 'Technical Round 1',
+        scheduled_at: new Date(Date.now() + 86400000 * 2).toISOString().split('T')[0] + ' 14:00:00',
+        status: 'Scheduled'
+      }
+    ],
+    offers: [
+      {
+        id: 1,
+        candidate_id: 1,
+        candidate_name: 'David Miller',
+        designation: 'Senior Full Stack Engineer',
+        offered_ctc: 1200000,
+        joining_date: new Date(Date.now() + 86400000 * 14).toISOString().split('T')[0],
+        status: 'Sent'
+      }
+    ],
+    goals: [
+      {
+        id: 1,
+        title: 'Automate 100% Demo Sandbox Data Flow',
+        owner: cleanName,
+        department_id: 1,
+        progress: 100,
+        status: 'Completed',
+        due_date: new Date().toISOString().split('T')[0]
+      }
+    ],
+    salaryStructures: [
+      {
+        id: 1,
+        name: 'Standard Executive CTC Structure',
+        basic_pct: 50,
+        hra_pct: 25,
+        allowance_pct: 25,
+        status: 'Active'
+      }
+    ],
+    salaryComponents: [
+      { id: 1, name: 'Basic Pay', type: 'Earning', calculation_type: 'Percentage', val: 50 },
+      { id: 2, name: 'House Rent Allowance (HRA)', type: 'Earning', calculation_type: 'Percentage', val: 25 },
+      { id: 3, name: 'Provident Fund (PF)', type: 'Deduction', calculation_type: 'Fixed', val: 1800 }
+    ],
+    tickets: [
+      {
+        id: 1,
+        ticket_no: 'TKT-1001',
+        subject: 'Welcome to HRMS Demo Sandbox',
+        priority: 'Medium',
+        status: 'Open',
+        requester: cleanName,
+        department: 'Management',
+        created_at: new Date().toISOString().split('T')[0]
+      }
+    ],
+    policies: [
+      { id: 1, name: 'Geofence & Attendance Policy 2026', category: 'Attendance', version: 'v2.1', status: 'Active' },
+      { id: 2, name: 'Standard Paid Leave & Leave Travel Policy', category: 'Leaves', version: 'v1.4', status: 'Active' }
+    ],
+    templates: [
+      { id: 1, name: 'Standard Employment Offer Letter', category: 'Offer Letters', status: 'Active' },
+      { id: 2, name: 'Employee Relieving & Experience Certificate', category: 'Exit', status: 'Active' }
+    ]
   };
 
   localStorage.setItem(DEMO_DB_KEY, JSON.stringify(initialDb));
@@ -281,6 +563,43 @@ export const addDummyAttendance = (attData) => {
   db.attendanceToday = [newAtt, ...(db.attendanceToday || [])];
   saveDummyDb(db);
   return newAtt;
+};
+
+export const addDummyPunchLocation = (locData) => {
+  const db = getDummyDb();
+  const newLoc = {
+    id: Date.now(),
+    name: locData.name || 'New Office Location',
+    branch: locData.branch || 'Main Branch',
+    latitude: parseFloat(locData.latitude) || 12.9716,
+    longitude: parseFloat(locData.longitude) || 77.5946,
+    radius: parseInt(locData.radius) || 100,
+    address: locData.address || 'Office Address',
+    description: locData.description || '',
+    status: locData.status || 'Active'
+  };
+  db.punchLocations = [newLoc, ...(db.punchLocations || [])];
+  saveDummyDb(db);
+  return newLoc;
+};
+
+export const updateDummyPunchLocation = (id, locData) => {
+  const db = getDummyDb();
+  db.punchLocations = (db.punchLocations || []).map(l => {
+    if (l.id === Number(id) || String(l.id) === String(id)) {
+      return { ...l, ...locData };
+    }
+    return l;
+  });
+  saveDummyDb(db);
+  return db.punchLocations.find(l => l.id === Number(id) || String(l.id) === String(id));
+};
+
+export const deleteDummyPunchLocation = (id) => {
+  const db = getDummyDb();
+  db.punchLocations = (db.punchLocations || []).filter(l => l.id !== Number(id) && String(l.id) !== String(id));
+  saveDummyDb(db);
+  return { success: true };
 };
 
 export const addDummyLeave = (leaveData) => {
@@ -585,6 +904,222 @@ export const updateDummyGoal = (id, goalData) => {
 export const deleteDummyGoal = (id) => {
   const db = getDummyDb();
   db.goals = (db.goals || []).filter(g => g.id !== Number(id) && String(g.id) !== String(id));
+  saveDummyDb(db);
+  return { success: true };
+};
+
+// ─── Additional Submenu CRUD Helpers ──────────────────────────
+export const addDummyRegularization = (regData) => {
+  const db = getDummyDb();
+  const newReg = {
+    id: Date.now(),
+    employee_id: regData.employee_id || 1,
+    employee_name: regData.employee_name || 'Customer Admin',
+    date: regData.date || new Date().toISOString().split('T')[0],
+    requested_in: regData.requested_in || '09:00:00',
+    requested_out: regData.requested_out || '18:00:00',
+    reason: regData.reason || 'Punch adjustment request',
+    status: 'PENDING',
+    created_at: new Date().toISOString()
+  };
+  db.regularizations = [newReg, ...(db.regularizations || [])];
+  saveDummyDb(db);
+  return newReg;
+};
+
+export const updateDummyRegularization = (id, regData) => {
+  const db = getDummyDb();
+  db.regularizations = (db.regularizations || []).map(r => {
+    if (r.id === Number(id) || String(r.id) === String(id)) {
+      return { ...r, ...regData };
+    }
+    return r;
+  });
+  saveDummyDb(db);
+  return db.regularizations.find(r => r.id === Number(id) || String(r.id) === String(id));
+};
+
+export const addDummyOvertime = (otData) => {
+  const db = getDummyDb();
+  const newOt = {
+    id: Date.now(),
+    employee_id: otData.employee_id || 1,
+    employee_name: otData.employee_name || 'Customer Admin',
+    date: otData.date || new Date().toISOString().split('T')[0],
+    hours: Number(otData.hours || 2),
+    reason: otData.reason || 'Extra project hours',
+    status: 'Pending',
+    created_at: new Date().toISOString()
+  };
+  db.overtime = [newOt, ...(db.overtime || [])];
+  saveDummyDb(db);
+  return newOt;
+};
+
+export const updateDummyOvertime = (id, otData) => {
+  const db = getDummyDb();
+  db.overtime = (db.overtime || []).map(o => {
+    if (o.id === Number(id) || String(o.id) === String(id)) {
+      return { ...o, ...otData };
+    }
+    return o;
+  });
+  saveDummyDb(db);
+  return db.overtime.find(o => o.id === Number(id) || String(o.id) === String(id));
+};
+
+export const addDummyLateArrival = (laData) => {
+  const db = getDummyDb();
+  const newLa = {
+    id: Date.now(),
+    employee_id: laData.employee_id || 1,
+    employee_name: laData.employee_name || 'Customer Admin',
+    date: laData.date || new Date().toISOString().split('T')[0],
+    late_minutes: Number(laData.late_minutes || 15),
+    reason: laData.reason || 'Late arrival excuse',
+    status: 'Pending'
+  };
+  db.lateArrival = [newLa, ...(db.lateArrival || [])];
+  saveDummyDb(db);
+  return newLa;
+};
+
+export const addDummyCompOff = (coData) => {
+  const db = getDummyDb();
+  const newCo = {
+    id: Date.now(),
+    employee_id: coData.employee_id || 1,
+    employee_name: coData.employee_name || 'Customer Admin',
+    worked_date: coData.worked_date || new Date().toISOString().split('T')[0],
+    hours_worked: Number(coData.hours_worked || 8),
+    reason: coData.reason || 'Holiday work compensation',
+    status: 'Pending'
+  };
+  db.compOff = [newCo, ...(db.compOff || [])];
+  saveDummyDb(db);
+  return newCo;
+};
+
+export const addDummyLoan = (loanData) => {
+  const db = getDummyDb();
+  const newLoan = {
+    id: Date.now(),
+    employee_id: loanData.employee_id || 1,
+    employee_name: loanData.employee_name || 'Customer Admin',
+    loan_type: loanData.loan_type || 'Personal Loan',
+    amount: Number(loanData.amount || 25000),
+    emi: Number(loanData.emi || 2500),
+    tenure_months: Number(loanData.tenure_months || 10),
+    status: 'Pending',
+    disbursed_date: new Date().toISOString().split('T')[0]
+  };
+  db.loans = [newLoan, ...(db.loans || [])];
+  saveDummyDb(db);
+  return newLoan;
+};
+
+export const addDummyBonus = (bonusData) => {
+  const db = getDummyDb();
+  const newBonus = {
+    id: Date.now(),
+    employee_id: bonusData.employee_id || 1,
+    employee_name: bonusData.employee_name || 'Customer Admin',
+    type: bonusData.type || 'Performance Bonus',
+    amount: Number(bonusData.amount || 10000),
+    payout_month: bonusData.payout_month || 'September 2026',
+    status: 'Pending'
+  };
+  db.bonuses = [newBonus, ...(db.bonuses || [])];
+  saveDummyDb(db);
+  return newBonus;
+};
+
+export const addDummyReimbursement = (reimbData) => {
+  const db = getDummyDb();
+  const newReimb = {
+    id: Date.now(),
+    employee_id: reimbData.employee_id || 1,
+    employee_name: reimbData.employee_name || 'Customer Admin',
+    category: reimbData.category || 'Travel',
+    amount: Number(reimbData.amount || 1500),
+    claim_date: reimbData.claim_date || new Date().toISOString().split('T')[0],
+    description: reimbData.description || 'Travel & official expense',
+    status: 'Pending'
+  };
+  db.reimbursements = [newReimb, ...(db.reimbursements || [])];
+  saveDummyDb(db);
+  return newReimb;
+};
+
+export const addDummyTimesheet = (tsData) => {
+  const db = getDummyDb();
+  const newTs = {
+    id: Date.now(),
+    employee_id: tsData.employee_id || 1,
+    employee_name: tsData.employee_name || 'Customer Admin',
+    project_name: tsData.project_name || 'Core HRMS Platform',
+    task_name: tsData.task_name || 'General Development',
+    date: tsData.date || new Date().toISOString().split('T')[0],
+    hours: Number(tsData.hours || 8),
+    description: tsData.description || '',
+    status: 'Submitted'
+  };
+  db.timesheets = [newTs, ...(db.timesheets || [])];
+  saveDummyDb(db);
+  return newTs;
+};
+
+export const updateDummyTimesheet = (id, tsData) => {
+  const db = getDummyDb();
+  db.timesheets = (db.timesheets || []).map(t => {
+    if (t.id === Number(id) || String(t.id) === String(id)) {
+      return { ...t, ...tsData };
+    }
+    return t;
+  });
+  saveDummyDb(db);
+  return db.timesheets.find(t => t.id === Number(id) || String(t.id) === String(id));
+};
+
+export const deleteDummyTimesheet = (id) => {
+  const db = getDummyDb();
+  db.timesheets = (db.timesheets || []).filter(t => t.id !== Number(id) && String(t.id) !== String(id));
+  saveDummyDb(db);
+  return { success: true };
+};
+
+export const addDummyExpense = (expData) => {
+  const db = getDummyDb();
+  const newExp = {
+    id: Date.now(),
+    employee_id: expData.employee_id || 1,
+    employee_name: expData.employee_name || 'Customer Admin',
+    title: expData.title || 'Official Expense',
+    category: expData.category || 'General',
+    amount: Number(expData.amount || 1000),
+    expense_date: expData.expense_date || new Date().toISOString().split('T')[0],
+    status: 'Pending'
+  };
+  db.expenses = [newExp, ...(db.expenses || [])];
+  saveDummyDb(db);
+  return newExp;
+};
+
+export const updateDummyExpense = (id, expData) => {
+  const db = getDummyDb();
+  db.expenses = (db.expenses || []).map(e => {
+    if (e.id === Number(id) || String(e.id) === String(id)) {
+      return { ...e, ...expData };
+    }
+    return e;
+  });
+  saveDummyDb(db);
+  return db.expenses.find(e => e.id === Number(id) || String(e.id) === String(id));
+};
+
+export const deleteDummyExpense = (id) => {
+  const db = getDummyDb();
+  db.expenses = (db.expenses || []).filter(e => e.id !== Number(id) && String(e.id) !== String(id));
   saveDummyDb(db);
   return { success: true };
 };
