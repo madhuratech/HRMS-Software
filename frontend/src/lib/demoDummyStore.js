@@ -66,18 +66,18 @@ export const purgeExpiredDemoSession = () => {
 };
 
 export const initializeDummyDatabase = (customerCompany = 'My Company', customerName = 'Customer Admin', forceReset = false) => {
+  const cleanCompany = customerCompany || 'My Company';
+  const cleanName = customerName || 'Customer Admin';
+
   const existing = localStorage.getItem(DEMO_DB_KEY);
   if (existing && !forceReset) {
     try {
       const parsed = JSON.parse(existing);
-      // If existing DB contains old fake staff (e.g. Alex Chen), automatically reset to clean empty state!
+      const isSameCustomer = (parsed?.company?.name === cleanCompany) && (parsed?.employees?.[0]?.name === cleanName);
       const hasOldFakeData = parsed?.employees?.some(e => e.name === 'Alex Chen' || e.name === 'Sarah Jenkins');
-      if (parsed && parsed.initialized && !hasOldFakeData) return parsed;
+      if (parsed && parsed.initialized && isSameCustomer && !hasOldFakeData) return parsed;
     } catch (e) {}
   }
-
-  const cleanCompany = customerCompany || 'My Company';
-  const cleanName = customerName || 'Customer Admin';
 
   const initialDb = {
     initialized: true,

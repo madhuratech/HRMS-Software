@@ -21,11 +21,8 @@ export default function EmployeeListContent() {
       fetch(`/app/employees?search=${searchTerm}`)
         .then(res => res.json())
         .then(data => {
-          if (Array.isArray(data)) {
-            setEmployeeList(data);
-          } else {
-            setEmployeeList([]);
-          }
+          const list = Array.isArray(data) ? data : (data?.employees || data?.data || data?.items || []);
+          setEmployeeList(list);
           setLoading(false);
         })
         .catch(err => {

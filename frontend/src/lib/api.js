@@ -45,11 +45,21 @@ export const getAuthHeaders = (extraHeaders = {}) => {
 export const toDemoResponse = (data, extra = {}) => {
   const isArray = Array.isArray(data);
   const dataPayload = isArray ? data : (data !== undefined ? data : []);
-  const totalCount = isArray ? data.length : 0;
+  if (isArray) {
+    const arr = [...dataPayload];
+    return Object.assign(arr, {
+      success: true,
+      data: dataPayload,
+      total: dataPayload.length,
+      items: dataPayload,
+      records: dataPayload,
+      ...extra
+    });
+  }
   return {
     success: true,
     data: dataPayload,
-    total: totalCount,
+    total: 0,
     items: dataPayload,
     records: dataPayload,
     ...extra
@@ -449,7 +459,7 @@ export const apiFetch = async (path, options = {}) => {
             avatar: e.avatar,
             profile_photo: e.avatar
           }));
-          return toDemoResponse(empList, { employees: empList, total: empList.length });
+          return empList;
         }
 
         // 7. Organization (Departments, Designations, Profile, Shifts, Teams, Holidays)
