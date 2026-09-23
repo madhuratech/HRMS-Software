@@ -827,10 +827,20 @@ export const apiFetch = async (path, options = {}) => {
         }
 
         if (targetPath.includes('/requirements/meta/all') || targetPath.includes('/requirements/meta')) {
+          const depts = dummyDb.departments || [];
+          const desigs = dummyDb.designations || [];
+          const emps = (dummyDb.employees || []).map(e => ({ id: e.id, name: e.name }));
+          const branches = dummyDb.branches || [{ id: 1, name: 'Headquarters Campus' }];
+          const companies = dummyDb.companies || [{ id: 1, name: dummyDb.company?.name || 'MadhuraTech Solutions' }];
           return {
             success: true,
-            departments: dummyDb.departments || [],
-            branches: [{ id: 1, name: 'Headquarters Campus' }]
+            departments: depts,
+            designations: desigs,
+            employees: emps,
+            hrEmployees: emps,
+            branches: branches,
+            companies: companies,
+            data: { departments: depts, designations: desigs, employees: emps, hrEmployees: emps, branches, companies }
           };
         }
 
@@ -1342,8 +1352,39 @@ export const apiFetch = async (path, options = {}) => {
           };
         }
 
-        // Fallback for ANY other demo endpoint: return clean success data so UI never breaks!
-        return toDemoResponse([], { success: true, message: 'Demo operation successful' });
+        // Universal Fallback for ANY demo endpoint: Smart Dynamic CRUD Persistence in localStorage!
+        const segments = targetPath.split('/').filter(Boolean);
+        const collectionKey = (segments[0] === 'app' || segments[0] === 'api') ? (segments[1] || 'generic') : (segments[0] || 'generic');
+
+        if (options.method === 'POST') {
+          const newItem = { id: Date.now(), ...(bodyPayload || {}), createdAt: new Date().toISOString() };
+          const list = Array.isArray(dummyDb[collectionKey]) ? dummyDb[collectionKey] : [];
+          dummyDb[collectionKey] = [newItem, ...list];
+          const { saveDummyDb } = await import('./demoDummyStore');
+          saveDummyDb(dummyDb);
+          return { success: true, message: 'Item created in demo store', data: newItem, [collectionKey]: dummyDb[collectionKey] };
+        }
+
+        if (options.method === 'PUT' || options.method === 'PATCH') {
+          const targetId = segments[segments.length - 1];
+          const list = Array.isArray(dummyDb[collectionKey]) ? dummyDb[collectionKey] : [];
+          dummyDb[collectionKey] = list.map(item => String(item.id) === String(targetId) ? { ...item, ...(bodyPayload || {}) } : item);
+          const { saveDummyDb } = await import('./demoDummyStore');
+          saveDummyDb(dummyDb);
+          return { success: true, message: 'Item updated in demo store', data: bodyPayload, [collectionKey]: dummyDb[collectionKey] };
+        }
+
+        if (options.method === 'DELETE') {
+          const targetId = segments[segments.length - 1];
+          const list = Array.isArray(dummyDb[collectionKey]) ? dummyDb[collectionKey] : [];
+          dummyDb[collectionKey] = list.filter(item => String(item.id) !== String(targetId));
+          const { saveDummyDb } = await import('./demoDummyStore');
+          saveDummyDb(dummyDb);
+          return { success: true, message: 'Item deleted from demo store', [collectionKey]: dummyDb[collectionKey] };
+        }
+
+        const fallbackData = dummyDb[collectionKey] || [];
+        return toDemoResponse(fallbackData, { success: true, message: 'Demo operation successful' });
       }
     } catch (e) {
       console.warn('Dummy store interception notice:', e);
@@ -1394,13 +1435,12 @@ if (typeof window !== 'undefined' && !window.__hrms_fetch_intercepted) {
         }
       } catch (e) {}
 
-      const isAppApiCall = urlString.includes('/app/') || urlString.includes('/api/') || 
-                           urlString.startsWith('/app') || urlString.startsWith('/api') ||
-                           urlString.startsWith('/requirements') || urlString.startsWith('/candidates') ||
-                           urlString.startsWith('/pipeline') || urlString.startsWith('/employees');
+      const isStaticAsset = urlString.includes('.js') || urlString.includes('.css') || urlString.includes('.svg') ||
+                            urlString.includes('.png') || urlString.includes('.jpg') || urlString.includes('.woff') ||
+                            urlString.includes('@vite') || urlString.includes('@fs') || urlString.includes('node_modules');
       const isTrialCall = urlString.includes('/trial') || urlString.includes('/auth/login');
 
-      if (isDemo && isAppApiCall && !isTrialCall) {
+      if (isDemo && !isStaticAsset && !isTrialCall) {
         let cleanPath = urlString;
         if (cleanPath.startsWith('http://') || cleanPath.startsWith('https://')) {
           try {

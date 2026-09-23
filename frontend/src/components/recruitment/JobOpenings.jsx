@@ -9,8 +9,9 @@ import { useNavigate } from 'react-router-dom';
 import { canCreate, canEdit, canDelete, checkActionPermission } from '../../lib/permissions';
 
 // ─── Custom Dropdown ─────────────────────────────────────────────────────────
-function CustomSelect({ id, value, onChange, options, placeholder = 'Select...', accentColor = '#3B82F6', isOpen, onToggle, onClose }) {
-  const selected = options.find(o => String(o.value) === String(value));
+function CustomSelect({ id, value, onChange, options = [], placeholder = 'Select...', accentColor = '#3B82F6', isOpen, onToggle, onClose }) {
+  const safeOptions = Array.isArray(options) ? options : [];
+  const selected = safeOptions.find(o => o && String(o.value) === String(value));
   return (
     <div style={{ position: 'relative', zIndex: isOpen ? 9001 : 1 }}>
       <button
@@ -47,10 +48,11 @@ function CustomSelect({ id, value, onChange, options, placeholder = 'Select...',
           zIndex: 9999, maxHeight: '188px', overflowY: 'auto',
           animation: 'dropdownIn 0.18s cubic-bezier(0.16,1,0.3,1)'
         }}>
-          {options.map(opt => {
+          {safeOptions.map(opt => {
+            if (!opt) return null;
             const isSel = String(opt.value) === String(value);
             return (
-              <div key={opt.value}
+              <div key={opt.value ?? opt.label}
                 onClick={() => { onChange(String(opt.value)); onClose(); }}
                 onMouseEnter={e => { if (!isSel) e.currentTarget.style.background = '#F8FAFC'; }}
                 onMouseLeave={e => { if (!isSel) e.currentTarget.style.background = isSel ? `${accentColor}12` : 'transparent'; }}
@@ -1621,7 +1623,7 @@ export default function JobOpenings() {
                       <CustomSelect id="dept" accentColor="#2563EB"
                         value={formData.department} onChange={v => setFormData({ ...formData, department: v })}
                         placeholder="Select Department"
-                        options={[{ value: '', label: 'Select Department' }, ...meta.departments.map(d => ({ value: d.id, label: d.name }))]}
+                        options={[{ value: '', label: 'Select Department' }, ...((meta?.departments || []).map(d => ({ value: d.id, label: d.name })))]}
                         isOpen={openDropdown === 'dept'}
                         onToggle={() => setOpenDropdown(openDropdown === 'dept' ? null : 'dept')}
                         onClose={() => setOpenDropdown(null)} />
@@ -1631,7 +1633,7 @@ export default function JobOpenings() {
                       <CustomSelect id="desig" accentColor="#2563EB"
                         value={formData.designation} onChange={v => setFormData({ ...formData, designation: v })}
                         placeholder="Select Designation"
-                        options={[{ value: '', label: 'Select Designation' }, ...meta.designations.map(d => ({ value: d.id, label: d.name }))]}
+                        options={[{ value: '', label: 'Select Designation' }, ...((meta?.designations || []).map(d => ({ value: d.id, label: d.name })))]}
                         isOpen={openDropdown === 'desig'}
                         onToggle={() => setOpenDropdown(openDropdown === 'desig' ? null : 'desig')}
                         onClose={() => setOpenDropdown(null)} />

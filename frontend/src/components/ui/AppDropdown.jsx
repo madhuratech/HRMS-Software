@@ -70,7 +70,8 @@ export default function AppDropdown({
     };
   };
 
-  const normalizedOptions = options.map(normalizeOpt).filter(Boolean);
+  const safeOptions = Array.isArray(options) ? options : [];
+  const normalizedOptions = safeOptions.map(normalizeOpt).filter(Boolean);
 
   // Prepend "All" option for filter dropdowns
   const allEntry = allOption

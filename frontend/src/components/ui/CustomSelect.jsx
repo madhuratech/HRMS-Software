@@ -19,18 +19,20 @@ export default function CustomSelect({
   const searchInputRef = useRef(null);
 
   // Normalize options to { value, label, sublabel, avatar }
-  const normalizedOptions = options.map(opt => {
+  const safeOptions = Array.isArray(options) ? options : [];
+  const normalizedOptions = safeOptions.map(opt => {
+    if (!opt) return null;
     if (typeof opt === 'string' || typeof opt === 'number') {
       return { value: opt, label: String(opt) };
     }
     return {
       value: opt.id !== undefined ? opt.id : opt.value,
-      label: opt.name || opt.label || opt.title || String(opt.value),
+      label: opt.name || opt.label || opt.title || String(opt.value ?? ''),
       sublabel: opt.sublabel || opt.department_name || opt.department || opt.project_code || null,
       avatar: opt.avatar || opt.profile_photo || null,
       raw: opt
     };
-  });
+  }).filter(Boolean);
 
   const selectedOption = normalizedOptions.find(opt => String(opt.value) === String(value));
 
